@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MapVibes</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <header id="app-header">
+      <span id="app-name">MapVibes</span>
+      <div class="controls">
+        <label>
+          <span id="label-language">Language</span>
+          <select id="select-language">
+            <option value="en">English</option>
+            <option value="sv">Svenska</option>
+          </select>
+        </label>
+        <label>
+          <span id="label-theme">Theme</span>
+          <select id="select-theme">
+            <option value="system">Follow system</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </label>
+      </div>
+    </header>
+    <main id="app-main">
+      <section id="list-area" aria-labelledby="list-heading">
+        <h2 id="list-heading">List</h2>
+        <div id="ingest-panel">
+          <div id="drop-zone" tabindex="0">
+            <span id="drop-hint">Drop an .xlsx file here, or</span>
+            <button id="browse-button">browse</button>
+            <input type="file" id="file-input" accept=".xlsx" hidden />
+          </div>
+          <p id="ingest-error" class="error hidden"></p>
+        </div>
+        <div id="mapping-panel" class="hidden">
+          <h3 id="mapping-heading">Column mapping</h3>
+          <p id="mapping-intro"></p>
+          <table id="mapping-table">
+            <thead>
+              <tr>
+                <th id="th-column">Column</th>
+                <th id="th-keep">Keep</th>
+                <th id="th-role">Role</th>
+              </tr>
+            </thead>
+            <tbody id="mapping-body"></tbody>
+          </table>
+          <button id="apply-mapping">Apply and import</button>
+        </div>
+        <div id="list-panel" class="hidden">
+          <div id="list-toolbar">
+            <label>
+              <span id="label-filter">Filter</span>
+              <select id="select-filter-kind">
+                <option value="all">All rows</option>
+                <option value="empty">Empty cells</option>
+                <option value="nonempty">Non-empty cells</option>
+                <option value="contains">Contains text</option>
+              </select>
+            </label>
+            <label id="filter-column-label">
+              <select id="select-filter-column"></select>
+            </label>
+            <input type="text" id="filter-text" class="hidden" />
+            <details id="columns-details">
+              <summary id="columns-summary">Columns</summary>
+              <div id="column-visibility"></div>
+            </details>
+            <span id="counter-selected">Selected: 0</span>
+            <button id="select-all">Select all</button>
+            <button id="delete-selected">Delete selected</button>
+          </div>
+          <div id="list-counts">
+            <span id="counter-retained">Retained rows: 0</span>
+            <span id="counter-removed">Removed rows: 0</span>
+          </div>
+          <div id="list-scroll">
+            <table id="row-table">
+              <thead>
+                <tr id="row-table-head"></tr>
+              </thead>
+              <tbody id="row-table-body"></tbody>
+            </table>
+            <p id="empty-list" class="hidden">No rows to display.</p>
+          </div>
+        </div>
+        <p id="no-file" class="notice">No file imported.</p>
+      </section>
+      <section id="map-area" aria-labelledby="map-heading">
+        <h2 id="map-heading">Map</h2>
+        <div id="map-placeholder">Map view — a placeholder in this pass.</div>
+      </section>
+    </main>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

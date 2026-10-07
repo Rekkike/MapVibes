@@ -1,0 +1,54 @@
+name: Build and release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npx vitest run tests/unit
+
+      - name: UI tests
+        run: npx vitest run tests/ui
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Package release archive
+        run: npx vite-node scripts/package-release.ts && (cd dist/release && zip -qr mapvibes.zip mapvibes)
+
+      - name: Determine spec version
+        id: spec
+        run: echo "version=$(grep -oP 'Status: v\K[0-9]+\.[0-9]+\.[0-9]+' docs/SPECIFICATION.md | head -1)" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.spec.outputs.version }}
+          name: MapVibes v${{ steps.spec.outputs.version }}
+          draft: false
+          prerelease: true
+          files: dist/release/mapvibes.zip
+          body: |
+            Runnable application archive for MapVibes v${{ steps.spec.outputs.version }}.
+
+            The archive contains the folder build (open index.html directly from a local folder, no server required) and a fully self-contained single-file build (mapvibes-singlefile.html). All assets are bundled; the application makes no network calls and works fully offline.

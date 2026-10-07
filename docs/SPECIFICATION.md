@@ -1,6 +1,6 @@
 # MapVibes — Functional Specification
 
-Status: v0.1.0 — initial specification for first implementation pass.
+Status: v0.2.0 — foundation pass delivered. See the changelog below.
 
 MapVibes is a static, client-side web application: a spreadsheet-to-map visualisation tool. It has no backend, no database, and no server-side processing. Everything runs locally in the browser.
 
@@ -42,6 +42,28 @@ MapVibes is a static, client-side web application: a spreadsheet-to-map visualis
 - No GitHub Pages deployment: the application is a locally run tool.
 - No automatic data matching, merging, or selection logic.
 - No hardcoded schema: no fixed column names or formats.
+
+## Changelog
+
+### v0.2.0
+
+Delivered the foundation pass:
+
+- Toolchain: Vite + TypeScript + Vitest static client-side application. The production build is entirely self-contained: scripts and styles are bundled (no CDN references, no runtime fetches).
+- Application shell: layout framework with a list area and a map area (map area is a placeholder in this pass).
+- FR-19: Swedish/English language toggle; all interface strings externalised in translation files; the choice is remembered.
+- FR-20: dark/light/follow-system theme options, follow-system default; the choice is remembered.
+- FR-21: preferences stored in browser local storage only.
+- FR-1: .xlsx ingestion by file drop or file picker; all columns parsed with the vendored SheetJS library; actual file headers presented for keep/hide decisions and role assignment (identifier, start date, end date, area/grouping); all column data treated as generic text; parsing errors surfaced clearly.
+- FR-2: the list presents all ingested rows; supports sorting by column, per-row colour setting (green default, blue, yellow, red), column show/hide, filtering on column values including empty/non-empty for a chosen column, multi-select and select-all bulk deletion, and running counts of retained and removed rows.
+- FR-3: global sequential numbering starting at 1, regenerated continuously when rows are removed or added.
+- Delivery: a build workflow produces a runnable archive (folder build that opens via file:// without a server, plus a fully self-contained single-file HTML build) attached to a GitHub Release tagged with the specification version. The repository remains code-only.
+
+Not implemented in this pass (deferred to later passes): FR-4 through FR-18.
+
+### v0.1.0
+
+Initial specification for the first implementation pass.
 
 ## Versioning
 
