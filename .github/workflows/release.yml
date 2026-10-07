@@ -38,7 +38,9 @@ jobs:
 
       - name: Determine spec version
         id: spec
-        run: echo "version=$(grep -oP 'Status: v\K[0-9]+\.[0-9]+\.[0-9]+' docs/SPECIFICATION.md | head -1)" >> "$GITHUB_OUTPUT"
+        run: |
+          VERSION=$(grep -oP 'Status: v\K[0-9]+\.[0-9]+\.[0-9]+' docs/SPECIFICATION.md | head -1)
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Create or update release
         uses: softprops/action-gh-release@v2
@@ -48,6 +50,7 @@ jobs:
           draft: false
           prerelease: true
           files: dist/release/mapvibes.zip
+          generate_release_notes: false
           body: |
             Runnable application archive for MapVibes v${{ steps.spec.outputs.version }}.
 
