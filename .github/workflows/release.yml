@@ -33,7 +33,7 @@ jobs:
       - name: Build production bundle
         run: npm run build
       - name: Build regression tests (inlined artifacts)
-        run: npx vitest run tests/build
+        run: npx vitest run tests/inline-build
 
       - name: Package release archive
         run: npx vite-node scripts/package-release.ts && (cd dist/release && zip -qr mapvibes.zip mapvibes)
