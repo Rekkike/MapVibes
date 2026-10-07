@@ -1,6 +1,6 @@
 # MapVibes — Functional Specification
 
-Status: v0.2.0 — foundation pass delivered. See the changelog below.
+Status: v0.2.1 — defect-fix pass delivered. See the changelog below.
 
 MapVibes is a static, client-side web application: a spreadsheet-to-map visualisation tool. It has no backend, no database, and no server-side processing. Everything runs locally in the browser.
 
@@ -44,6 +44,15 @@ MapVibes is a static, client-side web application: a spreadsheet-to-map visualis
 - No hardcoded schema: no fixed column names or formats.
 
 ## Changelog
+
+### v0.2.1
+
+Recovery defect-fix pass over the v0.2.0 delivery. Both built artifacts (the folder build `index.html` and the single-file build `mapvibes-singlefile.html`) rendered a large dump of source text above the application interface. Root causes confirmed and fixed in the shared post-build inlining step:
+
+- The inliner used a replacement string in `String.replace`; JavaScript interprets `$&`, `$'`, and similar sequences in replacement strings, so the xlsx bundle spliced the remainder of the HTML document into the middle of the inlined script. The substitution now uses a replacer function, which is literal.
+- The inlined bundle contained `<!--` sequences (inside xlsx regex literals) and one `<script` sequence (inside an xlsx string literal); in HTML script tokenization `<!--` switches the tokenizer to escaped state, `<script` can then enter double-escaped state, and the closing `</script>` is consumed as a state transition instead of closing the element, rendering the remainder of the bundle as page text. A content-agnostic post-build sanitiser is now applied to the entire bundle on every build: `</script` is escaped as `<\/script`, `<!--` as `<\x21\x2D\x2D`, and `<script` as `<\x73cript` — hex escapes that are valid and semantics-preserving inside JavaScript string and regex literals while breaking the HTML tokenizer sequences.
+
+Verification: a build regression test that parses the built document with a model of the browser's script-data tokeniser states and asserts that no script source renders as body text (fails against the deliberately reverted inliner, passes against the fixed one), plus a real headless-Chromium `file://` render of both builds confirming both open directly at the application interface with no source dump. The README Running section now describes the Release archive (download, extract, open) as the primary runnable route, with the development workflow second. No functional requirements were added or changed in this pass; the FR-4 through FR-18 deferrals stand.
 
 ### v0.2.0
 

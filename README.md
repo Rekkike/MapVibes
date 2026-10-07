@@ -25,7 +25,15 @@ MapVibes turns a spreadsheet export into an interactive, zoomable map: clean the
 
 ## Running
 
-Open `index.html` in a modern browser, or serve the folder with any static file server. No installation, no build step required for use. (A build step may be used during development.)
+The runnable application is distributed as the Release archive, which requires no development tooling.
+
+1. Download the `mapvibes.zip` archive from the repository's [Releases](../../releases) page (the release tagged with the current specification version).
+2. Extract the archive to a local folder.
+3. Open the extracted `index.html` directly in a modern browser (via `file://`; no server, no installation, no build step). The extracted `mapvibes-singlefile.html` is the same application as one fully self-contained HTML file with no external references.
+
+Both files work fully offline; all scripts, styles, and assets are bundled, and the application makes no network calls.
+
+For development, the repository remains code-only: install Node.js, run `npm ci`, then `npm run dev` for a development server, `npm test` for the test suites, and `npm run build` to produce the built artifacts under `dist/build/`.
 
 ## Documentation
 
