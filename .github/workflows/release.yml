@@ -51,6 +51,14 @@ jobs:
       - name: Build regression tests (inlined artifacts)
         run: npx vitest run tests/inline-build
 
+      # The interactive export round trip (FR-11, FR-14, FR-38, FR-39) runs
+      # the built page in headless Chromium, offline.
+      - name: Install Chromium for the browser tests
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser tests (exported file round trip, offline)
+        run: npx vitest run tests/browser
+
       - name: Package release archive
         run: npx vite-node scripts/package-release.ts && (cd dist/release && zip -qr mapvibes.zip mapvibes)
 

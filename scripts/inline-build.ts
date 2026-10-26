@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { sanitiseForInlineScript } from '../src/singlefile';
 
 const distDir = join(process.cwd(), 'dist', 'build');
 
@@ -8,28 +9,6 @@ function findAsset(prefix: string, suffix: string): string {
   const match = assets.find((a) => a.startsWith(prefix) && a.endsWith(suffix));
   if (!match) throw new Error(`asset not found: ${prefix}*${suffix}`);
   return match;
-}
-
-// Content-agnostic sanitiser applied to the whole bundle on every build.
-// Inside an HTML <script> element the tokenizer treats "<!--", "<script",
-// and "</script" as significant token sequences: "<!--" switches the
-// tokenizer to escaped state, in which "<script" can enter double-escaped
-// state, where "</script>" is consumed as a state transition instead of
-// closing the element, and the remainder of the bundle renders as page
-// text. These sequences occur inside JavaScript string and regex literals of
-// bundled dependencies (today the xlsx bundle; any dependency update may
-// introduce new ones), so the sanitiser escapes them with JavaScript hex
-// escapes that are valid and semantics-preserving inside string and regex
-// literals while breaking the HTML tokenizer sequences:
-//   </script  ->  <\/script
-//   <!--      ->  <\x21\x2D\x2D
-//   <script   ->  <\x73cript
-function sanitiseForInlineScript(js: string): string {
-  let out = js;
-  out = out.replaceAll('</script', '<\\/script');
-  out = out.replaceAll('<!--', '<\\x21\\x2D\\x2D');
-  out = out.replaceAll('<script', '<\\x73cript');
-  return out;
 }
 
 const jsAsset = findAsset('index-', '.js');

@@ -3,7 +3,7 @@
 // it is always the row's global sequential number (FR-3), so markers
 // renumber together with the list.
 
-import { numberRows, type RowColour, type RowData } from './dataset';
+import { numberRows, type NumberedRow, type RowColour, type RowData } from './dataset';
 import type { Point } from './viewport';
 import type { MarkerSymbol } from './symbols';
 
@@ -32,9 +32,11 @@ export interface PlacedMarker {
   position: Point;
 }
 
-export function placedMarkers(rows: RowData[], positions: MarkerPositions, shapes: MarkerShapes = new Map()): PlacedMarker[] {
+// The numbers are the rows' sequential numbers, unless given (the exported
+// viewer shows the numbers of the presentation, FR-38).
+export function placedMarkers(rows: RowData[], positions: MarkerPositions, shapes: MarkerShapes = new Map(), numbered: NumberedRow[] = numberRows(rows)): PlacedMarker[] {
   const out: PlacedMarker[] = [];
-  for (const { row, number } of numberRows(rows)) {
+  for (const { row, number } of numbered) {
     const position = positions.get(row);
     if (position) out.push({ row, number, colour: row.colour, shape: shapes.get(row) ?? DEFAULT_SHAPE, position: { ...position } });
   }

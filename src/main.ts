@@ -1,3 +1,4 @@
+import { selfPage } from './selfsource';
 import { applyFilter, counters, COLOURS, makeRow, numberRows, NO_FILTER, sortRows, type NumberedRow, type RowColour, type RowData, type SortDirection, type ValueFilter } from './dataset';
 import { importColumns, parseWorkbook, ParseError, type ParseResult } from './ingest';
 import { columnLabel } from './columns';
@@ -21,7 +22,10 @@ import { markersInView } from './glance';
 import { DEFAULT_SHAPE, placedMarkers, placeMarker, pruneMarkers, removeMarker, type MarkerPositions, type MarkerShapes, type PlacedMarker } from './markers';
 import { BUTTON_ZOOM_FACTOR, imageToScreen, screenToImage, type Point } from './viewport';
 import { isSegment, SEGMENTS, showSegment, type Segment } from './segments';
-import { type Problem, parseWorkState, serialiseWorkState, SUGGESTED_FILE_NAME, WorkStateError, type WorkState } from './workstate';
+import { type Problem, parseWorkState, rowNumbers, serialiseWorkState, SUGGESTED_FILE_NAME, WorkStateError, type WorkState } from './workstate';
+import { ExportError, parseExport, serialiseExport, SUGGESTED_EXPORT_NAME, type ExportData } from './exportfile';
+import { embedDataIsland, readDataIsland } from './singlefile';
+import { compareItems, type CompareItem, type Comparison } from './reconcile';
 
 const DEFAULT_COLOUR: RowColour = 'green';
 
@@ -69,6 +73,10 @@ interface AppState {
   comments: CommentStore;
   // The imported values edited by hand (FR-10), with their imported value.
   edited: Map<RowData, Record<string, string>>;
+  // The exported viewer (FR-38): view-only, with the numbers the items have
+  // in the exported presentation.
+  viewOnly: boolean;
+  numbers: Map<RowData, number> | null;
 }
 
 const state: AppState = {
@@ -101,6 +109,8 @@ const state: AppState = {
   detailsId: null,
   comments: new Map(),
   edited: new Map(),
+  viewOnly: false,
+  numbers: null,
 };
 
 // Drag-and-drop data type identifying a list row dragged onto the map.
@@ -206,6 +216,13 @@ function renderStaticText(): void {
   el('visibility-empty').textContent = t.visibilityEmpty;
   el('presentation-empty-hint').textContent = t.presentationEmptyHint;
   el('pres-fit').textContent = t.mapFit;
+  el('export-open').textContent = t.exportOpen;
+  el('export-heading').textContent = t.exportHeading;
+  el('export-intro').textContent = t.exportIntro;
+  el('export-contains-heading').textContent = t.exportContainsHeading;
+  el('export-omitted-heading').textContent = t.exportOmittedHeading;
+  el('export-go').textContent = t.exportGo;
+  el('export-cancel').textContent = t.exportCancel;
   el('pres-reset').textContent = t.mapReset;
   for (const [id, label] of [['pres-zoom-in', t.mapZoomIn], ['pres-zoom-out', t.mapZoomOut]] as const) {
     el(id).setAttribute('aria-label', label);
@@ -253,15 +270,18 @@ function currentCounters() {
 
 function setLanguage(lang: Lang): void {
   state.prefs.lang = lang;
-  savePreferences(state.prefs);
+  // Choices made in the exported viewer are not remembered (FR-20).
+  if (!state.viewOnly) savePreferences(state.prefs);
   el<HTMLSelectElement>('select-language').value = lang;
   renderStaticText();
   renderList();
+  renderExport();
+  renderViewerBadge();
 }
 
 function setTheme(theme: ThemeChoice): void {
   state.prefs.theme = theme;
-  savePreferences(state.prefs);
+  if (!state.viewOnly) savePreferences(state.prefs);
   el<HTMLSelectElement>('select-theme').value = theme;
   applyTheme(theme);
 }
@@ -396,12 +416,24 @@ function setCellValue(row: RowData, key: string, value: string): void {
   renderList();
 }
 
+// The numbered rows (FR-3): sequential, or in the exported viewer the
+// numbers of the exported presentation (FR-38).
+function numbered(): NumberedRow[] {
+  const numbers = state.numbers;
+  if (numbers === null) return numberRows(state.rows);
+  return state.rows.map((row, i) => ({ row, number: numbers.get(row) ?? i + 1 }));
+}
+
+function numberOf(row: RowData): number {
+  return state.numbers?.get(row) ?? state.rows.indexOf(row) + 1;
+}
+
 function displayedRows(): NumberedRow[] {
-  let rows = numberRows(state.rows);
+  let rows = numbered();
   if (state.sort.header) {
     const sorted = sortRows(state.rows, state.sort.header, state.sort.direction);
     const numbers = new Map<RowData, number>();
-    numberRows(state.rows).forEach((n) => numbers.set(n.row, n.number));
+    numbered().forEach((n) => numbers.set(n.row, n.number));
     rows = sorted.map((row) => ({ row, number: numbers.get(row) ?? 0 }));
   }
   return applyFilter(rows, state.filter);
@@ -599,6 +631,7 @@ function renderList(): void {
   renderStatusPanel();
   renderLegends();
   renderDetailsPanel();
+  renderComparison();
 }
 
 function renderFilterColumnSelect(): void {
@@ -695,6 +728,148 @@ export function captureWorkState(): WorkState {
   };
 }
 
+// The interactive export (FR-11, FR-39): the work state the presentation
+// shows, without the rows removed from the list, the items switched off for
+// the presentation, the presets, and the values as imported before edits;
+// with the presentation numbers and the presentation view.
+interface ExportSummary {
+  items: number;
+  columns: number;
+  hidden: number;
+  placed: number;
+  comments: number;
+  background: { width: number; height: number } | null;
+  removed: number;
+  excluded: number;
+  edited: number;
+  presets: number;
+}
+
+export function captureExport(): { data: Omit<ExportData, 'exportedAt'>; summary: ExportSummary } {
+  const ws = captureWorkState();
+  const numbersAll = rowNumbers(ws.rows);
+  const shown = ws.rows.map((_, i) => i).filter((i) => !ws.rows[i].removed && !ws.excluded.includes(i));
+  const newIndex = new Map(shown.map((old, i) => [old, i]));
+  const rows = shown.map((i) => ({ ...ws.rows[i], edited: {} }));
+  const workState: WorkState = {
+    ...ws,
+    rows,
+    markers: ws.markers.filter((m) => newIndex.has(m.row)).map((m) => ({ ...m, row: newIndex.get(m.row)! })),
+    excluded: [],
+    presets: [],
+    segment: 'presentation',
+    viewport: { ...(presentationView?.viewport ?? ws.viewport) },
+    sort: { header: null, direction: 'asc' },
+    filter: { ...NO_FILTER },
+  };
+  const summary: ExportSummary = {
+    items: rows.length,
+    columns: ws.headers.length,
+    hidden: ws.hiddenHeaders.length,
+    placed: workState.markers.length,
+    comments: rows.reduce((n, r) => n + r.comments.length, 0),
+    background: ws.background ? { width: ws.background.width, height: ws.background.height } : null,
+    removed: ws.rows.filter((r) => r.removed).length,
+    excluded: ws.excluded.length,
+    edited: ws.rows.filter((r) => !r.removed).reduce((n, r) => n + Object.keys(r.edited).length, 0),
+    presets: ws.presets.length,
+  };
+  return {
+    data: {
+      application: __APP_VERSION__,
+      lang: state.prefs.lang,
+      theme: state.prefs.theme,
+      workState,
+      numbers: shown.map((i) => numbersAll[i]!),
+    },
+    summary,
+  };
+}
+
+// The exported page: the application's own single-file page with the data
+// island embedded (one pipeline, FR-11).
+export function exportPage(now: Date = new Date()): string | null {
+  const page = selfPage();
+  if (page === null) return null;
+  return embedDataIsland(page, serialiseExport(captureExport().data, now));
+}
+
+let exportMessage: 'done' | 'cancelled' | 'failed' | 'unavailable' | null = null;
+// The page prepared when the dialog opened, so that the size stated is the
+// size of the file that is written.
+let preparedExport: string | null = null;
+
+function formatSize(bytes: number): string {
+  const locale = state.prefs.lang === 'sv' ? 'sv-SE' : 'en-GB';
+  const mb = bytes / (1024 * 1024);
+  if (mb >= 1) return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(mb)} MB`;
+  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(Math.max(1, Math.round(bytes / 1024)))} kB`;
+}
+
+function openExportDialog(): void {
+  if (state.viewOnly) return;
+  preparedExport = exportPage();
+  if (preparedExport === null) {
+    exportMessage = 'unavailable';
+    renderExport();
+    return;
+  }
+  exportMessage = null;
+  el('export-panel').classList.remove('hidden');
+  renderExport();
+  el('export-go').focus();
+}
+
+function closeExportDialog(): void {
+  preparedExport = null;
+  el('export-panel').classList.add('hidden');
+  el('export-open').focus();
+}
+
+function fill(template: string, values: Record<string, string | number>): string {
+  return template.replace(/\{(\w+)\}/g, (m, key: string) => (key in values ? String(values[key]) : m));
+}
+
+function renderExport(): void {
+  const t = strings(state.prefs.lang);
+  const status = el('export-status');
+  const messages = { done: t.exportDone, cancelled: t.exportCancelled, failed: t.exportFailed, unavailable: t.exportUnavailable };
+  status.textContent = exportMessage ? messages[exportMessage] : '';
+  status.classList.toggle('error', exportMessage === 'failed' || exportMessage === 'unavailable');
+  if (el('export-panel').classList.contains('hidden') || preparedExport === null) return;
+  const s = captureExport().summary;
+  const item = (text: string) => {
+    const li = document.createElement('li');
+    li.textContent = text;
+    return li;
+  };
+  const items = fill(t.exportItems, { items: s.items, columns: s.columns });
+  el('export-contains').replaceChildren(
+    item(s.hidden > 0 ? `${items}, ${fill(t.exportHiddenColumns, { hidden: s.hidden })}` : items),
+    item(fill(t.exportPlaced, { placed: s.placed })),
+    item(fill(t.exportComments, { comments: s.comments })),
+    item(s.background ? fill(t.exportBackground, s.background) : t.exportNoBackground),
+    item(t.exportVocabularies),
+    item(t.exportLanguageTheme),
+  );
+  el('export-omitted').replaceChildren(
+    item(fill(t.exportRemoved, { removed: s.removed })),
+    item(fill(t.exportExcluded, { excluded: s.excluded })),
+    item(fill(t.exportEditedOriginals, { edited: s.edited })),
+    item(t.exportPresets),
+  );
+  el('export-size').textContent = fill(t.exportSize, { size: formatSize(new Blob([preparedExport]).size) });
+}
+
+async function runExport(): Promise<void> {
+  const page = preparedExport;
+  if (page === null) return;
+  const outcome = await writeFile(page, EXPORT_FILE);
+  exportMessage = outcome === 'saved' ? 'done' : outcome;
+  closeExportDialog();
+  renderExport();
+}
+
 function hasWork(): boolean {
   return state.ingested.length > 0 || mapView?.background != null;
 }
@@ -711,14 +886,26 @@ interface SaveFilePickerWindow {
 // where the File System Access API exists, otherwise as a browser download
 // (the browser's download settings decide whether the user is asked where).
 // Either way the data goes only to the local file system.
-async function writeWorkStateFile(text: string): Promise<WriteOutcome> {
-  const blob = new Blob([text], { type: 'application/json' });
+interface FileKind {
+  name: string;
+  mime: string;
+  extension: string;
+  description: string;
+}
+
+const WORK_STATE_FILE: FileKind = { name: SUGGESTED_FILE_NAME, mime: 'application/json', extension: '.json', description: 'MapVibes work state' };
+const EXPORT_FILE: FileKind = { name: SUGGESTED_EXPORT_NAME, mime: 'text/html', extension: '.html', description: 'MapVibes presentation' };
+
+// Writes a file only on the user's explicit action: through the save dialog
+// where the browser has one, otherwise as a download.
+async function writeFile(text: string, kind: FileKind): Promise<WriteOutcome> {
+  const blob = new Blob([text], { type: kind.mime });
   const picker = (window as unknown as SaveFilePickerWindow).showSaveFilePicker;
   if (typeof picker === 'function') {
     try {
       const handle = await picker.call(window, {
-        suggestedName: SUGGESTED_FILE_NAME,
-        types: [{ description: 'MapVibes work state', accept: { 'application/json': ['.json'] } }],
+        suggestedName: kind.name,
+        types: [{ description: kind.description, accept: { [kind.mime]: [kind.extension] } }],
       });
       const writable = await handle.createWritable();
       await writable.write(blob);
@@ -732,7 +919,7 @@ async function writeWorkStateFile(text: string): Promise<WriteOutcome> {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = SUGGESTED_FILE_NAME;
+    a.download = kind.name;
     a.style.display = 'none';
     document.body.appendChild(a);
     a.click();
@@ -744,7 +931,7 @@ async function writeWorkStateFile(text: string): Promise<WriteOutcome> {
   }
 }
 
-type WorkMessage = 'saved' | 'save-failed' | 'opened' | 'open-failed';
+type WorkMessage = 'saved' | 'save-failed' | 'opened' | 'open-failed' | 'compare-opened';
 let workMessage: WorkMessage | null = null;
 let workErrorText = '';
 
@@ -753,6 +940,8 @@ let workErrorText = '';
 // list sorting, filtering, and column visibility) are saved with the work
 // but do not by themselves count as unsaved changes.
 function markDirty(): void {
+  // Nothing in the exported viewer is work to save.
+  if (state.viewOnly) return;
   state.dirty = true;
   if (workMessage === 'saved' || workMessage === 'opened') workMessage = null;
   renderWorkStatus();
@@ -766,6 +955,7 @@ function renderWorkStatus(): void {
     'save-failed': t.workSaveFailed,
     opened: t.workOpened,
     'open-failed': workErrorText,
+    'compare-opened': t.compareOpened,
   };
   status.textContent = workMessage ? messages[workMessage] : '';
   status.classList.toggle('error', workMessage === 'save-failed' || workMessage === 'open-failed');
@@ -776,8 +966,9 @@ function renderWorkStatus(): void {
 }
 
 export async function saveWork(): Promise<WriteOutcome> {
+  if (state.viewOnly) return 'cancelled';
   const text = serialiseWorkState(captureWorkState(), new Date());
-  const outcome = await writeWorkStateFile(text);
+  const outcome = await writeFile(text, WORK_STATE_FILE);
   if (outcome === 'saved') state.dirty = false;
   if (outcome !== 'cancelled') workMessage = outcome === 'saved' ? 'saved' : 'save-failed';
   renderWorkStatus();
@@ -879,9 +1070,20 @@ async function applyWorkState(ws: WorkState): Promise<boolean> {
 }
 
 export async function openWorkFile(file: File): Promise<boolean> {
+  if (state.viewOnly) return false;
+  let text: string;
+  try {
+    text = await readText(file);
+  } catch {
+    reportOpenFailure(strings(state.prefs.lang).workOpenUnreadable);
+    return false;
+  }
+  // An exported file (FR-14) is opened for comparison; it never replaces
+  // the current work.
+  if (isHtmlFile(file, text)) return openExportForComparison(text);
   let ws: WorkState;
   try {
-    ws = parseWorkState(await readText(file));
+    ws = parseWorkState(text);
   } catch (e) {
     reportOpenFailure(openErrorText(e));
     return false;
@@ -890,6 +1092,235 @@ export async function openWorkFile(file: File): Promise<boolean> {
   const ok = await applyWorkState(ws);
   if (!ok) reportOpenFailure(strings(state.prefs.lang).workOpenBackgroundFailed);
   return ok;
+}
+
+// Re-import and comparison (FR-14): an exported file is read and its items
+// are paired with the current items by the identifier column, for display
+// only. Marker positions from the file are adopted for paired items only
+// through the explicit action, as unsaved changes.
+interface OpenComparison {
+  data: ExportData;
+  // Current row identifiers chosen for adoption.
+  selected: Set<string>;
+  message: { count: number } | null;
+}
+
+let comparison: OpenComparison | null = null;
+
+function isHtmlFile(file: File, text: string): boolean {
+  return /\.html?$/i.test(file.name) || file.type === 'text/html' || /^\s*</.test(text);
+}
+
+function openExportForComparison(text: string): boolean {
+  const t = strings(state.prefs.lang);
+  const island = readDataIsland(new DOMParser().parseFromString(text, 'text/html'));
+  if (island === null) {
+    reportOpenFailure(t.compareNoData);
+    return false;
+  }
+  let data: ExportData;
+  try {
+    data = parseExport(island);
+  } catch (e) {
+    if (!(e instanceof ExportError)) throw e;
+    if (e.code === 'unknown-version') reportOpenFailure(fill(t.compareUnknownVersion, { version: e.detail }));
+    else if (e.code === 'not-export') reportOpenFailure(t.compareNoData);
+    else reportOpenFailure(t.compareDamaged);
+    return false;
+  }
+  comparison = { data, selected: new Set(), message: null };
+  workMessage = 'compare-opened';
+  renderWorkStatus();
+  renderComparison();
+  el('compare-heading').scrollIntoView?.({ block: 'nearest' });
+  return true;
+}
+
+function closeComparison(): void {
+  comparison = null;
+  renderComparison();
+}
+
+// The items of both sides, for pairing.
+function comparisonSides(data: ExportData): { current: CompareItem[]; file: CompareItem[] } | null {
+  const currentKey = state.roles.identifier;
+  const fileKey = data.workState.roles.identifier;
+  if (currentKey === undefined || fileKey === undefined) return null;
+  const current = numbered().map(({ row, number }) => ({
+    key: rowId(row),
+    identifier: row.values[currentKey] ?? '',
+    number,
+    label: itemLabel(row, number),
+    position: state.positions.get(row) ?? null,
+  }));
+  const placed = new Map(data.workState.markers.map((m) => [m.row, m.position]));
+  const t = strings(state.prefs.lang);
+  const file = data.workState.rows.map((row, i) => ({
+    key: String(i),
+    identifier: row.values[fileKey] ?? '',
+    number: data.numbers[i],
+    label: displayName(row.values, data.workState.roles, `${t.numberColumn} ${data.numbers[i]}`),
+    position: placed.get(i) ?? null,
+  }));
+  return { current, file };
+}
+
+function fileColumnLabel(data: ExportData, key: string | undefined): string {
+  if (key === undefined) return '';
+  const manual = data.workState.manualColumns.find((c) => c.key === key);
+  return manual ? manual.label : columnLabel(key, strings(state.prefs.lang).untitledHeader);
+}
+
+function currentComparison(): Comparison | null {
+  if (!comparison) return null;
+  const sides = comparisonSides(comparison.data);
+  return sides ? compareItems(sides.current, sides.file) : null;
+}
+
+function renderComparison(): void {
+  const panel = el('compare-panel');
+  if (!comparison) {
+    panel.classList.add('hidden');
+    return;
+  }
+  const t = strings(state.prefs.lang);
+  const data = comparison.data;
+  panel.classList.remove('hidden');
+  el('compare-heading').textContent = t.compareHeading;
+  el('compare-close').textContent = t.compareClose;
+  el('compare-select-all').textContent = t.compareSelectAll;
+  el('compare-adopt').textContent = t.compareAdopt;
+  el('compare-source').textContent = fill(t.compareSource, {
+    date: formatCommentDate(data.exportedAt),
+    version: `v${data.application}`,
+    items: data.workState.rows.length,
+    fileColumn: fileColumnLabel(data, data.workState.roles.identifier) || '–',
+    currentColumn: state.roles.identifier !== undefined ? labelOf(state.roles.identifier) : '–',
+  });
+  const result = currentComparison();
+  const warning = el('compare-warning');
+  const groups = el('compare-groups');
+  groups.replaceChildren();
+  let warningText = '';
+  if (state.roles.identifier === undefined) warningText = t.compareNoIdentifierCurrent;
+  else if (data.workState.roles.identifier === undefined) warningText = t.compareNoIdentifierFile;
+  else if (!mapView?.background) warningText = t.compareNoBackground;
+  else if (data.workState.background && (data.workState.background.width !== mapView.background.width || data.workState.background.height !== mapView.background.height)) {
+    warningText = fill(t.compareBackgroundDiffers, {
+      fileWidth: data.workState.background.width,
+      fileHeight: data.workState.background.height,
+      width: mapView.background.width,
+      height: mapView.background.height,
+    });
+  }
+  warning.textContent = warningText;
+  warning.classList.toggle('hidden', warningText === '');
+  const canAdopt = result !== null && mapView?.background != null;
+  // Drop choices that are no longer adoptable.
+  const adoptable = new Set((result?.matchedWithMarkers ?? []).map((m) => m.current.key));
+  for (const key of [...comparison.selected]) if (!adoptable.has(key)) comparison.selected.delete(key);
+  if (result) {
+    const entry = (item: CompareItem, notes: string[] = []) => {
+      const li = document.createElement('li');
+      li.className = 'compare-entry';
+      li.dataset.key = item.key;
+      const name = document.createElement('span');
+      name.className = 'compare-name';
+      name.textContent = `${item.number}. ${item.label}`;
+      li.appendChild(name);
+      for (const note of notes) {
+        const n = document.createElement('span');
+        n.className = 'compare-note';
+        n.textContent = note;
+        li.appendChild(n);
+      }
+      return li;
+    };
+    const group = (kind: string, title: string, items: HTMLElement[]) => {
+      const section = document.createElement('section');
+      section.className = 'compare-group';
+      section.dataset.group = kind;
+      const h = document.createElement('h3');
+      h.textContent = fill(title, { count: items.length });
+      const list = document.createElement('ul');
+      list.append(...items);
+      if (items.length === 0) {
+        const none = document.createElement('li');
+        none.className = 'notice compare-none';
+        none.textContent = t.compareEmpty;
+        list.appendChild(none);
+      }
+      section.append(h, list);
+      groups.appendChild(section);
+    };
+    group(
+      'matched-markers',
+      t.compareMatchedMarkers,
+      result.matchedWithMarkers.map((m) => {
+        const li = entry(m.current, [m.current.position ? (m.positionDiffers ? t.compareDiffers : t.compareSamePosition) : t.compareNoCurrentMarker]);
+        li.dataset.fileKey = m.file.key;
+        if (m.positionDiffers) {
+          const box = document.createElement('input');
+          box.type = 'checkbox';
+          box.className = 'compare-select';
+          box.disabled = !canAdopt;
+          box.checked = comparison!.selected.has(m.current.key);
+          box.setAttribute('aria-label', fill(t.compareSelectItem, { label: m.current.label }));
+          box.addEventListener('change', () => {
+            if (box.checked) comparison!.selected.add(m.current.key);
+            else comparison!.selected.delete(m.current.key);
+            comparison!.message = null;
+            renderComparison();
+          });
+          li.prepend(box);
+        }
+        return li;
+      }),
+    );
+    group(
+      'matched-no-markers',
+      t.compareMatchedNoMarkers,
+      result.matchedWithoutMarkers.map((m) => entry(m.current, m.current.position ? [t.compareHasCurrentMarker] : [])),
+    );
+    group('file-only', t.compareFileOnly, result.fileOnly.map((item) => entry(item)));
+    group('current-only', t.compareCurrentOnly, result.currentOnly.map((item) => entry(item)));
+    group('unpairable', t.compareUnpairable, [
+      ...result.unpairable.current.map((item) => entry(item, [t.compareInCurrent])),
+      ...result.unpairable.file.map((item) => entry(item, [t.compareInFile])),
+    ]);
+  }
+  const differing = (result?.matchedWithMarkers ?? []).filter((m) => m.positionDiffers);
+  el<HTMLButtonElement>('compare-select-all').disabled = !canAdopt || differing.length === 0;
+  el<HTMLButtonElement>('compare-adopt').disabled = !canAdopt || comparison.selected.size === 0;
+  el('compare-status').textContent = comparison.message ? fill(t.compareAdopted, { count: comparison.message.count }) : '';
+}
+
+function selectAllDiffering(): void {
+  const result = currentComparison();
+  if (!comparison || !result) return;
+  for (const m of result.matchedWithMarkers) if (m.positionDiffers) comparison.selected.add(m.current.key);
+  comparison.message = null;
+  renderComparison();
+}
+
+// The explicit adoption: the chosen paired items take the marker positions
+// of the file. It is an unsaved change, like any placement.
+function adoptPositions(): void {
+  const result = currentComparison();
+  if (!comparison || !result || !mapView?.background) return;
+  let count = 0;
+  for (const m of result.matchedWithMarkers) {
+    if (!comparison.selected.has(m.current.key) || !m.file.position) continue;
+    const row = rowById(m.current.key);
+    if (!row) continue;
+    placeMarker(state.positions, row, { ...m.file.position });
+    count += 1;
+  }
+  comparison.selected.clear();
+  comparison.message = { count };
+  if (count > 0) markDirty();
+  renderMapItems();
+  renderComparison();
 }
 
 export function setSegment(segment: Segment): void {
@@ -1349,7 +1780,7 @@ function detailLabels(t: Strings): DetailLabels {
 
 // Every column, hidden ones included, in the list's column order.
 function detailModel(row: RowData, t: Strings): DetailModel {
-  const number = state.rows.indexOf(row) + 1;
+  const number = numberOf(row);
   const symbol = symbolOf(row);
   const fields: DetailField[] = listColumnOrder(state.headers, state.roles).map((key) => ({
     key,
@@ -1525,7 +1956,7 @@ function renderPlacementList(): void {
   const t = strings(state.prefs.lang);
   const list = el('placement-list');
   list.innerHTML = '';
-  numberRows(state.rows).forEach(({ row, number }) => {
+  numbered().forEach(({ row, number }) => {
     const id = rowId(row);
     const placed = state.positions.has(row);
     const li = document.createElement('li');
@@ -1570,7 +2001,7 @@ function renderMapItems(): void {
   }
   for (const row of [...state.excluded]) if (!state.rows.includes(row)) state.excluded.delete(row);
   for (const row of [...state.shapes.keys()]) if (!state.rows.includes(row)) state.shapes.delete(row);
-  const markers = placedMarkers(state.rows, state.positions, effectiveSymbols());
+  const markers = placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered());
   markerLayer?.render(markers, state.selectedMarker);
   renderGlance('map', mapView, state.selectedMarker, (id) => selectMarker(id));
   renderPresentation();
@@ -1616,41 +2047,64 @@ function setExcluded(row: RowData, excluded: boolean): void {
   renderMapItems();
 }
 
+// The list beside the presentation stage, in two modes: in the application,
+// a visibility toggle per placed item (FR-27); in the exported viewer
+// (FR-38), the exported items, each opening its data card.
 function renderVisibilityList(): void {
   const t = strings(state.prefs.lang);
   const list = el('visibility-list');
   list.innerHTML = '';
-  const placed = placedMarkers(state.rows, state.positions, effectiveSymbols());
-  for (const marker of placed) {
-    const id = rowId(marker.row);
-    const shown = !state.excluded.has(marker.row);
+  const entries = state.viewOnly
+    ? numbered().map(({ row, number }) => ({ row, number, colour: row.colour, shape: symbolOf(row) }))
+    : placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered());
+  for (const entry of entries) {
+    const id = rowId(entry.row);
+    const shown = !state.excluded.has(entry.row);
     const li = document.createElement('li');
     li.className = 'visibility-item';
     li.dataset.rowId = id;
     li.dataset.shown = shown ? 'true' : 'false';
     if (state.presentationSelected === id) li.dataset.selected = 'true';
-    const label = document.createElement('label');
-    label.className = 'visibility-control';
-    const toggle = document.createElement('input');
-    toggle.type = 'checkbox';
-    toggle.className = 'visibility-toggle';
-    toggle.dataset.rowId = id;
-    toggle.checked = shown;
-    const name = itemLabel(marker.row, marker.number);
-    toggle.setAttribute('aria-label', `${t.visibilityShown}: ${name}`);
-    toggle.addEventListener('change', () => setExcluded(marker.row, !toggle.checked));
+    const name = itemLabel(entry.row, entry.number);
     const badge = document.createElement('span');
-    badge.className = `marker-badge marker-${marker.colour} ${symbolClasses(marker.shape)}`;
-    drawSymbol(badge, marker.shape, String(marker.number));
+    badge.className = `marker-badge marker-${entry.colour} ${symbolClasses(entry.shape)}`;
+    drawSymbol(badge, entry.shape, String(entry.number));
     const text = document.createElement('span');
     text.className = 'placement-label';
     text.textContent = name;
-    label.append(toggle, badge, text);
-    li.appendChild(label);
+    if (state.viewOnly) {
+      const open = document.createElement('button');
+      open.type = 'button';
+      open.className = 'visibility-control item-open';
+      open.dataset.rowId = id;
+      open.append(badge, text);
+      if (!state.positions.has(entry.row)) {
+        const note = document.createElement('span');
+        note.className = 'placement-status';
+        note.textContent = t.viewerNotPlaced;
+        open.appendChild(note);
+      }
+      open.addEventListener('click', () => openCard(id));
+      li.appendChild(open);
+    } else {
+      const label = document.createElement('label');
+      label.className = 'visibility-control';
+      const toggle = document.createElement('input');
+      toggle.type = 'checkbox';
+      toggle.className = 'visibility-toggle';
+      toggle.dataset.rowId = id;
+      toggle.checked = shown;
+      toggle.setAttribute('aria-label', `${t.visibilityShown}: ${name}`);
+      toggle.addEventListener('change', () => setExcluded(entry.row, !toggle.checked));
+      label.append(toggle, badge, text);
+      li.appendChild(label);
+    }
     list.appendChild(li);
   }
-  el('visibility-empty').classList.toggle('hidden', placed.length > 0);
-  el('visibility-hint').classList.toggle('hidden', placed.length === 0);
+  el('visibility-heading').textContent = state.viewOnly ? t.viewerItems : t.visibilityHeading;
+  el('visibility-hint').textContent = state.viewOnly ? t.viewerItemsHint : t.visibilityHint;
+  el('visibility-empty').classList.toggle('hidden', entries.length > 0);
+  el('visibility-hint').classList.toggle('hidden', entries.length === 0);
 }
 
 // At-a-glance panels (FR-28): the switched-on items whose markers are inside
@@ -1673,7 +2127,7 @@ function renderGlance(prefix: 'map' | 'presentation', view: MapView | null, sele
   const t = strings(state.prefs.lang);
   const list = el(`${prefix}-glance-list`);
   list.innerHTML = '';
-  const candidates = placedMarkers(state.rows, state.positions, effectiveSymbols()).filter((m) => !state.excluded.has(m.row));
+  const candidates = placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered()).filter((m) => !state.excluded.has(m.row));
   const inView = view?.background ? markersInView(candidates, view.viewport, view.stageSize()) : [];
   const areaKey = state.roles.area;
   for (const marker of inView) {
@@ -1749,8 +2203,10 @@ const CARD_GAP = 28;
 function renderCard(): void {
   const card = el('presentation-card');
   const row = cardId ? rowById(cardId) : undefined;
-  const position = row ? state.positions.get(row) : undefined;
-  if (!row || !position || state.excluded.has(row) || !presentationView?.background) {
+  const placed = row && presentationView?.background ? state.positions.get(row) : undefined;
+  // In the exported viewer, an item without a marker opens from the list.
+  const position = placed ?? (row && state.viewOnly ? null : undefined);
+  if (!row || position === undefined || state.excluded.has(row) || !presentationView) {
     cardId = null;
     // The content stays during the exit transition; it is replaced on the
     // next opening.
@@ -1769,9 +2225,10 @@ function renderCard(): void {
     renderDetails(card, model, detailLabels(t), { close: closeCard });
     if (refocus) card.querySelector<HTMLElement>('.details-close')?.focus({ preventScroll: true });
   }
-  // Beside the marker, on the side with more room, and within the stage.
+  // Beside the marker, on the side with more room, and within the stage; an
+  // item without a marker opens in the stage's corner.
   const size = presentationView.stageSize();
-  const screen = imageToScreen(presentationView.viewport, position);
+  const screen = position ? imageToScreen(presentationView.viewport, position) : { x: 16 - CARD_GAP, y: 0 };
   const side = screen.x <= size.width / 2 ? 'right' : 'left';
   card.dataset.side = side;
   if (side === 'right') {
@@ -1792,7 +2249,7 @@ function renderCard(): void {
 }
 
 function renderPresentation(): void {
-  const shown = placedMarkers(state.rows, state.positions, effectiveSymbols()).filter((m) => !state.excluded.has(m.row));
+  const shown = placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered()).filter((m) => !state.excluded.has(m.row));
   if (state.presentationSelected && !shown.some((m) => rowId(m.row) === state.presentationSelected)) {
     state.presentationSelected = null;
   }
@@ -1837,6 +2294,12 @@ function initialisePresentation(): void {
   el('pres-zoom-out').addEventListener('click', () => presentationView?.zoomBy(1 / BUTTON_ZOOM_FACTOR));
   el('pres-fit').addEventListener('click', () => presentationView?.fit());
   el('pres-reset').addEventListener('click', () => presentationView?.reset());
+  el('export-open').addEventListener('click', openExportDialog);
+  el('export-cancel').addEventListener('click', closeExportDialog);
+  el('export-go').addEventListener('click', () => void runExport());
+  el('export-panel').addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeExportDialog();
+  });
   const stage = el('presentation-stage');
   stage.addEventListener('pointerdown', (e) => {
     if ((e.target as HTMLElement).closest('.marker')) return;
@@ -2204,6 +2667,7 @@ function initialiseMapView(): void {
       syncPresentationBackground();
       renderMapControls();
       renderWorkStatus();
+      renderComparison();
     },
     onViewportChanged: () => {
       renderMapControls();
@@ -2390,6 +2854,9 @@ function wireEvents(): void {
     renderList();
   });
 
+  el('compare-close').addEventListener('click', closeComparison);
+  el('compare-select-all').addEventListener('click', selectAllDiffering);
+  el('compare-adopt').addEventListener('click', adoptPositions);
   el('details-panel').addEventListener('keydown', (e) => {
     if (e.key === 'Escape') openDetails(null);
   });
@@ -2397,7 +2864,56 @@ function wireEvents(): void {
   el('delete-selected').addEventListener('click', deleteSelected);
 }
 
+// The exported viewer (FR-38): the same application, started on the data
+// island of an exported file, in view-only mode. Only the Presentation
+// segment is offered; the controls that edit, toggle visibility, open,
+// save, or export are not shown and cannot be reached.
+const VIEWER_HIDDEN = ['compare-panel', 'segment-nav', 'work-controls', 'export-separator', 'export-open', 'export-panel', 'export-status', 'segment-information', 'segment-map', 'details-panel'];
+
+async function startViewer(text: string): Promise<void> {
+  document.documentElement.dataset.mode = 'viewer';
+  for (const id of VIEWER_HIDDEN) {
+    el(id).classList.add('hidden');
+    el(id).inert = true;
+    el(id).setAttribute('inert', '');
+  }
+  let data: ExportData;
+  try {
+    data = parseExport(text);
+  } catch (e) {
+    if (!(e instanceof ExportError)) throw e;
+    el('presentation-empty-hint').textContent = strings(state.prefs.lang).viewerDamaged;
+    el('presentation-empty').classList.add('error');
+    return;
+  }
+  // The viewer opens in the exported language and theme (FR-20).
+  state.prefs = { lang: data.lang, theme: data.theme };
+  el<HTMLSelectElement>('select-language').value = data.lang;
+  el<HTMLSelectElement>('select-theme').value = data.theme;
+  applyTheme(data.theme);
+  renderStaticText();
+  await applyWorkState(data.workState);
+  state.numbers = new Map(state.ingested.map((row, i) => [row, data.numbers[i]]));
+  workMessage = null;
+  const badge = el('viewer-badge');
+  badge.dataset.exportedAt = data.exportedAt;
+  badge.classList.remove('hidden');
+  renderViewerBadge();
+  renderList();
+  setSegment('presentation');
+}
+
+function renderViewerBadge(): void {
+  const badge = el('viewer-badge');
+  const at = badge.dataset.exportedAt;
+  if (!state.viewOnly || !at) return;
+  badge.textContent = fill(strings(state.prefs.lang).viewerBadge, { date: formatCommentDate(at) });
+}
+
 export function main(): void {
+  const island = readDataIsland(document);
+  state.viewOnly = island !== null;
+  if (state.viewOnly) state.segment = 'presentation';
   initialisePreferences();
   initialiseMapView();
   initialisePresentation();
@@ -2406,6 +2922,7 @@ export function main(): void {
   renderStaticText();
   renderMapItems();
   setSegment(state.segment);
+  if (island !== null) void startViewer(island);
 }
 
 document.addEventListener('DOMContentLoaded', main);

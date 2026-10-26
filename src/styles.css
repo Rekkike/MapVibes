@@ -1348,3 +1348,128 @@ input[type='text'] {
 .cell-input.edited {
   box-shadow: inset 3px 0 0 var(--accent);
 }
+
+/* Export dialog (FR-11, FR-39): states what the file will hold before it is
+   written. */
+#export-panel {
+  margin-bottom: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--panel);
+  max-height: 60vh;
+  overflow: auto;
+}
+
+#export-panel h3,
+#export-panel h4 {
+  margin: 0 0 var(--space-2);
+}
+
+#export-panel h4 {
+  margin-top: var(--space-3);
+  font-size: 1rem;
+}
+
+#export-panel ul {
+  margin: 0;
+  padding-left: calc(1.25 * var(--space-3));
+}
+
+#export-size {
+  font-weight: 600;
+}
+
+.export-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+#export-status:empty {
+  display: none;
+}
+
+/* Exported viewer (FR-38): view-only; the list opens the data cards. */
+#viewer-badge {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.item-open {
+  border: none;
+  background: none;
+  padding: 0;
+  text-align: left;
+  color: inherit;
+}
+
+.item-open .placement-status {
+  margin-left: auto;
+}
+
+/* Comparison with an exported file (FR-14): display only until the user
+   adopts positions. */
+#compare-panel {
+  margin-bottom: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+.compare-header,
+.compare-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.compare-header {
+  justify-content: space-between;
+}
+
+.compare-header h2 {
+  margin: 0;
+}
+
+#compare-warning {
+  color: var(--warning);
+  font-weight: 600;
+}
+
+#compare-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--space-3);
+  margin: var(--space-3) 0;
+}
+
+.compare-group h3 {
+  margin: 0 0 var(--space-2);
+  font-size: 1rem;
+}
+
+.compare-group ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 14rem;
+  overflow: auto;
+}
+
+.compare-entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+}
+
+.compare-note {
+  color: var(--muted);
+  font-size: 0.875rem;
+}

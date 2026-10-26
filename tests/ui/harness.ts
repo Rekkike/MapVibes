@@ -41,7 +41,10 @@ window.addEventListener = ((type: string, listener: EventListenerOrEventListener
 // Mounts the application. Unless a first run is requested (empty storage),
 // English is remembered as the language, so that tests read English strings;
 // the first-run default itself is Swedish (FR-19).
-export async function mountApp(options: { keepStorage?: boolean; firstRun?: boolean } = {}): Promise<typeof import('../../src/main')> {
+// With singleFile, the document carries an inline application script, as the
+// built single-file page does, so that the application can copy its own page
+// for the export (FR-11); the script is not run.
+export async function mountApp(options: { keepStorage?: boolean; firstRun?: boolean; singleFile?: boolean; body?: string; beforeMain?: () => void } = {}): Promise<typeof import('../../src/main')> {
   for (const [type, listener] of windowListeners.splice(0)) window.removeEventListener(type, listener);
   stubMatchMedia();
   if (!options.keepStorage) {
@@ -51,10 +54,17 @@ export async function mountApp(options: { keepStorage?: boolean; firstRun?: bool
   const doc = new DOMParser().parseFromString(indexHtml, 'text/html');
   doc.querySelectorAll('script').forEach((s) => s.remove());
   document.head.innerHTML = '';
-  document.body.innerHTML = doc.body.innerHTML;
+  document.body.innerHTML = options.body ?? doc.body.innerHTML;
+  if (options.singleFile) {
+    const script = document.createElement('script');
+    script.type = 'module';
+    script.textContent = '/* the application bundle */';
+    document.body.appendChild(script);
+  }
   document.documentElement.removeAttribute('data-segment');
   vi.resetModules();
   const app = await import('../../src/main');
+  options.beforeMain?.();
   app.main();
   return app;
 }

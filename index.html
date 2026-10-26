@@ -9,6 +9,7 @@
   <body>
     <header id="app-header">
       <span id="app-title"><span id="app-name">MapVibes</span> <span id="app-version"></span></span>
+      <span id="viewer-badge" class="hidden"></span>
       <nav id="segment-nav" role="tablist" aria-label="Segments">
         <button type="button" class="segment-tab" role="tab" id="tab-information" data-segment="information" aria-controls="segment-information" aria-selected="true">Information</button>
         <button type="button" class="segment-tab" role="tab" id="tab-map" data-segment="map" aria-controls="segment-map" aria-selected="false">Map</button>
@@ -17,7 +18,7 @@
       <div class="controls">
         <div id="work-controls" role="group" aria-label="Work state">
           <button type="button" id="work-open">Open work</button>
-          <input type="file" id="work-file-input" accept=".json,application/json" hidden />
+          <input type="file" id="work-file-input" accept=".json,application/json,.html,.htm,text/html" hidden />
           <button type="button" id="work-save">Save work</button>
           <span id="work-dirty" class="hidden" role="status">Unsaved changes</span>
           <span id="work-status" class="notice" aria-live="polite"></span>
@@ -40,6 +41,20 @@
       </div>
     </header>
     <main id="app-main">
+      <section id="compare-panel" class="hidden" aria-labelledby="compare-heading">
+        <div class="compare-header">
+          <h2 id="compare-heading">Comparison with an exported file</h2>
+          <button type="button" id="compare-close">Close comparison</button>
+        </div>
+        <p id="compare-source" class="notice"></p>
+        <p id="compare-warning" class="warning hidden"></p>
+        <div id="compare-groups"></div>
+        <div class="compare-actions">
+          <button type="button" id="compare-select-all">Select all that differ</button>
+          <button type="button" id="compare-adopt">Adopt the selected marker positions</button>
+          <span id="compare-status" aria-live="polite"></span>
+        </div>
+      </section>
       <div id="segment-information" class="segment" role="tabpanel" aria-labelledby="tab-information">
       <section id="list-area" aria-labelledby="list-heading">
         <h2 id="list-heading">List</h2>
@@ -238,7 +253,23 @@
             <button type="button" id="pres-zoom-in" class="icon-button" aria-label="Zoom in" title="Zoom in">+</button>
             <button type="button" id="pres-fit">Fit view</button>
             <button type="button" id="pres-reset">Reset</button>
+            <span id="export-separator" class="toolbar-separator" aria-hidden="true"></span>
+            <button type="button" id="export-open">Export presentation</button>
           </div>
+          <div id="export-panel" class="hidden" role="dialog" aria-labelledby="export-heading">
+            <h3 id="export-heading">Export presentation</h3>
+            <p id="export-intro"></p>
+            <h4 id="export-contains-heading"></h4>
+            <ul id="export-contains"></ul>
+            <h4 id="export-omitted-heading"></h4>
+            <ul id="export-omitted"></ul>
+            <p id="export-size"></p>
+            <div class="export-actions">
+              <button type="button" id="export-go">Export file</button>
+              <button type="button" id="export-cancel">Cancel</button>
+            </div>
+          </div>
+          <p id="export-status" class="notice" aria-live="polite"></p>
           <div id="presentation-stage" class="stage" data-has-background="false">
             <div id="presentation-content" class="hidden">
               <img id="presentation-image" alt="" draggable="false" />
