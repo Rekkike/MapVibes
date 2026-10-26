@@ -1,14 +1,14 @@
-// Marker symbol library (FR-26): the geometric shapes and six icons. Icons
+// Marker symbol library (FR-26): the geometric shapes and seven icons. Icons
 // are vector paths (24 by 24 units) drawn with the marker's number colour, so
 // that they share its pinned contrast against every marker fill.
 
 import { SHAPES, type MarkerShape } from './markers';
 
-export type MarkerIcon = 'bulb' | 'magnifier' | 'gear' | 'pause' | 'cross' | 'check';
+export type MarkerIcon = 'bulb' | 'magnifier' | 'gear' | 'pause' | 'cross' | 'check' | 'hammer-shovel';
 
 export type MarkerSymbol = MarkerShape | MarkerIcon;
 
-export const ICONS: MarkerIcon[] = ['bulb', 'magnifier', 'gear', 'pause', 'cross', 'check'];
+export const ICONS: MarkerIcon[] = ['bulb', 'magnifier', 'gear', 'pause', 'cross', 'check', 'hammer-shovel'];
 
 export const SYMBOLS: MarkerSymbol[] = [...SHAPES, ...ICONS];
 
@@ -19,6 +19,10 @@ export const ICON_PATHS: Record<MarkerIcon, string> = {
   pause: 'M8.5 5v14M15.5 5v14',
   cross: 'M6 6l12 12M18 6L6 18',
   check: 'M4 12.5l5 5L20 6.5',
+  // A hammer (handle from the lower left, head at the upper right) crossed
+  // with a shovel (handle from the lower right with a grip, blade at the
+  // upper left).
+  'hammer-shovel': 'M4 20L14.9 9.1M14.2 4.1L19.9 9.8L17.8 11.9L12.1 6.2ZM20 20L9 9M18.5 21.5L21.5 18.5M10.4 7.6L7.4 4.6Q5 3 4 4Q3 5 4.6 7.4L7.6 10.4Z',
 };
 
 export function isIcon(value: unknown): value is MarkerIcon {

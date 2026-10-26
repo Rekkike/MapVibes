@@ -24,7 +24,8 @@ export interface DetailComment {
 
 export interface DetailModel {
   rowId: string;
-  number: number;
+  // The number as shown (FR-17).
+  number: string;
   name: string;
   colour: RowColour;
   colourName: string;
@@ -69,7 +70,7 @@ export function renderDetails(container: HTMLElement, model: DetailModel, labels
   container.dataset.rowId = model.rowId;
   const header = el('div', 'details-header');
   const badge = el('span', `marker-badge marker-${model.colour} ${symbolClasses(model.symbol)} details-badge`);
-  drawSymbol(badge, model.symbol, String(model.number));
+  drawSymbol(badge, model.symbol, model.number);
   const title = el('h2', 'details-title', model.name);
   title.id = `${container.id}-title`;
   container.setAttribute('aria-labelledby', title.id);
@@ -86,7 +87,7 @@ export function renderDetails(container: HTMLElement, model: DetailModel, labels
     const dd = el('dd', cls, value);
     facts.append(dt, dd);
   };
-  fact(labels.number, String(model.number), 'details-number');
+  fact(labels.number, model.number, 'details-number');
   fact(labels.colour, model.colourName, 'details-colour');
   fact(labels.symbol, model.symbolName, 'details-symbol');
 
@@ -101,7 +102,12 @@ export function renderDetails(container: HTMLElement, model: DetailModel, labels
       dd.textContent = field.value === '' ? labels.empty : field.value;
       if (field.value === '') dd.classList.add('is-empty');
     }
-    fields.append(dt, dd);
+    // Each field in its own wrapper, so that the panel can lay the fields out
+    // in a grid (FR-42); on the presentation card the wrapper takes no part
+    // in the layout.
+    const wrapper = el('div', 'details-field');
+    wrapper.append(dt, dd);
+    fields.appendChild(wrapper);
   }
 
   const commentsSection = el('section', 'details-comments');

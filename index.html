@@ -10,6 +10,7 @@
     <header id="app-header">
       <span id="app-title"><span id="app-name">MapVibes</span> <span id="app-version"></span></span>
       <span id="viewer-badge" class="hidden"></span>
+      <span id="demo-badge" class="hidden"></span>
       <nav id="segment-nav" role="tablist" aria-label="Segments">
         <button type="button" class="segment-tab" role="tab" id="tab-information" data-segment="information" aria-controls="segment-information" aria-selected="true">Information</button>
         <button type="button" class="segment-tab" role="tab" id="tab-map" data-segment="map" aria-controls="segment-map" aria-selected="false">Map</button>
@@ -68,7 +69,9 @@
           <p id="manual-start-row">
             <span id="manual-start-hint" class="notice">No file to import?</span>
             <button type="button" id="start-empty">Start an empty list</button>
+            <button type="button" id="load-demo">Load demo</button>
           </p>
+          <p id="demo-hint" class="notice">The demo loads a fictional example scenario: a town map, a list of invented items, and everything needed to try every part of the application.</p>
         </div>
         <div id="list-panel" class="hidden">
           <div id="preset-controls" role="group" aria-labelledby="preset-heading">
@@ -133,6 +136,22 @@
             <span id="counter-selected">Selected: 0</span>
             <button id="select-all">Select all</button>
             <button id="delete-selected">Delete selected</button>
+          </div>
+          <div id="numbering-controls">
+            <label id="numbering-label"><span id="numbering-text">Numbering</span>
+              <select id="numbering-mode">
+                <option value="global">Global</option>
+                <option value="grouped">By area</option>
+              </select>
+            </label>
+            <label id="list-view-label"><span id="list-view-text">List view</span>
+              <select id="list-view">
+                <option value="flat">Flat</option>
+                <option value="grouped">Grouped by area</option>
+              </select>
+            </label>
+            <span id="numbering-groups" class="notice"></span>
+            <span id="numbering-notice" class="warning-text hidden" role="status"></span>
           </div>
           <div id="list-counts">
             <span id="counter-retained">Retained rows: 0</span>

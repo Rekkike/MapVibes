@@ -30,6 +30,10 @@ export interface ExportData {
   workState: WorkState;
   // The presentation number of each row of workState.rows, in order.
   numbers: number[];
+  // The numbers as shown, when they differ from the numbers (the grouped
+  // numbering, FR-17, for example "2.3"); absent otherwise. An optional
+  // addition to version 1: a reader that does not know it shows the numbers.
+  labels?: string[];
 }
 
 export type ExportErrorCode = 'not-json' | 'not-export' | 'unknown-version' | 'invalid';
@@ -55,6 +59,7 @@ export function serialiseExport(data: Omit<ExportData, 'exportedAt'>, exportedAt
     application: data.application,
     preferences: { language: data.lang, theme: data.theme },
     numbers: [...data.numbers],
+    ...(data.labels ? { labels: [...data.labels] } : {}),
     workState: JSON.parse(serialiseWorkState(data.workState, exportedAt)) as unknown,
   };
   return JSON.stringify(file, null, 2);
@@ -107,5 +112,17 @@ export function parseExport(text: string): ExportData {
   ) {
     throw new ExportError('invalid', 'numbers');
   }
-  return { exportedAt, application: file.application, lang: lang as Lang, theme: theme as ThemeChoice, workState, numbers: numbers as number[] };
+  const labels = file.labels;
+  if (labels !== undefined && (!Array.isArray(labels) || labels.length !== numbers.length || labels.some((l) => typeof l !== 'string' || l.trim() === ''))) {
+    throw new ExportError('invalid', 'labels');
+  }
+  return {
+    exportedAt,
+    application: file.application,
+    lang: lang as Lang,
+    theme: theme as ThemeChoice,
+    workState,
+    numbers: numbers as number[],
+    ...(labels !== undefined ? { labels: labels as string[] } : {}),
+  };
 }

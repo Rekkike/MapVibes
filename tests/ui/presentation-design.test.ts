@@ -31,6 +31,9 @@ function declarations(selector: string): Record<string, string> {
 }
 
 function rem(value: string | undefined): number {
+  // A size token resolves to its value in the token block.
+  const token = /^var\((--[\w-]+)\)$/.exec(value ?? '');
+  if (token) value = light[token[1]];
   const m = /^([\d.]+)rem$/.exec(value ?? '');
   if (!m) throw new Error(`not a rem size: ${value}`);
   return Number(m[1]);
@@ -101,12 +104,13 @@ describe('projection typography (FR-37) and details typography (FR-7)', () => {
   });
 
   test('the details panel has a clear hierarchy: title, values, labels', () => {
-    const title = rem(declarations('.details-title')['font-size']);
+    // The panel's dense sizes (FR-42) override the shared ones.
+    const title = rem(declarations('.details-panel .details-title')['font-size']);
     const body = rem(declarations('.details-panel')['font-size']);
-    const label = rem(declarations('.details-label')['font-size']);
+    const label = rem(declarations('.details-panel .details-label')['font-size']);
     expect(title).toBeGreaterThan(body);
     expect(body).toBeGreaterThan(label);
-    expect(label).toBeGreaterThanOrEqual(0.8125);
+    expect(label).toBeGreaterThanOrEqual(0.75);
     expect(declarations('.details-panel').background).toBe('var(--panel)');
     expect(declarations('.details-value')['overflow-wrap']).toBe('anywhere');
   });

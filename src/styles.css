@@ -32,6 +32,13 @@
   --motion-quick: 160ms;
   --motion-view: 240ms;
   --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  /* The dense spacing scale and type of the operator's surfaces (FR-42). */
+  --dense-1: 0.125rem;
+  --dense-2: 0.25rem;
+  --dense-3: 0.5rem;
+  --dense-font: 0.875rem;
+  --dense-label: 0.75rem;
+  --dense-line: 1.35;
 }
 
 html[data-theme='dark'] {
@@ -1244,6 +1251,12 @@ input[type='text'] {
   overflow-wrap: anywhere;
 }
 
+/* A field's wrapper takes no part in the layout of the card (FR-37); the
+   details panel lays the fields out in a grid (FR-42). */
+.details-field {
+  display: contents;
+}
+
 .details-value.is-empty {
   color: var(--muted);
   font-style: italic;
@@ -1390,7 +1403,8 @@ input[type='text'] {
 }
 
 /* Exported viewer (FR-38): view-only; the list opens the data cards. */
-#viewer-badge {
+#viewer-badge,
+#demo-badge {
   padding: var(--space-1) var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-pill);
@@ -1472,4 +1486,230 @@ input[type='text'] {
 .compare-note {
   color: var(--muted);
   font-size: 0.875rem;
+}
+
+/* Grouped numbering (FR-17): the mode and the key of the groups. */
+#numbering-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.warning-text {
+  color: var(--warning);
+  font-weight: 600;
+}
+
+.legend-group-number {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+/* The list grouped by area (FR-17): a heading row per section. */
+#row-table .group-row th {
+  padding: var(--space-1) 0;
+  background: var(--panel);
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.group-toggle {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  border: none;
+  background: none;
+  padding: var(--space-1) var(--space-2);
+  font-weight: 650;
+}
+
+.group-toggle::before {
+  content: '▾';
+  display: inline-block;
+  width: 1em;
+}
+
+.group-toggle[aria-expanded='false']::before {
+  content: '▸';
+}
+
+.group-count {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 0.875rem;
+}
+
+/* Information density (FR-42): the operator's surfaces are dense, with the
+   dense spacing scale, aligned field grids, and compact entries. The
+   presentation data card is the deliberate exception and keeps its
+   projection sizes (FR-37); nothing here applies to it. */
+.details-panel {
+  padding: var(--dense-3);
+  font-size: var(--dense-font);
+  line-height: var(--dense-line);
+}
+
+.details-panel .details-header {
+  gap: var(--dense-3);
+  margin-bottom: var(--dense-3);
+}
+
+.details-panel .details-title {
+  font-size: 1.0625rem;
+}
+
+.details-panel .details-facts {
+  grid-template-columns: repeat(3, max-content minmax(0, 1fr));
+  align-items: baseline;
+  gap: var(--dense-1) var(--dense-3);
+  margin-bottom: var(--dense-3);
+  padding-bottom: var(--dense-3);
+}
+
+.details-panel .details-facts dt,
+.details-panel .details-label {
+  font-size: var(--dense-label);
+  line-height: 1.25;
+}
+
+.details-panel .details-fields {
+  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+  gap: var(--dense-2) var(--dense-3);
+  margin-bottom: var(--dense-3);
+}
+
+.details-panel .details-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dense-1);
+  min-width: 0;
+}
+
+.details-panel .details-value .cell-input {
+  width: 100%;
+  min-width: 0;
+  padding: var(--dense-1) var(--dense-2);
+}
+
+.details-panel .details-subheading {
+  margin-bottom: var(--dense-2);
+  font-size: 0.9375rem;
+}
+
+.details-panel .details-comment-list {
+  gap: var(--dense-2);
+  margin-bottom: var(--dense-2);
+}
+
+.details-panel .details-comment {
+  padding: var(--dense-2) var(--dense-3);
+}
+
+.details-panel .details-comment-date {
+  font-size: var(--dense-label);
+}
+
+.details-panel .details-comment-form {
+  gap: var(--dense-2);
+}
+
+.details-panel .details-comment-input {
+  padding: var(--dense-2) var(--dense-3);
+}
+
+/* At-a-glance entries: one line per item, the area beside the name. */
+.glance-list {
+  gap: var(--dense-1);
+}
+
+.glance-entry {
+  gap: var(--dense-3);
+  padding: var(--dense-1) var(--dense-2);
+  line-height: 1.25;
+}
+
+.glance-text {
+  flex: 1;
+  flex-direction: row;
+  align-items: baseline;
+  gap: var(--dense-3);
+}
+
+.glance-name {
+  flex: 1 1 auto;
+}
+
+.glance-area {
+  flex: none;
+  margin-left: auto;
+}
+
+.glance-entry .marker-badge,
+.placement-item .marker-badge {
+  min-width: 1.5rem;
+  height: 1.5rem;
+}
+
+/* The data surfaces of the Map segment. */
+#placement-area,
+#map-glance {
+  padding: var(--dense-3);
+}
+
+#placement-list {
+  gap: var(--dense-1);
+}
+
+.placement-item {
+  gap: var(--dense-3);
+  padding: var(--dense-1) var(--dense-2);
+  font-size: var(--dense-font);
+  line-height: 1.25;
+}
+
+#map-toolbar {
+  gap: var(--dense-2) var(--dense-3);
+  margin-bottom: var(--dense-2);
+}
+
+/* The dialogs. */
+#export-panel,
+#compare-panel {
+  margin-bottom: var(--dense-3);
+  padding: var(--dense-3);
+  font-size: var(--dense-font);
+  line-height: var(--dense-line);
+}
+
+#export-panel h3,
+#export-panel h4,
+.compare-group h3 {
+  margin: 0 0 var(--dense-2);
+}
+
+#export-panel h4 {
+  margin-top: var(--dense-3);
+}
+
+#export-panel p {
+  margin: 0 0 var(--dense-2);
+}
+
+#compare-groups {
+  gap: var(--dense-3);
+  margin: var(--dense-3) 0;
+}
+
+.compare-entry {
+  gap: var(--dense-2);
+  padding: var(--dense-1) 0;
+}
+
+#fetch-panel,
+#pdf-panel {
+  gap: var(--dense-2);
+  padding: var(--dense-2) var(--dense-3);
+  font-size: var(--dense-font);
 }

@@ -1,0 +1,13 @@
+Item,Name,Area,Status,Start year,End year,Note
+D-01,North gate,Park district,Completed,2019,2021,Entrance at the top edge of the map.
+D-02,Garden path,Park district,In progress,2022,2025,One of three items close together.
+D-03,Park fountain,Park district,Planned,2025,2027,One of three items close together.
+D-04,Lookout terrace,Park district,Under review,2024,2026,Its symbol is chosen by hand and overrides the status.
+D-05,River steps,Riverside,In progress,2023,2026,Beside the river.
+D-06,East bridge,Riverside,Paused,2021,2027,At the right edge of the map.
+D-07,Lake jetty,Lakeside,Completed,2018,2020,On the lake shore.
+D-08,Boathouse,Lakeside,Cancelled,2020,2022,Not carried out.
+D-09,Market hall,Old quarter,In progress,2022,2026,Its symbol is chosen by hand and overrides the status.
+D-10,Clock tower,Old quarter,Planned,2026,2028,Beside the main road.
+D-11,Station square,Station district,Under review,2024,2027,Near the bottom edge of the map.
+D-12,Old mill,,Planned,2027,2029,Not yet placed on the map and without an area value.

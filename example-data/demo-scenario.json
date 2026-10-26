@@ -1,0 +1,212 @@
+{
+  "format": "mapvibes-demo",
+  "version": 1,
+  "preset": {
+    "name": "Demo columns",
+    "headers": [
+      "Item",
+      "Name",
+      "Area",
+      "Status",
+      "Start year",
+      "End year",
+      "Note"
+    ],
+    "hidden": [],
+    "roles": {
+      "identifier": "Item",
+      "name": "Name",
+      "area": "Area",
+      "status": "Status",
+      "start": "Start year",
+      "end": "End year"
+    },
+    "areas": [
+      "Park district",
+      "Riverside",
+      "Lakeside",
+      "Old quarter",
+      "Station district"
+    ],
+    "statuses": [
+      {
+        "name": "Planned",
+        "symbol": "bulb"
+      },
+      {
+        "name": "Under review",
+        "symbol": "magnifier"
+      },
+      {
+        "name": "In progress",
+        "symbol": "hammer-shovel"
+      },
+      {
+        "name": "Paused",
+        "symbol": "pause"
+      },
+      {
+        "name": "Cancelled",
+        "symbol": "cross"
+      },
+      {
+        "name": "Completed",
+        "symbol": "check"
+      }
+    ]
+  },
+  "symbolsFromStatus": true,
+  "items": [
+    {
+      "item": "D-01",
+      "colour": "green",
+      "position": [
+        0.05,
+        0.07
+      ],
+      "symbol": null,
+      "comments": [
+        {
+          "date": "2021-05-12T09:30:00.000Z",
+          "text": "Finished as planned."
+        },
+        {
+          "date": "2021-06-02T14:00:00.000Z",
+          "text": "Final check done."
+        }
+      ]
+    },
+    {
+      "item": "D-02",
+      "colour": "blue",
+      "position": [
+        0.19,
+        0.22
+      ],
+      "symbol": null,
+      "comments": [
+        {
+          "date": "2024-03-04T08:15:00.000Z",
+          "text": "Halfway along the path."
+        }
+      ]
+    },
+    {
+      "item": "D-03",
+      "colour": "yellow",
+      "position": [
+        0.225,
+        0.255
+      ],
+      "symbol": null,
+      "comments": []
+    },
+    {
+      "item": "D-04",
+      "colour": "red",
+      "position": [
+        0.255,
+        0.205
+      ],
+      "symbol": "diamond",
+      "comments": [
+        {
+          "date": "2024-09-18T10:45:00.000Z",
+          "text": "Two options are being compared."
+        }
+      ]
+    },
+    {
+      "item": "D-05",
+      "colour": "blue",
+      "position": [
+        0.55,
+        0.18
+      ],
+      "symbol": null,
+      "comments": []
+    },
+    {
+      "item": "D-06",
+      "colour": "yellow",
+      "position": [
+        0.975,
+        0.41
+      ],
+      "symbol": null,
+      "comments": [
+        {
+          "date": "2023-11-30T16:20:00.000Z",
+          "text": "Paused until the spring."
+        }
+      ]
+    },
+    {
+      "item": "D-07",
+      "colour": "green",
+      "position": [
+        0.69,
+        0.47
+      ],
+      "symbol": null,
+      "comments": []
+    },
+    {
+      "item": "D-08",
+      "colour": "red",
+      "position": [
+        0.9,
+        0.56
+      ],
+      "symbol": null,
+      "comments": [
+        {
+          "date": "2022-02-14T11:00:00.000Z",
+          "text": "Cancelled; see the lake jetty instead."
+        }
+      ]
+    },
+    {
+      "item": "D-09",
+      "colour": "blue",
+      "position": [
+        0.3,
+        0.5
+      ],
+      "symbol": "square",
+      "comments": []
+    },
+    {
+      "item": "D-10",
+      "colour": "green",
+      "position": [
+        0.47,
+        0.62
+      ],
+      "symbol": null,
+      "comments": []
+    },
+    {
+      "item": "D-11",
+      "colour": "yellow",
+      "position": [
+        0.52,
+        0.965
+      ],
+      "symbol": null,
+      "comments": [
+        {
+          "date": "2025-01-08T09:00:00.000Z",
+          "text": "Waiting for the second opinion."
+        }
+      ]
+    },
+    {
+      "item": "D-12",
+      "colour": "green",
+      "position": null,
+      "symbol": null,
+      "comments": []
+    }
+  ]
+}

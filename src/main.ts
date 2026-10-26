@@ -14,7 +14,7 @@ import { isOsmFile, MAX_OSM_BYTES, OsmError, parseOsm, planRender, type OsmBound
 import { renderPlanToDataUrl } from './osmrender';
 import { fetchableBounds, FetchError, fetchMapData, isOnline, parseBounds, searchPlace, type BoundsField, type FetchErrorCode, type PlaceResult } from './openmap';
 import { MarkerLayer } from './markerlayer';
-import { colourName, renderLegend, shapeName } from './legend';
+import { colourName, renderLegend, shapeName, type LegendAreaGroup } from './legend';
 import { addComment, commentsOf, formatCommentDate, removeComment, restoreComments, type CommentStore } from './comments';
 import { renderDetails, type DetailField, type DetailLabels, type DetailModel } from './details';
 import { drawSymbol, isSymbol, SYMBOLS, symbolClasses, type MarkerSymbol } from './symbols';
@@ -26,6 +26,8 @@ import { type Problem, parseWorkState, rowNumbers, serialiseWorkState, SUGGESTED
 import { ExportError, parseExport, serialiseExport, SUGGESTED_EXPORT_NAME, type ExportData } from './exportfile';
 import { embedDataIsland, readDataIsland } from './singlefile';
 import { compareItems, type CompareItem, type Comparison } from './reconcile';
+import { areaGroups, groupedLabels } from './grouping';
+import { DEMO_MAP_TEXT, demoScenario, demoWorkbook } from './demo';
 
 const DEFAULT_COLOUR: RowColour = 'green';
 
@@ -77,6 +79,15 @@ interface AppState {
   // in the exported presentation.
   viewOnly: boolean;
   numbers: Map<RowData, number> | null;
+  // The numbers shown in the exported viewer, when they differ from the
+  // numbers (the grouped numbering, FR-17).
+  viewerLabels: Map<RowData, string> | null;
+  // The numbering mode (FR-3, FR-17): global by default, or grouped by area.
+  numbering: 'global' | 'grouped';
+  // The list view (FR-17): flat, or grouped by area in collapsible sections;
+  // the area values whose sections are collapsed.
+  listView: 'flat' | 'grouped';
+  collapsedAreas: Set<string>;
 }
 
 const state: AppState = {
@@ -111,6 +122,10 @@ const state: AppState = {
   edited: new Map(),
   viewOnly: false,
   numbers: null,
+  viewerLabels: null,
+  numbering: 'global',
+  listView: 'flat',
+  collapsedAreas: new Set(),
 };
 
 // Drag-and-drop data type identifying a list row dragged onto the map.
@@ -195,6 +210,8 @@ function renderStaticText(): void {
   el('fetch-close').textContent = t.fetchClose;
   el('manual-start-hint').textContent = t.manualStartHint;
   el('start-empty').textContent = t.manualStartEmpty;
+  el('load-demo').textContent = t.demoLoad;
+  el('demo-hint').textContent = t.demoHint;
   el('manual-heading').textContent = t.manualHeading;
   el('add-row').textContent = t.manualAddRow;
   el('add-column').textContent = t.manualAddColumn;
@@ -323,6 +340,49 @@ function applyImport(parse: ParseResult): void {
   renderList();
 }
 
+// The full-test demo (FR-41): the fictional example scenario, loaded through
+// the normal paths: the demo's column preset is saved, the demo list is
+// imported (so the preset applies the roles and vocabularies as it would to
+// any matching import), the town map renders as an .osm background, and the
+// scenario adds the colours, comments, and markers. It is unsaved work,
+// labelled as example data until other work replaces it.
+let demoLoaded = false;
+
+export async function loadDemo(): Promise<boolean> {
+  const t = strings(state.prefs.lang);
+  if (state.dirty && !window.confirm(t.demoConfirmReplace)) return false;
+  const scenario = demoScenario();
+  state.presets = upsertPreset(state.presets, scenario.preset);
+  storePresets(state.presets);
+  el('ingest-error').classList.add('hidden');
+  applyImport(parseWorkbook(demoWorkbook()));
+  state.symbolsFromStatus = scenario.symbolsFromStatus;
+  const idKey = state.roles.identifier;
+  const rowOf = (item: string) => (idKey === undefined ? undefined : state.rows.find((r) => r.values[idKey] === item));
+  for (const item of scenario.items) {
+    const row = rowOf(item.item);
+    if (!row) continue;
+    row.colour = item.colour;
+    if (item.comments.length > 0) state.comments.set(row, restoreComments(item.comments));
+  }
+  const outcome = await useOsmText(DEMO_MAP_TEXT);
+  const bg = mapView?.background;
+  if (outcome === 'ok' && bg) {
+    for (const item of scenario.items) {
+      const row = rowOf(item.item);
+      if (!row || !item.position) continue;
+      placeMarker(state.positions, row, { x: item.position[0] * bg.width, y: item.position[1] * bg.height });
+      if (item.symbol) state.shapes.set(row, item.symbol);
+    }
+  }
+  demoLoaded = true;
+  markDirty();
+  workMessage = 'demo-loaded';
+  renderList();
+  setSegment('map');
+  return outcome === 'ok';
+}
+
 // Starts an empty list with no import (FR-30); rows and columns are then
 // added by hand.
 function startEmptyList(): void {
@@ -333,6 +393,7 @@ function startEmptyList(): void {
 }
 
 function resetList(headers: string[], rows: Record<string, string>[]): void {
+  demoLoaded = false;
   state.headers = headers;
   state.roles = {};
   state.manualColumns = new Map();
@@ -416,27 +477,108 @@ function setCellValue(row: RowData, key: string, value: string): void {
   renderList();
 }
 
-// The numbered rows (FR-3): sequential, or in the exported viewer the
-// numbers of the exported presentation (FR-38).
-function numbered(): NumberedRow[] {
-  const numbers = state.numbers;
-  if (numbers === null) return numberRows(state.rows);
-  return state.rows.map((row, i) => ({ row, number: numbers.get(row) ?? i + 1 }));
+// The grouped numbering applies while it is chosen and the area role is
+// assigned (FR-17); without the area role the global numbering applies and
+// the list says why.
+function groupedNumbering(): boolean {
+  return state.numbering === 'grouped' && state.roles.area !== undefined;
 }
 
-function numberOf(row: RowData): number {
-  return state.numbers?.get(row) ?? state.rows.indexOf(row) + 1;
+// The numbered rows (FR-3, FR-17): the global sequential numbers, shown as
+// such or as grouped numbers; in the exported viewer the numbers of the
+// exported presentation (FR-38). One source for the list, the markers, and
+// every panel.
+function numbered(): NumberedRow[] {
+  const numbers = state.numbers;
+  if (numbers !== null) {
+    return state.rows.map((row, i) => {
+      const number = numbers.get(row) ?? i + 1;
+      return { row, number, label: state.viewerLabels?.get(row) ?? String(number) };
+    });
+  }
+  const rows = numberRows(state.rows);
+  if (!groupedNumbering()) return rows;
+  const labels = groupedLabels(state.rows, state.roles.area!, state.areaValues);
+  return rows.map((n) => ({ ...n, label: labels.get(n.row) ?? n.label }));
+}
+
+// The number of a row as shown.
+function numberLabel(row: RowData): string {
+  return numbered().find((n) => n.row === row)?.label ?? String(state.rows.indexOf(row) + 1);
 }
 
 function displayedRows(): NumberedRow[] {
   let rows = numbered();
   if (state.sort.header) {
     const sorted = sortRows(state.rows, state.sort.header, state.sort.direction);
-    const numbers = new Map<RowData, number>();
-    numbered().forEach((n) => numbers.set(n.row, n.number));
-    rows = sorted.map((row) => ({ row, number: numbers.get(row) ?? 0 }));
+    const byRow = new Map(rows.map((n) => [n.row, n]));
+    rows = sorted.map((row) => byRow.get(row)!);
   }
   return applyFilter(rows, state.filter);
+}
+
+// The sections of the list (FR-17): the whole list in the flat view; in the
+// grouped view one section per area group holding rows after filtering, in
+// the order of the groups, each keeping the list's sort order.
+interface ListSection {
+  // The area value ('' for the items without one), or null in the flat view.
+  area: string | null;
+  index: number;
+  rows: NumberedRow[];
+  collapsed: boolean;
+}
+
+function groupedView(): boolean {
+  return state.listView === 'grouped' && state.roles.area !== undefined;
+}
+
+function listSections(): ListSection[] {
+  const rows = displayedRows();
+  if (!groupedView()) return [{ area: null, index: 0, rows, collapsed: false }];
+  return areaGroups(state.rows, state.roles.area!, state.areaValues)
+    .map((group) => {
+      const members = new Set(group.rows);
+      return { area: group.area, index: group.index, rows: rows.filter((n) => members.has(n.row)), collapsed: state.collapsedAreas.has(group.area) };
+    })
+    .filter((section) => section.rows.length > 0);
+}
+
+// The heading row of a section, with the control that collapses and
+// expands it.
+function sectionRow(section: ListSection, span: number, t: Strings): HTMLTableRowElement {
+  const tr = document.createElement('tr');
+  tr.className = 'group-row';
+  tr.dataset.area = section.area ?? '';
+  const th = document.createElement('th');
+  th.colSpan = span;
+  th.scope = 'rowgroup';
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'group-toggle';
+  toggle.setAttribute('aria-expanded', section.collapsed ? 'false' : 'true');
+  const name = section.area === '' ? t.numberingNoArea : section.area!;
+  const label = document.createElement('span');
+  label.className = 'group-name';
+  label.textContent = name;
+  const count = document.createElement('span');
+  count.className = 'group-count';
+  count.textContent = fill(t.listGroupCount, { count: section.rows.length });
+  toggle.append(label, count);
+  toggle.setAttribute('aria-label', `${section.collapsed ? t.listGroupExpand : t.listGroupCollapse}: ${name}`);
+  toggle.addEventListener('click', () => {
+    const area = section.area ?? '';
+    if (state.collapsedAreas.has(area)) state.collapsedAreas.delete(area);
+    else state.collapsedAreas.add(area);
+    renderList();
+  });
+  th.appendChild(toggle);
+  tr.appendChild(th);
+  return tr;
+}
+
+function setListView(view: 'flat' | 'grouped'): void {
+  state.listView = view;
+  renderList();
 }
 
 function renderList(): void {
@@ -535,8 +677,9 @@ function renderList(): void {
   colourTh.textContent = t.colour;
   head.appendChild(colourTh);
 
-  const rows = displayedRows();
-  rows.forEach(({ row, number }) => {
+  const sections = listSections();
+  const rows = sections.flatMap((section) => (section.collapsed ? [] : section.rows));
+  const renderRow = ({ row, label: number }: NumberedRow) => {
     const tr = document.createElement('tr');
     const id = rowId(row);
     tr.dataset.rowId = id;
@@ -608,7 +751,11 @@ function renderList(): void {
     colourTd.appendChild(chip);
     tr.appendChild(colourTd);
     body.appendChild(tr);
-  });
+  };
+  for (const section of sections) {
+    if (section.area !== null) body.appendChild(sectionRow(section, columns.length + 3, t));
+    if (!section.collapsed) section.rows.forEach(renderRow);
+  }
 
   const allSelected = rows.length > 0 && rows.every(({ row }) => state.selected.has(rowId(row)));
   const selectAllInput = el<HTMLButtonElement>('select-all');
@@ -619,7 +766,8 @@ function renderList(): void {
   renderMapItems();
   renderWorkStatus();
 
-  el('empty-list').classList.toggle('hidden', rows.length > 0);
+  // A collapsed section is still a shown section.
+  el('empty-list').classList.toggle('hidden', sections.some((section) => section.rows.length > 0));
   el('counter-selected').textContent = `${t.selected}: ${state.selected.size}`;
   el('counter-retained').textContent = `${t.retained}: ${currentCounters().retained}`;
   el('counter-removed').textContent = `${t.removed}: ${currentCounters().removed}`;
@@ -630,6 +778,7 @@ function renderList(): void {
   renderAreaPanel();
   renderStatusPanel();
   renderLegends();
+  renderNumbering();
   renderDetailsPanel();
   renderComparison();
 }
@@ -682,7 +831,7 @@ function deleteSelected(): void {
 }
 
 function selectAllVisible(): void {
-  const rows = displayedRows();
+  const rows = listSections().flatMap((section) => (section.collapsed ? [] : section.rows));
   const allSelected = rows.every(({ row }) => state.selected.has(rowId(row)));
   if (allSelected) {
     rows.forEach(({ row }) => state.selected.delete(rowId(row)));
@@ -745,6 +894,12 @@ interface ExportSummary {
   presets: number;
 }
 
+// The grouped numbers of the exported rows (indices into the ingested rows).
+function labelsOf(indices: number[]): string[] {
+  const labels = new Map(numbered().map((n) => [n.row, n.label]));
+  return indices.map((i) => labels.get(state.ingested[i]) ?? '');
+}
+
 export function captureExport(): { data: Omit<ExportData, 'exportedAt'>; summary: ExportSummary } {
   const ws = captureWorkState();
   const numbersAll = rowNumbers(ws.rows);
@@ -781,6 +936,8 @@ export function captureExport(): { data: Omit<ExportData, 'exportedAt'>; summary
       theme: state.prefs.theme,
       workState,
       numbers: shown.map((i) => numbersAll[i]!),
+      // In the grouped numbering, the numbers as shown (FR-17).
+      ...(groupedNumbering() ? { labels: labelsOf(shown) } : {}),
     },
     summary,
   };
@@ -931,7 +1088,7 @@ async function writeFile(text: string, kind: FileKind): Promise<WriteOutcome> {
   }
 }
 
-type WorkMessage = 'saved' | 'save-failed' | 'opened' | 'open-failed' | 'compare-opened';
+type WorkMessage = 'saved' | 'save-failed' | 'opened' | 'open-failed' | 'compare-opened' | 'demo-loaded';
 let workMessage: WorkMessage | null = null;
 let workErrorText = '';
 
@@ -943,7 +1100,7 @@ function markDirty(): void {
   // Nothing in the exported viewer is work to save.
   if (state.viewOnly) return;
   state.dirty = true;
-  if (workMessage === 'saved' || workMessage === 'opened') workMessage = null;
+  if (workMessage === 'saved' || workMessage === 'opened' || workMessage === 'demo-loaded') workMessage = null;
   renderWorkStatus();
 }
 
@@ -956,6 +1113,7 @@ function renderWorkStatus(): void {
     opened: t.workOpened,
     'open-failed': workErrorText,
     'compare-opened': t.compareOpened,
+    'demo-loaded': t.demoLoaded,
   };
   status.textContent = workMessage ? messages[workMessage] : '';
   status.classList.toggle('error', workMessage === 'save-failed' || workMessage === 'open-failed');
@@ -963,6 +1121,10 @@ function renderWorkStatus(): void {
   el('work-dirty').textContent = t.workUnsaved;
   el('work-dirty').classList.toggle('hidden', !state.dirty);
   document.documentElement.dataset.unsaved = state.dirty ? 'true' : 'false';
+  // The demo's work is labelled as example data while it is loaded.
+  el('demo-badge').textContent = t.demoBadge;
+  el('demo-badge').classList.toggle('hidden', !demoLoaded);
+  document.documentElement.dataset.demo = demoLoaded ? 'true' : 'false';
 }
 
 export async function saveWork(): Promise<WriteOutcome> {
@@ -1031,6 +1193,7 @@ async function applyWorkState(ws: WorkState): Promise<boolean> {
   state.ingested = ws.rows.map((r) => ({ values: { ...r.values }, colour: r.colour }));
   state.rows = state.ingested.filter((_, i) => !ws.rows[i].removed);
   state.manualRows = new Set(state.ingested.filter((_, i) => ws.rows[i].manual));
+  demoLoaded = false;
   state.edited = new Map(state.ingested.flatMap((row, i) => (Object.keys(ws.rows[i].edited).length > 0 ? [[row, { ...ws.rows[i].edited }]] : [])));
   state.comments = new Map(state.ingested.flatMap((row, i) => (ws.rows[i].comments.length > 0 ? [[row, restoreComments(ws.rows[i].comments)]] : [])));
   state.detailsId = null;
@@ -1146,7 +1309,7 @@ function comparisonSides(data: ExportData): { current: CompareItem[]; file: Comp
   const currentKey = state.roles.identifier;
   const fileKey = data.workState.roles.identifier;
   if (currentKey === undefined || fileKey === undefined) return null;
-  const current = numbered().map(({ row, number }) => ({
+  const current = numbered().map(({ row, label: number }) => ({
     key: rowId(row),
     identifier: row.values[currentKey] ?? '',
     number,
@@ -1158,8 +1321,8 @@ function comparisonSides(data: ExportData): { current: CompareItem[]; file: Comp
   const file = data.workState.rows.map((row, i) => ({
     key: String(i),
     identifier: row.values[fileKey] ?? '',
-    number: data.numbers[i],
-    label: displayName(row.values, data.workState.roles, `${t.numberColumn} ${data.numbers[i]}`),
+    number: data.labels?.[i] ?? String(data.numbers[i]),
+    label: displayName(row.values, data.workState.roles, `${t.numberColumn} ${data.labels?.[i] ?? data.numbers[i]}`),
     position: placed.get(i) ?? null,
   }));
   return { current, file };
@@ -1479,7 +1642,7 @@ function markEdited(control: HTMLElement, row: RowData, key: string, t: Strings)
 
 // The editing control of one value: a text field, a combobox in the area
 // column (FR-32). The status column has its own list (statusCell).
-function valueInput(row: RowData, key: string, number: number): HTMLInputElement {
+function valueInput(row: RowData, key: string, number: string): HTMLInputElement {
   const t = strings(state.prefs.lang);
   const input = document.createElement('input');
   input.type = 'text';
@@ -1503,7 +1666,7 @@ function valueInput(row: RowData, key: string, number: number): HTMLInputElement
 
 // A cell of the status column (FR-33): chosen from the status list. A value
 // that is not in the list is kept and shown as such until another is chosen.
-function statusCell(row: RowData, key: string, number: number): HTMLSelectElement {
+function statusCell(row: RowData, key: string, number: string): HTMLSelectElement {
   const t = strings(state.prefs.lang);
   const select = document.createElement('select');
   select.className = 'cell-input status-select';
@@ -1566,8 +1729,49 @@ function setSymbolsFromStatus(on: boolean): void {
 
 function renderLegends(): void {
   const t = strings(state.prefs.lang);
-  renderLegend(el('map-legend'), t, state.statuses);
-  renderLegend(el('presentation-legend'), t, state.statuses);
+  const groups = shownAreaGroups();
+  renderLegend(el('map-legend'), t, state.statuses, groups);
+  renderLegend(el('presentation-legend'), t, state.statuses, groups);
+}
+
+// The groups behind the grouped numbers shown (FR-17), read from the labels
+// themselves, so that the exported viewer shows them as well.
+function shownAreaGroups(): LegendAreaGroup[] {
+  const areaKey = state.roles.area;
+  if (areaKey === undefined) return [];
+  const groups = new Map<number, string>();
+  for (const { row, label } of numbered()) {
+    const match = /^(\d+)\.\d+$/.exec(label);
+    if (match && !groups.has(Number(match[1]))) groups.set(Number(match[1]), (row.values[areaKey] ?? '').trim());
+  }
+  return [...groups.entries()].sort((a, b) => a[0] - b[0]).map(([index, area]) => ({ index, area }));
+}
+
+function setNumbering(mode: 'global' | 'grouped'): void {
+  state.numbering = mode;
+  renderList();
+}
+
+function renderNumbering(): void {
+  const t = strings(state.prefs.lang);
+  el('numbering-text').textContent = t.numberingLabel;
+  const select = el<HTMLSelectElement>('numbering-mode');
+  select.options[0].textContent = t.numberingGlobal;
+  select.options[1].textContent = t.numberingGrouped;
+  select.value = state.numbering;
+  const view = el<HTMLSelectElement>('list-view');
+  el('list-view-text').textContent = t.listViewLabel;
+  view.options[0].textContent = t.listViewFlat;
+  view.options[1].textContent = t.listViewGrouped;
+  view.value = state.listView;
+  const needsArea = (state.numbering === 'grouped' || state.listView === 'grouped') && state.roles.area === undefined;
+  const message = state.numbering === 'grouped' && state.listView === 'grouped' ? t.groupingNeedsArea : state.numbering === 'grouped' ? t.numberingNeedsArea : t.listViewNeedsArea;
+  el('numbering-notice').textContent = needsArea ? message : '';
+  el('numbering-notice').classList.toggle('hidden', !needsArea);
+  const groups = groupedNumbering() ? shownAreaGroups() : [];
+  el('numbering-groups').textContent =
+    groups.length > 0 ? `${t.numberingGroups} ${groups.map((g) => `${g.index}. ${g.area === '' ? t.numberingNoArea : g.area}`).join(' · ')}` : '';
+  el('numbering-groups').classList.toggle('hidden', groups.length === 0);
 }
 
 // The status vocabulary panel (FR-33).
@@ -1729,12 +1933,12 @@ function setColumnRole(header: string, role: Role | null): void {
 
 // The display name of an item (FR-1): name/title, else identifier, else the
 // item's number.
-function itemLabel(row: RowData, number: number): string {
+function itemLabel(row: RowData, number: string): string {
   return displayName(row.values, state.roles, `${strings(state.prefs.lang).numberColumn} ${number}`);
 }
 
 function markerLabel(marker: PlacedMarker): string {
-  return `${strings(state.prefs.lang).markerLabel} ${marker.number}: ${itemLabel(marker.row, marker.number)}`;
+  return `${strings(state.prefs.lang).markerLabel} ${marker.label}: ${itemLabel(marker.row, marker.label)}`;
 }
 
 function selectMarker(id: string | null): void {
@@ -1780,7 +1984,7 @@ function detailLabels(t: Strings): DetailLabels {
 
 // Every column, hidden ones included, in the list's column order.
 function detailModel(row: RowData, t: Strings): DetailModel {
-  const number = numberOf(row);
+  const number = numberLabel(row);
   const symbol = symbolOf(row);
   const fields: DetailField[] = listColumnOrder(state.headers, state.roles).map((key) => ({
     key,
@@ -1956,7 +2160,7 @@ function renderPlacementList(): void {
   const t = strings(state.prefs.lang);
   const list = el('placement-list');
   list.innerHTML = '';
-  numbered().forEach(({ row, number }) => {
+  numbered().forEach(({ row, label: number }) => {
     const id = rowId(row);
     const placed = state.positions.has(row);
     const li = document.createElement('li');
@@ -2009,7 +2213,7 @@ function renderMapItems(): void {
   renderPlacementList();
   const t = strings(state.prefs.lang);
   const selected = markers.find((m) => rowId(m.row) === state.selectedMarker);
-  el('marker-selection').textContent = selected ? `${t.markerSelected}: ${selected.number}` : t.markerNoSelection;
+  el('marker-selection').textContent = selected ? `${t.markerSelected}: ${selected.label}` : t.markerNoSelection;
   el<HTMLButtonElement>('marker-remove').disabled = !selected;
   const shapeSelect = el<HTMLSelectElement>('marker-shape');
   shapeSelect.disabled = !selected;
@@ -2055,7 +2259,7 @@ function renderVisibilityList(): void {
   const list = el('visibility-list');
   list.innerHTML = '';
   const entries = state.viewOnly
-    ? numbered().map(({ row, number }) => ({ row, number, colour: row.colour, shape: symbolOf(row) }))
+    ? numbered().map(({ row, number, label }) => ({ row, number, label, colour: row.colour, shape: symbolOf(row) }))
     : placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered());
   for (const entry of entries) {
     const id = rowId(entry.row);
@@ -2065,10 +2269,10 @@ function renderVisibilityList(): void {
     li.dataset.rowId = id;
     li.dataset.shown = shown ? 'true' : 'false';
     if (state.presentationSelected === id) li.dataset.selected = 'true';
-    const name = itemLabel(entry.row, entry.number);
+    const name = itemLabel(entry.row, entry.label);
     const badge = document.createElement('span');
     badge.className = `marker-badge marker-${entry.colour} ${symbolClasses(entry.shape)}`;
-    drawSymbol(badge, entry.shape, String(entry.number));
+    drawSymbol(badge, entry.shape, entry.label);
     const text = document.createElement('span');
     text.className = 'placement-label';
     text.textContent = name;
@@ -2140,12 +2344,12 @@ function renderGlance(prefix: 'map' | 'presentation', view: MapView | null, sele
     if (selectedId === id) entry.dataset.selected = 'true';
     const badge = document.createElement('span');
     badge.className = `marker-badge marker-${marker.colour} ${symbolClasses(marker.shape)}`;
-    drawSymbol(badge, marker.shape, String(marker.number));
+    drawSymbol(badge, marker.shape, marker.label);
     const text = document.createElement('span');
     text.className = 'glance-text';
     const name = document.createElement('span');
     name.className = 'glance-name';
-    name.textContent = itemLabel(marker.row, marker.number);
+    name.textContent = itemLabel(marker.row, marker.label);
     text.appendChild(name);
     const area = areaKey === undefined ? '' : (marker.row.values[areaKey] ?? '').trim();
     if (area !== '') {
@@ -2774,6 +2978,7 @@ function wireEvents(): void {
     if ((e as KeyboardEvent).key === 'Enter') addStatusValue();
   });
   el('start-empty').addEventListener('click', startEmptyList);
+  el('load-demo').addEventListener('click', () => void loadDemo());
   el('add-row').addEventListener('click', addManualRow);
   el('add-column').addEventListener('click', addManualColumn);
   el('new-column-name').addEventListener('keydown', (e) => {
@@ -2860,6 +3065,8 @@ function wireEvents(): void {
   el('details-panel').addEventListener('keydown', (e) => {
     if (e.key === 'Escape') openDetails(null);
   });
+  el('list-view').addEventListener('change', (e) => setListView((e.target as HTMLSelectElement).value === 'grouped' ? 'grouped' : 'flat'));
+  el('numbering-mode').addEventListener('change', (e) => setNumbering((e.target as HTMLSelectElement).value === 'grouped' ? 'grouped' : 'global'));
   el('select-all').addEventListener('click', selectAllVisible);
   el('delete-selected').addEventListener('click', deleteSelected);
 }
@@ -2894,6 +3101,8 @@ async function startViewer(text: string): Promise<void> {
   renderStaticText();
   await applyWorkState(data.workState);
   state.numbers = new Map(state.ingested.map((row, i) => [row, data.numbers[i]]));
+  const labels = data.labels;
+  state.viewerLabels = labels ? new Map(state.ingested.map((row, i) => [row, labels[i]])) : null;
   workMessage = null;
   const badge = el('viewer-badge');
   badge.dataset.exportedAt = data.exportedAt;

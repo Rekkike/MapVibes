@@ -62,14 +62,14 @@ export class MarkerLayer {
       if (this.hooks.isHighlighted?.(marker)) node.classList.add('highlighted');
       node.classList.toggle('selected', id === selectedId);
       node.setAttribute('aria-pressed', id === selectedId ? 'true' : 'false');
-      node.dataset.number = String(marker.number);
+      node.dataset.number = marker.label;
       node.dataset.colour = marker.colour;
       node.dataset.shape = marker.shape;
       const source = this.hooks.symbolSource?.(marker);
       if (source) node.dataset.symbolSource = source;
-      if (node.dataset.drawn !== `${marker.shape}:${marker.number}`) {
-        drawSymbol(node, marker.shape, String(marker.number));
-        node.dataset.drawn = `${marker.shape}:${marker.number}`;
+      if (node.dataset.drawn !== `${marker.shape}:${marker.label}`) {
+        drawSymbol(node, marker.shape, marker.label);
+        node.dataset.drawn = `${marker.shape}:${marker.label}`;
       }
       node.setAttribute('aria-label', this.hooks.markerLabel(marker));
       node.title = this.hooks.markerLabel(marker);

@@ -24,6 +24,7 @@ export function shapeName(t: Strings, symbol: MarkerSymbol): string {
     pause: t.iconPause,
     cross: t.iconCross,
     check: t.iconCheck,
+    'hammer-shovel': t.iconHammerShovel,
   };
   return names[symbol];
 }
@@ -45,7 +46,14 @@ function entry(swatchClass: string, label: string, data: Record<string, string>,
 
 // The legend explains the four colours, the marker symbols, and the user's
 // statuses with their symbols where defined (FR-6, FR-26, FR-33).
-export function renderLegend(container: HTMLElement, t: Strings, statuses: StatusEntry[] = []): void {
+// A group of the grouped numbering (FR-17): its number and its area value
+// ('' for the items without one).
+export interface LegendAreaGroup {
+  index: number;
+  area: string;
+}
+
+export function renderLegend(container: HTMLElement, t: Strings, statuses: StatusEntry[] = [], areaGroups: LegendAreaGroup[] = []): void {
   container.innerHTML = '';
   const heading = document.createElement('span');
   heading.className = 'legend-heading';
@@ -62,6 +70,25 @@ export function renderLegend(container: HTMLElement, t: Strings, statuses: Statu
       'statuses',
       t.legendStatuses,
       statuses.map((s) => entry(symbolClasses(s.symbol as MarkerSymbol), s.name, { status: s.name, shape: s.symbol }, s.symbol as MarkerSymbol)),
+    ]);
+  }
+  if (areaGroups.length > 0) {
+    groups.push([
+      'areas',
+      t.legendAreaGroups,
+      areaGroups.map((g) => {
+        const li = document.createElement('li');
+        li.className = 'legend-entry';
+        li.dataset.group = String(g.index);
+        const number = document.createElement('span');
+        number.className = 'legend-group-number';
+        number.textContent = `${g.index}.`;
+        const text = document.createElement('span');
+        text.className = 'legend-label';
+        text.textContent = g.area === '' ? t.numberingNoArea : g.area;
+        li.append(number, text);
+        return li;
+      }),
     ]);
   }
   container.append(heading);

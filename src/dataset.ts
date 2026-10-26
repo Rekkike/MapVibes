@@ -10,10 +10,13 @@ export interface RowData {
 export interface NumberedRow {
   row: RowData;
   number: number;
+  // The number as shown: the global number, or the grouped number "2.3"
+  // in the grouped numbering mode (FR-17).
+  label: string;
 }
 
 export function numberRows(rows: RowData[]): NumberedRow[] {
-  return rows.map((row, i) => ({ row, number: i + 1 }));
+  return rows.map((row, i) => ({ row, number: i + 1, label: String(i + 1) }));
 }
 
 export function renumber(rows: RowData[]): void {

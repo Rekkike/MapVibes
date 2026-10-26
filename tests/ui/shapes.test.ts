@@ -33,6 +33,7 @@ describe('marker symbol library (FR-26)', () => {
       ['pause', 'Pause'],
       ['cross', 'Cross'],
       ['check', 'Checkmark'],
+      ['hammer-shovel', 'Hammer and shovel'],
     ]);
     pointer('pointerdown', markers()[1], STAGE.left + 400, STAGE.top + 300);
     pointer('pointerup', markers()[1], STAGE.left + 400, STAGE.top + 300);
@@ -85,7 +86,7 @@ describe('marker symbol library (FR-26)', () => {
         'Symbols',
       ]);
       const shapes = [...legend.querySelectorAll<HTMLElement>('.legend-entry[data-shape]')];
-      expect(shapes.map((e) => e.dataset.shape)).toEqual(['circle', 'square', 'diamond', 'triangle', 'hexagon', 'bulb', 'magnifier', 'gear', 'pause', 'cross', 'check']);
+      expect(shapes.map((e) => e.dataset.shape)).toEqual(['circle', 'square', 'diamond', 'triangle', 'hexagon', 'bulb', 'magnifier', 'gear', 'pause', 'cross', 'check', 'hammer-shovel']);
       shapes.slice(0, 5).forEach((e) => expect(e.querySelector('.legend-swatch')!.classList.contains(`marker-shape-${e.dataset.shape}`)).toBe(true));
       shapes.slice(5).forEach((e) => {
         expect(e.querySelector('.legend-swatch')!.classList.contains(`marker-icon-${e.dataset.shape}`)).toBe(true);
@@ -107,6 +108,7 @@ describe('marker symbol library (FR-26)', () => {
       'Paus',
       'Kryss',
       'Bock',
+      'Hammare och spade',
     ]);
   });
 
@@ -114,10 +116,10 @@ describe('marker symbol library (FR-26)', () => {
     expect(byId('segment-presentation').querySelector('#marker-shape')).toBeNull();
   });
 
-  test('each of the six icons renders as a vector icon on a numbered marker, everywhere the marker is shown', async () => {
+  test('each of the seven icons renders as a vector icon on a numbered marker, everywhere the marker is shown', async () => {
     pointer('pointerdown', markers()[1], STAGE.left + 400, STAGE.top + 300);
     pointer('pointerup', markers()[1], STAGE.left + 400, STAGE.top + 300);
-    for (const icon of ['bulb', 'magnifier', 'gear', 'pause', 'cross', 'check']) {
+    for (const icon of ['bulb', 'magnifier', 'gear', 'pause', 'cross', 'check', 'hammer-shovel']) {
       chooseShape(icon);
       const m = markers()[1];
       expect(m.classList.contains('marker-icon')).toBe(true);

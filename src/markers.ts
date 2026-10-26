@@ -27,6 +27,8 @@ export function isShape(value: unknown): value is MarkerShape {
 export interface PlacedMarker {
   row: RowData;
   number: number;
+  // The number as shown (FR-17).
+  label: string;
   colour: RowColour;
   shape: MarkerSymbol;
   position: Point;
@@ -36,9 +38,9 @@ export interface PlacedMarker {
 // viewer shows the numbers of the presentation, FR-38).
 export function placedMarkers(rows: RowData[], positions: MarkerPositions, shapes: MarkerShapes = new Map(), numbered: NumberedRow[] = numberRows(rows)): PlacedMarker[] {
   const out: PlacedMarker[] = [];
-  for (const { row, number } of numbered) {
+  for (const { row, number, label } of numbered) {
     const position = positions.get(row);
-    if (position) out.push({ row, number, colour: row.colour, shape: shapes.get(row) ?? DEFAULT_SHAPE, position: { ...position } });
+    if (position) out.push({ row, number, label, colour: row.colour, shape: shapes.get(row) ?? DEFAULT_SHAPE, position: { ...position } });
   }
   return out;
 }

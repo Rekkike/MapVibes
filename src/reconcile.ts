@@ -12,7 +12,8 @@ export interface CompareItem {
   // index in the file).
   key: string;
   identifier: string;
-  number: number;
+  // The number as shown on its side.
+  number: string;
   label: string;
   position: Point | null;
 }

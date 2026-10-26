@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { compareItems, type CompareItem } from '../../src/reconcile';
 
-function item(key: string, identifier: string, position: { x: number; y: number } | null = null, number = 1): CompareItem {
+function item(key: string, identifier: string, position: { x: number; y: number } | null = null, number = '1'): CompareItem {
   return { key, identifier, number, label: identifier || `No. ${number}`, position };
 }
 
