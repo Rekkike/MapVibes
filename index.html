@@ -142,19 +142,28 @@
             </div>
             <p id="fetch-notice" class="notice">This is the application's only network operation, made only when you press a button here. Only the place name or area you enter is sent, to the OpenStreetMap services Nominatim (place search) and Overpass API (map data). No list data, markers, or other work is sent.</p>
             <div class="fetch-row" role="radiogroup" aria-labelledby="fetch-heading">
-              <label><input type="radio" name="fetch-mode" id="fetch-mode-place" value="place" checked /> <span id="fetch-mode-place-label">Place name</span></label>
-              <label><input type="radio" name="fetch-mode" id="fetch-mode-bbox" value="bbox" /> <span id="fetch-mode-bbox-label">Bounding box</span></label>
+              <label><input type="radio" name="fetch-mode" id="fetch-mode-place" value="place" checked /> <span id="fetch-mode-place-label">Place name (recommended)</span></label>
+              <label><input type="radio" name="fetch-mode" id="fetch-mode-bbox" value="bbox" /> <span id="fetch-mode-bbox-label">Bounding rectangle</span></label>
             </div>
             <div class="fetch-row" id="fetch-place-row">
               <input type="text" id="fetch-place" aria-label="Place name" />
               <button type="button" id="fetch-search">Search</button>
             </div>
             <ul id="fetch-results"></ul>
-            <div class="fetch-row hidden" id="fetch-bbox-row">
-              <input type="text" id="fetch-bbox" aria-label="Bounding box" />
-            </div>
+            <fieldset id="fetch-bbox-row" class="hidden">
+              <legend id="fetch-bbox-legend">Bounding rectangle in decimal degrees (WGS84)</legend>
+              <p id="fetch-bbox-help" class="notice">Enter the four edges: latitudes from −90 to 90 for south and north, longitudes from −180 to 180 for west and east.</p>
+              <p id="fetch-bbox-example" class="notice">Example: south 10.000, west 20.000, north 10.020, east 20.030.</p>
+              <div class="fetch-edges">
+                <label class="fetch-edge"><span id="fetch-south-label">South</span> <input type="text" inputmode="decimal" id="fetch-south" data-edge="south" /></label>
+                <label class="fetch-edge"><span id="fetch-west-label">West</span> <input type="text" inputmode="decimal" id="fetch-west" data-edge="west" /></label>
+                <label class="fetch-edge"><span id="fetch-north-label">North</span> <input type="text" inputmode="decimal" id="fetch-north" data-edge="north" /></label>
+                <label class="fetch-edge"><span id="fetch-east-label">East</span> <input type="text" inputmode="decimal" id="fetch-east" data-edge="east" /></label>
+              </div>
+            </fieldset>
             <div class="fetch-row">
               <button type="button" id="fetch-go">Fetch map data</button>
+              <button type="button" id="fetch-cancel" class="hidden">Cancel</button>
               <button type="button" id="fetch-close">Close</button>
               <span id="fetch-status" aria-live="polite"></span>
             </div>
