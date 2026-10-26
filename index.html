@@ -95,6 +95,22 @@
               </div>
               <p id="area-status" class="notice" aria-live="polite"></p>
             </details>
+            <details id="colour-panel" class="vocab-panel">
+              <summary id="colour-panel-summary">Colour labels</summary>
+              <p id="colour-panel-hint" class="notice"></p>
+              <ul id="colour-label-list" class="vocab-list"></ul>
+            </details>
+            <details id="program-panel" class="vocab-panel">
+              <summary id="program-panel-summary">Programmes</summary>
+              <p id="program-panel-hint" class="notice"></p>
+              <ul id="program-list" class="vocab-list"></ul>
+              <div class="vocab-add">
+                <input type="text" id="program-new" aria-label="New programme" />
+                <button type="button" id="program-add">Add</button>
+                <button type="button" id="program-collect">Collect values from the column</button>
+              </div>
+              <p id="program-status" class="notice" aria-live="polite"></p>
+            </details>
             <details id="status-panel" class="vocab-panel">
               <summary id="status-panel-summary">Statuses</summary>
               <p id="status-panel-hint" class="notice">The statuses offered in the cells of the status column, each with a marker symbol. The list starts empty and is yours to fill.</p>
@@ -109,6 +125,7 @@
             </details>
           </div>
           <datalist id="area-values"></datalist>
+          <datalist id="program-values"></datalist>
           <div id="manual-controls" role="group" aria-labelledby="manual-heading">
             <span id="manual-heading">Add by hand</span>
             <button type="button" id="add-row">Add row</button>
@@ -194,6 +211,28 @@
             <label id="marker-shape-label"><span id="marker-shape-text">Shape</span> <select id="marker-shape"></select></label>
             <button type="button" id="marker-remove">Remove marker</button>
           </div>
+          <div id="annotation-toolbar" role="toolbar" aria-labelledby="annotation-heading">
+            <span id="annotation-heading">Annotate</span>
+            <div id="annotation-tools" role="group" aria-labelledby="annotation-heading">
+              <button type="button" class="annotation-tool" data-tool="select" aria-pressed="true">Select</button>
+              <button type="button" class="annotation-tool" data-tool="rectangle" aria-pressed="false">Rectangle</button>
+              <button type="button" class="annotation-tool" data-tool="circle" aria-pressed="false">Circle</button>
+              <button type="button" class="annotation-tool" data-tool="polygon" aria-pressed="false">Polygon</button>
+              <button type="button" class="annotation-tool" data-tool="line" aria-pressed="false">Line</button>
+            </div>
+            <label><span id="annotation-colour-text">Colour</span> <select id="annotation-colour"></select></label>
+            <label><span id="annotation-fill-text">Fill</span> <input type="range" id="annotation-fill" min="0" max="100" step="5" /> <output id="annotation-fill-value" for="annotation-fill"></output></label>
+            <label><span id="annotation-outline-text">Outline</span> <select id="annotation-outline"><option value="black"></option><option value="white"></option></select></label>
+            <label><span id="annotation-line-text">Line</span> <select id="annotation-line-style"><option value="solid"></option><option value="dotted"></option><option value="dashed"></option></select></label>
+            <span id="annotation-hint" class="notice" aria-live="polite"></span>
+          </div>
+          <div id="annotation-inspector" class="hidden" role="group" aria-labelledby="annotation-inspector-heading">
+            <span id="annotation-inspector-heading"></span>
+            <label><span id="annotation-label-text">Label</span> <input type="text" id="annotation-label" /></label>
+            <label><span id="annotation-link-text">Footprint of</span> <select id="annotation-link"></select></label>
+            <span id="annotation-area" class="notice"></span>
+            <button type="button" id="annotation-delete">Delete annotation</button>
+          </div>
           <p id="fetch-offline" class="notice hidden">You are offline. Fetching open map data needs a connection; a local OpenStreetMap (.osm) file can be loaded instead.</p>
           <div id="fetch-panel" class="hidden" role="group" aria-labelledby="fetch-heading">
             <div class="fetch-row">
@@ -243,7 +282,10 @@
           <div id="map-stage" class="stage" data-has-background="false">
             <div id="map-content" class="hidden">
               <img id="map-image" alt="" draggable="false" />
+              <svg id="map-annotations" class="annotation-layer" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
             </div>
+            <div id="map-annotation-labels" class="annotation-labels" aria-hidden="true"></div>
+            <div id="map-annotation-handles" class="annotation-handles"></div>
             <div id="marker-layer" class="marker-layer"></div>
             <div id="map-empty">
               <span id="map-empty-hint">Drop a background image, PDF document, or OpenStreetMap (.osm) file here, or use Load background.</span>
@@ -253,6 +295,11 @@
         </section>
         <aside id="map-glance" class="glance-panel" aria-labelledby="map-glance-heading">
           <h2 id="map-glance-heading" class="glance-heading">In view</h2>
+          <details id="glance-columns" class="glance-columns">
+            <summary id="glance-columns-summary">Columns shown</summary>
+            <ul id="glance-columns-list"></ul>
+            <button type="button" id="glance-columns-reset">Use the default columns</button>
+          </details>
           <p id="map-glance-empty" class="notice glance-empty">No markers in view.</p>
           <ul id="map-glance-list" class="glance-list"></ul>
         </aside>
@@ -263,6 +310,8 @@
           <p id="visibility-hint" class="notice">Items switched off here are hidden in the presentation.</p>
           <p id="visibility-empty" class="notice">No markers placed. Place markers in the Map segment.</p>
           <ul id="visibility-list"></ul>
+          <h3 id="annotation-visibility-heading" class="hidden">Annotations</h3>
+          <ul id="annotation-visibility-list"></ul>
         </aside>
         <section id="presentation-area" aria-labelledby="presentation-heading">
           <h2 id="presentation-heading">Presentation</h2>
@@ -292,7 +341,9 @@
           <div id="presentation-stage" class="stage" data-has-background="false">
             <div id="presentation-content" class="hidden">
               <img id="presentation-image" alt="" draggable="false" />
+              <svg id="presentation-annotations" class="annotation-layer" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
             </div>
+            <div id="presentation-annotation-labels" class="annotation-labels" aria-hidden="true"></div>
             <div id="presentation-marker-layer" class="marker-layer"></div>
             <div id="presentation-card" class="presentation-card" role="dialog" data-state="closed" aria-hidden="true" tabindex="-1" inert></div>
             <div id="presentation-empty" class="stage-empty">

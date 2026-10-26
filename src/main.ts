@@ -10,13 +10,13 @@ import { strings, type Lang, type Strings } from './i18n';
 import { loadPreferences, savePreferences, type Preferences, type ThemeChoice } from './preferences';
 import { MapView } from './mapview';
 import { isPdfFile, openPdf, type PdfDocument } from './pdfbackground';
-import { isOsmFile, MAX_OSM_BYTES, OsmError, parseOsm, planRender, type OsmBounds } from './osm';
+import { isOsmFile, MAX_OSM_BYTES, OsmError, parseOsm, planRender, type MercatorProjection, type OsmBounds } from './osm';
 import { renderPlanToDataUrl } from './osmrender';
 import { fetchableBounds, FetchError, fetchMapData, isOnline, parseBounds, searchPlace, type BoundsField, type FetchErrorCode, type PlaceResult } from './openmap';
 import { MarkerLayer } from './markerlayer';
-import { colourName, renderLegend, shapeName, type LegendAreaGroup } from './legend';
+import { colourName, renderLegend, shapeName, type ColourLabels, type LegendGroup } from './legend';
 import { addComment, commentsOf, formatCommentDate, removeComment, restoreComments, type CommentStore } from './comments';
-import { renderDetails, type DetailField, type DetailLabels, type DetailModel } from './details';
+import { renderCard as renderCardContent, renderDetails, type DetailField, type DetailLabels, type DetailModel } from './details';
 import { drawSymbol, isSymbol, SYMBOLS, symbolClasses, type MarkerSymbol } from './symbols';
 import { markersInView } from './glance';
 import { DEFAULT_SHAPE, placedMarkers, placeMarker, pruneMarkers, removeMarker, type MarkerPositions, type MarkerShapes, type PlacedMarker } from './markers';
@@ -26,8 +26,10 @@ import { type Problem, parseWorkState, rowNumbers, serialiseWorkState, SUGGESTED
 import { ExportError, parseExport, serialiseExport, SUGGESTED_EXPORT_NAME, type ExportData } from './exportfile';
 import { embedDataIsland, readDataIsland } from './singlefile';
 import { compareItems, type CompareItem, type Comparison } from './reconcile';
-import { areaGroups, groupedLabels } from './grouping';
+import { areaGroups, programLabels } from './grouping';
 import { DEMO_MAP_TEXT, demoScenario, demoWorkbook } from './demo';
+import { DEFAULT_STYLE, formatArea, newAnnotationId, LINE_STYLES, OUTLINES, trueArea, type Annotation, type AnnotationKind, type AnnotationStyle, type LineStyle, type Outline } from './annotations';
+import { AnnotationLayer, DrawingTools, type DrawingTool } from './annotationlayer';
 
 const DEFAULT_COLOUR: RowColour = 'green';
 
@@ -39,6 +41,23 @@ interface AppState {
   manualRows: Set<RowData>;
   // The user's area vocabulary (FR-32): empty until the user fills it.
   areaValues: string[];
+  // The user's program vocabulary (FR-43).
+  programValues: string[];
+  // The user's names for the four colours (FR-45); a missing or empty name
+  // shows the colour's own name.
+  colourLabels: Partial<Record<RowColour, string>>;
+  // The columns the at-a-glance entries show (FR-46), or null for the
+  // defaults: the area, start, and end columns.
+  glanceColumns: string[] | null;
+  // The annotation layer (FR-47): the annotations in drawing order, and the
+  // style given to new ones.
+  annotations: Annotation[];
+  annotationStyle: AnnotationStyle;
+  selectedAnnotation: string | null;
+  // Linkage (FR-48): the item whose footprint an annotation is; the free
+  // annotations switched off for the presentation.
+  annotationLinks: Map<string, RowData>;
+  hiddenAnnotations: Set<string>;
   // The user's status vocabulary (FR-33): empty until the user fills it.
   statuses: StatusEntry[];
   // FR-34: assign marker symbols from status; off by default.
@@ -82,6 +101,8 @@ interface AppState {
   // The numbers shown in the exported viewer, when they differ from the
   // numbers (the grouped numbering, FR-17).
   viewerLabels: Map<RowData, string> | null;
+  // The program groups of an exported file (FR-40), in the viewer only.
+  viewerProgramGroups: LegendGroup[] | null;
   // The numbering mode (FR-3, FR-17): global by default, or grouped by area.
   numbering: 'global' | 'grouped';
   // The list view (FR-17): flat, or grouped by area in collapsible sections;
@@ -96,6 +117,14 @@ const state: AppState = {
   manualColumns: new Map(),
   manualRows: new Set(),
   areaValues: [],
+  programValues: [],
+  colourLabels: {},
+  glanceColumns: null,
+  annotations: [],
+  annotationStyle: { ...DEFAULT_STYLE },
+  selectedAnnotation: null,
+  annotationLinks: new Map(),
+  hiddenAnnotations: new Set(),
   statuses: [],
   symbolsFromStatus: false,
   presets: loadStoredPresets(),
@@ -123,6 +152,7 @@ const state: AppState = {
   viewOnly: false,
   numbers: null,
   viewerLabels: null,
+  viewerProgramGroups: null,
   numbering: 'global',
   listView: 'flat',
   collapsedAreas: new Set(),
@@ -181,6 +211,12 @@ function renderStaticText(): void {
   el<HTMLInputElement>('area-new').placeholder = t.areaNew;
   el('area-add').textContent = t.vocabAdd;
   el('area-collect').textContent = t.areaCollect;
+  el('program-panel-summary').textContent = t.programPanel;
+  el('program-panel-hint').textContent = t.programPanelHint;
+  el('program-new').setAttribute('aria-label', t.programNew);
+  el<HTMLInputElement>('program-new').placeholder = t.programNew;
+  el('program-add').textContent = t.vocabAdd;
+  el('program-collect').textContent = t.areaCollect;
   el('status-panel-summary').textContent = t.statusPanel;
   el('status-panel-hint').textContent = t.statusPanelHint;
   el('status-new').setAttribute('aria-label', t.statusNew);
@@ -375,6 +411,31 @@ export async function loadDemo(): Promise<boolean> {
       if (item.symbol) state.shapes.set(row, item.symbol);
     }
   }
+  // The demo's own colour labels, at-a-glance columns, and annotations
+  // (FR-41 as amended) replace any earlier ones.
+  state.colourLabels = { ...scenario.colourLabels };
+  state.glanceColumns = [...scenario.glanceColumns];
+  state.annotations = [];
+  state.annotationLinks = new Map();
+  state.hiddenAnnotations = new Set();
+  state.selectedAnnotation = null;
+  if (outcome === 'ok' && bg) {
+    for (const a of scenario.annotations) {
+      const annotation: Annotation = {
+        id: newAnnotationId(),
+        kind: a.kind,
+        points: a.points.map(([x, y]) => ({ x: x * bg.width, y: y * bg.height })),
+        colour: a.colour,
+        fillOpacity: a.fillOpacity,
+        outline: a.outline,
+        lineStyle: a.lineStyle,
+        label: a.label,
+      };
+      state.annotations.push(annotation);
+      const row = a.link === null ? undefined : rowOf(a.link);
+      if (row) state.annotationLinks.set(annotation.id, row);
+    }
+  }
   demoLoaded = true;
   markDirty();
   workMessage = 'demo-loaded';
@@ -467,11 +528,12 @@ function renameManualColumn(key: string, label: string): void {
 // the area column are choose-from comboboxes and those of the status column
 // choose from the status list (FR-32, FR-33).
 function setCellValue(row: RowData, key: string, value: string): void {
-  if (key === state.roles.area) value = value.trim();
+  if (key === state.roles.area || key === state.roles.program) value = value.trim();
   if (row.values[key] === value) return;
   noteEdit(row, key, value);
   // A new value typed into the area column joins the area vocabulary.
   if (key === state.roles.area) state.areaValues = addValue(state.areaValues, value);
+  if (key === state.roles.program) state.programValues = addValue(state.programValues, value);
   row.values[key] = value;
   markDirty();
   renderList();
@@ -481,7 +543,7 @@ function setCellValue(row: RowData, key: string, value: string): void {
 // assigned (FR-17); without the area role the global numbering applies and
 // the list says why.
 function groupedNumbering(): boolean {
-  return state.numbering === 'grouped' && state.roles.area !== undefined;
+  return state.numbering === 'grouped' && state.roles.program !== undefined;
 }
 
 // The numbered rows (FR-3, FR-17): the global sequential numbers, shown as
@@ -498,7 +560,7 @@ function numbered(): NumberedRow[] {
   }
   const rows = numberRows(state.rows);
   if (!groupedNumbering()) return rows;
-  const labels = groupedLabels(state.rows, state.roles.area!, state.areaValues);
+  const labels = programLabels(state.rows, state.roles.program!, state.programValues);
   return rows.map((n) => ({ ...n, label: labels.get(n.row) ?? n.label }));
 }
 
@@ -609,6 +671,8 @@ function renderList(): void {
     end: t.roleEnd,
     area: t.roleArea,
     status: t.roleStatus,
+    program: t.roleProgram,
+    note: t.roleNote,
   };
   columns.forEach((header) => {
     const th = document.createElement('th');
@@ -740,7 +804,8 @@ function renderList(): void {
     const colourTd = document.createElement('td');
     const chip = document.createElement('span');
     chip.className = `colour-chip ${row.colour}`;
-    chip.title = row.colour;
+    chip.title = colourLabel(row.colour);
+    chip.setAttribute('aria-label', `${t.colour}: ${colourLabel(row.colour)}`);
     chip.dataset.rowId = id;
     chip.addEventListener('click', () => {
       const idx = COLOURS.indexOf(row.colour);
@@ -775,7 +840,11 @@ function renderList(): void {
   renderFilterColumnSelect();
   renderColumnVisibility();
   renderPresets();
-  renderAreaPanel();
+  for (const kind of VALUE_VOCABULARIES) renderVocabPanel(kind);
+  renderColourPanel();
+  renderGlanceColumnPicker();
+  renderAnnotationToolbar();
+  renderAnnotationInspector();
   renderStatusPanel();
   renderLegends();
   renderNumbering();
@@ -868,6 +937,23 @@ export function captureWorkState(): WorkState {
     excluded: [...state.excluded].filter((row) => retained.has(row)).map((row) => index.get(row)!).sort((a, b) => a - b),
     presets: state.presets.map(clonePreset),
     areaValues: [...state.areaValues],
+    programValues: [...state.programValues],
+    colourLabels: { ...state.colourLabels },
+    glanceColumns: state.glanceColumns ? [...state.glanceColumns] : null,
+    annotations: state.annotations.map((a) => {
+      const linked = state.annotationLinks.get(a.id);
+      return {
+        kind: a.kind,
+        points: a.points.map((p) => ({ ...p })),
+        colour: a.colour,
+        fillOpacity: a.fillOpacity,
+        outline: a.outline,
+        lineStyle: a.lineStyle,
+        label: a.label,
+        link: linked && index.has(linked) ? index.get(linked)! : null,
+        hidden: state.hiddenAnnotations.has(a.id),
+      };
+    }),
     statuses: state.statuses.map((x) => ({ ...x })),
     symbolsFromStatus: state.symbolsFromStatus,
     segment: state.segment,
@@ -912,6 +998,11 @@ export function captureExport(): { data: Omit<ExportData, 'exportedAt'>; summary
     markers: ws.markers.filter((m) => newIndex.has(m.row)).map((m) => ({ ...m, row: newIndex.get(m.row)! })),
     excluded: [],
     presets: [],
+    // A linked annotation goes with its item (FR-48); a free annotation
+    // switched off for the presentation is not exported.
+    annotations: ws.annotations
+      .filter((a) => (a.link !== null ? newIndex.has(a.link) : !a.hidden))
+      .map((a) => ({ ...a, link: a.link !== null ? newIndex.get(a.link)! : null, hidden: false })),
     segment: 'presentation',
     viewport: { ...(presentationView?.viewport ?? ws.viewport) },
     sort: { header: null, direction: 'asc' },
@@ -937,7 +1028,7 @@ export function captureExport(): { data: Omit<ExportData, 'exportedAt'>; summary
       workState,
       numbers: shown.map((i) => numbersAll[i]!),
       // In the grouped numbering, the numbers as shown (FR-17).
-      ...(groupedNumbering() ? { labels: labelsOf(shown) } : {}),
+      ...(groupedNumbering() ? { labels: labelsOf(shown), programGroups: shownProgramGroups() } : {}),
     },
     summary,
   };
@@ -1175,7 +1266,7 @@ async function applyWorkState(ws: WorkState): Promise<boolean> {
   await closePdf();
   showMapError(null);
   if (ws.background) {
-    const ok = await mapView.setBackgroundSource(ws.background.src, ws.viewport);
+    const ok = await mapView.setBackgroundSource(ws.background.src, ws.viewport, ws.background.projection);
     if (!ok) {
       showMapError(null);
       return false;
@@ -1205,6 +1296,19 @@ async function applyWorkState(ws: WorkState): Promise<boolean> {
   state.presentationSelected = null;
   state.shapes = new Map(ws.markers.filter((m) => m.symbol !== null).map((m) => [state.ingested[m.row], m.symbol!]));
   state.areaValues = [...ws.areaValues];
+  state.programValues = [...ws.programValues];
+  state.colourLabels = { ...ws.colourLabels };
+  state.glanceColumns = ws.glanceColumns ? [...ws.glanceColumns] : null;
+  state.annotations = [];
+  state.annotationLinks = new Map();
+  state.hiddenAnnotations = new Set();
+  state.selectedAnnotation = null;
+  for (const a of ws.annotations) {
+    const annotation: Annotation = { id: newAnnotationId(), kind: a.kind, points: a.points.map((p) => ({ ...p })), colour: a.colour, fillOpacity: a.fillOpacity, outline: a.outline, lineStyle: a.lineStyle, label: a.label };
+    state.annotations.push(annotation);
+    if (a.link !== null) state.annotationLinks.set(annotation.id, state.ingested[a.link]);
+    else if (a.hidden) state.hiddenAnnotations.add(annotation.id);
+  }
   state.statuses = ws.statuses.map((x) => ({ ...x }));
   state.symbolsFromStatus = ws.symbolsFromStatus;
   // Presets in the file are merged into the saved presets; a preset in the
@@ -1487,6 +1591,8 @@ function adoptPositions(): void {
 }
 
 export function setSegment(segment: Segment): void {
+  // Drawing happens in the Map segment only (FR-47).
+  if (segment !== 'map' && drawingTools && drawingTools.tool !== 'select') setDrawingTool('select');
   state.segment = segment;
   showSegment(document, segment);
   if (segment === 'map') mapView?.shown();
@@ -1543,6 +1649,7 @@ function applyPreset(preset: ColumnPreset, kind: 'auto' | 'applied'): void {
   state.hiddenHeaders = new Set(config.hidden);
   state.roles = config.roles;
   if (preset.areas) state.areaValues = [...preset.areas];
+  if (preset.programs) state.programValues = [...preset.programs];
   if (preset.statuses) state.statuses = preset.statuses.map((s) => ({ ...s }));
   state.activePreset = preset.name;
   presetMessage = { kind, name: preset.name };
@@ -1568,6 +1675,7 @@ function saveCurrentPreset(): void {
     hidden: state.headers.filter((h) => state.hiddenHeaders.has(h)),
     roles: { ...state.roles },
     areas: [...state.areaValues],
+    programs: [...state.programValues],
     statuses: state.statuses.map((s) => ({ ...s })),
   });
   storePresets(state.presets);
@@ -1651,11 +1759,12 @@ function valueInput(row: RowData, key: string, number: string): HTMLInputElement
   input.dataset.header = key;
   input.setAttribute('aria-label', `${labelOf(key)}, ${t.numberColumn} ${number}`);
   input.addEventListener('change', () => setCellValue(row, key, input.value));
-  if (key === state.roles.area) {
-    input.setAttribute('list', 'area-values');
+  const vocab = vocabularyOfColumn(key);
+  if (vocab !== null) {
+    input.setAttribute('list', `${vocab}-values`);
     input.classList.add('combobox');
     const value = (row.values[key] ?? '').trim();
-    if (value !== '' && !hasValue(state.areaValues, value)) {
+    if (value !== '' && !hasValue(vocabValues(vocab), value)) {
       input.classList.add('not-in-vocabulary');
       input.title = t.vocabNotInList;
     }
@@ -1729,22 +1838,72 @@ function setSymbolsFromStatus(on: boolean): void {
 
 function renderLegends(): void {
   const t = strings(state.prefs.lang);
-  const groups = shownAreaGroups();
-  renderLegend(el('map-legend'), t, state.statuses, groups);
-  renderLegend(el('presentation-legend'), t, state.statuses, groups);
+  const groups = shownProgramGroups();
+  const labels = colourLabels();
+  renderLegend(el('map-legend'), t, state.statuses, groups, labels);
+  renderLegend(el('presentation-legend'), t, state.statuses, groups, labels);
 }
 
-// The groups behind the grouped numbers shown (FR-17), read from the labels
+// Editable colour labels (FR-45): the user's name for a colour, or the
+// colour's own name in the interface language.
+function colourLabel(colour: RowColour): string {
+  const label = (state.colourLabels[colour] ?? '').trim();
+  return label !== '' ? label : colourName(strings(state.prefs.lang), colour);
+}
+
+function colourLabels(): ColourLabels {
+  return { green: colourLabel('green'), blue: colourLabel('blue'), yellow: colourLabel('yellow'), red: colourLabel('red') };
+}
+
+function setColourLabel(colour: RowColour, label: string): void {
+  const value = label.trim();
+  if ((state.colourLabels[colour] ?? '') === value) return;
+  if (value === '') delete state.colourLabels[colour];
+  else state.colourLabels[colour] = value;
+  markDirty();
+  renderList();
+}
+
+function renderColourPanel(): void {
+  const t = strings(state.prefs.lang);
+  el('colour-panel-summary').textContent = t.colourPanel;
+  el('colour-panel-hint').textContent = t.colourPanelHint;
+  const list = el('colour-label-list');
+  const focused = document.activeElement instanceof HTMLInputElement && list.contains(document.activeElement) ? document.activeElement.dataset.colour : undefined;
+  list.innerHTML = '';
+  for (const colour of COLOURS) {
+    const li = document.createElement('li');
+    li.className = 'vocab-item colour-label-item';
+    li.dataset.colour = colour;
+    const swatch = document.createElement('span');
+    swatch.className = `legend-swatch marker-${colour} marker-shape-circle`;
+    swatch.setAttribute('aria-hidden', 'true');
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'vocab-name colour-label-input';
+    input.dataset.colour = colour;
+    input.value = state.colourLabels[colour] ?? '';
+    input.placeholder = colourName(t, colour);
+    input.setAttribute('aria-label', fill(t.colourLabelFor, { colour: colourName(t, colour) }));
+    input.addEventListener('change', () => setColourLabel(colour, input.value));
+    li.append(swatch, input);
+    list.appendChild(li);
+  }
+  if (focused) list.querySelector<HTMLInputElement>(`input[data-colour="${focused}"]`)?.focus();
+}
+
+// The programs behind the grouped numbers shown (FR-17), read from the labels
 // themselves, so that the exported viewer shows them as well.
-function shownAreaGroups(): LegendAreaGroup[] {
-  const areaKey = state.roles.area;
-  if (areaKey === undefined) return [];
+function shownProgramGroups(): LegendGroup[] {
+  if (state.viewerProgramGroups) return state.viewerProgramGroups.map((g) => ({ ...g }));
+  const programKey = state.roles.program;
+  if (programKey === undefined) return [];
   const groups = new Map<number, string>();
   for (const { row, label } of numbered()) {
     const match = /^(\d+)\.\d+$/.exec(label);
-    if (match && !groups.has(Number(match[1]))) groups.set(Number(match[1]), (row.values[areaKey] ?? '').trim());
+    if (match && !groups.has(Number(match[1]))) groups.set(Number(match[1]), (row.values[programKey] ?? '').trim());
   }
-  return [...groups.entries()].sort((a, b) => a[0] - b[0]).map(([index, area]) => ({ index, area }));
+  return [...groups.entries()].sort((a, b) => a[0] - b[0]).map(([index, name]) => ({ index, name }));
 }
 
 function setNumbering(mode: 'global' | 'grouped'): void {
@@ -1764,13 +1923,16 @@ function renderNumbering(): void {
   view.options[0].textContent = t.listViewFlat;
   view.options[1].textContent = t.listViewGrouped;
   view.value = state.listView;
-  const needsArea = (state.numbering === 'grouped' || state.listView === 'grouped') && state.roles.area === undefined;
-  const message = state.numbering === 'grouped' && state.listView === 'grouped' ? t.groupingNeedsArea : state.numbering === 'grouped' ? t.numberingNeedsArea : t.listViewNeedsArea;
-  el('numbering-notice').textContent = needsArea ? message : '';
-  el('numbering-notice').classList.toggle('hidden', !needsArea);
-  const groups = groupedNumbering() ? shownAreaGroups() : [];
+  // The grouped numbering needs the program role; the grouped view, the area
+  // role (FR-17).
+  const notices: string[] = [];
+  if (state.numbering === 'grouped' && state.roles.program === undefined) notices.push(t.numberingNeedsProgram);
+  if (state.listView === 'grouped' && state.roles.area === undefined) notices.push(t.listViewNeedsArea);
+  el('numbering-notice').textContent = notices.join(' ');
+  el('numbering-notice').classList.toggle('hidden', notices.length === 0);
+  const groups = groupedNumbering() ? shownProgramGroups() : [];
   el('numbering-groups').textContent =
-    groups.length > 0 ? `${t.numberingGroups} ${groups.map((g) => `${g.index}. ${g.area === '' ? t.numberingNoArea : g.area}`).join(' · ')}` : '';
+    groups.length > 0 ? `${t.numberingGroups} ${groups.map((g) => `${g.index}. ${g.name}`).join(' · ')}; ${t.numberingUnprogrammed}` : '';
   el('numbering-groups').classList.toggle('hidden', groups.length === 0);
 }
 
@@ -1860,43 +2022,66 @@ function renderStatusPanel(): void {
 }
 
 // The area vocabulary panel (FR-32).
-let areaMessage = '';
+// The user-managed value vocabularies of the area (FR-32) and program
+// (FR-43) columns: one implementation for both, so that they cannot drift.
+type ValueVocabulary = 'area' | 'program';
+const VALUE_VOCABULARIES: ValueVocabulary[] = ['area', 'program'];
+const vocabMessages: Record<ValueVocabulary, string> = { area: '', program: '' };
 
-function setAreaValues(next: string[], message = ''): void {
-  state.areaValues = next;
-  areaMessage = message;
+function vocabValues(kind: ValueVocabulary): string[] {
+  return kind === 'area' ? state.areaValues : state.programValues;
+}
+
+function vocabularyOfColumn(key: string): ValueVocabulary | null {
+  return VALUE_VOCABULARIES.find((kind) => state.roles[kind] === key) ?? null;
+}
+
+function setVocabValues(kind: ValueVocabulary, next: string[], message = ''): void {
+  if (kind === 'area') state.areaValues = next;
+  else state.programValues = next;
+  vocabMessages[kind] = message;
   markDirty();
   renderList();
 }
 
-function renameAreaValue(from: string, to: string): void {
-  const { list, renamed } = renameValue(state.areaValues, from, to);
+function renameVocabValue(kind: ValueVocabulary, from: string, to: string): void {
+  const before = vocabValues(kind);
+  const { list, renamed } = renameValue(before, from, to);
   if (!renamed) {
     renderList();
     return;
   }
   // Cells holding the old value follow the rename.
-  const key = state.roles.area;
+  const key = state.roles[kind];
   if (key !== undefined) {
-    for (const row of state.ingested) if ((row.values[key] ?? '').trim() === from) row.values[key] = list[state.areaValues.indexOf(from)];
+    for (const row of state.ingested) if ((row.values[key] ?? '').trim() === from) row.values[key] = list[before.indexOf(from)];
   }
-  setAreaValues(list);
+  setVocabValues(kind, list);
 }
 
-function collectAreaValues(): void {
+function collectVocabValues(kind: ValueVocabulary): void {
   const t = strings(state.prefs.lang);
-  const key = state.roles.area;
+  const key = state.roles[kind];
   if (key === undefined) return;
-  const before = state.areaValues.length;
-  const next = mergeValues(state.areaValues, collectValues(state.rows, key));
-  setAreaValues(next, t.vocabCollected.replace('{count}', String(next.length - before)));
+  const before = vocabValues(kind).length;
+  const next = mergeValues(vocabValues(kind), collectValues(state.rows, key));
+  setVocabValues(kind, next, t.vocabCollected.replace('{count}', String(next.length - before)));
 }
 
-function renderAreaPanel(): void {
+function addVocabValue(kind: ValueVocabulary): void {
+  const input = el<HTMLInputElement>(`${kind}-new`);
+  const before = vocabValues(kind);
+  const next = addValue(before, input.value);
+  input.value = '';
+  if (next !== before) setVocabValues(kind, next);
+}
+
+function renderVocabPanel(kind: ValueVocabulary): void {
   const t = strings(state.prefs.lang);
-  const list = el('area-list');
+  const values = vocabValues(kind);
+  const list = el(`${kind}-list`);
   list.innerHTML = '';
-  for (const value of state.areaValues) {
+  for (const value of values) {
     const li = document.createElement('li');
     li.className = 'vocab-item';
     const name = document.createElement('input');
@@ -1904,25 +2089,25 @@ function renderAreaPanel(): void {
     name.className = 'vocab-name';
     name.value = value;
     name.setAttribute('aria-label', `${t.vocabRename}: ${value}`);
-    name.addEventListener('change', () => renameAreaValue(value, name.value));
+    name.addEventListener('change', () => renameVocabValue(kind, value, name.value));
     const remove = document.createElement('button');
     remove.type = 'button';
     remove.className = 'vocab-remove';
     remove.textContent = t.vocabRemove;
     remove.setAttribute('aria-label', `${t.vocabRemove}: ${value}`);
-    remove.addEventListener('click', () => setAreaValues(removeValue(state.areaValues, value)));
+    remove.addEventListener('click', () => setVocabValues(kind, removeValue(vocabValues(kind), value)));
     li.append(name, remove);
     list.appendChild(li);
   }
-  const datalist = el('area-values');
+  const datalist = el(`${kind}-values`);
   datalist.innerHTML = '';
-  for (const value of state.areaValues) {
+  for (const value of values) {
     const opt = document.createElement('option');
     opt.value = value;
     datalist.appendChild(opt);
   }
-  el<HTMLButtonElement>('area-collect').disabled = state.roles.area === undefined;
-  el('area-status').textContent = state.areaValues.length === 0 && !areaMessage ? t.vocabEmpty : areaMessage;
+  el<HTMLButtonElement>(`${kind}-collect`).disabled = state.roles[kind] === undefined;
+  el(`${kind}-status`).textContent = values.length === 0 && !vocabMessages[kind] ? t.vocabEmpty : vocabMessages[kind];
 }
 
 function setColumnRole(header: string, role: Role | null): void {
@@ -1979,6 +2164,7 @@ function detailLabels(t: Strings): DetailLabels {
     close: t.close,
     empty: t.detailsEmpty,
     removeComment: t.commentRemove,
+    footprints: t.detailsFootprints,
   };
 }
 
@@ -1992,18 +2178,35 @@ function detailModel(row: RowData, t: Strings): DetailModel {
     value: row.values[key] ?? '',
     kind: key === state.roles.status ? 'status' : key === state.roles.area ? 'area' : 'text',
   }));
+  const name = itemLabel(row, number);
   return {
     rowId: rowId(row),
     number,
-    name: itemLabel(row, number),
+    name,
     colour: row.colour,
-    colourName: colourName(t, row.colour),
+    colourName: colourLabel(row.colour),
     symbol,
     symbolName: shapeName(t, symbol),
     fields,
     comments: commentsOf(state.comments, row).map((c) => ({ id: c.id, date: c.date, dateText: formatCommentDate(c.date), text: c.text })),
+    note: state.roles.note === undefined ? '' : (row.values[state.roles.note] ?? ''),
+    cardFields: CARD_ROLES.map((role) => state.roles[role])
+      .filter((key): key is string => key !== undefined)
+      .map((key) => ({ key, label: labelOf(key), value: (row.values[key] ?? '').trim() }))
+      // Nothing repeats the header: a field holding the name shown there
+      // (for example the identifier, when no name is given) is left out.
+      .filter((field) => field.value !== '' && field.value !== name),
+    footprints: state.annotations
+      .filter((a) => linkedRow(a) === row)
+      .map((a) => {
+        const squareMetres = trueArea(a, mapView?.background?.projection);
+        return { id: a.id, name: annotationName(a, t), area: squareMetres === null ? null : formatArea(squareMetres, areaLocale()) };
+      }),
   };
 }
+
+// The structured fields of the presentation card (FR-37), in this order.
+const CARD_ROLES = ['identifier', 'area', 'status', 'program', 'start', 'end'] as const;
 
 function renderDetailsPanel(): void {
   const panel = el('details-panel');
@@ -2030,6 +2233,7 @@ function renderDetailsPanel(): void {
     model.fields.map((f) => [f.key, f.kind]),
     model.comments.map((c) => c.id),
     state.statuses,
+    model.footprints,
   ]);
   const target = sameRow && panel.dataset.structure === structure ? document.createElement('div') : panel;
   if (target !== panel) target.id = panel.id;
@@ -2205,8 +2409,12 @@ function renderMapItems(): void {
   }
   for (const row of [...state.excluded]) if (!state.rows.includes(row)) state.excluded.delete(row);
   for (const row of [...state.shapes.keys()]) if (!state.rows.includes(row)) state.shapes.delete(row);
+  // A footprint whose item is no longer in the data (a new import) becomes a
+  // free annotation.
+  for (const [id, row] of [...state.annotationLinks]) if (!state.ingested.includes(row)) state.annotationLinks.delete(id);
   const markers = placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered());
   markerLayer?.render(markers, state.selectedMarker);
+  renderAnnotations();
   renderGlance('map', mapView, state.selectedMarker, (id) => selectMarker(id));
   renderPresentation();
   applyHighlight();
@@ -2214,6 +2422,8 @@ function renderMapItems(): void {
   const t = strings(state.prefs.lang);
   const selected = markers.find((m) => rowId(m.row) === state.selectedMarker);
   el('marker-selection').textContent = selected ? `${t.markerSelected}: ${selected.label}` : t.markerNoSelection;
+  // The details panel names the item's footprints (FR-48).
+  if (state.detailsId) renderDetailsPanel();
   el<HTMLButtonElement>('marker-remove').disabled = !selected;
   const shapeSelect = el<HTMLSelectElement>('marker-shape');
   shapeSelect.disabled = !selected;
@@ -2227,6 +2437,323 @@ function renderMapItems(): void {
   }
   for (const opt of shapeSelect.options) opt.textContent = shapeName(t, opt.value as MarkerSymbol);
   shapeSelect.value = selected?.shape ?? 'circle';
+}
+
+// The annotation layer (FR-47): drawn and edited on the Map stage, shown
+// view-only on the Presentation stage.
+let mapAnnotations: AnnotationLayer | null = null;
+let presentationAnnotations: AnnotationLayer | null = null;
+let drawingTools: DrawingTools | null = null;
+let annotationDraft: { draft: Annotation | null; cursor: Point | null } = { draft: null, cursor: null };
+
+// Linkage (FR-48): a linked annotation is its item's footprint and follows
+// the item's visibility (removed from the list or switched off for the
+// presentation, it goes too); a free annotation has its own toggle.
+function linkedRow(a: Annotation): RowData | undefined {
+  return state.annotationLinks.get(a.id);
+}
+
+function annotationShown(a: Annotation): boolean {
+  const row = linkedRow(a);
+  if (row) return state.rows.includes(row) && !state.excluded.has(row);
+  return !state.hiddenAnnotations.has(a.id);
+}
+
+// The footprints of the item selected in a stage highlight with it.
+function footprintsOf(id: string | null): Set<string> {
+  const row = id ? rowById(id) : undefined;
+  return new Set(row ? state.annotations.filter((a) => linkedRow(a) === row).map((a) => a.id) : []);
+}
+
+function renderAnnotations(): void {
+  const mapBg = mapView?.background ?? null;
+  const selected = state.annotations.find((a) => a.id === state.selectedAnnotation) ?? null;
+  // In the Map segment every annotation stays editable; those absent from
+  // the presentation are shown faded, as switched-off markers are.
+  mapAnnotations?.render(state.annotations, mapBg, {
+    draft: annotationDraft.draft,
+    cursor: annotationDraft.cursor,
+    selectedId: state.selectedAnnotation,
+    highlighted: footprintsOf(state.selectedMarker ?? state.detailsId),
+    faded: new Set(state.annotations.filter((a) => !annotationShown(a)).map((a) => a.id)),
+    handlesFor: drawingTools?.tool === 'select' ? selected : null,
+  });
+  renderPresentationAnnotations();
+}
+
+// The presentation stage's annotations, also on its own background and view
+// changes (in the exported viewer the background arrives after the first
+// rendering).
+function renderPresentationAnnotations(): void {
+  presentationAnnotations?.render(
+    state.annotations.filter((a) => annotationShown(a)),
+    presentationView?.background ?? null,
+    { highlighted: footprintsOf(state.presentationSelected) },
+  );
+}
+
+function createAnnotation(annotation: Annotation): void {
+  state.annotations = [...state.annotations, annotation];
+  state.selectedAnnotation = annotation.id;
+  setDrawingTool('select');
+  markDirty();
+  renderMapItems();
+  renderAnnotationInspector();
+}
+
+function replaceAnnotation(annotation: Annotation): void {
+  state.annotations = state.annotations.map((a) => (a.id === annotation.id ? annotation : a));
+}
+
+function selectAnnotation(id: string | null): void {
+  state.selectedAnnotation = id;
+  renderAnnotations();
+  renderAnnotationInspector();
+  renderAnnotationToolbar();
+}
+
+function deleteAnnotation(id: string): void {
+  state.annotations = state.annotations.filter((a) => a.id !== id);
+  state.annotationLinks.delete(id);
+  state.hiddenAnnotations.delete(id);
+  if (state.selectedAnnotation === id) state.selectedAnnotation = null;
+  markDirty();
+  renderMapItems();
+  renderAnnotationInspector();
+}
+
+function updateSelectedAnnotation(change: Partial<Annotation>): void {
+  const a = state.annotations.find((x) => x.id === state.selectedAnnotation);
+  if (!a) return;
+  replaceAnnotation({ ...a, ...change });
+  markDirty();
+  renderMapItems();
+  renderAnnotationInspector();
+}
+
+function setAnnotationLink(id: string, row: RowData | null): void {
+  if (row) {
+    state.annotationLinks.set(id, row);
+    state.hiddenAnnotations.delete(id);
+  } else {
+    state.annotationLinks.delete(id);
+  }
+  markDirty();
+  renderMapItems();
+  renderAnnotationInspector();
+}
+
+function setAnnotationHidden(id: string, hidden: boolean): void {
+  if (hidden) state.hiddenAnnotations.add(id);
+  else state.hiddenAnnotations.delete(id);
+  markDirty();
+  renderMapItems();
+}
+
+function areaLocale(): string {
+  return state.prefs.lang === 'sv' ? 'sv-SE' : 'en-GB';
+}
+
+function kindName(kind: AnnotationKind, t: Strings): string {
+  return { rectangle: t.kindRectangle, circle: t.kindCircle, polygon: t.kindPolygon, line: t.kindLine }[kind];
+}
+
+// The name of an annotation in lists: its label, else its kind and position.
+function annotationName(a: Annotation, t: Strings): string {
+  if (a.label.trim() !== '') return a.label.trim();
+  const sameKind = state.annotations.filter((x) => x.kind === a.kind);
+  return `${kindName(a.kind, t)} ${sameKind.indexOf(a) + 1}`;
+}
+
+// The inspector of the selected annotation (FR-47 to FR-49): its label, the
+// item it is the footprint of, its area where it can be measured honestly,
+// and its deletion.
+function renderAnnotationInspector(): void {
+  const t = strings(state.prefs.lang);
+  const inspector = el('annotation-inspector');
+  const a = state.annotations.find((x) => x.id === state.selectedAnnotation);
+  inspector.classList.toggle('hidden', !a);
+  if (!a) return;
+  inspector.dataset.annotationId = a.id;
+  el('annotation-inspector-heading').textContent = annotationName(a, t);
+  el('annotation-label-text').textContent = t.annotationLabel;
+  const label = el<HTMLInputElement>('annotation-label');
+  if (document.activeElement !== label) label.value = a.label;
+  el('annotation-link-text').textContent = t.annotationLink;
+  const link = el<HTMLSelectElement>('annotation-link');
+  link.innerHTML = '';
+  const none = document.createElement('option');
+  none.value = '';
+  none.textContent = t.annotationNotLinked;
+  link.appendChild(none);
+  for (const { row, label: number } of numbered()) {
+    const opt = document.createElement('option');
+    opt.value = rowId(row);
+    opt.textContent = `${number}. ${itemLabel(row, number)}`;
+    link.appendChild(opt);
+  }
+  const row = linkedRow(a);
+  link.value = row && state.rows.includes(row) ? rowId(row) : '';
+  el('annotation-delete').textContent = t.annotationDelete;
+  const area = el('annotation-area');
+  if (a.kind === 'line') {
+    area.textContent = '';
+  } else {
+    const squareMetres = trueArea(a, mapView?.background?.projection);
+    area.textContent = squareMetres === null ? t.annotationAreaNoScale : fill(t.annotationArea, { area: formatArea(squareMetres, areaLocale()) });
+  }
+}
+
+// The free annotations' toggles beside the presentation stage (FR-48).
+function renderAnnotationVisibility(): void {
+  const t = strings(state.prefs.lang);
+  const list = el('annotation-visibility-list');
+  list.innerHTML = '';
+  const free = state.viewOnly ? [] : state.annotations.filter((a) => !linkedRow(a));
+  for (const a of free) {
+    const li = document.createElement('li');
+    li.className = 'visibility-item';
+    li.dataset.annotationId = a.id;
+    const label = document.createElement('label');
+    label.className = 'visibility-control';
+    const toggle = document.createElement('input');
+    toggle.type = 'checkbox';
+    toggle.className = 'annotation-toggle';
+    toggle.dataset.annotationId = a.id;
+    toggle.checked = !state.hiddenAnnotations.has(a.id);
+    const name = annotationName(a, t);
+    toggle.setAttribute('aria-label', `${t.annotationShown}: ${name}`);
+    toggle.addEventListener('change', () => setAnnotationHidden(a.id, !toggle.checked));
+    const swatch = document.createElement('span');
+    swatch.className = `legend-swatch marker-${a.colour} marker-shape-square`;
+    swatch.setAttribute('aria-hidden', 'true');
+    const text = document.createElement('span');
+    text.className = 'placement-label';
+    text.textContent = name;
+    label.append(toggle, swatch, text);
+    li.appendChild(label);
+    list.appendChild(li);
+  }
+  el('annotation-visibility-heading').textContent = t.annotationVisibility;
+  el('annotation-visibility-heading').classList.toggle('hidden', free.length === 0);
+}
+
+function setDrawingTool(tool: DrawingTool): void {
+  drawingTools?.setTool(tool);
+  annotationDraft = { draft: null, cursor: null };
+  renderAnnotationToolbar();
+  renderAnnotations();
+}
+
+// The style controls set the style of what is drawn next and, while an
+// annotation is selected, its style too.
+function setAnnotationStyle(change: Partial<AnnotationStyle>): void {
+  state.annotationStyle = { ...state.annotationStyle, ...change };
+  if (state.selectedAnnotation) updateSelectedAnnotation(change);
+  renderAnnotationToolbar();
+}
+
+function renderAnnotationToolbar(): void {
+  const t = strings(state.prefs.lang);
+  const has = mapView?.background != null;
+  const tool = drawingTools?.tool ?? 'select';
+  el('annotation-heading').textContent = t.annotationHeading;
+  const toolNames: Record<DrawingTool, string> = {
+    select: t.toolSelect,
+    rectangle: t.toolRectangle,
+    circle: t.toolCircle,
+    polygon: t.toolPolygon,
+    line: t.toolLine,
+  };
+  document.querySelectorAll<HTMLButtonElement>('#annotation-tools .annotation-tool').forEach((button) => {
+    const name = button.dataset.tool as DrawingTool;
+    button.textContent = toolNames[name];
+    button.setAttribute('aria-pressed', name === tool ? 'true' : 'false');
+    button.disabled = !has && name !== 'select';
+  });
+  el('annotation-colour-text').textContent = t.annotationColour;
+  el('annotation-fill-text').textContent = t.annotationFill;
+  el('annotation-outline-text').textContent = t.annotationOutline;
+  el('annotation-line-text').textContent = t.annotationLine;
+  const colour = el<HTMLSelectElement>('annotation-colour');
+  if (colour.options.length !== COLOURS.length) {
+    colour.innerHTML = '';
+    for (const c of COLOURS) {
+      const opt = document.createElement('option');
+      opt.value = c;
+      colour.appendChild(opt);
+    }
+  }
+  for (const opt of colour.options) opt.textContent = colourLabel(opt.value as RowColour);
+  // While an annotation is selected, the controls show its style.
+  const style = state.annotations.find((a) => a.id === state.selectedAnnotation) ?? state.annotationStyle;
+  colour.value = style.colour;
+  const fillInput = el<HTMLInputElement>('annotation-fill');
+  fillInput.value = String(Math.round(style.fillOpacity * 100));
+  fillInput.setAttribute('aria-valuetext', `${fillInput.value} %`);
+  el('annotation-fill-value').textContent = `${fillInput.value} %`;
+  const outline = el<HTMLSelectElement>('annotation-outline');
+  const outlineNames: Record<Outline, string> = { black: t.outlineBlack, white: t.outlineWhite };
+  for (const opt of outline.options) opt.textContent = outlineNames[opt.value as Outline];
+  outline.value = style.outline;
+  const line = el<HTMLSelectElement>('annotation-line-style');
+  const lineNames: Record<LineStyle, string> = { solid: t.lineSolid, dotted: t.lineDotted, dashed: t.lineDashed };
+  for (const opt of line.options) opt.textContent = lineNames[opt.value as LineStyle];
+  line.value = style.lineStyle;
+  const hints: Record<DrawingTool, string> = {
+    select: t.hintSelect,
+    rectangle: t.hintRectangle,
+    circle: t.hintCircle,
+    polygon: t.hintPolygon,
+    line: t.hintLine,
+  };
+  el('annotation-hint').textContent = has ? hints[tool] : t.hintNoBackground;
+}
+
+function wireAnnotationToolbar(): void {
+  document.querySelectorAll<HTMLButtonElement>('#annotation-tools .annotation-tool').forEach((button) => {
+    button.addEventListener('click', () => setDrawingTool(button.dataset.tool as DrawingTool));
+  });
+  el<HTMLSelectElement>('annotation-colour').addEventListener('change', (e) => setAnnotationStyle({ colour: (e.target as HTMLSelectElement).value as RowColour }));
+  el<HTMLInputElement>('annotation-fill').addEventListener('input', (e) => setAnnotationStyle({ fillOpacity: Number((e.target as HTMLInputElement).value) / 100 }));
+  el<HTMLSelectElement>('annotation-outline').addEventListener('change', (e) => {
+    const value = (e.target as HTMLSelectElement).value as Outline;
+    if (OUTLINES.includes(value)) setAnnotationStyle({ outline: value });
+  });
+  el<HTMLSelectElement>('annotation-line-style').addEventListener('change', (e) => {
+    const value = (e.target as HTMLSelectElement).value as LineStyle;
+    if (LINE_STYLES.includes(value)) setAnnotationStyle({ lineStyle: value });
+  });
+  // Enter finishes a polygon or a line being drawn; Escape cancels it.
+  // With an annotation selected (and no text field in use), Delete removes
+  // it and Escape deselects it.
+  window.addEventListener('keydown', (e) => {
+    if (state.segment !== 'map' || !drawingTools) return;
+    if (drawingTools.drawing) {
+      if (e.key === 'Escape') drawingTools.cancel();
+      else if (e.key === 'Enter') drawingTools.finish();
+      return;
+    }
+    const typing = (e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable]');
+    if (!state.selectedAnnotation || typing) return;
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      deleteAnnotation(state.selectedAnnotation);
+    } else if (e.key === 'Escape') {
+      selectAnnotation(null);
+    }
+  });
+  const label = el<HTMLInputElement>('annotation-label');
+  label.addEventListener('input', () => updateSelectedAnnotation({ label: label.value }));
+  el<HTMLSelectElement>('annotation-link').addEventListener('change', (e) => {
+    const id = state.selectedAnnotation;
+    if (!id) return;
+    const value = (e.target as HTMLSelectElement).value;
+    setAnnotationLink(id, value === '' ? null : (rowById(value) ?? null));
+  });
+  el('annotation-delete').addEventListener('click', () => {
+    if (state.selectedAnnotation) deleteAnnotation(state.selectedAnnotation);
+  });
 }
 
 // Presentation stage (FR-27): the same background on its own viewport, with
@@ -2308,6 +2835,7 @@ function renderVisibilityList(): void {
   el('visibility-heading').textContent = state.viewOnly ? t.viewerItems : t.visibilityHeading;
   el('visibility-hint').textContent = state.viewOnly ? t.viewerItemsHint : t.visibilityHint;
   el('visibility-empty').classList.toggle('hidden', entries.length > 0);
+  renderAnnotationVisibility();
   el('visibility-hint').classList.toggle('hidden', entries.length === 0);
 }
 
@@ -2325,6 +2853,162 @@ function applyHighlight(): void {
   document.querySelectorAll<HTMLElement>('.marker[data-row-id], .glance-entry[data-row-id]').forEach((node) => {
     node.classList.toggle('highlighted', hoverId !== null && node.dataset.rowId === hoverId);
   });
+  // A program group shows the highlight of any of its items (FR-44), so that
+  // it is visible while the group is collapsed.
+  document.querySelectorAll<HTMLElement>('.glance-group-toggle[data-row-ids]').forEach((node) => {
+    node.classList.toggle('highlighted', hoverId !== null && node.dataset.rowIds!.split(' ').includes(hoverId));
+  });
+}
+
+// An entry of an at-a-glance panel (FR-28): the marker's badge, the item's
+// name, and the item's area.
+function glanceEntry(marker: PlacedMarker, selectedId: string | null, onSelect: (id: string) => void): HTMLLIElement {
+  const id = rowId(marker.row);
+  const areaKey = state.roles.area;
+  const li = document.createElement('li');
+  const entry = document.createElement('button');
+  entry.type = 'button';
+  entry.className = 'glance-entry';
+  entry.dataset.rowId = id;
+  if (selectedId === id) entry.dataset.selected = 'true';
+  const badge = document.createElement('span');
+  badge.className = `marker-badge marker-${marker.colour} ${symbolClasses(marker.shape)}`;
+  drawSymbol(badge, marker.shape, marker.label);
+  const text = document.createElement('span');
+  text.className = 'glance-text';
+  const name = document.createElement('span');
+  name.className = 'glance-name';
+  name.textContent = itemLabel(marker.row, marker.label);
+  text.appendChild(name);
+  // The chosen columns' values (FR-46), empty ones left out.
+  const values = document.createElement('span');
+  values.className = 'glance-values';
+  for (const key of shownGlanceColumns()) {
+    const value = (marker.row.values[key] ?? '').trim();
+    if (value === '') continue;
+    const valueEl = document.createElement('span');
+    valueEl.className = key === areaKey ? 'glance-value glance-area' : 'glance-value';
+    valueEl.dataset.header = key;
+    valueEl.title = labelOf(key);
+    valueEl.textContent = value;
+    values.appendChild(valueEl);
+  }
+  if (values.childElementCount > 0) {
+    text.appendChild(values);
+    // A narrow panel shortens the values; the full text is in the tooltip.
+    entry.title = [...values.children].map((v) => `${(v as HTMLElement).title}: ${v.textContent}`).join('\n');
+  }
+  entry.append(badge, text);
+  entry.addEventListener('mouseenter', () => setHover(id));
+  entry.addEventListener('mouseleave', () => setHover(null));
+  entry.addEventListener('focus', () => setHover(id));
+  entry.addEventListener('blur', () => setHover(null));
+  entry.addEventListener('click', () => onSelect(id));
+  li.appendChild(entry);
+  return li;
+}
+
+// Configurable at-a-glance columns (FR-46): the user's choice, or by default
+// the columns of the area, start, and end roles; columns that no longer exist
+// drop out. The name column is shown as the entry's name already.
+function defaultGlanceColumns(): string[] {
+  return (['area', 'start', 'end'] as const).map((r) => state.roles[r]).filter((k): k is string => k !== undefined);
+}
+
+function shownGlanceColumns(): string[] {
+  const chosen = state.glanceColumns ?? defaultGlanceColumns();
+  return chosen.filter((key) => state.headers.includes(key) && key !== state.roles.name);
+}
+
+function setGlanceColumn(key: string, shown: boolean): void {
+  const current = shownGlanceColumns();
+  const next = shown ? [...current, key] : current.filter((k) => k !== key);
+  // The chosen columns keep the list's column order.
+  const order = listColumnOrder(state.headers, state.roles);
+  state.glanceColumns = order.filter((k) => next.includes(k));
+  markDirty();
+  renderList();
+}
+
+function renderGlanceColumnPicker(): void {
+  const t = strings(state.prefs.lang);
+  el('glance-columns-summary').textContent = t.glanceColumns;
+  el('glance-columns-reset').textContent = t.glanceColumnsReset;
+  el<HTMLButtonElement>('glance-columns-reset').disabled = state.glanceColumns === null;
+  const list = el('glance-columns-list');
+  list.innerHTML = '';
+  const shown = shownGlanceColumns();
+  const candidates = listColumnOrder(state.headers, state.roles).filter((k) => k !== state.roles.name);
+  for (const key of candidates) {
+    const li = document.createElement('li');
+    const label = document.createElement('label');
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.className = 'glance-column-toggle';
+    box.dataset.header = key;
+    box.checked = shown.includes(key);
+    box.addEventListener('change', () => setGlanceColumn(key, box.checked));
+    const text = document.createElement('span');
+    text.textContent = labelOf(key);
+    label.append(box, text);
+    li.appendChild(label);
+    list.appendChild(li);
+  }
+  if (candidates.length === 0) {
+    const none = document.createElement('li');
+    none.className = 'notice';
+    none.textContent = t.glanceColumnsNone;
+    list.appendChild(none);
+  }
+}
+
+// Program groups at a glance (FR-44): with the program role assigned, the
+// entries of a program nest under one collapsible group, placed where its
+// first entry would be; collapsed, the group shows alone. Entries without a
+// program stay plain. Each panel keeps its own collapsed groups.
+const collapsedPrograms: Record<'map' | 'presentation', Set<string>> = { map: new Set(), presentation: new Set() };
+
+function programGroupItem(
+  prefix: 'map' | 'presentation',
+  program: string,
+  members: PlacedMarker[],
+  selectedId: string | null,
+  onSelect: (id: string) => void,
+): HTMLLIElement {
+  const t = strings(state.prefs.lang);
+  const collapsed = collapsedPrograms[prefix].has(program);
+  const ids = members.map((m) => rowId(m.row));
+  const li = document.createElement('li');
+  li.className = 'glance-group';
+  li.dataset.program = program;
+  const header = document.createElement('button');
+  header.type = 'button';
+  header.className = 'glance-group-toggle';
+  header.dataset.rowIds = ids.join(' ');
+  header.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+  header.setAttribute('aria-label', `${collapsed ? t.glanceGroupExpand : t.glanceGroupCollapse}: ${program}`);
+  if (selectedId !== null && ids.includes(selectedId)) header.dataset.selected = 'true';
+  const name = document.createElement('span');
+  name.className = 'glance-group-name';
+  name.textContent = program;
+  const count = document.createElement('span');
+  count.className = 'glance-group-count';
+  count.textContent = String(members.length);
+  header.append(name, count);
+  header.addEventListener('click', () => {
+    if (collapsedPrograms[prefix].has(program)) collapsedPrograms[prefix].delete(program);
+    else collapsedPrograms[prefix].add(program);
+    renderMapItems();
+    document.querySelector<HTMLElement>(`#${prefix}-glance-list .glance-group[data-program="${program.replace(/["\\]/g, '\\$&')}"] .glance-group-toggle`)?.focus();
+  });
+  li.appendChild(header);
+  if (!collapsed) {
+    const nested = document.createElement('ul');
+    nested.className = 'glance-group-list';
+    for (const marker of members) nested.appendChild(glanceEntry(marker, selectedId, onSelect));
+    li.appendChild(nested);
+  }
+  return li;
 }
 
 function renderGlance(prefix: 'map' | 'presentation', view: MapView | null, selectedId: string | null, onSelect: (id: string) => void): void {
@@ -2333,39 +3017,17 @@ function renderGlance(prefix: 'map' | 'presentation', view: MapView | null, sele
   list.innerHTML = '';
   const candidates = placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered()).filter((m) => !state.excluded.has(m.row));
   const inView = view?.background ? markersInView(candidates, view.viewport, view.stageSize()) : [];
-  const areaKey = state.roles.area;
+  const programKey = state.roles.program;
+  const programOf = (m: PlacedMarker) => (programKey === undefined ? '' : (m.row.values[programKey] ?? '').trim());
+  const placedGroups = new Set<string>();
   for (const marker of inView) {
-    const id = rowId(marker.row);
-    const li = document.createElement('li');
-    const entry = document.createElement('button');
-    entry.type = 'button';
-    entry.className = 'glance-entry';
-    entry.dataset.rowId = id;
-    if (selectedId === id) entry.dataset.selected = 'true';
-    const badge = document.createElement('span');
-    badge.className = `marker-badge marker-${marker.colour} ${symbolClasses(marker.shape)}`;
-    drawSymbol(badge, marker.shape, marker.label);
-    const text = document.createElement('span');
-    text.className = 'glance-text';
-    const name = document.createElement('span');
-    name.className = 'glance-name';
-    name.textContent = itemLabel(marker.row, marker.label);
-    text.appendChild(name);
-    const area = areaKey === undefined ? '' : (marker.row.values[areaKey] ?? '').trim();
-    if (area !== '') {
-      const areaEl = document.createElement('span');
-      areaEl.className = 'glance-area';
-      areaEl.textContent = area;
-      text.appendChild(areaEl);
+    const program = programOf(marker);
+    if (program === '') {
+      list.appendChild(glanceEntry(marker, selectedId, onSelect));
+    } else if (!placedGroups.has(program)) {
+      placedGroups.add(program);
+      list.appendChild(programGroupItem(prefix, program, inView.filter((m) => programOf(m) === program), selectedId, onSelect));
     }
-    entry.append(badge, text);
-    entry.addEventListener('mouseenter', () => setHover(id));
-    entry.addEventListener('mouseleave', () => setHover(null));
-    entry.addEventListener('focus', () => setHover(id));
-    entry.addEventListener('blur', () => setHover(null));
-    entry.addEventListener('click', () => onSelect(id));
-    li.appendChild(entry);
-    list.appendChild(li);
   }
   const heading = el(`${prefix}-glance-heading`);
   heading.textContent = t.glanceHeading;
@@ -2426,7 +3088,7 @@ function renderCard(): void {
   if (signature !== cardSignature || card.dataset.rowId !== model.rowId || card.childElementCount === 0) {
     const refocus = card.contains(document.activeElement);
     cardSignature = signature;
-    renderDetails(card, model, detailLabels(t), { close: closeCard });
+    renderCardContent(card, model, { comments: t.detailsComments, close: t.close, fields: t.cardFields, footprints: t.detailsFootprints }, closeCard);
     if (refocus) card.querySelector<HTMLElement>('.details-close')?.focus({ preventScroll: true });
   }
   // Beside the marker, on the side with more room, and within the stage; an
@@ -2472,9 +3134,20 @@ function renderPresentation(): void {
 function initialisePresentation(): void {
   presentationView = new MapView(el('presentation-stage'), el('presentation-content'), el<HTMLImageElement>('presentation-image'), {
     onError: () => undefined,
-    onBackgroundChanged: () => renderPresentation(),
-    onViewportChanged: () => renderPresentation(),
+    onBackgroundChanged: () => {
+      renderPresentation();
+      renderPresentationAnnotations();
+    },
+    onViewportChanged: () => {
+      renderPresentation();
+      renderPresentationAnnotations();
+    },
   }, { panOverMarkers: true });
+  presentationAnnotations = new AnnotationLayer(
+    el('presentation-annotations') as unknown as SVGSVGElement,
+    el('presentation-annotation-labels'),
+    () => presentationView?.viewport ?? { scale: 1, x: 0, y: 0 },
+  );
   presentationLayer = new MarkerLayer(el('presentation-marker-layer'), {
     editable: false,
     viewport: () => presentationView?.viewport ?? { scale: 1, x: 0, y: 0 },
@@ -2516,6 +3189,7 @@ function initialisePresentation(): void {
 }
 
 function renderMapControls(): void {
+  renderAnnotationToolbar();
   const view = mapView;
   const has = view?.background != null;
   for (const id of ['map-zoom-in', 'map-zoom-out', 'map-fit', 'map-reset']) {
@@ -2602,18 +3276,22 @@ type OsmOutcome = 'ok' | 'malformed' | 'empty' | 'render' | 'decode';
 // failures in the map area; a fetch reports them in its own panel.
 export async function useOsmText(text: string, fetched?: { bounds: OsmBounds; attribution: string }): Promise<OsmOutcome> {
   let src: string;
+  let projection: MercatorProjection | undefined;
   try {
     const data = parseOsm(text);
     // Fetched data carries no bounds element: the requested area is the extent.
     if (fetched) data.bounds = fetched.bounds;
-    src = renderPlanToDataUrl(planRender(data), fetched?.attribution);
+    const plan = planRender(data);
+    projection = plan.projection;
+    src = renderPlanToDataUrl(plan, fetched?.attribution);
   } catch (e) {
     const outcome: OsmOutcome = e instanceof OsmError ? (e.code === 'empty' ? 'empty' : 'malformed') : 'render';
     if (!fetched) showMapError(outcome === 'empty' ? 'osm-empty' : outcome === 'malformed' ? 'osm-malformed' : 'osm-render');
     return outcome;
   }
   await closePdf();
-  return (await mapView?.setBackgroundSource(src)) ? 'ok' : 'decode';
+  // The rendering's projection makes its scale known (FR-49).
+  return (await mapView?.setBackgroundSource(src, undefined, projection)) ? 'ok' : 'decode';
 }
 
 async function loadOsmFile(file: File): Promise<void> {
@@ -2877,7 +3555,34 @@ function initialiseMapView(): void {
       renderMapControls();
       renderMapItems();
     },
+  }, { panFilter: (e) => drawingTools?.allowsPan(e) ?? true });
+  mapAnnotations = new AnnotationLayer(
+    el('map-annotations') as unknown as SVGSVGElement,
+    el('map-annotation-labels'),
+    () => mapView?.viewport ?? { scale: 1, x: 0, y: 0 },
+    el('map-annotation-handles'),
+  );
+  drawingTools = new DrawingTools(el('map-stage'), {
+    viewport: () => mapView?.viewport ?? { scale: 1, x: 0, y: 0 },
+    stagePoint: (x, y) => mapView?.stagePoint(x, y) ?? { x, y },
+    hasBackground: () => mapView?.background != null,
+    style: () => ({ ...state.annotationStyle }),
+    onDraft: (draft, cursor) => {
+      annotationDraft = { draft, cursor };
+      renderAnnotations();
+    },
+    onCreate: createAnnotation,
+    editable: () => state.annotations,
+    selectedId: () => state.selectedAnnotation,
+    onSelect: selectAnnotation,
+    onChange: (annotation, final) => {
+      replaceAnnotation(annotation);
+      if (final) markDirty();
+      renderAnnotations();
+      if (final) renderAnnotationInspector();
+    },
   });
+  wireAnnotationToolbar();
   markerLayer = new MarkerLayer(el('marker-layer'), {
     editable: true,
     isExcluded: (marker) => state.excluded.has(marker.row),
@@ -2955,17 +3660,13 @@ function guardUnsavedWork(e: BeforeUnloadEvent): void {
 function wireEvents(): void {
   window.addEventListener('beforeunload', guardUnsavedWork);
   el('work-save').addEventListener('click', () => void saveWork());
-  const addArea = () => {
-    const input = el<HTMLInputElement>('area-new');
-    const next = addValue(state.areaValues, input.value);
-    input.value = '';
-    if (next !== state.areaValues) setAreaValues(next);
-  };
-  el('area-add').addEventListener('click', addArea);
-  el('area-new').addEventListener('keydown', (e) => {
-    if ((e as KeyboardEvent).key === 'Enter') addArea();
-  });
-  el('area-collect').addEventListener('click', collectAreaValues);
+  for (const kind of VALUE_VOCABULARIES) {
+    el(`${kind}-add`).addEventListener('click', () => addVocabValue(kind));
+    el(`${kind}-new`).addEventListener('keydown', (e) => {
+      if ((e as KeyboardEvent).key === 'Enter') addVocabValue(kind);
+    });
+    el(`${kind}-collect`).addEventListener('click', () => collectVocabValues(kind));
+  }
   const addStatusValue = () => {
     const input = el<HTMLInputElement>('status-new');
     const next = addStatus(state.statuses, input.value, DEFAULT_SHAPE);
@@ -3059,6 +3760,11 @@ function wireEvents(): void {
     renderList();
   });
 
+  el('glance-columns-reset').addEventListener('click', () => {
+    state.glanceColumns = null;
+    markDirty();
+    renderList();
+  });
   el('compare-close').addEventListener('click', closeComparison);
   el('compare-select-all').addEventListener('click', selectAllDiffering);
   el('compare-adopt').addEventListener('click', adoptPositions);
@@ -3103,6 +3809,7 @@ async function startViewer(text: string): Promise<void> {
   state.numbers = new Map(state.ingested.map((row, i) => [row, data.numbers[i]]));
   const labels = data.labels;
   state.viewerLabels = labels ? new Map(state.ingested.map((row, i) => [row, labels[i]])) : null;
+  state.viewerProgramGroups = data.programGroups ?? null;
   workMessage = null;
   const badge = el('viewer-badge');
   badge.dataset.exportedAt = data.exportedAt;

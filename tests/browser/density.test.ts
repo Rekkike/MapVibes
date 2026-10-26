@@ -65,7 +65,7 @@ describe('dense operator surfaces in a real layout (FR-42)', () => {
           background: getComputedStyle(panel).backgroundColor,
         };
       });
-      expect(layout.fields).toBe(7);
+      expect(layout.fields).toBe(8);
       expect(layout.lefts).toBe(2);
       expect(Math.max(...layout.gaps)).toBeLessThanOrEqual(8);
       expect(layout.scrolls).toBe(false);
@@ -87,16 +87,18 @@ describe('dense operator surfaces in a real layout (FR-42)', () => {
       await page.context().close();
     });
 
-    test(`the presentation data card keeps its projection sizes (${theme})`, async () => {
+    test(`the presentation data card keeps its compact scale with a 16 pixel floor (${theme})`, async () => {
       const page = await demoPage(theme);
       await page.click('#tab-presentation');
       await page.locator('#presentation-marker-layer .marker').first().click();
       await expect.poll(() => page.getAttribute('#presentation-card', 'data-state')).toBe('open');
       const sizes = await page.evaluate(() => {
         const card = document.getElementById('presentation-card')!;
-        return [card.querySelector('.details-title')!, card.querySelector('.details-value')!].map((n) => getComputedStyle(n).fontSize);
+        return [...card.querySelectorAll('.details-title, .card-note, .card-label, .card-value, .details-comment-text, .details-comment-date')].map((n) => parseFloat(getComputedStyle(n).fontSize));
       });
-      expect(sizes).toEqual(['28px', '20px']);
+      expect(sizes[0]).toBe(22);
+      expect(sizes.length).toBeGreaterThan(3);
+      expect(Math.min(...sizes)).toBeGreaterThanOrEqual(16);
       await page.context().close();
     });
   }

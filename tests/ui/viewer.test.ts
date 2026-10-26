@@ -137,7 +137,6 @@ describe('exported viewer (FR-38, FR-20)', () => {
     const card = byId('presentation-card');
     expect(card.dataset.state).toBe('open');
     expect(card.querySelector('.details-title')!.textContent).toBe('A-03');
-    expect(card.querySelector('.details-badge')!.textContent).toBe('3');
     expect([...card.querySelectorAll('.details-comment-text')].map((n) => n.textContent)).toEqual(['Seen in the viewer.']);
     expect(card.querySelectorAll('input, select, textarea')).toHaveLength(0);
   });
@@ -147,7 +146,7 @@ describe('exported viewer (FR-38, FR-20)', () => {
     const card = byId('presentation-card');
     expect(card.dataset.state).toBe('open');
     expect(card.querySelector('.details-title')!.textContent).toBe('A-02');
-    expect(card.querySelector('.details-facts dd')!.textContent).toBe('2');
+    expect(card.querySelector('.details-badge')).toBeNull();
     expect(card.style.left).toBe('16px');
     card.querySelector<HTMLButtonElement>('.details-close')!.click();
     expect(card.dataset.state).toBe('closed');
@@ -187,7 +186,7 @@ describe('exported viewer (FR-38, FR-20)', () => {
 
 describe('exported viewer with damaged data', () => {
   test('a damaged island is reported and nothing is shown', async () => {
-    const page = (await exportedPage()).replace('"exportVersion": 1', '"exportVersion": 99');
+    const page = (await exportedPage()).replace('"exportVersion": 2', '"exportVersion": 99');
     await mountViewer(page);
     expect(document.documentElement.dataset.mode).toBe('viewer');
     expect(presentationMarkers()).toHaveLength(0);

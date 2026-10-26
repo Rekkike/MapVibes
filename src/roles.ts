@@ -1,9 +1,9 @@
 // Column roles (FR-1). Roles are optional; each role is assigned to at most
 // one column, identified by its column key.
 
-export type Role = 'identifier' | 'name' | 'start' | 'end' | 'area' | 'status';
+export type Role = 'identifier' | 'name' | 'start' | 'end' | 'area' | 'status' | 'program' | 'note';
 
-export const ROLES: Role[] = ['identifier', 'name', 'start', 'end', 'area', 'status'];
+export const ROLES: Role[] = ['identifier', 'name', 'start', 'end', 'area', 'status', 'program', 'note'];
 
 export type RoleAssignments = Partial<Record<Role, string>>;
 

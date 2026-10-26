@@ -52,7 +52,7 @@ describe('work-state schema version 3 (FR-13, FR-9, FR-24)', () => {
     editCell(1, 'Zone', 'West');
     const text = await save();
     const file = JSON.parse(text);
-    expect(file.schemaVersion).toBe(5);
+    expect(file.schemaVersion).toBe(6);
     expect(file.columns.manual.map((c: { label: string }) => c.label)).toEqual(['Label', 'Zone']);
     expect(file.rows.map((r: { origin: string }) => r.origin)).toEqual(['manual', 'manual']);
 
@@ -105,6 +105,6 @@ describe('work-state schema version 3 (FR-13, FR-9, FR-24)', () => {
     // Only the area column (FR-32) is choose-from; every value is editable (FR-10).
     expect(document.querySelectorAll('#row-table-body .cell-input.combobox')).toHaveLength(5);
     expect(document.querySelectorAll('#row-table-body .cell-input.combobox:not([data-header="Group"])')).toHaveLength(0);
-    expect(JSON.parse(await save()).schemaVersion).toBe(5);
+    expect(JSON.parse(await save()).schemaVersion).toBe(6);
   });
 });

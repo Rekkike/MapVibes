@@ -139,10 +139,10 @@ describe('Open work (FR-13)', () => {
   test('a file with an unknown schema version fails with a clear message and changes nothing', async () => {
     await importExampleWorkbook();
     const confirm = vi.spyOn(window, 'confirm');
-    openWorkFile(textFile('future.json', JSON.stringify({ ...JSON.parse(text), schemaVersion: 6 })));
+    openWorkFile(textFile('future.json', JSON.stringify({ ...JSON.parse(text), schemaVersion: 7 })));
     await flush();
     expect(byId('work-status').textContent).toBe(
-      'The work-state file has schema version 6, which this version of MapVibes cannot read. Nothing was opened.',
+      'The work-state file has schema version 7, which this version of MapVibes cannot read. Nothing was opened.',
     );
     expect(byId('work-status').classList.contains('error')).toBe(true);
     expect(confirm).not.toHaveBeenCalled();

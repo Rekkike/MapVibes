@@ -137,6 +137,23 @@ export interface RenderPlan {
   width: number;
   height: number;
   shapes: PlannedShape[];
+  // The Web Mercator projection of the rendering, so that its scale is known
+  // (FR-49).
+  projection: MercatorProjection;
+}
+
+// A pixel (x, y) of a rendering lies at longitude x / scale + x0 (radians)
+// and at the Mercator ordinate y1 - y / scale.
+export interface MercatorProjection {
+  x0: number;
+  y1: number;
+  scale: number;
+}
+
+export function pixelToLatLon(projection: MercatorProjection, x: number, y: number): { lat: number; lon: number } {
+  const lon = ((x / projection.scale + projection.x0) * 180) / Math.PI;
+  const lat = ((2 * Math.atan(Math.exp(projection.y1 - y / projection.scale)) - Math.PI / 2) * 180) / Math.PI;
+  return { lat, lon };
 }
 
 export const MAX_RENDER_SIDE = 4096;
@@ -191,7 +208,7 @@ export function planRender(data: OsmData, longestSide = PREFERRED_RENDER_SIDE): 
       closed: d.closed,
       points: d.nodes.map((n) => [((n.lon * Math.PI) / 180 - x0) * scale, (y1 - mercatorY(n.lat)) * scale] as [number, number]),
     }));
-  return { width, height, shapes };
+  return { width, height, shapes, projection: { x0, y1, scale } };
 }
 
 // The basic style (FR-31): one fixed palette, like a printed map, so that the

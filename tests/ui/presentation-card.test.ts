@@ -20,8 +20,8 @@ function clickMarker(index: number): void {
 }
 
 function fields(): Array<[string, string]> {
-  const labels = [...card().querySelectorAll('.details-fields dt')].map((n) => n.textContent ?? '');
-  const values = [...card().querySelectorAll('.details-fields dd')].map((n) => n.textContent ?? '');
+  const labels = [...card().querySelectorAll('.card-fields dt')].map((n) => n.textContent ?? '');
+  const values = [...card().querySelectorAll('.card-fields dd')].map((n) => n.textContent ?? '');
   return labels.map((l, i) => [l, values[i]]);
 }
 
@@ -47,6 +47,9 @@ describe('presentation data card (FR-35)', () => {
     ]);
     byId('tab-information').click();
     setRole('Group', 'area');
+    setRole('Start', 'start');
+    setRole('End', 'end');
+    setRole('Note', 'note');
     // A comment on the third item, added in the details panel.
     document.querySelectorAll<HTMLElement>('#row-table-body tr')[2].querySelector<HTMLElement>('.row-details')!.click();
     const input = byId('details-panel').querySelector<HTMLTextAreaElement>('.details-comment-input')!;
@@ -65,7 +68,7 @@ describe('presentation data card (FR-35)', () => {
     expect(card().hasAttribute('inert')).toBe(true);
   });
 
-  test('clicking a marker opens a card with the same details as the details panel', () => {
+  test('clicking a marker opens the content-first card: the note and the comments, then the structured fields', () => {
     clickMarker(1);
     expect(isOpen()).toBe(true);
     expect(card().getAttribute('aria-hidden')).toBe('false');
@@ -73,16 +76,13 @@ describe('presentation data card (FR-35)', () => {
     expect(card().getAttribute('role')).toBe('dialog');
     expect(card().getAttribute('aria-labelledby')).toBe('presentation-card-title');
     expect(card().querySelector('.details-title')!.textContent).toBe('A-03');
-    expect(card().querySelector('.details-badge')!.textContent).toBe('3');
-    expect([...card().querySelectorAll('.details-facts dd')].map((n) => n.textContent)).toEqual(['3', 'Green', 'Circle']);
+    expect(card().querySelector('.card-note')!.textContent).toBe('Beta item');
+    // The empty start value is left out.
+    // The identifier is the header here (no name column), so it is not repeated.
     expect(fields()).toEqual([
-      ['ID', 'A-03'],
-      ['Start', 'No value'],
-      ['End', '2024-03-15'],
       ['Group', 'South'],
-      ['Note', 'Beta item'],
+      ['End', '2024-03-15'],
     ]);
-    expect(card().querySelector('.details-fields dd.is-empty')!.getAttribute('data-header')).toBe('Start');
     expect([...card().querySelectorAll('.details-comment')].map((li) => [li.querySelector('time')!.textContent, li.querySelector('p')!.textContent])).toEqual([
       ['2024-05-06 08:30', 'Shown on the card.'],
     ]);
@@ -137,7 +137,7 @@ describe('presentation data card (FR-35)', () => {
   test('a click inside the card neither closes it nor pans the stage', () => {
     clickMarker(1);
     const transform = byId('presentation-content').style.transform;
-    const inside = card().querySelector('.details-fields')!;
+    const inside = card().querySelector('.card-fields')!;
     pointer('pointerdown', inside, STAGE.left + 420, STAGE.top + 300);
     pointer('pointermove', byId('presentation-stage'), STAGE.left + 520, STAGE.top + 300);
     pointer('pointerup', byId('presentation-stage'), STAGE.left + 520, STAGE.top + 300);
@@ -163,9 +163,9 @@ describe('presentation data card (FR-35)', () => {
     const lang = byId<HTMLSelectElement>('select-language');
     lang.value = 'sv';
     lang.dispatchEvent(new Event('change'));
-    expect(card().querySelector('.details-subheading')!.textContent).toBe('Kommentarer');
+    expect(card().querySelector('.card-comments')!.getAttribute('aria-label')).toBe('Kommentarer');
     expect(card().querySelector('.details-close')!.getAttribute('aria-label')).toBe('Stäng');
-    expect(card().querySelector('.details-fields dd.is-empty')!.textContent).toBe('Inget värde');
+    expect(card().querySelector('.card-fields')!.getAttribute('aria-label')).toBe('Uppgifter');
   });
 
   test('the details panel of the other segments stays hidden in the Presentation segment', () => {

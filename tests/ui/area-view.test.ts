@@ -106,13 +106,17 @@ describe('group-by-area view (FR-17)', () => {
     expect(shown()).toEqual(['A-01', 'A-02', 'A-03', 'A-04', 'A-05']);
   });
 
-  test('the grouped view and the grouped numbering go together', () => {
+  test('the grouped view is by area; the grouped numbering is by programme, not by area (v1.1.0)', () => {
     setRole('Group', 'area');
     view('grouped');
     const mode = byId<HTMLSelectElement>('numbering-mode');
     mode.value = 'grouped';
     mode.dispatchEvent(new Event('change'));
-    expect([...document.querySelectorAll('#row-table-body .row-details')].map((b) => b.textContent)).toEqual(['1.1', '1.2', '2.1', '3.1', '3.2']);
+    // The area role does not drive the numbering: without the programme role
+    // the global numbers stay, and the notice says why.
+    expect([...document.querySelectorAll('#row-table-body .row-details')].map((b) => b.textContent)).toEqual(['1', '2', '3', '4', '5']);
+    expect(byId('numbering-notice').textContent).toContain('needs the programme role');
+    expect(shown()[0]).toBe('# North (2 items)');
   });
 
   test('the controls follow the language', () => {

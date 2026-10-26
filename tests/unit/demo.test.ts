@@ -14,9 +14,10 @@ describe('full-test demo fixtures (FR-41)', () => {
     expect(list.rows[0]).toMatchObject({ Item: 'D-01', 'Start year': '2019', 'End year': '2021' });
   });
 
-  test('the preset assigns every role and carries both vocabularies', () => {
-    expect(Object.keys(scenario.preset.roles).sort()).toEqual(['area', 'end', 'identifier', 'name', 'start', 'status']);
+  test('the preset assigns every role and carries the vocabularies', () => {
+    expect(Object.keys(scenario.preset.roles).sort()).toEqual(['area', 'end', 'identifier', 'name', 'note', 'program', 'start', 'status']);
     expect(scenario.preset.areas!.length).toBeGreaterThanOrEqual(4);
+    expect(scenario.preset.programs).toEqual(['Green links', 'Heritage route']);
     expect(scenario.preset.statuses!.every((s) => s.symbol !== 'circle')).toBe(true);
   });
 
@@ -57,12 +58,51 @@ describe('full-test demo fixtures (FR-41)', () => {
       mutate(o);
       return () => parseDemoScenario(o);
     };
-    expect(bad((o) => (o.version = 2))).toThrow();
+    expect(bad((o) => (o.version = 1))).toThrow();
+    expect(bad((o) => (o.colourLabels.purple = 'Odd'))).toThrow();
+    expect(bad((o) => (o.colourLabels.green = ' '))).toThrow();
+    expect(bad((o) => (o.glanceColumns = ['Nowhere']))).toThrow();
+    expect(bad((o) => (o.annotations[0].kind = 'star'))).toThrow();
+    expect(bad((o) => (o.annotations[0].points = [[0.1, 0.1], [0.2, 0.2]]))).toThrow();
+    expect(bad((o) => (o.annotations[1].points[0] = [1.2, 0]))).toThrow();
+    expect(bad((o) => (o.annotations[0].fillOpacity = 2))).toThrow();
+    expect(bad((o) => (o.annotations[0].link = 'D-99'))).toThrow();
     expect(bad((o) => (o.items[0].colour = 'purple'))).toThrow();
     expect(bad((o) => (o.items[0].position = [1.5, 0]))).toThrow();
     expect(bad((o) => (o.items[0].symbol = 'star'))).toThrow();
     expect(bad((o) => (o.items[0].comments = [{ date: 'later', text: 'x' }]))).toThrow();
     expect(bad((o) => (o.items[1].item = 'D-01'))).toThrow();
     expect(bad((o) => delete o.preset.roles.identifier)).toThrow();
+  });
+});
+
+describe('the demo extension (FR-41 as amended in v1.1.0)', () => {
+  test('invented programmes span areas, and some items have none', () => {
+    const byProgram = new Map<string, Set<string>>();
+    for (const row of list.rows) if (row.Programme !== '') byProgram.set(row.Programme, (byProgram.get(row.Programme) ?? new Set()).add(row.Area));
+    expect([...byProgram.keys()].sort()).toEqual(scenario.preset.programs);
+    for (const areas of byProgram.values()) expect(areas.size).toBeGreaterThanOrEqual(3);
+    expect(list.rows.filter((r) => r.Programme === '').length).toBeGreaterThanOrEqual(3);
+  });
+
+  test('every colour has a user-chosen label, and the panel columns are configured', () => {
+    expect(Object.keys(scenario.colourLabels).sort()).toEqual(['blue', 'green', 'red', 'yellow']);
+    expect(scenario.glanceColumns).toEqual(['Programme', 'Status', 'End year']);
+  });
+
+  test('the annotations: a linked polygon footprint, a free annotation, and one dashed line', () => {
+    const [footprint, free, line] = scenario.annotations;
+    expect([footprint.kind, footprint.link]).toEqual(['polygon', 'D-07']);
+    expect([free.kind, free.link]).toEqual(['rectangle', null]);
+    expect([line.kind, line.lineStyle, line.link]).toEqual(['line', 'dashed', null]);
+    expect(scenario.annotations.filter((a) => a.lineStyle === 'dashed')).toHaveLength(1);
+    // The footprint is drawn around its item's marker.
+    const item = scenario.items.find((i) => i.item === 'D-07')!.position!;
+    const xs = footprint.points.map((p) => p[0]);
+    const ys = footprint.points.map((p) => p[1]);
+    expect(item[0]).toBeGreaterThan(Math.min(...xs));
+    expect(item[0]).toBeLessThan(Math.max(...xs));
+    expect(item[1]).toBeGreaterThan(Math.min(...ys));
+    expect(item[1]).toBeLessThan(Math.max(...ys));
   });
 });

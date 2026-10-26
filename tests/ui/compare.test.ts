@@ -195,7 +195,7 @@ describe('re-import and comparison (FR-14)', () => {
     await openExport('<!doctype html><html><body><p>Some page</p></body></html>', 'page.html');
     expect(byId('work-status').textContent).toBe('The file holds no MapVibes export data. Nothing was opened.');
     expect(byId('compare-panel').classList.contains('hidden')).toBe(true);
-    await openExport(page.replace('"exportVersion": 1', '"exportVersion": 7'));
+    await openExport(page.replace('"exportVersion": 2', '"exportVersion": 7'));
     expect(byId('work-status').textContent).toBe('The exported file has export format version 7, which this version of MapVibes cannot read. Nothing was opened.');
     await openExport(page.replace('"numbers": [', '"numbers": [0, '));
     expect(byId('work-status').textContent).toBe('The data embedded in the exported file could not be read. Nothing was opened.');

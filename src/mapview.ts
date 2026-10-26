@@ -3,6 +3,7 @@
 // Presentation stages are both map views, so their zoom and pan are the same.
 // Viewport arithmetic lives in viewport.ts.
 
+import type { MercatorProjection } from './osm';
 import {
   BUTTON_ZOOM_FACTOR,
   fitView,
@@ -33,6 +34,9 @@ export interface Background {
   src: string;
   width: number;
   height: number;
+  // Known for backgrounds rendered from OpenStreetMap data (FR-49); absent
+  // for plain images, whose scale is unknown.
+  projection?: MercatorProjection;
 }
 
 export interface MapViewHooks {
@@ -67,7 +71,9 @@ export class MapView {
     private readonly image: HTMLImageElement,
     private readonly hooks: MapViewHooks,
     // On a view-only stage, a press on a marker may pan and pinch too.
-    private readonly options: { panOverMarkers?: boolean } = {},
+    // panFilter: whether a press may pan (false while a drawing tool is in
+    // use, FR-47).
+    private readonly options: { panOverMarkers?: boolean; panFilter?: (e: PointerEvent) => boolean } = {},
   ) {
     this.wire();
     this.render();
@@ -105,14 +111,14 @@ export class MapView {
   // Loads any image source (a data URL from a file, a rendered PDF page, or a
   // work-state file) and makes it the background once its intrinsic size is
   // known. The view is fitted, unless a saved viewport is to be restored.
-  setBackgroundSource(src: string, restoreViewport?: Viewport): Promise<boolean> {
+  setBackgroundSource(src: string, restoreViewport?: Viewport, projection?: MercatorProjection): Promise<boolean> {
     return new Promise((resolve) => {
       const probe = this.image;
       const done = (ok: boolean) => {
         probe.removeEventListener('load', onLoad);
         probe.removeEventListener('error', onError);
         if (ok) {
-          this.background = { src, width: probe.naturalWidth, height: probe.naturalHeight };
+          this.background = { src, width: probe.naturalWidth, height: probe.naturalHeight, ...(projection ? { projection: { ...projection } } : {}) };
           if (restoreViewport) {
             this.pendingFit = false;
             this.setViewport({ ...restoreViewport });
@@ -229,6 +235,7 @@ export class MapView {
       if ((e.target as HTMLElement).closest('.map-overlay-control')) return;
       const onMarker = (e.target as HTMLElement).closest('.marker') !== null;
       if (onMarker && !this.options.panOverMarkers) return;
+      if (this.options.panFilter && !this.options.panFilter(e)) return;
       this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       // A press on a marker is not captured, so that its release still
       // reaches the marker when it is a tap.

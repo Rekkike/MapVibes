@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { findMatchingPreset, parsePresets, presetConfiguration, presetMatches, removePreset, upsertPreset, type ColumnPreset } from '../../src/presets';
+import { clonePreset, findMatchingPreset, parsePresets, presetConfiguration, presetMatches, removePreset, upsertPreset, type ColumnPreset } from '../../src/presets';
 
 const p = (name: string, headers: string[], extra: Partial<ColumnPreset> = {}): ColumnPreset => ({
   name,
@@ -70,5 +70,18 @@ describe('column presets (FR-23)', () => {
   test('a preset may carry the status vocabulary with symbols, which is validated', () => {
     expect(parsePresets([p('A', ['x'], { statuses: [{ name: 'Open', symbol: 'square' }] })])![0].statuses).toEqual([{ name: 'Open', symbol: 'square' }]);
     expect(parsePresets([p('A', ['x'], { statuses: [{ name: 'Open', symbol: 'unknown' }] })])).toBeNull();
+  });
+});
+
+describe('presets with the program vocabulary (FR-43)', () => {
+  test('a preset keeps its program list through cloning and parsing; a damaged list is refused', () => {
+    const preset = { name: 'P', headers: ['A'], hidden: [], roles: { program: 'A' }, programs: ['P-1', 'P-2'] };
+    expect(clonePreset(preset).programs).toEqual(['P-1', 'P-2']);
+    expect(parsePresets([preset])![0].programs).toEqual(['P-1', 'P-2']);
+    expect(parsePresets([{ ...preset, programs: ['P-1', 'P-1'] }])).toBeNull();
+    expect(parsePresets([{ ...preset, programs: 'P-1' }])).toBeNull();
+    // A preset without one is still valid.
+    const { programs: _omit, ...plain } = preset;
+    expect(parsePresets([plain])![0].programs).toBeUndefined();
   });
 });

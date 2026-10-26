@@ -67,6 +67,19 @@ const DENSE = [
   '.compare-entry',
   '#fetch-panel',
   '#pdf-panel',
+  // The surfaces added in v1.1.0: programme groups, the column picker, the
+  // annotation toolbar and inspector, and the footprints in the panel.
+  '.glance-group',
+  '.glance-group-toggle',
+  '.glance-group-list',
+  '.glance-columns',
+  '.glance-columns ul',
+  '.glance-columns label',
+  '#annotation-toolbar',
+  '#annotation-tools',
+  '#annotation-inspector',
+  '.details-panel .details-footprints',
+  '.details-panel .footprint-list',
 ];
 
 describe('information density (FR-42): stylesheet', () => {
@@ -111,6 +124,15 @@ describe('information density (FR-42): stylesheet', () => {
     expect(declarations('.details-panel .details-facts')['grid-template-columns']).toBe('repeat(3, max-content minmax(0, 1fr))');
   });
 
+  test('the new operator surfaces set the dense type size (v1.1.0)', () => {
+    for (const selector of ['.glance-columns', '#annotation-toolbar', '#annotation-inspector']) {
+      expect(declarations(selector)['font-size'], selector).toBe('var(--dense-font)');
+    }
+    // A programme heading is one line; its entries are indented beneath it.
+    expect(declarations('.glance-group-name')['white-space']).toBe('nowrap');
+    expect(rem(declarations('.glance-group-list').padding.split(' ')[3])).toBeGreaterThan(0);
+  });
+
   test('an at-a-glance entry is one line: the area beside the name', () => {
     expect(declarations('.glance-text')['flex-direction']).toBe('row');
     expect(declarations('.glance-area')['margin-left']).toBe('auto');
@@ -121,10 +143,10 @@ describe('information density (FR-42): stylesheet', () => {
       const dense = /var\(--dense-/.test(rule.body);
       if (dense) for (const s of rule.selectors) expect(s, s).not.toContain('presentation-card');
     }
-    // Its field wrappers take no part in its layout.
-    expect(declarations('.details-field').display).toBe('contents');
-    expect(rem(declarations('.presentation-card .details-title')['font-size'])).toBe(1.75);
-    expect(rem(declarations('.presentation-card .details-value')['font-size'])).toBe(1.25);
+    // Its field wrappers take no part in its grid.
+    expect(declarations('.presentation-card .card-field').display).toBe('contents');
+    expect(rem(declarations('.presentation-card .details-title')['font-size'])).toBe(1.375);
+    expect(rem(declarations('.presentation-card .card-value')['font-size'])).toBe(1);
   });
 });
 
@@ -152,7 +174,11 @@ describe('information density (FR-42): DOM, in both themes', () => {
       const marker = presentationMarkers()[0];
       pointer('pointerdown', marker, STAGE.left + 100, STAGE.top + 100);
       pointer('pointerup', marker, STAGE.left + 100, STAGE.top + 100);
-      expect(byId('presentation-card').querySelectorAll('.details-fields > .details-field')).toHaveLength(5);
+      // The card lists the structured fields with values only; the identifier
+      // is its header here, so the card has no field to list.
+      const cardFields = [...byId('presentation-card').querySelectorAll('.card-fields > .card-field')];
+      expect(cardFields).toHaveLength(0);
+      expect(cardFields.every((f) => f.children.length === 2 && f.children[0].tagName === 'DT' && f.children[1].tagName === 'DD')).toBe(true);
       expect(document.documentElement.dataset.theme).toBe(theme);
     });
   }

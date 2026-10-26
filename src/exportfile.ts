@@ -7,17 +7,21 @@
 // item has in the Presentation segment (FR-38), and the language and theme of
 // the exporting application (FR-20).
 //
-// Export format version 1 is written and read; any other version is rejected
-// with a clear message. A later version must keep reading version 1, as the
-// work-state file keeps reading its older versions.
+// Export format version 2 (v1.1.0) is written; versions 1 and 2 are read;
+// any other version is rejected with a clear message. Version 2 embeds a
+// work state of schema version 6, which carries the annotations, the colour
+// labels, the program vocabulary, and the at-a-glance columns, and adds the
+// program groups as numbered in the exported presentation (FR-17, FR-43).
+// A version 1 file has none of these: its work state is of schema version 5
+// at most, and it has no program groups.
 
 import type { Lang } from './i18n';
 import type { ThemeChoice } from './preferences';
 import { parseWorkState, serialiseWorkState, WorkStateError, type WorkState } from './workstate';
 
 export const EXPORT_FORMAT = 'mapvibes-export';
-export const EXPORT_VERSION = 1;
-export const READABLE_EXPORT_VERSIONS = [1];
+export const EXPORT_VERSION = 2;
+export const READABLE_EXPORT_VERSIONS = [1, 2];
 export const SUGGESTED_EXPORT_NAME = 'mapvibes-presentation.html';
 
 export interface ExportData {
@@ -34,6 +38,14 @@ export interface ExportData {
   // numbering, FR-17, for example "2.3"); absent otherwise. An optional
   // addition to version 1: a reader that does not know it shows the numbers.
   labels?: string[];
+  // Version 2: the program groups of the grouped numbering, by group number
+  // and in that order (FR-17, FR-43); absent when the numbering is global.
+  programGroups?: ProgramGroup[];
+}
+
+export interface ProgramGroup {
+  index: number;
+  name: string;
 }
 
 export type ExportErrorCode = 'not-json' | 'not-export' | 'unknown-version' | 'invalid';
@@ -60,6 +72,7 @@ export function serialiseExport(data: Omit<ExportData, 'exportedAt'>, exportedAt
     preferences: { language: data.lang, theme: data.theme },
     numbers: [...data.numbers],
     ...(data.labels ? { labels: [...data.labels] } : {}),
+    ...(data.programGroups ? { programGroups: data.programGroups.map((g) => ({ ...g })) } : {}),
     workState: JSON.parse(serialiseWorkState(data.workState, exportedAt)) as unknown,
   };
   return JSON.stringify(file, null, 2);
@@ -116,6 +129,24 @@ export function parseExport(text: string): ExportData {
   if (labels !== undefined && (!Array.isArray(labels) || labels.length !== numbers.length || labels.some((l) => typeof l !== 'string' || l.trim() === ''))) {
     throw new ExportError('invalid', 'labels');
   }
+  // Program groups are read from version 2 only, as version 1 never wrote
+  // them.
+  const groups = version >= 2 ? file.programGroups : undefined;
+  if (
+    groups !== undefined &&
+    (!Array.isArray(groups) ||
+      groups.some(
+        (g, i) =>
+          typeof g !== 'object' ||
+          g === null ||
+          !Number.isInteger((g as Json).index) ||
+          ((g as Json).index as number) < 1 ||
+          typeof (g as Json).name !== 'string' ||
+          (i > 0 && ((g as Json).index as number) <= ((groups[i - 1] as Json).index as number)),
+      ))
+  ) {
+    throw new ExportError('invalid', 'programGroups');
+  }
   return {
     exportedAt,
     application: file.application,
@@ -124,5 +155,6 @@ export function parseExport(text: string): ExportData {
     workState,
     numbers: numbers as number[],
     ...(labels !== undefined ? { labels: labels as string[] } : {}),
+    ...(groups !== undefined ? { programGroups: (groups as Json[]).map((g) => ({ index: g.index as number, name: g.name as string })) } : {}),
   };
 }

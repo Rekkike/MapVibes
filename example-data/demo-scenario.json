@@ -1,12 +1,13 @@
 {
   "format": "mapvibes-demo",
-  "version": 1,
+  "version": 2,
   "preset": {
     "name": "Demo columns",
     "headers": [
       "Item",
       "Name",
       "Area",
+      "Programme",
       "Status",
       "Start year",
       "End year",
@@ -17,9 +18,11 @@
       "identifier": "Item",
       "name": "Name",
       "area": "Area",
+      "program": "Programme",
       "status": "Status",
       "start": "Start year",
-      "end": "End year"
+      "end": "End year",
+      "note": "Note"
     },
     "areas": [
       "Park district",
@@ -27,6 +30,10 @@
       "Lakeside",
       "Old quarter",
       "Station district"
+    ],
+    "programs": [
+      "Green links",
+      "Heritage route"
     ],
     "statuses": [
       {
@@ -56,6 +63,17 @@
     ]
   },
   "symbolsFromStatus": true,
+  "colourLabels": {
+    "green": "On track",
+    "blue": "Under way",
+    "yellow": "Needs attention",
+    "red": "Stopped"
+  },
+  "glanceColumns": [
+    "Programme",
+    "Status",
+    "End year"
+  ],
   "items": [
     {
       "item": "D-01",
@@ -207,6 +225,77 @@
       "position": null,
       "symbol": null,
       "comments": []
+    }
+  ],
+  "annotations": [
+    {
+      "kind": "polygon",
+      "points": [
+        [
+          0.655,
+          0.435
+        ],
+        [
+          0.735,
+          0.425
+        ],
+        [
+          0.755,
+          0.505
+        ],
+        [
+          0.675,
+          0.525
+        ]
+      ],
+      "colour": "green",
+      "fillOpacity": 0.3,
+      "outline": "black",
+      "lineStyle": "solid",
+      "label": "Jetty footprint",
+      "link": "D-07"
+    },
+    {
+      "kind": "rectangle",
+      "points": [
+        [
+          0.36,
+          0.7
+        ],
+        [
+          0.46,
+          0.82
+        ]
+      ],
+      "colour": "blue",
+      "fillOpacity": 0.2,
+      "outline": "white",
+      "lineStyle": "solid",
+      "label": "Survey zone",
+      "link": null
+    },
+    {
+      "kind": "line",
+      "points": [
+        [
+          0.2,
+          0.3
+        ],
+        [
+          0.35,
+          0.33
+        ],
+        [
+          0.53,
+          0.25
+        ]
+      ],
+      "colour": "red",
+      "fillOpacity": 0,
+      "outline": "black",
+      "lineStyle": "dashed",
+      "label": "Planned footpath",
+      "link": null
     }
   ]
 }

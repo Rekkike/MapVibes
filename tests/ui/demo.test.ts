@@ -47,12 +47,13 @@ describe('full-test demo (FR-41)', () => {
     await load();
     // The list and every role, applied by the saved demo preset.
     expect(document.querySelectorAll('#row-table-body tr')).toHaveLength(12);
-    expect(roles()).toEqual({ Item: 'identifier', Name: 'name', Area: 'area', Status: 'status', 'Start year': 'start', 'End year': 'end' });
+    expect(roles()).toEqual({ Item: 'identifier', Name: 'name', Area: 'area', Programme: 'program', Status: 'status', 'Start year': 'start', 'End year': 'end', Note: 'note' });
     expect(byId('preset-status').textContent).toBe('The preset "Demo columns" matches these columns and was applied automatically.');
     expect(JSON.parse(localStorage.getItem('mapvibes.presets')!).map((p: { name: string }) => p.name)).toContain('Demo columns');
     // The vocabularies and the toggle.
     expect([...document.querySelectorAll('#area-list li')].length).toBe(5);
     expect([...document.querySelectorAll('#status-list li')].length).toBe(6);
+    expect([...document.querySelectorAll('#program-list li')].length).toBe(2);
     expect(byId<HTMLInputElement>('symbols-from-status').checked).toBe(true);
     // The background, the markers (one item is left to place), their symbols.
     expect(byId('map-stage').dataset.hasBackground).toBe('true');
@@ -120,5 +121,62 @@ describe('full-test demo (FR-41)', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
     expect(app).toBeDefined();
+  });
+});
+
+describe('the demo extension (FR-41 as amended in v1.1.0)', () => {
+  for (const [lang, theme] of [
+    ['en', 'light'],
+    ['sv', 'dark'],
+  ] as const) {
+    test(`programmes, colour labels, panel columns, the note, and annotations are shown (${lang}, ${theme})`, async () => {
+      await mount();
+      const select = byId<HTMLSelectElement>('select-language');
+      select.value = lang;
+      select.dispatchEvent(new Event('change'));
+      const themeSelect = byId<HTMLSelectElement>('select-theme');
+      themeSelect.value = theme;
+      themeSelect.dispatchEvent(new Event('change'));
+      expect(document.documentElement.dataset.theme).toBe(theme);
+      await load();
+      // The user-named colour labels in the legend; the data never colours.
+      expect([...byId('map-legend').querySelectorAll('.legend-entry[data-colour]')].map((e) => e.textContent)).toEqual(['On track', 'Under way', 'Needs attention', 'Stopped']);
+      // The annotations: the footprint, the free rectangle, the dashed line.
+      const shapes = [...byId('map-annotations').querySelectorAll('g.annotation')];
+      expect(shapes.map((g) => g.getAttribute('class')!.split(' ')[1])).toEqual(['annotation-polygon', 'annotation-rectangle', 'annotation-line']);
+      expect(shapes[2].getAttribute('class')).toContain('style-dashed');
+      expect(byId('map-annotation-labels').textContent).toContain('Survey zone');
+      // The at-a-glance panel: programme groups, each where its first member
+      // stands in the list, and the configured columns.
+      expect([...document.querySelectorAll('#map-glance-list .glance-group-name')].map((n) => n.textContent)).toEqual(['Heritage route', 'Green links']);
+      expect(document.querySelector('#map-glance-list .glance-value')!.textContent).not.toBe('');
+      byId('tab-presentation').click();
+      await flush();
+      expect(byId('presentation-annotations').querySelectorAll('g.annotation')).toHaveLength(3);
+      // The card of the lake jetty: the note first, and its footprint.
+      const jetty = presentationMarkers().find((m) => m.getAttribute('aria-label')!.includes('Lake jetty'))!;
+      jetty.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }));
+      jetty.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0 }));
+      const card = byId('presentation-card');
+      expect(card.querySelector('.card-note')!.textContent).toBe('On the lake shore.');
+      expect(card.querySelector('.footprint-name')!.textContent).toBe('Jetty footprint');
+      // The rendered map has a known scale: the footprint's area is given.
+      expect(card.querySelector('.footprint-area')!.textContent).toMatch(/^[\d,.\s]+ (m²|ha|km²)$/);
+    });
+  }
+
+  test('the demo saves as a version 6 work state with all of it', async () => {
+    const app = await mount();
+    await load();
+    const ws = app.captureWorkState();
+    expect(ws.programValues).toEqual(['Green links', 'Heritage route']);
+    expect(Object.keys(ws.colourLabels)).toHaveLength(4);
+    expect(ws.glanceColumns).toEqual(['Programme', 'Status', 'End year']);
+    expect(ws.annotations.map((a) => [a.kind, a.link === null ? null : ws.rows[a.link].values.Item])).toEqual([
+      ['polygon', 'D-07'],
+      ['rectangle', null],
+      ['line', null],
+    ]);
+    expect(ws.background!.projection).toBeDefined();
   });
 });

@@ -46,14 +46,22 @@ function entry(swatchClass: string, label: string, data: Record<string, string>,
 
 // The legend explains the four colours, the marker symbols, and the user's
 // statuses with their symbols where defined (FR-6, FR-26, FR-33).
-// A group of the grouped numbering (FR-17): its number and its area value
-// ('' for the items without one).
-export interface LegendAreaGroup {
+// A group of the grouped numbering (FR-17): its number and its program.
+export interface LegendGroup {
   index: number;
-  area: string;
+  name: string;
 }
 
-export function renderLegend(container: HTMLElement, t: Strings, statuses: StatusEntry[] = [], areaGroups: LegendAreaGroup[] = []): void {
+// The colour labels shown (FR-45): the user's name for each colour.
+export type ColourLabels = Record<RowColour, string>;
+
+export function renderLegend(
+  container: HTMLElement,
+  t: Strings,
+  statuses: StatusEntry[] = [],
+  numberGroups: LegendGroup[] = [],
+  colourLabels: ColourLabels = { green: colourName(t, 'green'), blue: colourName(t, 'blue'), yellow: colourName(t, 'yellow'), red: colourName(t, 'red') },
+): void {
   container.innerHTML = '';
   const heading = document.createElement('span');
   heading.className = 'legend-heading';
@@ -62,7 +70,7 @@ export function renderLegend(container: HTMLElement, t: Strings, statuses: Statu
   container.setAttribute('role', 'group');
   container.setAttribute('aria-labelledby', heading.id);
   const groups: Array<[string, string, HTMLLIElement[]]> = [
-    ['colours', t.legendColours, COLOURS.map((c) => entry(`marker-${c} marker-shape-circle`, colourName(t, c), { colour: c }))],
+    ['colours', t.legendColours, COLOURS.map((c) => entry(`marker-${c} marker-shape-circle`, colourLabels[c], { colour: c }))],
     ['shapes', t.legendShapes, SYMBOLS.map((s) => entry(symbolClasses(s), shapeName(t, s), { shape: s }, s))],
   ];
   if (statuses.length > 0) {
@@ -72,11 +80,11 @@ export function renderLegend(container: HTMLElement, t: Strings, statuses: Statu
       statuses.map((s) => entry(symbolClasses(s.symbol as MarkerSymbol), s.name, { status: s.name, shape: s.symbol }, s.symbol as MarkerSymbol)),
     ]);
   }
-  if (areaGroups.length > 0) {
+  if (numberGroups.length > 0) {
     groups.push([
-      'areas',
-      t.legendAreaGroups,
-      areaGroups.map((g) => {
+      'programs',
+      t.legendProgramGroups,
+      numberGroups.map((g) => {
         const li = document.createElement('li');
         li.className = 'legend-entry';
         li.dataset.group = String(g.index);
@@ -85,7 +93,7 @@ export function renderLegend(container: HTMLElement, t: Strings, statuses: Statu
         number.textContent = `${g.index}.`;
         const text = document.createElement('span');
         text.className = 'legend-label';
-        text.textContent = g.area === '' ? t.numberingNoArea : g.area;
+        text.textContent = g.name;
         li.append(number, text);
         return li;
       }),

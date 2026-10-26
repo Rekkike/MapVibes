@@ -89,12 +89,14 @@ describe('presentation data card legibility (FR-37)', () => {
 });
 
 describe('projection typography (FR-37) and details typography (FR-7)', () => {
-  test('the card is sized for reading at a distance', () => {
-    expect(rem(declarations('.presentation-card .details-title')['font-size'])).toBeGreaterThanOrEqual(1.75);
-    expect(rem(declarations('.presentation-card .details-value')['font-size'])).toBeGreaterThanOrEqual(1.25);
-    expect(rem(declarations('.presentation-card .details-label')['font-size'])).toBeGreaterThanOrEqual(1);
-    expect(rem(declarations('.presentation-card .details-comment-text')['font-size'])).toBeGreaterThanOrEqual(1.125);
-    expect(rem(declarations('.presentation-card')['font-size'])).toBeGreaterThanOrEqual(1.125);
+  test('the card uses a compact scale with a 16 pixel floor (v1.1.0)', () => {
+    const title = rem(declarations('.presentation-card .details-title')['font-size']);
+    expect(title).toBeGreaterThan(1.125);
+    expect(title).toBeLessThanOrEqual(1.5);
+    expect(rem(declarations('.presentation-card .card-note')['font-size'])).toBe(1.125);
+    for (const selector of ['.presentation-card', '.presentation-card .card-label', '.presentation-card .card-value', '.presentation-card .details-comment-text', '.presentation-card .details-comment-date', '.presentation-card .footprint']) {
+      expect(rem(declarations(selector)['font-size']), selector).toBeGreaterThanOrEqual(1);
+    }
   });
 
   test('the Presentation segment text is larger than the editing segments', () => {

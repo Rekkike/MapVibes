@@ -141,7 +141,7 @@ describe('interactive export (FR-11, FR-39)', () => {
   test('the data is readable in the file', async () => {
     const text = readDataIsland(parsePage(await exportFile()))!;
     expect(text).toContain('"format": "mapvibes-export"');
-    expect(text).toContain('"exportVersion": 1');
+    expect(text).toContain('"exportVersion": 2');
     expect(text).toContain('"Exported comment."');
     expect(text.split('\n').length).toBeGreaterThan(50);
   });

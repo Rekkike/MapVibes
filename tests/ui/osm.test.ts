@@ -117,7 +117,10 @@ describe('OpenStreetMap file backgrounds (FR-31)', () => {
     byId('work-save').click();
     await flush();
     const file = JSON.parse(written.text!);
-    expect(file.background).toEqual({ dataUrl: 'data:image/png;base64,T1NN3000x2000', width: 3000, height: 2000 });
+    // The rendering's projection is saved with it, so that its scale stays
+    // known (FR-49).
+    expect(file.background).toMatchObject({ dataUrl: 'data:image/png;base64,T1NN3000x2000', width: 3000, height: 2000 });
+    expect(Object.keys(file.background.projection).sort()).toEqual(['scale', 'x0', 'y1']);
     expect(file.markers[0].x).toBeCloseTo(1500, 6);
   });
 

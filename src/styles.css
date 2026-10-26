@@ -29,6 +29,8 @@
   --marker-halo: #3a3f47;
   --marker-on-neutral: #ffffff;
   --card-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.22);
+  --outline-black: #000000;
+  --outline-white: #ffffff;
   --motion-quick: 160ms;
   --motion-view: 240ms;
   --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
@@ -67,6 +69,9 @@ html[data-theme='dark'] {
   --marker-halo: #0d0f12;
   --marker-on-neutral: #0d0f12;
   --card-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.6);
+  /* The annotation outlines are black and white in both themes (FR-47). */
+  --outline-black: #000000;
+  --outline-white: #ffffff;
 }
 
 * {
@@ -830,7 +835,7 @@ input[type='text'] {
 .presentation-card {
   position: absolute;
   z-index: 6;
-  width: min(26rem, calc(100% - 2 * var(--space-3)));
+  width: min(24rem, calc(100% - 2 * var(--space-3)));
   max-height: calc(100% - 2 * var(--space-3));
   overflow: auto;
   padding: var(--space-3) calc(1.25 * var(--space-3));
@@ -839,7 +844,7 @@ input[type='text'] {
   background: var(--panel);
   color: var(--fg);
   box-shadow: var(--card-shadow);
-  font-size: 1.125rem;
+  font-size: 1rem;
   line-height: 1.45;
   cursor: auto;
   user-select: text;
@@ -862,33 +867,127 @@ input[type='text'] {
     visibility 0s linear var(--motion-quick);
 }
 
+/* The content-first card (FR-37 as amended in v1.1.0): a compact type scale
+   with a 16 pixel floor; the note and the comments first; the structured
+   fields in an aligned grid below. */
+.presentation-card .card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
 .presentation-card .details-title {
-  font-size: 1.75rem;
+  font-size: 1.375rem;
+  line-height: 1.25;
 }
 
-.presentation-card .details-badge {
-  min-width: 2.25rem;
-  height: 2.25rem;
-  font-size: 1rem;
+.presentation-card .card-headliners {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 
-.presentation-card .details-facts dt,
-.presentation-card .details-label,
-.presentation-card .details-comment-date {
-  font-size: 1rem;
-}
-
-.presentation-card .details-facts dd,
-.presentation-card .details-value {
-  font-size: 1.25rem;
-}
-
-.presentation-card .details-subheading {
-  font-size: 1.25rem;
-}
-
-.presentation-card .details-comment-text {
+.presentation-card .card-note {
+  margin: 0;
   font-size: 1.125rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.presentation-card .details-comment-list {
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.presentation-card .details-comment {
+  padding: 0 0 0 var(--space-2);
+  border: none;
+  border-left: 3px solid var(--accent);
+  border-radius: 0;
+}
+
+.presentation-card .details-comment-date,
+.presentation-card .details-comment-text {
+  font-size: 1rem;
+}
+
+.presentation-card .card-fields {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+
+.presentation-card .card-field {
+  display: contents;
+}
+
+.presentation-card .card-label {
+  color: var(--muted);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.presentation-card .card-value {
+  margin: 0;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+/* Footprints (FR-48): the item's linked annotations, by name, with the area
+   where it is known. */
+.footprint-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.footprint {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.footprint-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.footprint-area {
+  flex: none;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.details-footprints {
+  margin-bottom: var(--space-3);
+}
+
+.details-panel .details-footprints {
+  margin-bottom: var(--dense-2);
+}
+
+.details-panel .footprint-list {
+  gap: var(--dense-1);
+}
+
+.presentation-card .card-footprints {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+
+.presentation-card .card-footprints .details-subheading,
+.presentation-card .footprint {
+  font-size: 1rem;
 }
 
 /* Projection typography (FR-37): the Presentation segment reads from a
@@ -1712,4 +1811,317 @@ input[type='text'] {
   gap: var(--dense-2);
   padding: var(--dense-2) var(--dense-3);
   font-size: var(--dense-font);
+}
+
+/* Program groups at a glance (FR-44): a compact heading per programme, its
+   entries nested and indented beneath it. */
+.glance-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dense-1);
+}
+
+.glance-group-toggle {
+  display: flex;
+  align-items: baseline;
+  gap: var(--dense-3);
+  width: 100%;
+  padding: var(--dense-1) var(--dense-2);
+  font-weight: 650;
+  text-align: left;
+  line-height: 1.25;
+}
+
+.glance-group-toggle::before {
+  content: '▾';
+  display: inline-block;
+  width: 1em;
+}
+
+.glance-group-toggle[aria-expanded='false']::before {
+  content: '▸';
+}
+
+.glance-group-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.glance-group-count {
+  color: var(--muted);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.glance-group-toggle.highlighted,
+.glance-group-toggle[data-selected='true'] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.glance-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dense-1);
+  margin: 0;
+  padding: 0 0 0 var(--dense-3);
+  list-style: none;
+}
+
+/* Configurable at-a-glance columns (FR-46): the values follow the name on
+   the entry's line; the picker is compact. */
+.glance-values {
+  display: block;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.glance-values .glance-value + .glance-value {
+  margin-left: var(--dense-3);
+}
+
+.glance-values .glance-area {
+  margin-left: 0;
+}
+
+.glance-columns {
+  margin-bottom: var(--dense-3);
+  font-size: var(--dense-font);
+}
+
+.glance-columns ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+  gap: var(--dense-1) var(--dense-3);
+  margin: var(--dense-2) 0;
+  padding: 0;
+  list-style: none;
+}
+
+.glance-columns label {
+  display: flex;
+  align-items: center;
+  gap: var(--dense-2);
+}
+
+/* The annotation layer (FR-47): shapes and lines in image coordinates inside
+   the transformed content; outlines and lines keep their width at every zoom;
+   labels at a constant size above. */
+.annotation-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.annotation .annotation-shape {
+  stroke-width: 2;
+}
+
+.annotation.outline-black .annotation-shape,
+.annotation.outline-black .annotation-casing {
+  stroke: var(--outline-black);
+}
+
+.annotation.outline-white .annotation-shape,
+.annotation.outline-white .annotation-casing {
+  stroke: var(--outline-white);
+}
+
+.annotation .annotation-casing,
+.annotation .annotation-stroke {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.annotation .annotation-casing {
+  stroke-width: 6;
+}
+
+.annotation .annotation-stroke {
+  stroke-width: 3.5;
+}
+
+.annotation.colour-green .annotation-shape { fill: var(--marker-green); }
+.annotation.colour-blue .annotation-shape { fill: var(--marker-blue); }
+.annotation.colour-yellow .annotation-shape { fill: var(--marker-yellow); }
+.annotation.colour-red .annotation-shape { fill: var(--marker-red); }
+.annotation.colour-green .annotation-stroke { stroke: var(--marker-green); }
+.annotation.colour-blue .annotation-stroke { stroke: var(--marker-blue); }
+.annotation.colour-yellow .annotation-stroke { stroke: var(--marker-yellow); }
+.annotation.colour-red .annotation-stroke { stroke: var(--marker-red); }
+
+.annotation.draft {
+  opacity: 0.8;
+}
+
+.annotation-snap {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.annotation-labels {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.annotation-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 0 var(--dense-2);
+  border-radius: var(--radius);
+  font-size: var(--dense-font);
+  font-weight: 650;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+/* A shape's label hangs just below the shape (FR-47). */
+.annotation-label.below {
+  transform: translate(-50%, var(--dense-2));
+}
+
+/* The label reads on its outline colour's opposite: dark text on white,
+   light text on black. */
+.annotation-label.outline-white {
+  background: var(--outline-white);
+  color: var(--outline-black);
+}
+
+.annotation-label.outline-black {
+  background: var(--outline-black);
+  color: var(--outline-white);
+}
+
+.stage[data-tool]:not([data-tool='select'])[data-has-background='true'] {
+  cursor: crosshair;
+}
+
+#annotation-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dense-2) var(--dense-3);
+  margin-bottom: var(--dense-2);
+  font-size: var(--dense-font);
+}
+
+#annotation-heading {
+  font-weight: 650;
+}
+
+#annotation-tools {
+  display: inline-flex;
+  gap: var(--dense-1);
+}
+
+.annotation-tool[aria-pressed='true'] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  font-weight: 650;
+}
+
+#annotation-fill {
+  width: 6rem;
+  vertical-align: middle;
+}
+
+#annotation-fill-value {
+  display: inline-block;
+  min-width: 3rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Annotation editing and linkage (FR-47, FR-48): the selection, the
+   highlight of a selected item's footprints, the faded state of annotations
+   absent from the presentation, and the vertex handles. */
+.annotation.selected .annotation-shape,
+.annotation.selected .annotation-casing {
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+
+.annotation.highlighted .annotation-shape,
+.annotation.highlighted .annotation-casing {
+  stroke: var(--accent);
+  stroke-width: 4;
+}
+
+.annotation.faded,
+.annotation-label.faded {
+  opacity: 0.4;
+}
+
+.annotation-handles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.annotation-handle {
+  position: absolute;
+  width: 0.75rem;
+  height: 0.75rem;
+  border: 2px solid var(--accent);
+  border-radius: var(--radius-pill);
+  background: var(--panel);
+  transform: translate(-50%, -50%);
+  cursor: move;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+#annotation-inspector {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dense-2) var(--dense-3);
+  margin-bottom: var(--dense-2);
+  padding: var(--dense-2) var(--dense-3);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  font-size: var(--dense-font);
+}
+
+#annotation-inspector-heading {
+  font-weight: 650;
+}
+
+#annotation-visibility-heading {
+  margin: var(--dense-3) 0 var(--dense-2);
+  font-size: 1rem;
+}
+
+#annotation-visibility-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The name keeps its room on the entry's line; the values give way, ending
+   in an ellipsis. */
+.glance-text .glance-name {
+  flex: 0 1 auto;
+  min-width: 55%;
 }

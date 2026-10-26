@@ -37,6 +37,13 @@ function sample(): WorkState {
     ],
     excluded: [3],
     areaValues: ['North', 'South'],
+    programValues: ['First programme', 'Second programme'],
+    colourLabels: { green: 'On track', red: 'At risk' },
+    glanceColumns: ['Group', 'Start'],
+    annotations: [
+      { kind: 'polygon', points: [{ x: 100, y: 100 }, { x: 300, y: 120 }, { x: 200, y: 260.5 }], colour: 'blue', fillOpacity: 0.3, outline: 'black', lineStyle: 'solid', label: 'Footprint', link: 0, hidden: false },
+      { kind: 'line', points: [{ x: 10, y: 10 }, { x: 400, y: 50 }], colour: 'red', fillOpacity: 0, outline: 'white', lineStyle: 'dashed', label: '', link: null, hidden: true },
+    ],
     statuses: [
       { name: 'Open', symbol: 'pause' },
       { name: 'Done', symbol: 'check' },
@@ -90,15 +97,15 @@ describe('work-state file (FR-13)', () => {
   });
 
   test('a state without background or markers round-trips too', () => {
-    const state = { ...sample(), background: null, markers: [], excluded: [], presets: [], manualColumns: [], areaValues: [], statuses: [], symbolsFromStatus: false, segment: 'information' as const };
+    const state = { ...sample(), background: null, markers: [], excluded: [], presets: [], manualColumns: [], areaValues: [], programValues: [], colourLabels: {}, glanceColumns: null, annotations: [], statuses: [], symbolsFromStatus: false, segment: 'information' as const };
     expect(parseWorkState(serialiseWorkState(state, SAVED_AT))).toEqual(state);
   });
 
   test('the file carries the format name, schema version, and save time', () => {
     const file = fileOf(sample());
     expect(file.format).toBe(WORK_STATE_FORMAT);
-    expect(file.schemaVersion).toBe(5);
-    expect(WORK_STATE_SCHEMA_VERSION).toBe(5);
+    expect(file.schemaVersion).toBe(6);
+    expect(WORK_STATE_SCHEMA_VERSION).toBe(6);
     expect(file.savedAt).toBe('2026-01-02T03:04:05.000Z');
   });
 
@@ -115,7 +122,7 @@ describe('work-state file (FR-13)', () => {
   });
 
   test('an unknown schema version is rejected and named, never loaded silently', () => {
-    for (const version of [6, 0, '5', null]) {
+    for (const version of [7, 0, '6', null]) {
       const file = { ...fileOf(sample()), schemaVersion: version };
       expect(expectError(JSON.stringify(file), 'unknown-version').detail).toBe(String(version));
     }
@@ -233,7 +240,7 @@ describe('schema version 1 migration (FR-13)', () => {
     expect(migrated.manualColumns).toEqual([]);
     expect(migrated.rows.every((r) => !r.manual)).toBe(true);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(5);
+    expect(JSON.parse(text).schemaVersion).toBe(6);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 
@@ -300,7 +307,7 @@ describe('schema version 2 migration (FR-13)', () => {
   test('a migrated version 2 file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v2Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(5);
+    expect(JSON.parse(text).schemaVersion).toBe(6);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 
@@ -317,7 +324,7 @@ describe('schema version 2 migration (FR-13)', () => {
 describe('schema version 4: vocabularies and the status-to-symbol toggle (FR-32 to FR-34, FR-13)', () => {
   test('the vocabularies, the toggle, and icon symbols round-trip', () => {
     const file = fileOf(sample()) as Record<string, any>;
-    expect(file.vocabularies).toEqual({ areas: ['North', 'South'], statuses: [{ name: 'Open', symbol: 'pause' }, { name: 'Done', symbol: 'check' }] });
+    expect(file.vocabularies).toEqual({ areas: ['North', 'South'], programs: ['First programme', 'Second programme'], statuses: [{ name: 'Open', symbol: 'pause' }, { name: 'Done', symbol: 'check' }] });
     expect(file.symbolsFromStatus).toBe(true);
     const back = parseWorkState(serialiseWorkState(sample(), SAVED_AT));
     expect([back.areaValues, back.statuses, back.symbolsFromStatus]).toEqual([sample().areaValues, sample().statuses, true]);
@@ -372,7 +379,7 @@ describe('schema version 3 migration (FR-13)', () => {
   test('a migrated version 3 file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v3Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(5);
+    expect(JSON.parse(text).schemaVersion).toBe(6);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 });
@@ -458,7 +465,79 @@ describe('schema version 4 migration (FR-13)', () => {
   test('a migrated version 4 file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v4Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(5);
+    expect(JSON.parse(text).schemaVersion).toBe(6);
     expect(parseWorkState(text)).toEqual(migrated);
+  });
+});
+
+describe('schema version 6: programs, colour labels, at-a-glance columns, annotations (FR-43 to FR-49, FR-13)', () => {
+  test('all of them round-trip, with the projection of a rendered background', () => {
+    const state = sample();
+    state.background = { ...state.background!, projection: { x0: 1000.5, y1: 2000.25, scale: 4096 } };
+    const file = fileOf(state) as Record<string, any>;
+    expect(file.colourLabels).toEqual({ green: 'On track', red: 'At risk' });
+    expect(file.glance).toEqual({ columns: ['Group', 'Start'] });
+    expect(file.annotations).toHaveLength(2);
+    expect(file.background.projection).toEqual({ x0: 1000.5, y1: 2000.25, scale: 4096 });
+    expect(parseWorkState(serialiseWorkState(state, SAVED_AT))).toEqual(state);
+  });
+
+  test('a plain image background has no projection in the file', () => {
+    const file = fileOf(sample()) as Record<string, any>;
+    expect(file.background.projection).toBeUndefined();
+    expect(parseWorkState(serialiseWorkState(sample(), SAVED_AT)).background!.projection).toBeUndefined();
+  });
+
+  test('damaged annotations are rejected with the field named', () => {
+    const cases: Array<[(f: Record<string, any>) => void, string]> = [
+      [(f) => (f.annotations[0].kind = 'star'), 'annotations[0].kind'],
+      [(f) => (f.annotations[0].points = [{ x: 1, y: 1 }]), 'annotations[0].points'],
+      [(f) => (f.annotations[1].points = [{ x: 1, y: 1 }]), 'annotations[1].points'],
+      [(f) => (f.annotations[0].fillOpacity = 1.5), 'annotations[0].fillOpacity'],
+      [(f) => (f.annotations[0].colour = 'purple'), 'annotations[0].colour'],
+      [(f) => (f.annotations[0].lineStyle = 'wavy'), 'annotations[0].lineStyle'],
+      [(f) => (f.annotations[0].outline = 'grey'), 'annotations[0].outline'],
+      [(f) => (f.annotations[0].link = 99), 'annotations[0].link'],
+    ];
+    for (const [damage, field] of cases) {
+      const file = fileOf(sample()) as Record<string, any>;
+      damage(file);
+      const error = expectError(JSON.stringify(file), 'invalid');
+      expect(error.detail, field).toContain(field);
+    }
+  });
+
+  test('annotations without a background are rejected', () => {
+    const file = fileOf(sample()) as Record<string, any>;
+    file.background = null;
+    file.markers = [];
+    expectError(JSON.stringify(file), 'invalid');
+  });
+
+  test('at-a-glance columns must be columns of the file', () => {
+    const file = fileOf(sample()) as Record<string, any>;
+    file.glance.columns = ['Nowhere'];
+    expectError(JSON.stringify(file), 'invalid');
+  });
+
+  test('a version 5 file migrates with no programs, no colour labels, the default columns, and no annotations', () => {
+    const file = fileOf(sample()) as Record<string, any>;
+    file.schemaVersion = 5;
+    delete file.vocabularies.programs;
+    delete file.colourLabels;
+    delete file.glance;
+    delete file.annotations;
+    const state = parseWorkState(JSON.stringify(file));
+    expect([state.programValues, state.colourLabels, state.glanceColumns, state.annotations]).toEqual([[], {}, null, []]);
+    expect(state.background!.projection).toBeUndefined();
+    expect(JSON.parse(serialiseWorkState(state, SAVED_AT)).schemaVersion).toBe(6);
+  });
+
+  test('version 6 fields in an older file are ignored, as that version never wrote them', () => {
+    const file = fileOf(sample()) as Record<string, any>;
+    file.schemaVersion = 5;
+    const state = parseWorkState(JSON.stringify(file));
+    expect(state.annotations).toEqual([]);
+    expect(state.programValues).toEqual([]);
   });
 });

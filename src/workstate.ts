@@ -1,8 +1,9 @@
 // Work-state file (FR-13). The complete work state is written to, and read
 // from, a single local JSON file on explicit Save and Open only. The file
-// carries a schema version. Version 5 is written; version 1 files (v0.4.0),
-// version 2 files (v0.5.x), version 3 files (v0.6.0), and version 4 files
-// (v0.7.0) are read and migrated; a file with any other version is rejected.
+// carries a schema version. Version 6 is written; version 1 files (v0.4.0),
+// version 2 files (v0.5.x), version 3 files (v0.6.0), version 4 files
+// (v0.7.0), and version 5 files (v0.8.0 to v1.0.0) are read and migrated; a
+// file with any other version is rejected.
 //
 // Schema version 2 adds to version 1: role assignments by column key
 // (replacing the version 1 column mapping, as all columns are now kept), the
@@ -28,6 +29,14 @@
 // columns added by hand have no imported values, so they have no edits.
 // Comments are entries of plain text with an ISO 8601 timestamp. Files of
 // versions 1 to 4 have no edits and no comments.
+//
+// Schema version 6 adds to version 5 the program vocabulary (FR-43), the
+// colour labels (FR-45), the at-a-glance columns (FR-46), the annotations
+// with their links to rows and their visibility (FR-47, FR-48), and the
+// projection of a background rendered from OpenStreetMap data, which makes
+// its scale known (FR-49). Files of versions 1 to 5 have none of these: an
+// empty program list, no colour labels, the default at-a-glance columns, no
+// annotations, and backgrounds of unknown scale.
 
 import { COLOURS, type RowColour, type SortDirection, type ValueFilter } from './dataset';
 import { isRole, ROLES, type Role, type RoleAssignments } from './roles';
@@ -37,13 +46,15 @@ import { parseStatuses, parseValueList, type StatusEntry } from './vocab';
 import { isManualKey } from './manual';
 import { clonePreset, parsePresets, type ColumnPreset } from './presets';
 import { isCommentDate } from './comments';
+import { LINE_STYLES, OUTLINES, ANNOTATION_KINDS, type AnnotationKind, type LineStyle, type Outline } from './annotations';
+import type { MercatorProjection } from './osm';
 import type { Background } from './mapview';
 import { SEGMENTS, type Segment } from './segments';
 import type { Point, Viewport } from './viewport';
 
 export const WORK_STATE_FORMAT = 'mapvibes-work-state';
-export const WORK_STATE_SCHEMA_VERSION = 5;
-export const READABLE_SCHEMA_VERSIONS = [1, 2, 3, 4, 5];
+export const WORK_STATE_SCHEMA_VERSION = 6;
+export const READABLE_SCHEMA_VERSIONS = [1, 2, 3, 4, 5, 6];
 export const SUGGESTED_FILE_NAME = 'mapvibes-work-state.json';
 
 export interface WorkStateRow {
@@ -77,6 +88,22 @@ export interface WorkStateMarker {
   symbol: MarkerSymbol | null;
 }
 
+// An annotation in the file (FR-47, FR-48): its geometry and style in image
+// coordinates, its label, the row it is the footprint of (an index into
+// rows) or null, and, for a free annotation, whether it is switched off for
+// the presentation.
+export interface WorkStateAnnotation {
+  kind: AnnotationKind;
+  points: Point[];
+  colour: RowColour;
+  fillOpacity: number;
+  outline: Outline;
+  lineStyle: LineStyle;
+  label: string;
+  link: number | null;
+  hidden: boolean;
+}
+
 // The in-memory snapshot of the work state. Rows are in ingestion order;
 // the retained rows, in that order, carry the global sequential numbers.
 export interface WorkState {
@@ -92,8 +119,14 @@ export interface WorkState {
   // Indices into rows of the items switched off for the presentation.
   excluded: number[];
   presets: ColumnPreset[];
-  // The user's vocabularies (FR-32, FR-33) and the toggle (FR-34).
+  // The user's vocabularies (FR-32, FR-33, FR-43) and the toggle (FR-34).
   areaValues: string[];
+  programValues: string[];
+  // The user's colour labels (FR-45), the at-a-glance columns or null for the
+  // defaults (FR-46), and the annotations (FR-47).
+  colourLabels: Partial<Record<RowColour, string>>;
+  glanceColumns: string[] | null;
+  annotations: WorkStateAnnotation[];
   statuses: StatusEntry[];
   symbolsFromStatus: boolean;
   segment: Segment;
@@ -129,6 +162,7 @@ export const PROBLEM_KINDS = [
   'invalidVocabulary',
   'invalidEdit',
   'invalidComment',
+  'invalidAnnotation',
 ] as const;
 
 export type ProblemKind = (typeof PROBLEM_KINDS)[number];
@@ -181,7 +215,12 @@ export function serialiseWorkState(state: WorkState, savedAt: Date): string {
       comments: r.comments.map((c) => ({ date: c.date, text: c.text })),
     })),
     background: state.background
-      ? { dataUrl: state.background.src, width: state.background.width, height: state.background.height }
+      ? {
+          dataUrl: state.background.src,
+          width: state.background.width,
+          height: state.background.height,
+          ...(state.background.projection ? { projection: { ...state.background.projection } } : {}),
+        }
       : null,
     markers: state.markers.map((m) => ({ row: m.row, x: m.position.x, y: m.position.y, symbol: m.symbol })),
     presentation: { hidden: [...state.excluded] },
@@ -189,8 +228,22 @@ export function serialiseWorkState(state: WorkState, savedAt: Date): string {
     vocabularies: {
       areas: [...state.areaValues],
       statuses: state.statuses.map((s) => ({ name: s.name, symbol: s.symbol })),
+      programs: [...state.programValues],
     },
     symbolsFromStatus: state.symbolsFromStatus,
+    colourLabels: Object.fromEntries(COLOURS.filter((c) => state.colourLabels[c] !== undefined).map((c) => [c, state.colourLabels[c]])),
+    glance: { columns: state.glanceColumns === null ? null : [...state.glanceColumns] },
+    annotations: state.annotations.map((a) => ({
+      kind: a.kind,
+      points: a.points.map((p) => ({ x: p.x, y: p.y })),
+      colour: a.colour,
+      fillOpacity: a.fillOpacity,
+      outline: a.outline,
+      lineStyle: a.lineStyle,
+      label: a.label,
+      link: a.link,
+      hidden: a.hidden,
+    })),
     view: {
       segment: state.segment,
       viewport: { scale: state.viewport.scale, x: state.viewport.x, y: state.viewport.y },
@@ -304,6 +357,14 @@ export function parseWorkState(text: string): WorkState {
     const height = num(b.height, 'background.height');
     if (width <= 0 || height <= 0) invalid('notPositive', 'background');
     background = { src, width, height };
+    // Version 6: the projection of a background rendered from OpenStreetMap
+    // data (FR-49).
+    if (version >= 6 && b.projection !== undefined) {
+      const p = obj(b.projection, 'background.projection');
+      const projection: MercatorProjection = { x0: num(p.x0, 'background.projection.x0'), y1: num(p.y1, 'background.projection.y1'), scale: num(p.scale, 'background.projection.scale') };
+      if (projection.scale <= 0) invalid('notPositive', 'background.projection.scale');
+      background.projection = projection;
+    }
   }
 
   const placed = new Set<number>();
@@ -357,6 +418,10 @@ export function parseWorkState(text: string): WorkState {
 
   // Versions 1 to 3 have no vocabularies, and the toggle was not yet there.
   let areaValues: string[] = [];
+  let programValues: string[] = [];
+  let colourLabels: Partial<Record<RowColour, string>> = {};
+  let glanceColumns: string[] | null = null;
+  let annotations: WorkStateAnnotation[] = [];
   let statuses: StatusEntry[] = [];
   let symbolsFromStatus = false;
   if (version >= 4) {
@@ -368,6 +433,28 @@ export function parseWorkState(text: string): WorkState {
     areaValues = areas;
     statuses = parsedStatuses;
     symbolsFromStatus = bool(file.symbolsFromStatus, 'symbolsFromStatus');
+  }
+  // Version 6 (FR-43, FR-45 to FR-48).
+  if (version >= 6) {
+    const vocab = obj(file.vocabularies, 'vocabularies');
+    const programs = parseValueList(vocab.programs);
+    if (programs === null) invalid('invalidVocabulary', 'vocabularies.programs');
+    programValues = programs;
+    const labels = obj(file.colourLabels, 'colourLabels');
+    for (const [colour, label] of Object.entries(labels)) {
+      const c = oneOf(colour, COLOURS, `colourLabels.${colour}`);
+      colourLabels[c] = str(label, `colourLabels.${colour}`);
+    }
+    const glance = obj(file.glance, 'glance');
+    if (glance.columns !== null) {
+      glanceColumns = arr(glance.columns, 'glance.columns').map((h, i) => {
+        const header = str(h, `glance.columns[${i}]`);
+        if (!headers.includes(header)) invalid('notAColumn', `glance.columns[${i}]`);
+        return header;
+      });
+    }
+    annotations = arr(file.annotations, 'annotations').map((a, i) => parseAnnotation(a, `annotations[${i}]`, rows.length));
+    if (annotations.length > 0 && !background) invalid('markersWithoutBackground', 'annotations');
   }
 
   return {
@@ -381,6 +468,10 @@ export function parseWorkState(text: string): WorkState {
     excluded,
     presets,
     areaValues,
+    programValues,
+    colourLabels,
+    glanceColumns,
+    annotations,
     statuses,
     symbolsFromStatus,
     segment: oneOf(view.segment, SEGMENTS, 'view.segment'),
@@ -472,4 +563,35 @@ function parseComments(value: unknown, where: string): StoredComment[] {
     if (!isCommentDate(o.date) || text.trim() === '') invalid('invalidComment', `${where}[${i}]`);
     return { date: o.date, text };
   });
+}
+
+// Version 6: an annotation. Its points must fit its kind: two for a
+// rectangle or a circle, three or more for a polygon, two or more for a line.
+function parseAnnotation(value: unknown, where: string, rowCount: number): WorkStateAnnotation {
+  const o = obj(value, where);
+  const kind = oneOf(o.kind, ANNOTATION_KINDS, `${where}.kind`);
+  const points = arr(o.points, `${where}.points`).map((p, i) => {
+    const q = obj(p, `${where}.points[${i}]`);
+    return { x: num(q.x, `${where}.points[${i}].x`), y: num(q.y, `${where}.points[${i}].y`) };
+  });
+  const enough = kind === 'rectangle' || kind === 'circle' ? points.length === 2 : points.length >= (kind === 'polygon' ? 3 : 2);
+  if (!enough) invalid('invalidAnnotation', `${where}.points`);
+  const fillOpacity = num(o.fillOpacity, `${where}.fillOpacity`);
+  if (fillOpacity < 0 || fillOpacity > 1) invalid('invalidAnnotation', `${where}.fillOpacity`);
+  let link: number | null = null;
+  if (o.link !== null) {
+    link = num(o.link, `${where}.link`);
+    if (!Number.isInteger(link) || link < 0 || link >= rowCount) invalid('noSuchRow', `${where}.link`);
+  }
+  return {
+    kind,
+    points,
+    colour: oneOf(o.colour, COLOURS, `${where}.colour`),
+    fillOpacity,
+    outline: oneOf(o.outline, OUTLINES, `${where}.outline`),
+    lineStyle: oneOf(o.lineStyle, LINE_STYLES, `${where}.lineStyle`),
+    label: str(o.label, `${where}.label`),
+    link,
+    hidden: bool(o.hidden, `${where}.hidden`),
+  };
 }

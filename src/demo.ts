@@ -9,7 +9,9 @@
 // area and status vocabularies), the status-to-symbol toggle, and per item its
 // colour, marker position (as fractions of the background's width and
 // height, so that it does not depend on the rendered size), manually chosen
-// symbol, and comments.
+// symbol, and comments. Version 2 (v1.1.0) adds the colour labels, the
+// at-a-glance columns, and the annotations (their points also as fractions,
+// a footprint linked by the identifier value of its item).
 
 import listText from '../example-data/demo.csv?raw';
 import scenarioJson from '../example-data/demo-scenario.json';
@@ -18,6 +20,7 @@ import { COLOURS, type RowColour } from './dataset';
 import { parsePresets, type ColumnPreset } from './presets';
 import { isSymbol, type MarkerSymbol } from './symbols';
 import { isCommentDate } from './comments';
+import { ANNOTATION_KINDS, LINE_STYLES, OUTLINES, type AnnotationKind, type LineStyle, type Outline } from './annotations';
 
 export const DEMO_MAP_TEXT: string = mapText;
 
@@ -30,10 +33,25 @@ export interface DemoItem {
   comments: Array<{ date: string; text: string }>;
 }
 
+export interface DemoAnnotation {
+  kind: AnnotationKind;
+  points: Array<[number, number]>;
+  colour: RowColour;
+  fillOpacity: number;
+  outline: Outline;
+  lineStyle: LineStyle;
+  label: string;
+  // The identifier value of the item it is the footprint of, or null.
+  link: string | null;
+}
+
 export interface DemoScenario {
   preset: ColumnPreset;
   symbolsFromStatus: boolean;
+  colourLabels: Partial<Record<RowColour, string>>;
+  glanceColumns: string[];
   items: DemoItem[];
+  annotations: DemoAnnotation[];
 }
 
 type Json = Record<string, unknown>;
@@ -50,7 +68,7 @@ export function parseDemoScenario(raw: unknown): DemoScenario {
   };
   if (typeof raw !== 'object' || raw === null) return fail('not an object');
   const o = raw as Json;
-  if (o.format !== 'mapvibes-demo' || o.version !== 1) fail('format');
+  if (o.format !== 'mapvibes-demo' || o.version !== 2) fail('format');
   const presets = parsePresets([o.preset]);
   if (presets === null || presets.length !== 1) return fail('preset');
   const preset = presets[0];
@@ -78,7 +96,42 @@ export function parseDemoScenario(raw: unknown): DemoScenario {
     };
   });
   if (new Set(items.map((i) => i.item)).size !== items.length) fail('repeated items');
-  return { preset, symbolsFromStatus: o.symbolsFromStatus as boolean, items };
+  const labels = o.colourLabels;
+  if (typeof labels !== 'object' || labels === null) return fail('colourLabels');
+  const colourLabels: Partial<Record<RowColour, string>> = {};
+  for (const [colour, label] of Object.entries(labels as Json)) {
+    if (!COLOURS.includes(colour as RowColour) || typeof label !== 'string' || label.trim() === '') fail(`colourLabels.${colour}`);
+    colourLabels[colour as RowColour] = label as string;
+  }
+  const glance = o.glanceColumns;
+  if (!Array.isArray(glance) || glance.some((h) => !preset.headers.includes(h as string))) return fail('glanceColumns');
+  if (!Array.isArray(o.annotations)) return fail('annotations');
+  const annotations = o.annotations.map((entry, i): DemoAnnotation => {
+    const a = entry as Json;
+    const kind = a.kind as AnnotationKind;
+    if (!ANNOTATION_KINDS.includes(kind)) fail(`annotations[${i}].kind`);
+    const points = a.points;
+    const count = Array.isArray(points) ? points.length : 0;
+    const counted = kind === 'rectangle' || kind === 'circle' ? count === 2 : count >= (kind === 'polygon' ? 3 : 2);
+    if (!counted || !(points as unknown[]).every((p) => Array.isArray(p) && p.length === 2 && p.every(fraction))) fail(`annotations[${i}].points`);
+    if (!COLOURS.includes(a.colour as RowColour)) fail(`annotations[${i}].colour`);
+    if (!(typeof a.fillOpacity === 'number' && a.fillOpacity >= 0 && a.fillOpacity <= 1)) fail(`annotations[${i}].fillOpacity`);
+    if (!OUTLINES.includes(a.outline as Outline)) fail(`annotations[${i}].outline`);
+    if (!LINE_STYLES.includes(a.lineStyle as LineStyle)) fail(`annotations[${i}].lineStyle`);
+    if (typeof a.label !== 'string') fail(`annotations[${i}].label`);
+    if (a.link !== null && !items.some((it) => it.item === a.link)) fail(`annotations[${i}].link`);
+    return {
+      kind,
+      points: (points as number[][]).map((p) => [p[0], p[1]]),
+      colour: a.colour as RowColour,
+      fillOpacity: a.fillOpacity as number,
+      outline: a.outline as Outline,
+      lineStyle: a.lineStyle as LineStyle,
+      label: a.label as string,
+      link: (a.link as string | null) ?? null,
+    };
+  });
+  return { preset, symbolsFromStatus: o.symbolsFromStatus as boolean, colourLabels, glanceColumns: glance as string[], items, annotations };
 }
 
 export function demoScenario(): DemoScenario {
