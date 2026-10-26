@@ -113,6 +113,8 @@ function renderStaticText(): void {
   const t = strings(state.prefs.lang);
   document.documentElement.lang = state.prefs.lang;
   el('app-name').textContent = t.appName;
+  // The build version, injected at build time from the specification.
+  el('app-version').textContent = `v${__APP_VERSION__}`;
   el('list-heading').textContent = t.listArea;
   el('map-heading').textContent = t.mapArea;
   el('map-load').textContent = t.mapLoad;

@@ -30,8 +30,24 @@ jobs:
       - name: UI tests
         run: npx vitest run tests/ui
 
+      - name: Determine spec version
+        id: spec
+        run: |
+          VERSION=$(grep -oP 'Status: v\K[0-9]+\.[0-9]+\.[0-9]+' docs/SPECIFICATION.md | head -1)
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      # The build version shown in the header is injected here, from the same
+      # specification status line as the release tag.
       - name: Build production bundle
+        env:
+          MAPVIBES_VERSION: ${{ steps.spec.outputs.version }}
         run: npm run build
+
+      - name: Check the build version in the built artifacts
+        run: |
+          for f in dist/build/index.html dist/build/mapvibes-singlefile.html; do
+            grep -qF '"v${{ steps.spec.outputs.version }}"' "$f"
+          done
       - name: Build regression tests (inlined artifacts)
         run: npx vitest run tests/inline-build
 
@@ -64,11 +80,14 @@ jobs:
         id: sha
         run: echo "sha256=$(sha256sum dist/release/mapvibes.zip | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
 
-      - name: Determine spec version
-        id: spec
+      # The release tag always names the commit that was built: when a release
+      # is updated under an existing version, its tag is moved to this commit,
+      # so that the tag, the archive, the hosted page, and the version shown
+      # in the header all match.
+      - name: Point the release tag at the built commit
         run: |
-          VERSION=$(grep -oP 'Status: v\K[0-9]+\.[0-9]+\.[0-9]+' docs/SPECIFICATION.md | head -1)
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          git tag -f "v${{ steps.spec.outputs.version }}" "$GITHUB_SHA"
+          git push -f origin "refs/tags/v${{ steps.spec.outputs.version }}"
 
       - name: Create or update release
         uses: softprops/action-gh-release@v2

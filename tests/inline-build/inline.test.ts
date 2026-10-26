@@ -121,3 +121,12 @@ describe.each(builtIndex ? builds : [])('inlined build renders no script source 
     expect(scriptText).not.toContain('</script');
   });
 });
+
+describe('build version (header)', () => {
+  const version = readFileSync(join(process.cwd(), 'docs', 'SPECIFICATION.md'), 'utf8').match(/Status: v([0-9]+\.[0-9]+\.[0-9]+)/)![1];
+
+  test.each(builds)('the %s carries the specification version as its build version', (_label, file) => {
+    expect(existsSync(file)).toBe(true);
+    expect(readFileSync(file, 'utf8')).toContain(`"v${version}"`);
+  });
+});
