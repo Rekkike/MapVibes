@@ -22,7 +22,7 @@ describe('in-list role assignment (FR-1)', () => {
   test('every column heading has a role control offering the optional roles, unassigned by default', () => {
     const selects = [...document.querySelectorAll<HTMLSelectElement>('#row-table-head .role-select')];
     expect(selects).toHaveLength(5);
-    expect([...selects[0].options].map((o) => o.value)).toEqual(['', 'identifier', 'name', 'start', 'end', 'area']);
+    expect([...selects[0].options].map((o) => o.value)).toEqual(['', 'identifier', 'name', 'start', 'end', 'area', 'status']);
     expect([...selects[0].options].map((o) => o.textContent)).toEqual([
       'No role',
       'Identifier',
@@ -30,6 +30,7 @@ describe('in-list role assignment (FR-1)', () => {
       'Start date',
       'End date',
       'Area / grouping',
+      'Status',
     ]);
     expect(selects.every((s) => s.value === '')).toBe(true);
     expect(selects[0].getAttribute('aria-label')).toBe('Role: ID');

@@ -129,4 +129,19 @@ describe('design tokens and theming (FR-29)', () => {
       expect(rule).not.toMatch(/filter|opacity/);
     }
   });
+
+  test('icons are vector glyphs stroked in the marker number colour, at 4.5:1 against every fill in both themes (FR-26)', () => {
+    const glyph = css.slice(css.indexOf('.marker-glyph {'), css.indexOf('}', css.indexOf('.marker-glyph {')));
+    expect(glyph).toMatch(/stroke:\s*currentColor;/);
+    expect(glyph).toMatch(/fill:\s*none;/);
+    for (const theme of [light, dark]) {
+      for (const colour of COLOURS) {
+        const ink = colour === 'yellow' ? theme['--marker-text-on-yellow'] : theme['--marker-text'];
+        expect(contrast(ink, theme[`--marker-${colour}`]), colour).toBeGreaterThanOrEqual(4.5);
+      }
+      // Swatches and badges without a colour (the legend's symbol list) use the neutral fill.
+      expect(contrast(theme['--marker-on-neutral'], theme['--marker-neutral'])).toBeGreaterThanOrEqual(4.5);
+    }
+    expect(css).toMatch(/:where\(\.marker, \.marker-badge, \.legend-swatch\) \{[^}]*color:\s*var\(--marker-on-neutral\)/);
+  });
 });

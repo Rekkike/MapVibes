@@ -3,6 +3,7 @@
 // and handles selecting, moving (by dragging), and removing (Delete key).
 
 import type { PlacedMarker } from './markers';
+import { drawSymbol, symbolClasses } from './symbols';
 import { imageToScreen, screenToImage, type Point, type Viewport } from './viewport';
 
 export interface MarkerLayerHooks {
@@ -16,6 +17,7 @@ export interface MarkerLayerHooks {
   onSelect(rowId: string | null): void;
   isExcluded?(marker: PlacedMarker): boolean;
   onHover?(rowId: string | null): void;
+  symbolSource?(marker: PlacedMarker): string;
   isHighlighted?(marker: PlacedMarker): boolean;
   onMove(rowId: string, position: Point): void;
   onRemove(rowId: string): void;
@@ -47,7 +49,7 @@ export class MarkerLayer {
         this.layer.appendChild(node);
       }
       const screen = imageToScreen(v, marker.position);
-      node.className = `marker marker-${marker.colour} marker-shape-${marker.shape}`;
+      node.className = `marker marker-${marker.colour} ${symbolClasses(marker.shape)}`;
       if (this.hooks.isExcluded?.(marker)) node.classList.add('marker-excluded');
       if (this.hooks.isHighlighted?.(marker)) node.classList.add('highlighted');
       node.classList.toggle('selected', id === selectedId);
@@ -55,7 +57,12 @@ export class MarkerLayer {
       node.dataset.number = String(marker.number);
       node.dataset.colour = marker.colour;
       node.dataset.shape = marker.shape;
-      node.textContent = String(marker.number);
+      const source = this.hooks.symbolSource?.(marker);
+      if (source) node.dataset.symbolSource = source;
+      if (node.dataset.drawn !== `${marker.shape}:${marker.number}`) {
+        drawSymbol(node, marker.shape, String(marker.number));
+        node.dataset.drawn = `${marker.shape}:${marker.number}`;
+      }
       node.setAttribute('aria-label', this.hooks.markerLabel(marker));
       node.title = this.hooks.markerLabel(marker);
       node.style.left = `${screen.x}px`;

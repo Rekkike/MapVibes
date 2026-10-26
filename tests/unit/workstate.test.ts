@@ -32,10 +32,16 @@ function sample(): WorkState {
     ],
     background: { src: `data:image/png;base64,${png}`, width: 1200, height: 800 },
     markers: [
-      { row: 0, position: { x: 125.25, y: 300.5 }, shape: 'diamond' },
-      { row: 3, position: { x: 1000, y: 0.125 }, shape: 'circle' },
+      { row: 0, position: { x: 125.25, y: 300.5 }, symbol: 'gear' },
+      { row: 3, position: { x: 1000, y: 0.125 }, symbol: null },
     ],
     excluded: [3],
+    areaValues: ['North', 'South'],
+    statuses: [
+      { name: 'Open', symbol: 'pause' },
+      { name: 'Done', symbol: 'check' },
+    ],
+    symbolsFromStatus: true,
     presets: [
       { name: 'Standard', headers: ['ID', 'Start', 'Group', 'Note'], hidden: ['Note'], roles: { identifier: 'ID', area: 'Group' } },
     ],
@@ -84,15 +90,15 @@ describe('work-state file (FR-13)', () => {
   });
 
   test('a state without background or markers round-trips too', () => {
-    const state = { ...sample(), background: null, markers: [], excluded: [], presets: [], manualColumns: [], segment: 'information' as const };
+    const state = { ...sample(), background: null, markers: [], excluded: [], presets: [], manualColumns: [], areaValues: [], statuses: [], symbolsFromStatus: false, segment: 'information' as const };
     expect(parseWorkState(serialiseWorkState(state, SAVED_AT))).toEqual(state);
   });
 
   test('the file carries the format name, schema version, and save time', () => {
     const file = fileOf(sample());
     expect(file.format).toBe(WORK_STATE_FORMAT);
-    expect(file.schemaVersion).toBe(3);
-    expect(WORK_STATE_SCHEMA_VERSION).toBe(3);
+    expect(file.schemaVersion).toBe(4);
+    expect(WORK_STATE_SCHEMA_VERSION).toBe(4);
     expect(file.savedAt).toBe('2026-01-02T03:04:05.000Z');
   });
 
@@ -109,7 +115,7 @@ describe('work-state file (FR-13)', () => {
   });
 
   test('an unknown schema version is rejected and named, never loaded silently', () => {
-    for (const version of [4, 0, '3', null]) {
+    for (const version of [5, 0, '4', null]) {
       const file = { ...fileOf(sample()), schemaVersion: version };
       expect(expectError(JSON.stringify(file), 'unknown-version').detail).toBe(String(version));
     }
@@ -139,10 +145,10 @@ describe('work-state file (FR-13)', () => {
 
   test('markers referring to removed, missing, or duplicate rows are rejected', () => {
     const cases: Array<[unknown[], string, string]> = [
-      [[{ row: 1, x: 0, y: 0, shape: 'circle' }], 'removedRow', 'markers[0]'],
-      [[{ row: 9, x: 0, y: 0, shape: 'circle' }], 'noSuchRow', 'markers[0].row'],
-      [[{ row: 0, x: 0, y: 0, shape: 'circle' }, { row: 0, x: 1, y: 1, shape: 'circle' }], 'duplicateMarker', 'markers[1]'],
-      [[{ row: 0, x: 'a', y: 0, shape: 'circle' }], 'notNumber', 'markers[0].x'],
+      [[{ row: 1, x: 0, y: 0, symbol: null }], 'removedRow', 'markers[0]'],
+      [[{ row: 9, x: 0, y: 0, symbol: null }], 'noSuchRow', 'markers[0].row'],
+      [[{ row: 0, x: 0, y: 0, symbol: null }, { row: 0, x: 1, y: 1, symbol: null }], 'duplicateMarker', 'markers[1]'],
+      [[{ row: 0, x: 'a', y: 0, symbol: null }], 'notNumber', 'markers[0].x'],
     ];
     for (const [markers, kind, field] of cases) {
       const file = { ...fileOf(sample()), markers };
@@ -165,18 +171,18 @@ describe('work-state file (FR-13)', () => {
     expectError(JSON.stringify(d), 'invalid');
   });
 
-  test('schema version 2 stores roles, marker shapes, presentation toggles, and presets', () => {
+  test('the file stores roles, marker symbols, presentation toggles, and presets', () => {
     const file = fileOf(sample()) as Record<string, any>;
     expect(file.columns.roles).toEqual({ identifier: 'ID', name: 'Note', start: 'Start', area: 'Group' });
     expect(file.columns.mapping).toBeUndefined();
-    expect(file.markers.map((m: { shape: string }) => m.shape)).toEqual(['diamond', 'circle']);
+    expect(file.markers.map((m: { symbol: string | null }) => m.symbol)).toEqual(['gear', null]);
     expect(file.presentation).toEqual({ hidden: [3] });
     expect(file.presets[0].name).toBe('Standard');
   });
 
   test('version 2 content is validated', () => {
     const cases: Array<[(f: Record<string, any>) => void, string, string]> = [
-      [(f) => (f.markers[0].shape = 'star'), 'unknownValue', 'markers[0].shape'],
+      [(f) => (f.markers[0].symbol = 'star'), 'unknownValue', 'markers[0].symbol'],
       [(f) => (f.presentation.hidden = [1]), 'removedRow', 'presentation.hidden[0]'],
       [(f) => (f.presentation.hidden = [9]), 'noSuchRow', 'presentation.hidden[0]'],
       [(f) => (f.presentation.hidden = [0, 0]), 'duplicateEntry', 'presentation.hidden[1]'],
@@ -211,11 +217,11 @@ describe('schema version 1 migration (FR-13)', () => {
     ]);
     expect(state.background!.src.startsWith('data:image/png;base64,')).toBe(true);
     expect([state.background!.width, state.background!.height]).toEqual([1785, 2526]);
-    // Version 1 has no shapes, toggles, or presets: defaults apply.
-    expect(state.markers.map((m) => [m.row, m.shape])).toEqual([
-      [1, 'circle'],
-      [2, 'circle'],
-      [3, 'circle'],
+    // Version 1 has no symbols, toggles, presets, or vocabularies: defaults apply.
+    expect(state.markers.map((m) => [m.row, m.symbol])).toEqual([
+      [1, null],
+      [2, null],
+      [3, null],
     ]);
     expect(state.excluded).toEqual([]);
     expect(state.presets).toEqual([]);
@@ -227,7 +233,7 @@ describe('schema version 1 migration (FR-13)', () => {
     expect(migrated.manualColumns).toEqual([]);
     expect(migrated.rows.every((r) => !r.manual)).toBe(true);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(3);
+    expect(JSON.parse(text).schemaVersion).toBe(4);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 
@@ -282,7 +288,9 @@ describe('schema version 2 migration (FR-13)', () => {
     expect(JSON.parse(v2Text).schemaVersion).toBe(2);
     const state = parseWorkState(v2Text);
     expect(state.roles).toEqual({ identifier: 'ID', name: 'Note', area: 'Group' });
-    expect(state.markers.map((m) => m.shape)).toEqual(['circle', 'circle', 'diamond', 'circle', 'circle']);
+    // Stored default circles count as no manual choice; other shapes as manual choices.
+    expect(state.markers.map((m) => m.symbol)).toEqual([null, null, 'diamond', null, null]);
+    expect([state.areaValues, state.statuses, state.symbolsFromStatus]).toEqual([[], [], false]);
     expect(state.excluded).toEqual([1]);
     expect(state.presets.map((p) => p.name)).toEqual(['Standard']);
     expect(state.manualColumns).toEqual([]);
@@ -292,7 +300,7 @@ describe('schema version 2 migration (FR-13)', () => {
   test('a migrated version 2 file is saved as version 3 and reads back identically', () => {
     const migrated = parseWorkState(v2Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(3);
+    expect(JSON.parse(text).schemaVersion).toBe(4);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 
@@ -303,5 +311,68 @@ describe('schema version 2 migration (FR-13)', () => {
     const state = parseWorkState(JSON.stringify(v2));
     expect(state.rows[0].manual).toBe(false);
     expect(state.manualColumns).toEqual([]);
+  });
+});
+
+describe('schema version 4: vocabularies and the status-to-symbol toggle (FR-32 to FR-34, FR-13)', () => {
+  test('the vocabularies, the toggle, and icon symbols round-trip', () => {
+    const file = fileOf(sample()) as Record<string, any>;
+    expect(file.vocabularies).toEqual({ areas: ['North', 'South'], statuses: [{ name: 'Open', symbol: 'pause' }, { name: 'Done', symbol: 'check' }] });
+    expect(file.symbolsFromStatus).toBe(true);
+    const back = parseWorkState(serialiseWorkState(sample(), SAVED_AT));
+    expect([back.areaValues, back.statuses, back.symbolsFromStatus]).toEqual([sample().areaValues, sample().statuses, true]);
+  });
+
+  test('presets keep their vocabularies in the file', () => {
+    const state = sample();
+    state.presets = [{ ...state.presets[0], areas: ['North'], statuses: [{ name: 'Open', symbol: 'cross' }] }];
+    expect(parseWorkState(serialiseWorkState(state, SAVED_AT)).presets[0]).toEqual(state.presets[0]);
+  });
+
+  test('vocabularies and the toggle are validated', () => {
+    const cases: Array<[(f: Record<string, any>) => void, string, string]> = [
+      [(f) => (f.vocabularies.areas = ['A', 'A']), 'invalidVocabulary', 'vocabularies.areas'],
+      [(f) => (f.vocabularies.statuses = [{ name: 'A', symbol: 'star' }]), 'invalidVocabulary', 'vocabularies.statuses'],
+      [(f) => (f.symbolsFromStatus = 'yes'), 'notBoolean', 'symbolsFromStatus'],
+      [(f) => delete f.vocabularies, 'notObject', 'vocabularies'],
+    ];
+    for (const [mutate, kind, field] of cases) {
+      const file = fileOf(sample()) as Record<string, any>;
+      mutate(file);
+      expect(expectError(JSON.stringify(file), 'invalid').problem, `${kind} ${field}`).toEqual({ kind, field });
+    }
+  });
+
+  test('version 2 and 3 files may not carry icons: their markers hold shapes only', () => {
+    const v2 = JSON.parse(readFileSync(join(process.cwd(), 'example-data', 'example-work-state-v2.json'), 'utf8'));
+    v2.markers[0].shape = 'gear';
+    expect(expectError(JSON.stringify(v2), 'invalid').problem).toEqual({ kind: 'unknownValue', field: 'markers[0].shape' });
+  });
+});
+
+
+describe('schema version 3 migration (FR-13)', () => {
+  const v3Text = readFileSync(join(process.cwd(), 'example-data', 'example-work-state-v3.json'), 'utf8');
+
+  test('a version 3 file written by v0.6.0 opens with its manual data; vocabularies start empty and the toggle off', () => {
+    expect(JSON.parse(v3Text).schemaVersion).toBe(3);
+    const state = parseWorkState(v3Text);
+    expect(state.manualColumns.map((c) => c.label)).toEqual(['Rank']);
+    expect(state.rows.map((r) => r.manual)).toEqual([false, false, false, false, false, true]);
+    expect(state.roles).toEqual({ identifier: 'ID', area: 'Group' });
+    // The stored default circles are no manual choice; the square is.
+    expect(state.markers.map((m) => [m.row, m.symbol])).toEqual([
+      [0, null],
+      [2, null],
+      [5, 'square'],
+    ]);
+    expect([state.areaValues, state.statuses, state.symbolsFromStatus]).toEqual([[], [], false]);
+  });
+
+  test('a migrated version 3 file is saved as version 4 and reads back identically', () => {
+    const migrated = parseWorkState(v3Text);
+    const text = serialiseWorkState(migrated, SAVED_AT);
+    expect(JSON.parse(text).schemaVersion).toBe(4);
+    expect(parseWorkState(text)).toEqual(migrated);
   });
 });

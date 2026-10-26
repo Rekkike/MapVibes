@@ -2,7 +2,8 @@
 // that shows markers (the Map segment and the Presentation stage).
 
 import { COLOURS, type RowColour } from './dataset';
-import { SHAPES, type MarkerShape } from './markers';
+import { drawSymbol, SYMBOLS, symbolClasses, type MarkerSymbol } from './symbols';
+import type { StatusEntry } from './vocab';
 import type { Strings } from './i18n';
 
 export function colourName(t: Strings, colour: RowColour): string {
@@ -10,24 +11,31 @@ export function colourName(t: Strings, colour: RowColour): string {
   return names[colour];
 }
 
-export function shapeName(t: Strings, shape: MarkerShape): string {
-  const names: Record<MarkerShape, string> = {
+export function shapeName(t: Strings, symbol: MarkerSymbol): string {
+  const names: Record<MarkerSymbol, string> = {
     circle: t.shapeCircle,
     square: t.shapeSquare,
     diamond: t.shapeDiamond,
     triangle: t.shapeTriangle,
     hexagon: t.shapeHexagon,
+    bulb: t.iconBulb,
+    magnifier: t.iconMagnifier,
+    gear: t.iconGear,
+    pause: t.iconPause,
+    cross: t.iconCross,
+    check: t.iconCheck,
   };
-  return names[shape];
+  return names[symbol];
 }
 
-function entry(swatchClass: string, label: string, data: Record<string, string>): HTMLLIElement {
+function entry(swatchClass: string, label: string, data: Record<string, string>, symbol?: MarkerSymbol): HTMLLIElement {
   const li = document.createElement('li');
   li.className = 'legend-entry';
   Object.assign(li.dataset, data);
   const swatch = document.createElement('span');
   swatch.className = `legend-swatch ${swatchClass}`;
   swatch.setAttribute('aria-hidden', 'true');
+  if (symbol) drawSymbol(swatch, symbol, '');
   const text = document.createElement('span');
   text.className = 'legend-label';
   text.textContent = label;
@@ -35,8 +43,9 @@ function entry(swatchClass: string, label: string, data: Record<string, string>)
   return li;
 }
 
-// The legend explains the four colours and the marker shapes (FR-6, FR-26).
-export function renderLegend(container: HTMLElement, t: Strings): void {
+// The legend explains the four colours, the marker symbols, and the user's
+// statuses with their symbols where defined (FR-6, FR-26, FR-33).
+export function renderLegend(container: HTMLElement, t: Strings, statuses: StatusEntry[] = []): void {
   container.innerHTML = '';
   const heading = document.createElement('span');
   heading.className = 'legend-heading';
@@ -46,8 +55,15 @@ export function renderLegend(container: HTMLElement, t: Strings): void {
   container.setAttribute('aria-labelledby', heading.id);
   const groups: Array<[string, string, HTMLLIElement[]]> = [
     ['colours', t.legendColours, COLOURS.map((c) => entry(`marker-${c} marker-shape-circle`, colourName(t, c), { colour: c }))],
-    ['shapes', t.legendShapes, SHAPES.map((s) => entry(`marker-shape-${s}`, shapeName(t, s), { shape: s }))],
+    ['shapes', t.legendShapes, SYMBOLS.map((s) => entry(symbolClasses(s), shapeName(t, s), { shape: s }, s))],
   ];
+  if (statuses.length > 0) {
+    groups.push([
+      'statuses',
+      t.legendStatuses,
+      statuses.map((s) => entry(symbolClasses(s.symbol as MarkerSymbol), s.name, { status: s.name, shape: s.symbol }, s.symbol as MarkerSymbol)),
+    ]);
+  }
   container.append(heading);
   for (const [kind, label, entries] of groups) {
     const group = document.createElement('div');

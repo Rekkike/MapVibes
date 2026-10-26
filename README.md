@@ -19,6 +19,8 @@ MapVibes turns a spreadsheet export into an interactive, zoomable map: clean the
 - Global sequential numbering with automatic renumbering when rows are removed or added.
 - Zoomable, pannable map on a user-supplied background: an image file, a chosen page of a PDF document, or an OpenStreetMap (.osm) file rendered locally; optionally, open map data fetched by place name or area.
 - Manual entry: start an empty list with no file at all, and add rows and columns by hand; hand-made rows are coloured, numbered, and placed like imported ones.
+- Your own vocabularies: an area list and a status list (each status with a marker symbol), empty until you fill them, offered as choices in the list's cells; optional assignment of marker symbols from status. Nothing domain-specific is predefined.
+- A symbol library of geometric shapes and six icons (light bulb, magnifying glass, gear, pause, cross, checkmark).
 - Drag-and-drop rows from the list onto the map as numbered markers in four colours (green, blue, yellow, red) and five shapes, with a legend at the bottom and an at-a-glance panel of the items in view.
 - Presentation mode: a read-only stage with per-item visibility toggles.
 - Details panel per item, including free-text comments.

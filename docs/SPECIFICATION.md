@@ -1,6 +1,6 @@
 # MapVibes — Functional Specification
 
-Status: v0.6.0 — manual data entry and open-map backgrounds pass delivered. See the changelog below.
+Status: v0.7.0 — vocabularies and symbols pass delivered. See the changelog below.
 
 MapVibes is a static, client-side web application: a spreadsheet-to-map visualisation tool. It has no backend, no database, and no server-side processing. Everything runs locally in the browser.
 
@@ -15,7 +15,7 @@ MapVibes is a static, client-side web application: a spreadsheet-to-map visualis
 
 ## Functional requirements
 
-- FR-1: Ingest a spreadsheet (xlsx) by file drop or file picker; parse all columns; surface parsing errors clearly. Ingestion is direct: importing a spreadsheet populates the list immediately with all of the file's columns, named by the file's own headers, shown as-is; no configuration dialog interrupts the import, and no header names are hardcoded. Columns are shown and hidden in the list itself. Role assignment also takes place in the list: a per-column control in the list header assigns the optional roles identifier, name/title, start date, end date, and area/grouping (each role to at most one column). All column data is treated as generic text. The name/title is the display name of an item, used by the list, the marker labels, and the at-a-glance panel; where it is unassigned or empty, the display name falls back to the identifier value, and otherwise to the item's number.
+- FR-1: Ingest a spreadsheet (xlsx) by file drop or file picker; parse all columns; surface parsing errors clearly. Ingestion is direct: importing a spreadsheet populates the list immediately with all of the file's columns, named by the file's own headers, shown as-is; no configuration dialog interrupts the import, and no header names are hardcoded. Columns are shown and hidden in the list itself. Role assignment also takes place in the list: a per-column control in the list header assigns the optional roles identifier, name/title, start date, end date, area/grouping, and status (each role to at most one column). All column data is treated as generic text. The name/title is the display name of an item, used by the list, the marker labels, and the at-a-glance panel; where it is unassigned or empty, the display name falls back to the identifier value, and otherwise to the item's number.
 - FR-2: Support the user's manual cleaning process: present all ingested rows in the list; the user removes rows by hand. The list shall support: sorting by column; setting the marker colour per row; showing and hiding columns; filtering on column values, including empty and non-empty cells in a chosen column; and selecting multiple or all rows for bulk deletion. Show running counts of retained and removed rows.
 - FR-3: Assign sequential presentation numbers, starting at 1, globally across all items. When rows are removed or added after numbering, numbers regenerate so the sequence remains continuous.
 - FR-4: Display a zoomable, pannable background map image supplied by the user.
@@ -40,12 +40,16 @@ MapVibes is a static, client-side web application: a spreadsheet-to-map visualis
 - FR-23: Saved column presets. The current column configuration (shown and hidden columns, and role assignments) can be saved under a name. When a later import has the same headers, the matching preset applies automatically; presets can also be applied, switched, and removed by the user. Presets persist in the work-state file and in local storage where available (FR-21).
 - FR-24: Manually added columns. The user can add columns by hand; such columns participate in sorting, filtering, and grouping exactly like imported columns.
 - FR-25: Map background import from PDF documents. In addition to image files (FR-4), the background can be loaded from a PDF document: the user selects the page, and the rendered page becomes the background image on the same viewport. PDF rendering uses a fully bundled library; no CDN or network access is involved.
-- FR-26: Marker symbol library. Beyond the four colours (FR-5), a library of marker symbols is available, and the symbol is changeable per marker.
+- FR-26: Marker symbol library. Beyond the four colours (FR-5), a library of marker symbols is available, and the symbol is changeable per marker. The library holds geometric shapes and six icons: light bulb, magnifying glass, gear, pause bars, cross, and checkmark, rendered as vector icons with at least 4.5:1 contrast against the marker fill in both themes.
 - FR-27: Presentation mode with per-item and per-layer visibility toggles. Items and layers excluded by the user are absent from the exported presentation.
 - FR-28: At-a-glance panel. A panel beside the map shows only the items currently visible in the viewport, updating live as the viewport changes, with cross-highlighting between list entries and markers.
 - FR-29: Design quality bar. The interface maintains a consistent visual language, spacing, and theming across the light and dark modes; where practical, this is pinned by automated DOM and CSS assertions.
 - FR-30: Manual population of the entire list. An empty list can be started with no import at all, so that the application is fully usable where no files can be opened; rows and columns are then added and edited by hand.
 - FR-31: Open-map backgrounds. OpenStreetMap XML (.osm) files can be loaded locally and rendered as map backgrounds. In addition, an explicit, clearly labelled, user-initiated action fetches open map data by place name or bounding box from open services and renders it the same way (see hard constraints 2 and 3).
+- FR-32: Area vocabulary. The area/grouping role is choose-from: each cell of the area column offers a combobox in which an existing value is picked or a new value is typed. The list of values is managed by the user in a panel (add, rename, remove), with an action that collects all values currently present in the column. The list is empty by default and persists in the work state and in presets.
+- FR-33: Status role and vocabulary. A column can be assigned the status role; its values are chosen, through a combobox in each cell, from a status list managed by the user in a panel (add, rename, remove, reorder, and assign a symbol from the symbol library to each status). The list is empty by default and persists in the work state and in presets. No status words are predefined.
+- FR-34: Status-to-symbol assignment. An explicit toggle "assign marker symbols from status", off by default. While it is off, choosing a status never changes any marker's symbol; symbols change only per marker in the Map segment. While it is on, each item whose marker has no manually chosen symbol shows the symbol of its status; a manually chosen symbol is never overridden.
+- Scope note to FR-32 and FR-33: the comboboxes apply to every row, imported rows included. This is a narrow, deliberate exception for the two role-governed vocabulary columns only; all other imported values remain read-only, and FR-10 (editing any field) remains deferred.
 
 ## Non-goals
 
@@ -54,6 +58,39 @@ MapVibes is a static, client-side web application: a spreadsheet-to-map visualis
 - No hardcoded schema: no fixed column names or formats.
 
 ## Changelog
+
+### v0.7.0
+
+Vocabularies and symbols pass (Pass 6). Design principle: every vocabulary is user-managed. The application ships with empty area and status lists; the user populates them, and they persist in the work state and in presets. Nothing domain-specific is predefined anywhere.
+
+Specification amendments (recorded before implementation; all implemented in this pass):
+
+- FR-1 (amended): the status role is added to the in-list role control. Implemented.
+- FR-32 (new): area vocabulary: the area/grouping role is choose-from, with a combobox in each cell (pick an existing value or type a new one) and a management panel with collect-from-column. Implemented.
+- FR-33 (new): status role and vocabulary: values chosen from a user-managed status list; each status has a name and an assigned symbol; managed in a panel (add, rename, remove, reorder, assign symbol). Implemented.
+- FR-26 (amended): the symbol library gains six icons (light bulb, magnifying glass, gear, pause bars, cross, checkmark), rendered as vector icons with at least 4.5:1 contrast against the marker fill in both themes. Implemented.
+- FR-34 (new): the toggle "assign marker symbols from status", off by default. Implemented.
+- Scope note to FR-32 and FR-33 (recorded on the owner's decision before implementation): the directive both asked for combobox cells in the area and status columns and listed editing imported values as out of scope. On the owner's decision, the comboboxes apply to every row, imported rows included, as a narrow exception for these two role-governed vocabulary columns only; all other imported values remain read-only and FR-10 remains deferred.
+
+Unit 0 (supplement stream): the fetch-usability supplement to v0.6.0 had already been delivered and was verified before this pass (release run successful, the v0.6.0 tag at the delivered commit, archive and hosted build matching). No translation items from that stream were received, so none were executed.
+
+Delivered units:
+
+1. Area combobox (FR-32): with the area role assigned, every cell of the area column is a text field offering the area list (a browser combobox through a shared list of suggestions); an existing value is picked or a new one typed, and a newly typed value joins the list. The "Area values" panel adds, renames, and removes values, and "Collect values from the column" adds every value present in the column that is not yet in the list, reporting how many were added. Renaming a value changes the cells holding it; removing a value does not erase cell text, and cells whose value is not in the list are marked as such. The list is saved with presets (and in the work state from unit 5).
+2. Status role and vocabulary (FR-33): "Status" is a role in the column control. Every cell of the status column is a select (a native combobox) offering "No status" and the statuses in list order; a cell value that is not in the list is kept, shown with the note "not in the list", until another is chosen. The "Statuses" panel adds statuses (with the default symbol), renames them (cells follow), reorders them (up, down), assigns each a symbol from the library, and removes them (cells keep their text, marked). The list is saved with presets and in the work state. Collecting statuses from a column is not part of this pass.
+3. Symbol library extension (FR-26): six icons, light bulb, magnifying glass, gear, pause, cross, and checkmark, drawn as inline vector paths stroked in the marker's number colour, so that every icon keeps the 4.5:1 contrast against every marker fill that is pinned for the numbers in both themes; icon markers keep their number beside the icon. All eleven symbols are selectable per marker in the Map segment ("Symbol"), appear on the presentation stage and in every side list, and are explained in the legend ("Symbols"); when statuses exist, the legend adds a "Statuses" group showing each status with its symbol.
+4. Status-to-symbol toggle (FR-34): the checkbox "Assign marker symbols from status" in the Statuses panel, off by default, with a one-line explanation. While off, choosing a status never changes a marker symbol. While on, every marker without a manually chosen symbol shows its status's symbol, following changes of the status and of the status's symbol; a symbol chosen for a marker in the Map segment is never overridden. Switching the toggle off returns status-derived symbols to the default; manual symbols stay. A manually chosen symbol cannot yet be cleared back to "no manual choice".
+5. Work-state schema version 4 (FR-13): adds the area and status vocabularies, the toggle, the icons, and, per marker, the manually chosen symbol or null when none was chosen; presets in the file keep their vocabularies. Files of schema versions 1, 2, and 3 still open (migrated on reading, with empty vocabularies and the toggle off); because versions 2 and 3 stored a shape for every marker without recording whether it was chosen, a stored circle (the default) migrates as no manual choice and any other shape as a manual choice. Any other version is rejected with a clear message.
+6. Tests and delivery: unit tests for vocabulary management (areas and statuses), the symbol library, presets with vocabularies, and the schema version 4 format and the migration of versions 1, 2, and 3 (against files written by v0.4.0, v0.5.0, and v0.6.0, in example-data); UI tests for the area and status comboboxes and panels, the toggle off by default and its enabled semantics, the icons, and the legend; stylesheet assertions pinning the icon rendering (stroke in the number colour, no fill) and the contrast of icons and numbers against every fill and against the neutral legend fill in both themes; and the build regression suite.
+
+Verification: type checking; the unit, UI, and build regression suites in chunked invocations; and headless-Chromium runs of both built artifacts via file:// with the browser context offline, covering empty vocabularies on start, collect-from-column, typing a new area value, statuses with symbols, the toggle off and on with a manual symbol kept, the legend's statuses, icons in both themes, saving and reopening a schema version 4 file, and opening the version 3 file written by v0.6.0. The only request made was the local file itself.
+
+Notices:
+
+- Statuses cannot be collected from an existing column (only areas can); a status column imported with values shows them as "not in the list" until the user adds matching statuses.
+- A marker's manually chosen symbol cannot be cleared back to "no manual choice" in this version; choosing the circle again is still a manual choice.
+- The vocabularies are kept when a new spreadsheet is imported or an empty list is started within a session; opening a work-state file or applying a preset that carries vocabularies replaces them.
+- The icon designs are original simple line drawings; the gear is drawn as an eight-toothed cog.
 
 ### v0.6.0
 

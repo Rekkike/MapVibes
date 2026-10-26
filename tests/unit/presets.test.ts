@@ -57,4 +57,18 @@ describe('column presets (FR-23)', () => {
       expect(parsePresets(bad)).toBeNull();
     }
   });
+
+  test('a preset may carry the area vocabulary, which is validated and copied', () => {
+    const parsed = parsePresets([p('A', ['x'], { areas: ['North', 'South'] })])!;
+    expect(parsed[0].areas).toEqual(['North', 'South']);
+    expect(parsePresets([p('A', ['x'], { areas: ['North', 'North'] })])).toBeNull();
+    expect(parsePresets([p('A', ['x'])])![0].areas).toBeUndefined();
+    const saved = upsertPreset([], p('B', ['x'], { areas: ['East'] }));
+    expect(saved[0].areas).toEqual(['East']);
+  });
+
+  test('a preset may carry the status vocabulary with symbols, which is validated', () => {
+    expect(parsePresets([p('A', ['x'], { statuses: [{ name: 'Open', symbol: 'square' }] })])![0].statuses).toEqual([{ name: 'Open', symbol: 'square' }]);
+    expect(parsePresets([p('A', ['x'], { statuses: [{ name: 'Open', symbol: 'unknown' }] })])).toBeNull();
+  });
 });

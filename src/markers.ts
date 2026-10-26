@@ -5,6 +5,7 @@
 
 import { numberRows, type RowColour, type RowData } from './dataset';
 import type { Point } from './viewport';
+import type { MarkerSymbol } from './symbols';
 
 export type MarkerPositions = Map<RowData, Point>;
 
@@ -16,7 +17,8 @@ export const SHAPES: MarkerShape[] = ['circle', 'square', 'diamond', 'triangle',
 
 export const DEFAULT_SHAPE: MarkerShape = 'circle';
 
-export type MarkerShapes = Map<RowData, MarkerShape>;
+// The symbol chosen per marker (a shape or an icon, FR-26).
+export type MarkerShapes = Map<RowData, MarkerSymbol>;
 
 export function isShape(value: unknown): value is MarkerShape {
   return typeof value === 'string' && (SHAPES as string[]).includes(value);
@@ -26,7 +28,7 @@ export interface PlacedMarker {
   row: RowData;
   number: number;
   colour: RowColour;
-  shape: MarkerShape;
+  shape: MarkerSymbol;
   position: Point;
 }
 

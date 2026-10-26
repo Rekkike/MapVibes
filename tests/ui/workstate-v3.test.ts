@@ -52,7 +52,7 @@ describe('work-state schema version 3 (FR-13, FR-9, FR-24)', () => {
     editCell(1, 'Zone', 'West');
     const text = await save();
     const file = JSON.parse(text);
-    expect(file.schemaVersion).toBe(3);
+    expect(file.schemaVersion).toBe(4);
     expect(file.columns.manual.map((c: { label: string }) => c.label)).toEqual(['Label', 'Zone']);
     expect(file.rows.map((r: { origin: string }) => r.origin)).toEqual(['manual', 'manual']);
 
@@ -103,7 +103,9 @@ describe('work-state schema version 3 (FR-13, FR-9, FR-24)', () => {
       ['4', 'circle', false],
       ['5', 'circle', false],
     ]);
-    expect(document.querySelectorAll('.cell-input')).toHaveLength(0);
-    expect(JSON.parse(await save()).schemaVersion).toBe(3);
+    // Only the area column (FR-32) is choose-from; other imported values stay read-only.
+    expect(document.querySelectorAll('.cell-input')).toHaveLength(5);
+    expect(document.querySelectorAll('.cell-input:not([data-header="Group"])')).toHaveLength(0);
+    expect(JSON.parse(await save()).schemaVersion).toBe(4);
   });
 });

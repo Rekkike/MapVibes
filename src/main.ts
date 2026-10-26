@@ -2,6 +2,7 @@ import { applyFilter, counters, COLOURS, makeRow, numberRows, NO_FILTER, sortRow
 import { importColumns, parseWorkbook, ParseError, type ParseResult } from './ingest';
 import { columnLabel } from './columns';
 import { emptyValues, newManualKey } from './manual';
+import { addStatus, statusSymbol, addValue, collectValues, hasValue, mergeValues, moveStatus, removeStatus, removeValue, renameStatus, renameValue, setStatusSymbol, statusNames, type StatusEntry } from './vocab';
 import { clonePreset, findMatchingPreset, loadStoredPresets, presetConfiguration, presetMatches, removePreset, storePresets, upsertPreset, type ColumnPreset } from './presets';
 import { assignRole, displayName, isRole, listColumnOrder, roleOfColumn, ROLES, type Role, type RoleAssignments } from './roles';
 import { strings, type Lang, type Strings } from './i18n';
@@ -13,8 +14,9 @@ import { renderPlanToDataUrl } from './osmrender';
 import { fetchableBounds, FetchError, fetchMapData, isOnline, parseBounds, searchPlace, type BoundsField, type FetchErrorCode, type PlaceResult } from './openmap';
 import { MarkerLayer } from './markerlayer';
 import { renderLegend, shapeName } from './legend';
+import { drawSymbol, isSymbol, SYMBOLS, symbolClasses, type MarkerSymbol } from './symbols';
 import { markersInView } from './glance';
-import { DEFAULT_SHAPE, isShape, placedMarkers, placeMarker, pruneMarkers, removeMarker, SHAPES, type MarkerPositions, type MarkerShapes, type PlacedMarker } from './markers';
+import { DEFAULT_SHAPE, placedMarkers, placeMarker, pruneMarkers, removeMarker, type MarkerPositions, type MarkerShapes, type PlacedMarker } from './markers';
 import { BUTTON_ZOOM_FACTOR, imageToScreen, screenToImage, type Point } from './viewport';
 import { isSegment, SEGMENTS, showSegment, type Segment } from './segments';
 import { type Problem, parseWorkState, serialiseWorkState, SUGGESTED_FILE_NAME, WorkStateError, type WorkState } from './workstate';
@@ -27,6 +29,12 @@ interface AppState {
   // Manual columns (FR-24): key to label; and the rows added by hand (FR-9).
   manualColumns: Map<string, string>;
   manualRows: Set<RowData>;
+  // The user's area vocabulary (FR-32): empty until the user fills it.
+  areaValues: string[];
+  // The user's status vocabulary (FR-33): empty until the user fills it.
+  statuses: StatusEntry[];
+  // FR-34: assign marker symbols from status; off by default.
+  symbolsFromStatus: boolean;
   // Saved column presets (FR-23), latest last, and the preset in effect.
   presets: ColumnPreset[];
   activePreset: string | null;
@@ -60,6 +68,9 @@ const state: AppState = {
   roles: {},
   manualColumns: new Map(),
   manualRows: new Set(),
+  areaValues: [],
+  statuses: [],
+  symbolsFromStatus: false,
   presets: loadStoredPresets(),
   activePreset: null,
   headers: [],
@@ -128,6 +139,19 @@ function renderStaticText(): void {
   el('marker-remove').textContent = t.markerRemove;
   el('marker-shape-text').textContent = t.markerShape;
   el('work-save').textContent = t.workSave;
+  el('area-panel-summary').textContent = t.areaPanel;
+  el('area-panel-hint').textContent = t.areaPanelHint;
+  el('area-new').setAttribute('aria-label', t.areaNew);
+  el<HTMLInputElement>('area-new').placeholder = t.areaNew;
+  el('area-add').textContent = t.vocabAdd;
+  el('area-collect').textContent = t.areaCollect;
+  el('status-panel-summary').textContent = t.statusPanel;
+  el('status-panel-hint').textContent = t.statusPanelHint;
+  el('status-new').setAttribute('aria-label', t.statusNew);
+  el<HTMLInputElement>('status-new').placeholder = t.statusNew;
+  el('status-add').textContent = t.vocabAdd;
+  el('symbols-from-status-label').textContent = t.symbolsFromStatus;
+  el('symbols-from-status-hint').textContent = t.symbolsFromStatusHint;
   el('fetch-open').textContent = t.fetchOpen;
   el('fetch-offline').textContent = t.fetchOffline;
   el('fetch-heading').textContent = t.fetchHeading;
@@ -165,8 +189,7 @@ function renderStaticText(): void {
   el('work-open').textContent = t.workOpen;
   el('work-controls').setAttribute('aria-label', t.workGroup);
   renderWorkStatus();
-  renderLegend(el('map-legend'), t);
-  renderLegend(el('presentation-legend'), t);
+  renderLegends();
   el('visibility-heading').textContent = t.visibilityHeading;
   el('visibility-hint').textContent = t.visibilityHint;
   el('visibility-empty').textContent = t.visibilityEmpty;
@@ -348,12 +371,24 @@ function renameManualColumn(key: string, label: string): void {
 // A cell is edited by hand when it belongs to a manual row or a manual
 // column; imported values of imported columns are not edited here (FR-10
 // remains deferred).
+// The cells of the area column are choose-from comboboxes in every row,
+// imported rows included (FR-32 scope note): the one exception to imported
+// values being read-only.
 function isEditableCell(row: RowData, key: string): boolean {
-  return state.manualRows.has(row) || state.manualColumns.has(key);
+  return state.manualRows.has(row) || state.manualColumns.has(key) || isVocabularyColumn(key);
+}
+
+function isVocabularyColumn(key: string): boolean {
+  return key === state.roles.area || key === state.roles.status;
 }
 
 function setCellValue(row: RowData, key: string, value: string): void {
   if (!isEditableCell(row, key) || row.values[key] === value) return;
+  // A new value typed into the area column joins the area vocabulary.
+  if (key === state.roles.area) {
+    value = value.trim();
+    state.areaValues = addValue(state.areaValues, value);
+  }
   row.values[key] = value;
   markDirty();
   renderList();
@@ -397,6 +432,7 @@ function renderList(): void {
     start: t.roleStart,
     end: t.roleEnd,
     area: t.roleArea,
+    status: t.roleStatus,
   };
   columns.forEach((header) => {
     const th = document.createElement('th');
@@ -493,7 +529,10 @@ function renderList(): void {
 
     columns.forEach((header) => {
       const td = document.createElement('td');
-      if (isEditableCell(row, header)) {
+      if (header === state.roles.status) {
+        td.appendChild(statusCell(row, header, number));
+        td.classList.add('editable');
+      } else if (isEditableCell(row, header)) {
         const input = document.createElement('input');
         input.type = 'text';
         input.className = 'cell-input';
@@ -501,6 +540,15 @@ function renderList(): void {
         input.dataset.header = header;
         input.setAttribute('aria-label', `${labelOf(header)}, ${t.numberColumn} ${number}`);
         input.addEventListener('change', () => setCellValue(row, header, input.value));
+        if (header === state.roles.area) {
+          input.setAttribute('list', 'area-values');
+          input.classList.add('combobox');
+          const value = (row.values[header] ?? '').trim();
+          if (value !== '' && !hasValue(state.areaValues, value)) {
+            input.classList.add('not-in-vocabulary');
+            input.title = t.vocabNotInList;
+          }
+        }
         td.appendChild(input);
         td.classList.add('editable');
       } else {
@@ -545,6 +593,9 @@ function renderList(): void {
   renderFilterColumnSelect();
   renderColumnVisibility();
   renderPresets();
+  renderAreaPanel();
+  renderStatusPanel();
+  renderLegends();
 }
 
 function renderFilterColumnSelect(): void {
@@ -611,7 +662,7 @@ export function captureWorkState(): WorkState {
   const index = new Map(state.ingested.map((row, i) => [row, i]));
   const markers = [...state.positions.entries()]
     .filter(([row]) => index.has(row) && retained.has(row))
-    .map(([row, position]) => ({ row: index.get(row)!, position: { ...position }, shape: state.shapes.get(row) ?? DEFAULT_SHAPE }))
+    .map(([row, position]) => ({ row: index.get(row)!, position: { ...position }, symbol: state.shapes.get(row) ?? null }))
     .sort((a, b) => a.row - b.row);
   const bg = mapView?.background ?? null;
   return {
@@ -629,6 +680,9 @@ export function captureWorkState(): WorkState {
     markers,
     excluded: [...state.excluded].filter((row) => retained.has(row)).map((row) => index.get(row)!).sort((a, b) => a - b),
     presets: state.presets.map(clonePreset),
+    areaValues: [...state.areaValues],
+    statuses: state.statuses.map((x) => ({ ...x })),
+    symbolsFromStatus: state.symbolsFromStatus,
     segment: state.segment,
     viewport: { ...(mapView?.viewport ?? { scale: 1, x: 0, y: 0 }) },
     sort: { ...state.sort },
@@ -787,7 +841,10 @@ async function applyWorkState(ws: WorkState): Promise<boolean> {
   state.positions = new Map(ws.markers.map((m) => [state.ingested[m.row], { ...m.position }]));
   state.excluded = new Set(ws.excluded.map((i) => state.ingested[i]));
   state.presentationSelected = null;
-  state.shapes = new Map(ws.markers.map((m) => [state.ingested[m.row], m.shape]));
+  state.shapes = new Map(ws.markers.filter((m) => m.symbol !== null).map((m) => [state.ingested[m.row], m.symbol!]));
+  state.areaValues = [...ws.areaValues];
+  state.statuses = ws.statuses.map((x) => ({ ...x }));
+  state.symbolsFromStatus = ws.symbolsFromStatus;
   // Presets in the file are merged into the saved presets; a preset in the
   // file replaces a saved preset of the same name (FR-23).
   if (ws.presets.length > 0) {
@@ -882,6 +939,8 @@ function applyPreset(preset: ColumnPreset, kind: 'auto' | 'applied'): void {
   const config = presetConfiguration(preset, state.headers);
   state.hiddenHeaders = new Set(config.hidden);
   state.roles = config.roles;
+  if (preset.areas) state.areaValues = [...preset.areas];
+  if (preset.statuses) state.statuses = preset.statuses.map((s) => ({ ...s }));
   state.activePreset = preset.name;
   presetMessage = { kind, name: preset.name };
 }
@@ -905,6 +964,8 @@ function saveCurrentPreset(): void {
     headers: [...state.headers],
     hidden: state.headers.filter((h) => state.hiddenHeaders.has(h)),
     roles: { ...state.roles },
+    areas: [...state.areaValues],
+    statuses: state.statuses.map((s) => ({ ...s })),
   });
   storePresets(state.presets);
   state.activePreset = name;
@@ -952,6 +1013,225 @@ function renderPresets(): void {
   el<HTMLButtonElement>('preset-save').disabled = state.headers.length === 0;
   const messages = { auto: t.presetAutoApplied, applied: t.presetApplied, saved: t.presetSaved, removed: t.presetRemoved };
   el('preset-status').textContent = presetMessage ? messages[presetMessage.kind].replace('{name}', presetMessage.name) : '';
+}
+
+// A cell of the status column (FR-33): chosen from the status list. A value
+// that is not in the list is kept and shown as such until another is chosen.
+function statusCell(row: RowData, key: string, number: number): HTMLSelectElement {
+  const t = strings(state.prefs.lang);
+  const select = document.createElement('select');
+  select.className = 'cell-input status-select';
+  select.dataset.header = key;
+  select.setAttribute('aria-label', `${labelOf(key)}, ${t.numberColumn} ${number}`);
+  const current = (row.values[key] ?? '').trim();
+  const none = document.createElement('option');
+  none.value = '';
+  none.textContent = t.statusNone;
+  select.appendChild(none);
+  for (const status of state.statuses) {
+    const opt = document.createElement('option');
+    opt.value = status.name;
+    opt.textContent = status.name;
+    select.appendChild(opt);
+  }
+  if (current !== '' && !statusNames(state.statuses).includes(current)) {
+    const opt = document.createElement('option');
+    opt.value = current;
+    opt.textContent = `${current} (${t.vocabNotInListShort})`;
+    select.appendChild(opt);
+    select.classList.add('not-in-vocabulary');
+    select.title = t.vocabNotInList;
+  }
+  select.value = current;
+  select.addEventListener('change', () => setCellValue(row, key, select.value));
+  return select;
+}
+
+// The symbol shown for an item's marker (FR-26, FR-34): a symbol chosen
+// manually for the marker always wins. Otherwise, only while the user has
+// switched on "assign marker symbols from status", the symbol of the item's
+// status applies; else the default symbol.
+function symbolSource(row: RowData): 'manual' | 'status' | 'default' {
+  if (state.shapes.has(row)) return 'manual';
+  return statusSymbolOf(row) !== null ? 'status' : 'default';
+}
+
+function statusSymbolOf(row: RowData): MarkerSymbol | null {
+  const key = state.roles.status;
+  if (!state.symbolsFromStatus || key === undefined) return null;
+  const symbol = statusSymbol(state.statuses, row.values[key] ?? '');
+  return symbol !== null && isSymbol(symbol) ? symbol : null;
+}
+
+function symbolOf(row: RowData): MarkerSymbol {
+  return state.shapes.get(row) ?? statusSymbolOf(row) ?? DEFAULT_SHAPE;
+}
+
+function effectiveSymbols(): Map<RowData, MarkerSymbol> {
+  return new Map(state.rows.map((row) => [row, symbolOf(row)]));
+}
+
+function setSymbolsFromStatus(on: boolean): void {
+  state.symbolsFromStatus = on;
+  markDirty();
+  renderList();
+}
+
+function renderLegends(): void {
+  const t = strings(state.prefs.lang);
+  renderLegend(el('map-legend'), t, state.statuses);
+  renderLegend(el('presentation-legend'), t, state.statuses);
+}
+
+// The status vocabulary panel (FR-33).
+function setStatuses(next: StatusEntry[]): void {
+  state.statuses = next;
+  markDirty();
+  renderList();
+}
+
+function renameStatusValue(from: string, to: string): void {
+  const result = renameStatus(state.statuses, from, to);
+  if (!result.renamed) {
+    renderList();
+    return;
+  }
+  // Cells holding the old status follow the rename.
+  const key = state.roles.status;
+  if (key !== undefined) {
+    for (const row of state.ingested) if ((row.values[key] ?? '').trim() === from) row.values[key] = result.name;
+  }
+  setStatuses(result.statuses);
+}
+
+function symbolSelect(value: string, label: string, onChange: (symbol: string) => void): HTMLSelectElement {
+  const t = strings(state.prefs.lang);
+  const select = document.createElement('select');
+  select.className = 'status-symbol';
+  select.setAttribute('aria-label', label);
+  for (const symbol of SYMBOLS) {
+    const opt = document.createElement('option');
+    opt.value = symbol;
+    opt.textContent = shapeName(t, symbol);
+    select.appendChild(opt);
+  }
+  select.value = value;
+  select.addEventListener('change', () => onChange(select.value));
+  return select;
+}
+
+function renderStatusPanel(): void {
+  const t = strings(state.prefs.lang);
+  const list = el('status-list');
+  list.innerHTML = '';
+  state.statuses.forEach((status, index) => {
+    const li = document.createElement('li');
+    li.className = 'vocab-item';
+    li.dataset.status = status.name;
+    const swatch = document.createElement('span');
+    swatch.className = `legend-swatch ${symbolClasses(status.symbol as MarkerSymbol)}`;
+    swatch.setAttribute('aria-hidden', 'true');
+    drawSymbol(swatch, status.symbol as MarkerSymbol, '');
+    const name = document.createElement('input');
+    name.type = 'text';
+    name.className = 'vocab-name';
+    name.value = status.name;
+    name.setAttribute('aria-label', `${t.vocabRename}: ${status.name}`);
+    name.addEventListener('change', () => renameStatusValue(status.name, name.value));
+    const symbol = symbolSelect(status.symbol, `${t.statusSymbol}: ${status.name}`, (v) => setStatuses(setStatusSymbol(state.statuses, status.name, v)));
+    const up = document.createElement('button');
+    up.type = 'button';
+    up.className = 'vocab-up icon-button';
+    up.textContent = '↑';
+    up.title = t.vocabMoveUp;
+    up.setAttribute('aria-label', `${t.vocabMoveUp}: ${status.name}`);
+    up.disabled = index === 0;
+    up.addEventListener('click', () => setStatuses(moveStatus(state.statuses, status.name, -1)));
+    const down = document.createElement('button');
+    down.type = 'button';
+    down.className = 'vocab-down icon-button';
+    down.textContent = '↓';
+    down.title = t.vocabMoveDown;
+    down.setAttribute('aria-label', `${t.vocabMoveDown}: ${status.name}`);
+    down.disabled = index === state.statuses.length - 1;
+    down.addEventListener('click', () => setStatuses(moveStatus(state.statuses, status.name, 1)));
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'vocab-remove';
+    remove.textContent = t.vocabRemove;
+    remove.setAttribute('aria-label', `${t.vocabRemove}: ${status.name}`);
+    remove.addEventListener('click', () => setStatuses(removeStatus(state.statuses, status.name)));
+    li.append(swatch, name, symbol, up, down, remove);
+    list.appendChild(li);
+  });
+  el('status-status').textContent = state.statuses.length === 0 ? t.vocabEmpty : '';
+  el<HTMLInputElement>('symbols-from-status').checked = state.symbolsFromStatus;
+}
+
+// The area vocabulary panel (FR-32).
+let areaMessage = '';
+
+function setAreaValues(next: string[], message = ''): void {
+  state.areaValues = next;
+  areaMessage = message;
+  markDirty();
+  renderList();
+}
+
+function renameAreaValue(from: string, to: string): void {
+  const { list, renamed } = renameValue(state.areaValues, from, to);
+  if (!renamed) {
+    renderList();
+    return;
+  }
+  // Cells holding the old value follow the rename.
+  const key = state.roles.area;
+  if (key !== undefined) {
+    for (const row of state.ingested) if ((row.values[key] ?? '').trim() === from) row.values[key] = list[state.areaValues.indexOf(from)];
+  }
+  setAreaValues(list);
+}
+
+function collectAreaValues(): void {
+  const t = strings(state.prefs.lang);
+  const key = state.roles.area;
+  if (key === undefined) return;
+  const before = state.areaValues.length;
+  const next = mergeValues(state.areaValues, collectValues(state.rows, key));
+  setAreaValues(next, t.vocabCollected.replace('{count}', String(next.length - before)));
+}
+
+function renderAreaPanel(): void {
+  const t = strings(state.prefs.lang);
+  const list = el('area-list');
+  list.innerHTML = '';
+  for (const value of state.areaValues) {
+    const li = document.createElement('li');
+    li.className = 'vocab-item';
+    const name = document.createElement('input');
+    name.type = 'text';
+    name.className = 'vocab-name';
+    name.value = value;
+    name.setAttribute('aria-label', `${t.vocabRename}: ${value}`);
+    name.addEventListener('change', () => renameAreaValue(value, name.value));
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'vocab-remove';
+    remove.textContent = t.vocabRemove;
+    remove.setAttribute('aria-label', `${t.vocabRemove}: ${value}`);
+    remove.addEventListener('click', () => setAreaValues(removeValue(state.areaValues, value)));
+    li.append(name, remove);
+    list.appendChild(li);
+  }
+  const datalist = el('area-values');
+  datalist.innerHTML = '';
+  for (const value of state.areaValues) {
+    const opt = document.createElement('option');
+    opt.value = value;
+    datalist.appendChild(opt);
+  }
+  el<HTMLButtonElement>('area-collect').disabled = state.roles.area === undefined;
+  el('area-status').textContent = state.areaValues.length === 0 && !areaMessage ? t.vocabEmpty : areaMessage;
 }
 
 function setColumnRole(header: string, role: Role | null): void {
@@ -1019,8 +1299,9 @@ function renderPlacementList(): void {
     li.dataset.placed = placed ? 'true' : 'false';
     if (state.selectedMarker === id) li.dataset.selected = 'true';
     const badge = document.createElement('span');
-    badge.className = `marker-badge marker-${row.colour} marker-shape-${state.shapes.get(row) ?? 'circle'}`;
-    badge.textContent = String(number);
+    const symbol = symbolOf(row);
+    badge.className = `marker-badge marker-${row.colour} ${symbolClasses(symbol)}`;
+    drawSymbol(badge, symbol, String(number));
     const label = document.createElement('span');
     label.className = 'placement-label';
     label.textContent = itemLabel(row, number);
@@ -1052,7 +1333,7 @@ function renderMapItems(): void {
   }
   for (const row of [...state.excluded]) if (!state.rows.includes(row)) state.excluded.delete(row);
   for (const row of [...state.shapes.keys()]) if (!state.rows.includes(row)) state.shapes.delete(row);
-  const markers = placedMarkers(state.rows, state.positions, state.shapes);
+  const markers = placedMarkers(state.rows, state.positions, effectiveSymbols());
   markerLayer?.render(markers, state.selectedMarker);
   renderGlance('map', mapView, state.selectedMarker, (id) => selectMarker(id));
   renderPresentation();
@@ -1064,15 +1345,15 @@ function renderMapItems(): void {
   el<HTMLButtonElement>('marker-remove').disabled = !selected;
   const shapeSelect = el<HTMLSelectElement>('marker-shape');
   shapeSelect.disabled = !selected;
-  if (shapeSelect.options.length !== SHAPES.length) {
+  if (shapeSelect.options.length !== SYMBOLS.length) {
     shapeSelect.innerHTML = '';
-    for (const shape of SHAPES) {
+    for (const shape of SYMBOLS) {
       const opt = document.createElement('option');
       opt.value = shape;
       shapeSelect.appendChild(opt);
     }
   }
-  for (const opt of shapeSelect.options) opt.textContent = shapeName(t, opt.value as (typeof SHAPES)[number]);
+  for (const opt of shapeSelect.options) opt.textContent = shapeName(t, opt.value as MarkerSymbol);
   shapeSelect.value = selected?.shape ?? 'circle';
 }
 
@@ -1107,7 +1388,7 @@ function renderVisibilityList(): void {
   const t = strings(state.prefs.lang);
   const list = el('visibility-list');
   list.innerHTML = '';
-  const placed = placedMarkers(state.rows, state.positions, state.shapes);
+  const placed = placedMarkers(state.rows, state.positions, effectiveSymbols());
   for (const marker of placed) {
     const id = rowId(marker.row);
     const shown = !state.excluded.has(marker.row);
@@ -1127,8 +1408,8 @@ function renderVisibilityList(): void {
     toggle.setAttribute('aria-label', `${t.visibilityShown}: ${name}`);
     toggle.addEventListener('change', () => setExcluded(marker.row, !toggle.checked));
     const badge = document.createElement('span');
-    badge.className = `marker-badge marker-${marker.colour} marker-shape-${marker.shape}`;
-    badge.textContent = String(marker.number);
+    badge.className = `marker-badge marker-${marker.colour} ${symbolClasses(marker.shape)}`;
+    drawSymbol(badge, marker.shape, String(marker.number));
     const text = document.createElement('span');
     text.className = 'placement-label';
     text.textContent = name;
@@ -1160,7 +1441,7 @@ function renderGlance(prefix: 'map' | 'presentation', view: MapView | null, sele
   const t = strings(state.prefs.lang);
   const list = el(`${prefix}-glance-list`);
   list.innerHTML = '';
-  const candidates = placedMarkers(state.rows, state.positions, state.shapes).filter((m) => !state.excluded.has(m.row));
+  const candidates = placedMarkers(state.rows, state.positions, effectiveSymbols()).filter((m) => !state.excluded.has(m.row));
   const inView = view?.background ? markersInView(candidates, view.viewport, view.stageSize()) : [];
   const areaKey = state.roles.area;
   for (const marker of inView) {
@@ -1172,8 +1453,8 @@ function renderGlance(prefix: 'map' | 'presentation', view: MapView | null, sele
     entry.dataset.rowId = id;
     if (selectedId === id) entry.dataset.selected = 'true';
     const badge = document.createElement('span');
-    badge.className = `marker-badge marker-${marker.colour} marker-shape-${marker.shape}`;
-    badge.textContent = String(marker.number);
+    badge.className = `marker-badge marker-${marker.colour} ${symbolClasses(marker.shape)}`;
+    drawSymbol(badge, marker.shape, String(marker.number));
     const text = document.createElement('span');
     text.className = 'glance-text';
     const name = document.createElement('span');
@@ -1238,7 +1519,7 @@ function renderPopover(): void {
 }
 
 function renderPresentation(): void {
-  const shown = placedMarkers(state.rows, state.positions, state.shapes).filter((m) => !state.excluded.has(m.row));
+  const shown = placedMarkers(state.rows, state.positions, effectiveSymbols()).filter((m) => !state.excluded.has(m.row));
   if (state.presentationSelected && !shown.some((m) => rowId(m.row) === state.presentationSelected)) {
     state.presentationSelected = null;
   }
@@ -1265,6 +1546,7 @@ function initialisePresentation(): void {
     viewport: () => presentationView?.viewport ?? { scale: 1, x: 0, y: 0 },
     stagePoint: (x, y) => presentationView?.stagePoint(x, y) ?? { x, y },
     rowId: (marker) => rowId(marker.row),
+    symbolSource: (marker) => symbolSource(marker.row),
     markerLabel,
     onSelect: (id) => {
       selectPresentationItem(id);
@@ -1668,6 +1950,7 @@ function initialiseMapView(): void {
     viewport: () => mapView?.viewport ?? { scale: 1, x: 0, y: 0 },
     stagePoint: (x, y) => mapView?.stagePoint(x, y) ?? { x, y },
     rowId: (marker) => rowId(marker.row),
+    symbolSource: (marker) => symbolSource(marker.row),
     markerLabel,
     onSelect: selectMarker,
     onMove: moveMarker,
@@ -1693,7 +1976,7 @@ function initialiseMapView(): void {
   el('marker-shape').addEventListener('change', (e) => {
     const value = (e.target as HTMLSelectElement).value;
     const row = state.selectedMarker ? rowById(state.selectedMarker) : undefined;
-    if (!row || !isShape(value)) return;
+    if (!row || !isSymbol(value)) return;
     state.shapes.set(row, value);
     markDirty();
     renderMapItems();
@@ -1736,6 +2019,28 @@ function guardUnsavedWork(e: BeforeUnloadEvent): void {
 function wireEvents(): void {
   window.addEventListener('beforeunload', guardUnsavedWork);
   el('work-save').addEventListener('click', () => void saveWork());
+  const addArea = () => {
+    const input = el<HTMLInputElement>('area-new');
+    const next = addValue(state.areaValues, input.value);
+    input.value = '';
+    if (next !== state.areaValues) setAreaValues(next);
+  };
+  el('area-add').addEventListener('click', addArea);
+  el('area-new').addEventListener('keydown', (e) => {
+    if ((e as KeyboardEvent).key === 'Enter') addArea();
+  });
+  el('area-collect').addEventListener('click', collectAreaValues);
+  const addStatusValue = () => {
+    const input = el<HTMLInputElement>('status-new');
+    const next = addStatus(state.statuses, input.value, DEFAULT_SHAPE);
+    input.value = '';
+    if (next !== state.statuses) setStatuses(next);
+  };
+  el('status-add').addEventListener('click', addStatusValue);
+  el('symbols-from-status').addEventListener('change', (e) => setSymbolsFromStatus((e.target as HTMLInputElement).checked));
+  el('status-new').addEventListener('keydown', (e) => {
+    if ((e as KeyboardEvent).key === 'Enter') addStatusValue();
+  });
   el('start-empty').addEventListener('click', startEmptyList);
   el('add-row').addEventListener('click', addManualRow);
   el('add-column').addEventListener('click', addManualColumn);

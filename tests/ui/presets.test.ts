@@ -51,7 +51,7 @@ describe('saved column presets (FR-23)', () => {
     expect([...byId<HTMLSelectElement>('preset-select').options].map((o) => o.value)).toEqual(['', 'Standard']);
     const stored = JSON.parse(localStorage.getItem('mapvibes.presets')!);
     expect(stored).toEqual([
-      { name: 'Standard', headers: ['ID', 'Start', 'End', 'Group', 'Note'], hidden: ['End'], roles: { identifier: 'ID', name: 'Note' } },
+      { name: 'Standard', headers: ['ID', 'Start', 'End', 'Group', 'Note'], hidden: ['End'], roles: { identifier: 'ID', name: 'Note' }, areas: [], statuses: [] },
     ]);
   });
 

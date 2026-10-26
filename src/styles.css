@@ -27,6 +27,7 @@
   --shadow-colour: rgba(0, 0, 0, 0.45);
   --marker-neutral: #6b7380;
   --marker-halo: #3a3f47;
+  --marker-on-neutral: #ffffff;
 }
 
 html[data-theme='dark'] {
@@ -53,6 +54,7 @@ html[data-theme='dark'] {
   --shadow-colour: rgba(0, 0, 0, 0.8);
   --marker-neutral: #9aa2ae;
   --marker-halo: #0d0f12;
+  --marker-on-neutral: #0d0f12;
 }
 
 * {
@@ -377,6 +379,7 @@ th.sortable {
 :where(.marker, .marker-badge, .legend-swatch) {
   --marker-fill: var(--marker-neutral);
   --marker-clip: inset(0 round 999px);
+  color: var(--marker-on-neutral);
 }
 
 .marker,
@@ -998,4 +1001,87 @@ input[type='text'] {
   #fetch-status.busy::before {
     animation: none;
   }
+}
+
+/* User-managed vocabularies (FR-32, FR-33). */
+#vocab-panels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.vocab-panel {
+  flex: 1 1 20rem;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.vocab-panel summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.vocab-panel .notice {
+  margin: var(--space-1) 0;
+}
+
+.vocab-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.vocab-item,
+.vocab-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.vocab-add {
+  margin-top: var(--space-2);
+}
+
+.vocab-name {
+  flex: 1 1 10rem;
+}
+
+.cell-input.not-in-vocabulary {
+  font-style: italic;
+  text-decoration: underline dotted var(--warning);
+}
+
+/* Icon symbols (FR-26): vector glyphs stroked in the marker's number colour,
+   which keeps at least 4.5:1 contrast against every marker fill. Icon
+   markers keep their number beside the icon. */
+.marker-glyph {
+  flex: none;
+  width: 1.15em;
+  height: 1.15em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.marker.marker-icon,
+.marker-badge.marker-icon {
+  gap: 1px;
+  padding: 0 0.35rem 0 0.3rem;
+}
+
+.legend-swatch.marker-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  font-size: 0.8rem;
 }

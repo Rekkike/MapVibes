@@ -27,6 +27,12 @@ describe('marker symbol library (FR-26)', () => {
       ['diamond', 'Diamond'],
       ['triangle', 'Triangle'],
       ['hexagon', 'Hexagon'],
+      ['bulb', 'Light bulb'],
+      ['magnifier', 'Magnifying glass'],
+      ['gear', 'Gear'],
+      ['pause', 'Pause'],
+      ['cross', 'Cross'],
+      ['check', 'Checkmark'],
     ]);
     pointer('pointerdown', markers()[1], STAGE.left + 400, STAGE.top + 300);
     pointer('pointerup', markers()[1], STAGE.left + 400, STAGE.top + 300);
@@ -76,11 +82,15 @@ describe('marker symbol library (FR-26)', () => {
       const legend = byId(id);
       expect([...legend.querySelectorAll('.legend-group')].map((g) => g.querySelector('.legend-group-label')!.textContent)).toEqual([
         'Colours',
-        'Shapes',
+        'Symbols',
       ]);
       const shapes = [...legend.querySelectorAll<HTMLElement>('.legend-entry[data-shape]')];
-      expect(shapes.map((e) => e.dataset.shape)).toEqual(['circle', 'square', 'diamond', 'triangle', 'hexagon']);
-      shapes.forEach((e) => expect(e.querySelector('.legend-swatch')!.classList.contains(`marker-shape-${e.dataset.shape}`)).toBe(true));
+      expect(shapes.map((e) => e.dataset.shape)).toEqual(['circle', 'square', 'diamond', 'triangle', 'hexagon', 'bulb', 'magnifier', 'gear', 'pause', 'cross', 'check']);
+      shapes.slice(0, 5).forEach((e) => expect(e.querySelector('.legend-swatch')!.classList.contains(`marker-shape-${e.dataset.shape}`)).toBe(true));
+      shapes.slice(5).forEach((e) => {
+        expect(e.querySelector('.legend-swatch')!.classList.contains(`marker-icon-${e.dataset.shape}`)).toBe(true);
+        expect(e.querySelector('.legend-swatch svg.marker-glyph path')).not.toBeNull();
+      });
     }
     const select = byId<HTMLSelectElement>('select-language');
     select.value = 'sv';
@@ -91,10 +101,54 @@ describe('marker symbol library (FR-26)', () => {
       'Romb',
       'Triangel',
       'Sexhörning',
+      'Glödlampa',
+      'Förstoringsglas',
+      'Kugghjul',
+      'Paus',
+      'Kryss',
+      'Bock',
     ]);
   });
 
   test('the shape control is not offered on the presentation stage', () => {
     expect(byId('segment-presentation').querySelector('#marker-shape')).toBeNull();
+  });
+
+  test('each of the six icons renders as a vector icon on a numbered marker, everywhere the marker is shown', async () => {
+    pointer('pointerdown', markers()[1], STAGE.left + 400, STAGE.top + 300);
+    pointer('pointerup', markers()[1], STAGE.left + 400, STAGE.top + 300);
+    for (const icon of ['bulb', 'magnifier', 'gear', 'pause', 'cross', 'check']) {
+      chooseShape(icon);
+      const m = markers()[1];
+      expect(m.classList.contains('marker-icon')).toBe(true);
+      expect(m.classList.contains(`marker-icon-${icon}`)).toBe(true);
+      expect(m.querySelector('svg.marker-glyph')!.getAttribute('viewBox')).toBe('0 0 24 24');
+      expect(m.querySelector('svg.marker-glyph path')!.getAttribute('d')!.length).toBeGreaterThan(10);
+      expect(m.textContent).toBe('2');
+      expect(m.dataset.shape).toBe(icon);
+    }
+    expect(placementItems()[1].querySelector('.marker-badge svg.marker-glyph')).not.toBeNull();
+    expect(placementItems()[1].querySelector('.marker-badge')!.textContent).toBe('2');
+    byId('tab-presentation').click();
+    await flush();
+    expect(presentationMarkers()[1].querySelector('svg.marker-glyph')).not.toBeNull();
+  });
+
+  test('the legend shows the status vocabulary with the symbols assigned', () => {
+    expect(byId('map-legend').querySelector('.legend-group[data-kind="statuses"]')).toBeNull();
+    byId('tab-information').click();
+    byId<HTMLInputElement>('status-new').value = 'Ready';
+    byId('status-add').click();
+    const symbol = document.querySelector<HTMLSelectElement>('#status-list .status-symbol')!;
+    symbol.value = 'check';
+    symbol.dispatchEvent(new Event('change'));
+    for (const id of ['map-legend', 'presentation-legend']) {
+      const group = byId(id).querySelector('.legend-group[data-kind="statuses"]')!;
+      expect(group.querySelector('.legend-group-label')!.textContent).toBe('Statuses');
+      const entry = group.querySelector<HTMLElement>('.legend-entry')!;
+      expect([entry.dataset.status, entry.dataset.shape]).toEqual(['Ready', 'check']);
+      expect(entry.querySelector('.legend-label')!.textContent).toBe('Ready');
+      expect(entry.querySelector('.legend-swatch svg.marker-glyph')).not.toBeNull();
+    }
   });
 });

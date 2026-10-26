@@ -204,7 +204,8 @@ describe('the only network operation', () => {
   test('only src/openmap.ts contains network calls or remote addresses', () => {
     const offenders = readdirSync(srcDir)
       .filter((f) => f.endsWith('.ts') && f !== 'openmap.ts')
-      .filter((f) => NETWORK.test(readFileSync(join(srcDir, f), 'utf8')));
+      // The SVG namespace is an XML identifier, not an address that is fetched.
+      .filter((f) => NETWORK.test(readFileSync(join(srcDir, f), 'utf8').replaceAll("'http://www.w3.org/2000/svg'", "''")));
     expect(offenders).toEqual([]);
     expect(NETWORK.test(readFileSync(join(srcDir, 'openmap.ts'), 'utf8'))).toBe(true);
   });

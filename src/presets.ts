@@ -3,12 +3,18 @@
 // name chosen by the user.
 
 import { isRole, ROLES, type RoleAssignments } from './roles';
+import { parseStatuses, parseValueList, type StatusEntry } from './vocab';
+import { isSymbol } from './symbols';
 
 export interface ColumnPreset {
   name: string;
   headers: string[];
   hidden: string[];
   roles: RoleAssignments;
+  // The user's area vocabulary (FR-32), when saved with the preset.
+  areas?: string[];
+  // The user's status vocabulary (FR-33), when saved with the preset.
+  statuses?: StatusEntry[];
 }
 
 function sortedCopy(values: string[]): string[] {
@@ -55,7 +61,10 @@ export function removePreset(presets: ColumnPreset[], name: string): ColumnPrese
 }
 
 export function clonePreset(p: ColumnPreset): ColumnPreset {
-  return { name: p.name, headers: [...p.headers], hidden: [...p.hidden], roles: { ...p.roles } };
+  const out: ColumnPreset = { name: p.name, headers: [...p.headers], hidden: [...p.hidden], roles: { ...p.roles } };
+  if (p.areas) out.areas = [...p.areas];
+  if (p.statuses) out.statuses = p.statuses.map((s) => ({ ...s }));
+  return out;
 }
 
 // Validates untrusted preset data (local storage or a work-state file).
@@ -78,7 +87,18 @@ export function parsePresets(raw: unknown): ColumnPreset[] | null {
       roles[role] = key;
     }
     names.add(o.name);
-    out.push({ name: o.name, headers: [...(o.headers as string[])], hidden: [...(o.hidden as string[])], roles });
+    const preset: ColumnPreset = { name: o.name, headers: [...(o.headers as string[])], hidden: [...(o.hidden as string[])], roles };
+    if (o.areas !== undefined) {
+      const areas = parseValueList(o.areas);
+      if (areas === null) return null;
+      preset.areas = areas;
+    }
+    if (o.statuses !== undefined) {
+      const statuses = parseStatuses(o.statuses, isSymbol);
+      if (statuses === null) return null;
+      preset.statuses = statuses;
+    }
+    out.push(preset);
   }
   return out;
 }

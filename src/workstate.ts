@@ -1,8 +1,8 @@
 // Work-state file (FR-13). The complete work state is written to, and read
 // from, a single local JSON file on explicit Save and Open only. The file
-// carries a schema version. Version 3 is written; version 1 files (v0.4.0)
-// and version 2 files (v0.5.x) are read and migrated; a file with any other
-// version is rejected.
+// carries a schema version. Version 4 is written; version 1 files (v0.4.0),
+// version 2 files (v0.5.x), and version 3 files (v0.6.0) are read and
+// migrated; a file with any other version is rejected.
 //
 // Schema version 2 adds to version 1: role assignments by column key
 // (replacing the version 1 column mapping, as all columns are now kept), the
@@ -13,19 +13,28 @@
 // added by hand (key and label) and, per row, whether it was imported or
 // added by hand. Files of versions 1 and 2 have no manual columns and only
 // imported rows.
+//
+// Schema version 4 adds to version 3 the user's vocabularies (the area values
+// and the statuses with their symbols), the "assign marker symbols from
+// status" toggle, and the symbol library's icons. A marker's symbol is null
+// when no symbol was chosen manually for it. Versions 2 and 3 stored a shape
+// for every marker: on migration the default shape (circle) counts as no
+// manual choice and any other shape as a manual choice.
 
 import { COLOURS, type RowColour, type SortDirection, type ValueFilter } from './dataset';
 import { isRole, ROLES, type Role, type RoleAssignments } from './roles';
-import { DEFAULT_SHAPE, SHAPES, type MarkerShape } from './markers';
+import { DEFAULT_SHAPE, SHAPES } from './markers';
+import { isSymbol, SYMBOLS, type MarkerSymbol } from './symbols';
+import { parseStatuses, parseValueList, type StatusEntry } from './vocab';
 import { isManualKey } from './manual';
-import { parsePresets, type ColumnPreset } from './presets';
+import { clonePreset, parsePresets, type ColumnPreset } from './presets';
 import type { Background } from './mapview';
 import { SEGMENTS, type Segment } from './segments';
 import type { Point, Viewport } from './viewport';
 
 export const WORK_STATE_FORMAT = 'mapvibes-work-state';
-export const WORK_STATE_SCHEMA_VERSION = 3;
-export const READABLE_SCHEMA_VERSIONS = [1, 2, 3];
+export const WORK_STATE_SCHEMA_VERSION = 4;
+export const READABLE_SCHEMA_VERSIONS = [1, 2, 3, 4];
 export const SUGGESTED_FILE_NAME = 'mapvibes-work-state.json';
 
 export interface WorkStateRow {
@@ -45,7 +54,8 @@ export interface WorkStateMarker {
   // Index into WorkState.rows (ingestion order).
   row: number;
   position: Point;
-  shape: MarkerShape;
+  // The symbol chosen manually for this marker, or null (FR-26, FR-34).
+  symbol: MarkerSymbol | null;
 }
 
 // The in-memory snapshot of the work state. Rows are in ingestion order;
@@ -63,6 +73,10 @@ export interface WorkState {
   // Indices into rows of the items switched off for the presentation.
   excluded: number[];
   presets: ColumnPreset[];
+  // The user's vocabularies (FR-32, FR-33) and the toggle (FR-34).
+  areaValues: string[];
+  statuses: StatusEntry[];
+  symbolsFromStatus: boolean;
   segment: Segment;
   viewport: Viewport;
   sort: { header: string | null; direction: SortDirection };
@@ -93,6 +107,7 @@ export const PROBLEM_KINDS = [
   'duplicateRole',
   'duplicateEntry',
   'invalidPresets',
+  'invalidVocabulary',
 ] as const;
 
 export type ProblemKind = (typeof PROBLEM_KINDS)[number];
@@ -145,9 +160,14 @@ export function serialiseWorkState(state: WorkState, savedAt: Date): string {
     background: state.background
       ? { dataUrl: state.background.src, width: state.background.width, height: state.background.height }
       : null,
-    markers: state.markers.map((m) => ({ row: m.row, x: m.position.x, y: m.position.y, shape: m.shape })),
+    markers: state.markers.map((m) => ({ row: m.row, x: m.position.x, y: m.position.y, symbol: m.symbol })),
     presentation: { hidden: [...state.excluded] },
-    presets: state.presets.map((p) => ({ name: p.name, headers: [...p.headers], hidden: [...p.hidden], roles: { ...p.roles } })),
+    presets: state.presets.map(clonePreset),
+    vocabularies: {
+      areas: [...state.areaValues],
+      statuses: state.statuses.map((s) => ({ name: s.name, symbol: s.symbol })),
+    },
+    symbolsFromStatus: state.symbolsFromStatus,
     view: {
       segment: state.segment,
       viewport: { scale: state.viewport.scale, x: state.viewport.x, y: state.viewport.y },
@@ -208,7 +228,7 @@ export function parseWorkState(text: string): WorkState {
   }
   const file = raw as Json;
   const version = file.schemaVersion;
-  if (version !== 1 && version !== 2 && version !== 3) {
+  if (version !== 1 && version !== 2 && version !== 3 && version !== 4) {
     throw new WorkStateError('unknown-version', String(version));
   }
 
@@ -216,7 +236,7 @@ export function parseWorkState(text: string): WorkState {
   const headers = arr(columns.headers, 'columns.headers').map((h, i) => str(h, `columns.headers[${i}]`));
   if (new Set(headers).size !== headers.length) invalid('duplicateEntry', 'columns.headers');
   const roles = version === 1 ? migrateMappingV1(columns, headers) : parseRolesV2(columns, headers);
-  const manualColumns = version === 3 ? parseManualColumns(columns, headers) : [];
+  const manualColumns = version >= 3 ? parseManualColumns(columns, headers) : [];
   const hiddenHeaders = arr(columns.hiddenInList, 'columns.hiddenInList').map((h, i) => {
     const header = str(h, `columns.hiddenInList[${i}]`);
     if (!headers.includes(header)) invalid('notAColumn', `columns.hiddenInList[${i}]`);
@@ -236,7 +256,7 @@ export function parseWorkState(text: string): WorkState {
       colour: oneOf(o.colour, COLOURS, `rows[${i}].colour`),
       removed: oneOf(o.status, ['retained', 'removed'] as const, `rows[${i}].status`) === 'removed',
       // Versions 1 and 2 have no manual rows.
-      manual: version === 3 && oneOf(o.origin, ['imported', 'manual'] as const, `rows[${i}].origin`) === 'manual',
+      manual: version >= 3 && oneOf(o.origin, ['imported', 'manual'] as const, `rows[${i}].origin`) === 'manual',
     };
   });
   const expected = rowNumbers(rows);
@@ -265,9 +285,15 @@ export function parseWorkState(text: string): WorkState {
     if (rows[row].removed) invalid('removedRow', `markers[${i}]`);
     if (placed.has(row)) invalid('duplicateMarker', `markers[${i}]`);
     placed.add(row);
-    // Version 1 has no shapes: every marker migrates to the default shape.
-    const shape = version === 1 ? DEFAULT_SHAPE : oneOf(o.shape, SHAPES, `markers[${i}].shape`);
-    return { row, position: { x: num(o.x, `markers[${i}].x`), y: num(o.y, `markers[${i}].y`) }, shape };
+    let symbol: MarkerSymbol | null = null;
+    if (version === 4) {
+      symbol = o.symbol === null ? null : oneOf(o.symbol, SYMBOLS, `markers[${i}].symbol`);
+    } else if (version >= 2) {
+      // Versions 2 and 3: shapes only; the default shape counts as no choice.
+      const shape = oneOf(o.shape, SHAPES, `markers[${i}].shape`);
+      symbol = shape === DEFAULT_SHAPE ? null : shape;
+    }
+    return { row, position: { x: num(o.x, `markers[${i}].x`), y: num(o.y, `markers[${i}].y`) }, symbol };
   });
   if (markers.length > 0 && !background) invalid('markersWithoutBackground', 'markers');
 
@@ -300,6 +326,21 @@ export function parseWorkState(text: string): WorkState {
     presets = parsed;
   }
 
+  // Versions 1 to 3 have no vocabularies, and the toggle was not yet there.
+  let areaValues: string[] = [];
+  let statuses: StatusEntry[] = [];
+  let symbolsFromStatus = false;
+  if (version === 4) {
+    const vocab = obj(file.vocabularies, 'vocabularies');
+    const areas = parseValueList(vocab.areas);
+    if (areas === null) invalid('invalidVocabulary', 'vocabularies.areas');
+    const parsedStatuses = parseStatuses(vocab.statuses, isSymbol);
+    if (parsedStatuses === null) invalid('invalidVocabulary', 'vocabularies.statuses');
+    areaValues = areas;
+    statuses = parsedStatuses;
+    symbolsFromStatus = bool(file.symbolsFromStatus, 'symbolsFromStatus');
+  }
+
   return {
     headers,
     roles,
@@ -310,6 +351,9 @@ export function parseWorkState(text: string): WorkState {
     markers,
     excluded,
     presets,
+    areaValues,
+    statuses,
+    symbolsFromStatus,
     segment: oneOf(view.segment, SEGMENTS, 'view.segment'),
     viewport,
     sort: { header: sortHeader, direction: oneOf(sortIn.direction, ['asc', 'desc'] as const, 'view.list.sort.direction') },
