@@ -1,6 +1,6 @@
 # MapVibes — Functional Specification
 
-Status: v0.3.0 — Map segment core pass delivered. See the changelog below.
+Status: v0.4.0 — work-state persistence pass delivered. See the changelog below.
 
 MapVibes is a static, client-side web application: a spreadsheet-to-map visualisation tool. It has no backend, no database, and no server-side processing. Everything runs locally in the browser.
 
@@ -52,6 +52,28 @@ MapVibes is a static, client-side web application: a spreadsheet-to-map visualis
 - No hardcoded schema: no fixed column names or formats.
 
 ## Changelog
+
+### v0.4.0
+
+Work-state persistence pass (Pass 3).
+
+Delivered units:
+
+1. Work-state file (FR-13): an explicit Save work action writes the complete work state to one local JSON file. Where the browser offers a save dialog (the File System Access API, for example in Chromium-based browsers), the user chooses the file there; elsewhere the file is offered as a local download named mapvibes-work-state.json, and the browser's download settings decide whether the user is asked for a location. The file carries the format name mapvibes-work-state and the schema version field schemaVersion, whose value in this version is 1. It contains: the column mapping (every column of the import with its kept flag and role), the kept columns, and the columns hidden in the list; all ingested rows in ingestion order with all values, their retained or removed status, their colour, and their global sequential number (null for removed rows); the map background embedded as image data (the loaded image file or the rendered PDF page), with its size; every marker with its position in image coordinates and its association to a row; and the view state (the current segment, the map viewport, and the list sorting and filter). To keep the removed status, removed rows are now kept in the work state rather than discarded.
+2. Work-state load (FR-13): an explicit Open work action reads such a file and restores the complete state, including the background and the markers, without the original spreadsheet or background file. The file is validated completely before anything changes: a file that is not JSON or not a work-state file, a file whose schema version is not 1, and a damaged or inconsistent file (for example a numbering that breaks the global sequence, a marker on a removed row, or a background that is not embedded image data) are rejected with a clear message and nothing is opened. A background that is not embedded image data is always rejected, so opening a file can never make the browser fetch a resource. Opening over unsaved changes requires an explicit confirmation; declining changes nothing. If the stored background cannot be decoded, nothing is opened.
+3. Unsaved-changes awareness: an indicator in the header shows when the work has unsaved changes, and closing or reloading the page with unsaved changes asks the browser to confirm. Content changes count as unsaved changes (import, row removal, colour changes, the background, and placing, moving, or removing markers); view changes alone (segment, zoom and pan, list sorting, filtering, and column visibility) are saved with the work but do not count as unsaved changes. Saving or opening a file clears the indicator; a cancelled save does not. Nothing is written automatically at any time: files are written only by Save work.
+4. Defect fix: the theme option labels (Follow system, Light, Dark) now follow the language toggle (FR-19); a regression test covers the switch in both directions, the unchanged option values and current choice, and a stored Swedish preference at start.
+
+Verification: type checking; unit tests of the work-state file (a save and load round trip restoring an identical state, including the embedded background data and marker positions, and byte-identical on a second round trip; rejection of unknown schema versions, of non-work-state files, of non-embedded backgrounds, and of inconsistent numbering, markers, and columns); UI tests of the save flow (save dialog, cancelled dialog, failed write, download fallback), of the open flow (complete restoration in a fresh application instance, an identical file when saved again, confirmation accepted and declined, no confirmation without unsaved changes, unknown schema version, non-work-state file, damaged file, undecodable background), of the unsaved-changes indicator and the unload guard (including that no file is written and nothing is stored by editing or unloading), and of the theme label fix; the build regression suite; and headless-Chromium runs of both built artifacts via file:// with the browser context offline, covering the reload guard, Save through the download route, restoration of the saved file in a fresh page with identical markers, view, counts, and segment, and the confirmation when opening over unsaved changes. The only request made was the local file itself.
+
+Known limitations, stated explicitly:
+
+- The work-state file captures only the features implemented so far. Features added in later passes (for example manually added items, field edits, comments, manual columns, and presentation settings) will extend the schema; such extensions will raise the schema version, and files of an older version will need an explicit migration path in a later pass.
+- Marker selection and row selection in the list are transient interaction state and are not saved. The original spreadsheet is not embedded: only the kept columns of the imported rows are saved, so columns not kept at import cannot be recovered from the file, and after opening a file the column mapping cannot be changed (re-importing the spreadsheet starts a new import).
+- The native save dialog cannot be driven by browser automation; the save-dialog route is verified with a stand-in in the UI tests, and the download route in the headless-browser run. In browsers without a save dialog, the work is marked as saved once the download is handed to the browser.
+- The detail text of a damaged-file message names the inconsistent field in English in both interface languages.
+- The work-state file contains the user's data in plain text; it is written only where the user saves it and is never transmitted.
+- Pre-existing defect observed during verification and not fixed in this pass (outside its scope): the header row of the list table has no cell for the row-selection column, so each column heading is shown one column to the left of its values.
 
 ### v0.3.0
 

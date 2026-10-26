@@ -8,6 +8,7 @@ import { MarkerLayer } from './markerlayer';
 import { placedMarkers, placeMarker, pruneMarkers, removeMarker, type MarkerPositions, type PlacedMarker } from './markers';
 import { BUTTON_ZOOM_FACTOR, screenToImage, type Point } from './viewport';
 import { isSegment, SEGMENTS, showSegment, type Segment } from './segments';
+import { parseWorkState, serialiseWorkState, SUGGESTED_FILE_NAME, WorkStateError, type WorkState } from './workstate';
 
 const DEFAULT_COLOUR: RowColour = 'green';
 
@@ -16,8 +17,10 @@ interface AppState {
   parse: ParseResult | null;
   mapping: ColumnMapping[];
   headers: string[];
+  // All ingested rows in ingestion order, retained and removed.
+  ingested: RowData[];
+  // The retained rows, in ingestion order: the numbered list (FR-3).
   rows: RowData[];
-  ingestedTotal: number;
   visibleHeaders: string[];
   hiddenHeaders: Set<string>;
   filter: ValueFilter;
@@ -28,6 +31,8 @@ interface AppState {
   segment: Segment;
   positions: MarkerPositions;
   selectedMarker: string | null;
+  // True when the work has changed since it was last saved or opened.
+  dirty: boolean;
 }
 
 const state: AppState = {
@@ -35,8 +40,8 @@ const state: AppState = {
   parse: null,
   mapping: [],
   headers: [],
+  ingested: [],
   rows: [],
-  ingestedTotal: 0,
   visibleHeaders: [],
   hiddenHeaders: new Set(),
   filter: { ...NO_FILTER },
@@ -47,6 +52,7 @@ const state: AppState = {
   segment: 'information',
   positions: new Map(),
   selectedMarker: null,
+  dirty: false,
 };
 
 // Drag-and-drop data type identifying a list row dragged onto the map.
@@ -91,6 +97,10 @@ function renderStaticText(): void {
   el('map-reset').textContent = t.mapReset;
   el('map-empty-hint').textContent = t.mapEmptyHint;
   el('marker-remove').textContent = t.markerRemove;
+  el('work-save').textContent = t.workSave;
+  el('work-open').textContent = t.workOpen;
+  el('work-controls').setAttribute('aria-label', t.workGroup);
+  renderWorkStatus();
   el('legend-heading').textContent = t.legend;
   el('pdf-heading').textContent = t.pdfHeading;
   el('pdf-page-label').textContent = t.pdfPage;
@@ -128,6 +138,9 @@ function renderStaticText(): void {
   el('counter-selected').textContent = `${t.selected}: ${state.selected.size}`;
   el('counter-retained').textContent = `${t.retained}: ${currentCounters().retained}`;
   el('counter-removed').textContent = `${t.removed}: ${currentCounters().removed}`;
+  const themeOptions = el<HTMLSelectElement>('select-theme').options;
+  const themeLabels: Record<string, string> = { system: t.themeSystem, light: t.themeLight, dark: t.themeDark };
+  for (const option of themeOptions) option.textContent = themeLabels[option.value] ?? option.textContent;
   const filterKind = el<HTMLSelectElement>('select-filter-kind');
   const options = filterKind.options;
   options[0].textContent = t.filterAll;
@@ -137,7 +150,7 @@ function renderStaticText(): void {
 }
 
 function currentCounters() {
-  return counters(state.ingestedTotal, state.rows.length);
+  return counters(state.ingested.length, state.rows.length);
 }
 
 function setLanguage(lang: Lang): void {
@@ -240,13 +253,14 @@ function applyMappingAndImport(): void {
   if (!state.parse) return;
   const { headers, rows } = applyMapping(state.parse, state.mapping);
   state.headers = headers;
-  state.rows = rows.map((r) => makeRow(r.values));
-  state.ingestedTotal = state.rows.length;
+  state.ingested = rows.map((r) => makeRow(r.values));
+  state.rows = [...state.ingested];
   state.hiddenHeaders = new Set();
   state.filter = { ...NO_FILTER };
   state.sort = { header: null, direction: 'asc' };
   state.selected = new Set();
   state.visibleHeaders = [...headers];
+  markDirty();
   el('mapping-panel').classList.add('hidden');
   el('list-panel').classList.remove('hidden');
   renderList();
@@ -336,6 +350,7 @@ function renderList(): void {
     chip.addEventListener('click', () => {
       const idx = COLOURS.indexOf(row.colour);
       row.colour = COLOURS[(idx + 1) % COLOURS.length];
+      markDirty();
       renderList();
     });
     colourTd.appendChild(chip);
@@ -350,6 +365,7 @@ function renderList(): void {
   selectAllInput.dataset.allSelected = allSelected ? 'true' : 'false';
 
   renderMapItems();
+  renderWorkStatus();
 
   el('empty-list').classList.toggle('hidden', rows.length > 0);
   el('counter-selected').textContent = `${t.selected}: ${state.selected.size}`;
@@ -362,7 +378,6 @@ function renderList(): void {
 
 function renderFilterColumnSelect(): void {
   const select = el<HTMLSelectElement>('select-filter-column');
-  const previous = select.value;
   select.innerHTML = '';
   const placeholder = document.createElement('option');
   placeholder.value = '';
@@ -374,7 +389,7 @@ function renderFilterColumnSelect(): void {
     opt.textContent = header;
     select.appendChild(opt);
   });
-  select.value = state.headers.includes(previous) ? previous : '';
+  select.value = state.headers.includes(state.filter.header) ? state.filter.header : '';
   state.filter.header = select.value;
 }
 
@@ -401,8 +416,10 @@ function renderColumnVisibility(): void {
 
 function deleteSelected(): void {
   const toRemove = new Set(state.selected);
+  const before = state.rows.length;
   state.rows = state.rows.filter((r) => !toRemove.has(rowId(r)));
   state.selected = new Set();
+  if (state.rows.length !== before) markDirty();
   renderList();
 }
 
@@ -415,6 +432,203 @@ function selectAllVisible(): void {
     rows.forEach(({ row }) => state.selected.add(rowId(row)));
   }
   renderList();
+}
+
+// Work-state file (FR-13): the complete state as one snapshot.
+export function captureWorkState(): WorkState {
+  const retained = new Set(state.rows);
+  const index = new Map(state.ingested.map((row, i) => [row, i]));
+  const markers = [...state.positions.entries()]
+    .filter(([row]) => index.has(row) && retained.has(row))
+    .map(([row, position]) => ({ row: index.get(row)!, position: { ...position } }))
+    .sort((a, b) => a.row - b.row);
+  const bg = mapView?.background ?? null;
+  return {
+    mapping: state.mapping.map((m) => ({ ...m })),
+    headers: [...state.headers],
+    hiddenHeaders: state.headers.filter((h) => state.hiddenHeaders.has(h)),
+    rows: state.ingested.map((row) => ({ values: { ...row.values }, colour: row.colour, removed: !retained.has(row) })),
+    background: bg ? { ...bg } : null,
+    markers,
+    segment: state.segment,
+    viewport: { ...(mapView?.viewport ?? { scale: 1, x: 0, y: 0 }) },
+    sort: { ...state.sort },
+    filter: { ...state.filter },
+  };
+}
+
+function hasWork(): boolean {
+  return state.ingested.length > 0 || mapView?.background != null;
+}
+
+type WriteOutcome = 'saved' | 'cancelled' | 'failed';
+
+interface SaveFilePickerWindow {
+  showSaveFilePicker?: (options: unknown) => Promise<{
+    createWritable(): Promise<{ write(data: Blob): Promise<void>; close(): Promise<void> }>;
+  }>;
+}
+
+// Writes the file where the user chooses: through the browser's save dialog
+// where the File System Access API exists, otherwise as a browser download
+// (the browser's download settings decide whether the user is asked where).
+// Either way the data goes only to the local file system.
+async function writeWorkStateFile(text: string): Promise<WriteOutcome> {
+  const blob = new Blob([text], { type: 'application/json' });
+  const picker = (window as unknown as SaveFilePickerWindow).showSaveFilePicker;
+  if (typeof picker === 'function') {
+    try {
+      const handle = await picker.call(window, {
+        suggestedName: SUGGESTED_FILE_NAME,
+        types: [{ description: 'MapVibes work state', accept: { 'application/json': ['.json'] } }],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return 'saved';
+    } catch (e) {
+      return e instanceof DOMException && e.name === 'AbortError' ? 'cancelled' : 'failed';
+    }
+  }
+  try {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = SUGGESTED_FILE_NAME;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+    return 'saved';
+  } catch {
+    return 'failed';
+  }
+}
+
+type WorkMessage = 'saved' | 'save-failed' | 'opened' | 'open-failed';
+let workMessage: WorkMessage | null = null;
+let workErrorText = '';
+
+// Content changes mark the work as unsaved: the ingested rows, removals,
+// colours, the background, and markers. View changes (segment, zoom and pan,
+// list sorting, filtering, and column visibility) are saved with the work
+// but do not by themselves count as unsaved changes.
+function markDirty(): void {
+  state.dirty = true;
+  if (workMessage === 'saved' || workMessage === 'opened') workMessage = null;
+  renderWorkStatus();
+}
+
+function renderWorkStatus(): void {
+  const t = strings(state.prefs.lang);
+  const status = el('work-status');
+  const messages: Record<WorkMessage, string> = {
+    saved: t.workSaved,
+    'save-failed': t.workSaveFailed,
+    opened: t.workOpened,
+    'open-failed': workErrorText,
+  };
+  status.textContent = workMessage ? messages[workMessage] : '';
+  status.classList.toggle('error', workMessage === 'save-failed' || workMessage === 'open-failed');
+  el<HTMLButtonElement>('work-save').disabled = !hasWork();
+  el('work-dirty').textContent = t.workUnsaved;
+  el('work-dirty').classList.toggle('hidden', !state.dirty);
+  document.documentElement.dataset.unsaved = state.dirty ? 'true' : 'false';
+}
+
+export async function saveWork(): Promise<WriteOutcome> {
+  const text = serialiseWorkState(captureWorkState(), new Date());
+  const outcome = await writeWorkStateFile(text);
+  if (outcome === 'saved') state.dirty = false;
+  if (outcome !== 'cancelled') workMessage = outcome === 'saved' ? 'saved' : 'save-failed';
+  renderWorkStatus();
+  return outcome;
+}
+
+function readText(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(file);
+  });
+}
+
+function openErrorText(e: unknown): string {
+  const t = strings(state.prefs.lang);
+  if (e instanceof WorkStateError) {
+    if (e.code === 'unknown-version') return t.workOpenUnknownVersion.replace('{version}', e.detail);
+    if (e.code === 'invalid') return `${t.workOpenInvalid} ${e.detail}.`;
+    return t.workOpenNotWorkState;
+  }
+  return t.workOpenUnreadable;
+}
+
+function reportOpenFailure(text: string): void {
+  workMessage = 'open-failed';
+  workErrorText = text;
+  renderWorkStatus();
+}
+
+// Restores a complete work state. The background is decoded first; if that
+// fails, nothing else is changed.
+async function applyWorkState(ws: WorkState): Promise<boolean> {
+  if (!mapView) return false;
+  await closePdf();
+  showMapError(null);
+  if (ws.background) {
+    const ok = await mapView.setBackgroundSource(ws.background.src, ws.viewport);
+    if (!ok) {
+      showMapError(null);
+      return false;
+    }
+  } else {
+    mapView.clearBackground(ws.viewport);
+  }
+  state.parse = null;
+  state.mapping = ws.mapping.map((m) => ({ ...m }));
+  state.headers = [...ws.headers];
+  state.visibleHeaders = [...ws.headers];
+  state.hiddenHeaders = new Set(ws.hiddenHeaders);
+  state.ingested = ws.rows.map((r) => ({ values: { ...r.values }, colour: r.colour }));
+  state.rows = state.ingested.filter((_, i) => !ws.rows[i].removed);
+  state.rowIds = new Map();
+  state.selected = new Set();
+  state.selectedMarker = null;
+  state.positions = new Map(ws.markers.map((m) => [state.ingested[m.row], { ...m.position }]));
+  state.sort = { ...ws.sort };
+  state.filter = { ...ws.filter };
+
+  el('ingest-error').classList.add('hidden');
+  el('mapping-panel').classList.add('hidden');
+  const hasRows = state.ingested.length > 0;
+  el('list-panel').classList.toggle('hidden', !hasRows);
+  el('no-file').classList.toggle('hidden', hasRows);
+  el<HTMLSelectElement>('select-filter-kind').value = state.filter.kind;
+  const filterText = el<HTMLInputElement>('filter-text');
+  filterText.value = state.filter.text;
+  filterText.classList.toggle('hidden', state.filter.kind !== 'contains');
+  renderList();
+  setSegment(ws.segment);
+  state.dirty = false;
+  workMessage = 'opened';
+  renderWorkStatus();
+  return true;
+}
+
+export async function openWorkFile(file: File): Promise<boolean> {
+  let ws: WorkState;
+  try {
+    ws = parseWorkState(await readText(file));
+  } catch (e) {
+    reportOpenFailure(openErrorText(e));
+    return false;
+  }
+  if (state.dirty && !window.confirm(strings(state.prefs.lang).workConfirmReplace)) return false;
+  const ok = await applyWorkState(ws);
+  if (!ok) reportOpenFailure(strings(state.prefs.lang).workOpenBackgroundFailed);
+  return ok;
 }
 
 export function setSegment(segment: Segment): void {
@@ -473,12 +687,13 @@ function moveMarker(id: string, position: Point): void {
   const row = rowById(id);
   if (!row) return;
   placeMarker(state.positions, row, position);
+  markDirty();
   renderMapItems();
 }
 
 function deleteMarker(id: string): void {
   const row = rowById(id);
-  if (row) removeMarker(state.positions, row);
+  if (row && removeMarker(state.positions, row)) markDirty();
   if (state.selectedMarker === id) state.selectedMarker = null;
   renderMapItems();
 }
@@ -494,6 +709,7 @@ function dropRowOnMap(id: string, clientX: number, clientY: number): void {
   const position = screenToImage(mapView.viewport, mapView.stagePoint(clientX, clientY));
   placeMarker(state.positions, row, position);
   state.selectedMarker = id;
+  markDirty();
   renderMapItems();
 }
 
@@ -639,7 +855,11 @@ async function loadBackgroundFile(file: File): Promise<void> {
 function initialiseMapView(): void {
   mapView = new MapView(el('map-stage'), el('map-content'), el<HTMLImageElement>('map-image'), {
     onError: (kind) => showMapError(kind),
-    onBackgroundChanged: () => renderMapControls(),
+    onBackgroundChanged: () => {
+      markDirty();
+      renderMapControls();
+      renderWorkStatus();
+    },
     onViewportChanged: () => {
       renderMapControls();
       renderMapItems();
@@ -697,7 +917,25 @@ function initialiseMapView(): void {
   });
 }
 
+// Closing or reloading the page with unsaved work asks the browser to
+// confirm. Nothing is ever written automatically: work reaches a file only
+// through Save.
+function guardUnsavedWork(e: BeforeUnloadEvent): void {
+  if (!state.dirty) return;
+  e.preventDefault();
+  e.returnValue = '';
+}
+
 function wireEvents(): void {
+  window.addEventListener('beforeunload', guardUnsavedWork);
+  el('work-save').addEventListener('click', () => void saveWork());
+  const workInput = el<HTMLInputElement>('work-file-input');
+  el('work-open').addEventListener('click', () => workInput.click());
+  workInput.addEventListener('change', () => {
+    const file = workInput.files?.[0];
+    if (file) void openWorkFile(file);
+    workInput.value = '';
+  });
   el('segment-nav').addEventListener('click', (e) => {
     const tab = (e.target as HTMLElement).closest<HTMLElement>('.segment-tab');
     if (tab && isSegment(tab.dataset.segment)) setSegment(tab.dataset.segment);

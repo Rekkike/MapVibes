@@ -20,6 +20,7 @@ MapVibes turns a spreadsheet export into an interactive, zoomable map: clean the
 - Zoomable, pannable map on a user-supplied background: an image file or a chosen page of a PDF document.
 - Drag-and-drop rows from the list onto the map as numbered, colour-coded markers (green, blue, yellow, red), with a legend at the bottom.
 - Details panel per item, including free-text comments.
+- Explicit save and reopen of the complete work state as a local file, with an unsaved-changes indicator.
 - Manual item entry and editing of all fields, including dates.
 - Single-file interactive HTML export (primary output); optional PDF and PowerPoint export.
 - Swedish and English interface; dark, light, and system-following themes.

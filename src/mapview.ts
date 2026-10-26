@@ -88,9 +88,10 @@ export class MapView {
     await this.setBackgroundSource(src);
   }
 
-  // Loads any image source (a data URL from a file or a rendered PDF page)
-  // and makes it the background once its intrinsic size is known.
-  setBackgroundSource(src: string): Promise<void> {
+  // Loads any image source (a data URL from a file, a rendered PDF page, or a
+  // work-state file) and makes it the background once its intrinsic size is
+  // known. The view is fitted, unless a saved viewport is to be restored.
+  setBackgroundSource(src: string, restoreViewport?: Viewport): Promise<boolean> {
     return new Promise((resolve) => {
       const probe = this.image;
       const done = (ok: boolean) => {
@@ -98,8 +99,13 @@ export class MapView {
         probe.removeEventListener('error', onError);
         if (ok) {
           this.background = { src, width: probe.naturalWidth, height: probe.naturalHeight };
-          this.pendingFit = true;
-          this.fit();
+          if (restoreViewport) {
+            this.pendingFit = false;
+            this.setViewport({ ...restoreViewport });
+          } else {
+            this.pendingFit = true;
+            this.fit();
+          }
           this.hooks.onBackgroundChanged();
         } else {
           this.hooks.onError('unreadable');
@@ -107,7 +113,7 @@ export class MapView {
           else probe.removeAttribute('src');
         }
         this.render();
-        resolve();
+        resolve(ok);
       };
       const onLoad = () => done(probe.naturalWidth > 0 && probe.naturalHeight > 0);
       const onError = () => done(false);
@@ -115,6 +121,16 @@ export class MapView {
       probe.addEventListener('error', onError);
       probe.src = src;
     });
+  }
+
+  // Removes the background (for example when an opened work-state file has
+  // none) and sets the given view.
+  clearBackground(viewport: Viewport): void {
+    this.background = null;
+    this.pendingFit = false;
+    this.image.removeAttribute('src');
+    this.setViewport({ ...viewport });
+    this.hooks.onBackgroundChanged();
   }
 
   private setViewport(v: Viewport): void {

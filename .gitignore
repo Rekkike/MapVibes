@@ -14,4 +14,5 @@ Thumbs.db
 # Local state and exports (never commit)
 *.local.*
 overlay-*.json
+mapvibes-work-state*.json
 map-export-*.html

@@ -15,6 +15,13 @@
         <button type="button" class="segment-tab" role="tab" id="tab-presentation" data-segment="presentation" aria-controls="segment-presentation" aria-selected="false">Presentation</button>
       </nav>
       <div class="controls">
+        <div id="work-controls" role="group" aria-label="Work state">
+          <button type="button" id="work-open">Open work</button>
+          <input type="file" id="work-file-input" accept=".json,application/json" hidden />
+          <button type="button" id="work-save">Save work</button>
+          <span id="work-dirty" class="hidden" role="status">Unsaved changes</span>
+          <span id="work-status" class="notice" aria-live="polite"></span>
+        </div>
         <label>
           <span id="label-language">Language</span>
           <select id="select-language">

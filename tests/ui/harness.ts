@@ -29,9 +29,19 @@ function stubMatchMedia(): void {
 
 // Mounts the real application markup into the jsdom document and starts a
 // fresh instance of the application module.
-export async function mountApp(): Promise<typeof import('../../src/main')> {
+// Window listeners added by earlier application instances in the same jsdom
+// window are removed, so that each test sees only its own instance.
+const windowListeners: Array<[string, EventListenerOrEventListenerObject]> = [];
+const originalAddEventListener = window.addEventListener.bind(window);
+window.addEventListener = ((type: string, listener: EventListenerOrEventListenerObject, options?: unknown) => {
+  windowListeners.push([type, listener]);
+  originalAddEventListener(type, listener, options as AddEventListenerOptions);
+}) as typeof window.addEventListener;
+
+export async function mountApp(options: { keepStorage?: boolean } = {}): Promise<typeof import('../../src/main')> {
+  for (const [type, listener] of windowListeners.splice(0)) window.removeEventListener(type, listener);
   stubMatchMedia();
-  localStorage.clear();
+  if (!options.keepStorage) localStorage.clear();
   const doc = new DOMParser().parseFromString(indexHtml, 'text/html');
   doc.querySelectorAll('script').forEach((s) => s.remove());
   document.head.innerHTML = '';
@@ -134,4 +144,48 @@ export function placementItems(): HTMLElement[] {
 
 export function markers(): HTMLElement[] {
   return [...document.querySelectorAll<HTMLElement>('#marker-layer .marker')];
+}
+
+export type Picker = (options: { suggestedName: string }) => Promise<unknown>;
+
+// Stands in for the browser's save dialog (File System Access API) and
+// records what the application writes.
+export function stubSaveDialog(outcome: 'save' | 'cancel' | 'fail' = 'save') {
+  const written: { name?: string; text?: string; closed: boolean } = { closed: false };
+  const picker: Picker = async (options) => {
+    written.name = options.suggestedName;
+    if (outcome === 'cancel') throw new DOMException('The user aborted a request.', 'AbortError');
+    if (outcome === 'fail') throw new DOMException('Not allowed.', 'NotAllowedError');
+    return {
+      createWritable: async () => ({
+        write: async (blob: Blob) => {
+          written.text = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result));
+            reader.readAsText(blob);
+          });
+        },
+        close: async () => {
+          written.closed = true;
+        },
+      }),
+    };
+  };
+  (window as unknown as { showSaveFilePicker?: Picker }).showSaveFilePicker = picker;
+  return written;
+}
+
+
+export function removeSaveDialog(): void {
+  delete (window as unknown as { showSaveFilePicker?: Picker }).showSaveFilePicker;
+}
+
+export function textFile(name: string, text: string): File {
+  return new File([text], name, { type: 'application/json' });
+}
+
+export function openWorkFile(file: File): void {
+  const input = byId<HTMLInputElement>('work-file-input');
+  Object.defineProperty(input, 'files', { value: [file], configurable: true });
+  input.dispatchEvent(new Event('change'));
 }

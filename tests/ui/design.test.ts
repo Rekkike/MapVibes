@@ -70,10 +70,11 @@ describe('design tokens and theming (FR-29)', () => {
     }
   });
 
-  test('foreground text meets 4.5:1 against the panel in both themes', () => {
+  test('foreground, muted, and warning text meet 4.5:1 against the panel in both themes', () => {
     for (const theme of [light, dark]) {
       expect(contrast(theme['--fg'], theme['--panel'])).toBeGreaterThanOrEqual(4.5);
       expect(contrast(theme['--muted'], theme['--panel'])).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(theme['--warning'], theme['--panel'])).toBeGreaterThanOrEqual(4.5);
     }
   });
 });
