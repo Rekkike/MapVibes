@@ -11,20 +11,24 @@ import {
   PROBLEM_KINDS,
   type WorkState,
 } from '../../src/workstate';
+import { newManualKey } from '../../src/manual';
 import { en, sv } from '../../src/i18n';
 
+const MK = newManualKey([]);
 const png = readFileSync(join(process.cwd(), 'example-data', 'example-background.png')).toString('base64');
 
 function sample(): WorkState {
   return {
     roles: { identifier: 'ID', name: 'Note', start: 'Start', area: 'Group' },
-    headers: ['ID', 'Start', 'Group', 'Note'],
+    headers: ['ID', 'Start', 'Group', 'Note', MK],
+    manualColumns: [{ key: MK, label: 'Rank' }],
     hiddenHeaders: ['Note'],
     rows: [
-      { values: { ID: 'A-01', Start: '2024-01-05', Group: 'North', Note: 'Alpha item' }, colour: 'green', removed: false },
-      { values: { ID: 'A-02', Start: '2024-01-10', Group: 'North', Note: '' }, colour: 'blue', removed: true },
-      { values: { ID: 'A-03', Start: '', Group: 'South', Note: 'Beta item' }, colour: 'yellow', removed: false },
-      { values: { ID: 'A-04', Start: '', Group: 'South', Note: '' }, colour: 'red', removed: false },
+      { values: { ID: 'A-01', Start: '2024-01-05', Group: 'North', Note: 'Alpha item' }, colour: 'green', removed: false, manual: false },
+      { values: { ID: 'A-02', Start: '2024-01-10', Group: 'North', Note: '' }, colour: 'blue', removed: true, manual: false },
+      { values: { ID: 'A-03', Start: '', Group: 'South', Note: 'Beta item' }, colour: 'yellow', removed: false, manual: false },
+      { values: { ID: 'A-04', Start: '', Group: 'South', Note: '' }, colour: 'red', removed: false, manual: false },
+      { values: { ID: 'M-01', Start: '', Group: '', Note: 'By hand', [MK]: '1' }, colour: 'green', removed: false, manual: true },
     ],
     background: { src: `data:image/png;base64,${png}`, width: 1200, height: 800 },
     markers: [
@@ -80,15 +84,15 @@ describe('work-state file (FR-13)', () => {
   });
 
   test('a state without background or markers round-trips too', () => {
-    const state = { ...sample(), background: null, markers: [], excluded: [], presets: [], segment: 'information' as const };
+    const state = { ...sample(), background: null, markers: [], excluded: [], presets: [], manualColumns: [], segment: 'information' as const };
     expect(parseWorkState(serialiseWorkState(state, SAVED_AT))).toEqual(state);
   });
 
   test('the file carries the format name, schema version, and save time', () => {
     const file = fileOf(sample());
     expect(file.format).toBe(WORK_STATE_FORMAT);
-    expect(file.schemaVersion).toBe(2);
-    expect(WORK_STATE_SCHEMA_VERSION).toBe(2);
+    expect(file.schemaVersion).toBe(3);
+    expect(WORK_STATE_SCHEMA_VERSION).toBe(3);
     expect(file.savedAt).toBe('2026-01-02T03:04:05.000Z');
   });
 
@@ -99,12 +103,13 @@ describe('work-state file (FR-13)', () => {
       ['removed', null],
       ['retained', 2],
       ['retained', 3],
+      ['retained', 4],
     ]);
-    expect(rowNumbers(sample().rows)).toEqual([1, null, 2, 3]);
+    expect(rowNumbers(sample().rows)).toEqual([1, null, 2, 3, 4]);
   });
 
   test('an unknown schema version is rejected and named, never loaded silently', () => {
-    for (const version of [3, 0, '2', null]) {
+    for (const version of [4, 0, '3', null]) {
       const file = { ...fileOf(sample()), schemaVersion: version };
       expect(expectError(JSON.stringify(file), 'unknown-version').detail).toBe(String(version));
     }
@@ -217,10 +222,12 @@ describe('schema version 1 migration (FR-13)', () => {
     expect(state.segment).toBe('map');
   });
 
-  test('a migrated file is saved as version 2 and reads back identically', () => {
+  test('a migrated file is saved as version 3 and reads back identically', () => {
     const migrated = parseWorkState(v1Text);
+    expect(migrated.manualColumns).toEqual([]);
+    expect(migrated.rows.every((r) => !r.manual)).toBe(true);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(2);
+    expect(JSON.parse(text).schemaVersion).toBe(3);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 
@@ -240,5 +247,61 @@ describe('schema version 1 migration (FR-13)', () => {
     const v1b = JSON.parse(v1Text);
     v1b.columns.mapping[0].keep = false;
     expect(expectError(JSON.stringify(v1b), 'invalid').problem!.kind).toBe('headersMismatch');
+  });
+});
+
+describe('schema version 3: manual-list metadata (FR-9, FR-24, FR-13)', () => {
+  test('manual columns and the origin of each row are stored', () => {
+    const file = fileOf(sample()) as Record<string, any>;
+    expect(file.columns.manual).toEqual([{ key: MK, label: 'Rank' }]);
+    expect(file.rows.map((r: { origin: string }) => r.origin)).toEqual(['imported', 'imported', 'imported', 'imported', 'manual']);
+    expect(parseWorkState(serialiseWorkState(sample(), SAVED_AT)).rows[4].manual).toBe(true);
+  });
+
+  test('manual-list metadata is validated', () => {
+    const cases: Array<[(f: Record<string, any>) => void, string, string]> = [
+      [(f) => (f.columns.manual = [{ key: 'ID', label: 'x' }]), 'notAColumn', 'columns.manual[0].key'],
+      [(f) => (f.columns.manual = [{ key: MK + 'x', label: 'x' }]), 'notAColumn', 'columns.manual[0].key'],
+      [(f) => (f.columns.manual = [{ key: MK, label: ' ' }]), 'notText', 'columns.manual[0].label'],
+      [(f) => (f.columns.manual = [{ key: MK, label: 'a' }, { key: MK, label: 'b' }]), 'duplicateEntry', 'columns.manual[1]'],
+      [(f) => (f.rows[0].origin = 'pasted'), 'unknownValue', 'rows[0].origin'],
+      [(f) => delete f.columns.manual, 'notList', 'columns.manual'],
+    ];
+    for (const [mutate, kind, field] of cases) {
+      const file = fileOf(sample()) as Record<string, any>;
+      mutate(file);
+      expect(expectError(JSON.stringify(file), 'invalid').problem, `${kind} ${field}`).toEqual({ kind, field });
+    }
+  });
+});
+
+describe('schema version 2 migration (FR-13)', () => {
+  const v2Text = readFileSync(join(process.cwd(), 'example-data', 'example-work-state-v2.json'), 'utf8');
+
+  test('a version 2 file written by v0.5.0 opens with all its content and no manual data', () => {
+    expect(JSON.parse(v2Text).schemaVersion).toBe(2);
+    const state = parseWorkState(v2Text);
+    expect(state.roles).toEqual({ identifier: 'ID', name: 'Note', area: 'Group' });
+    expect(state.markers.map((m) => m.shape)).toEqual(['circle', 'circle', 'diamond', 'circle', 'circle']);
+    expect(state.excluded).toEqual([1]);
+    expect(state.presets.map((p) => p.name)).toEqual(['Standard']);
+    expect(state.manualColumns).toEqual([]);
+    expect(state.rows.every((r) => !r.manual)).toBe(true);
+  });
+
+  test('a migrated version 2 file is saved as version 3 and reads back identically', () => {
+    const migrated = parseWorkState(v2Text);
+    const text = serialiseWorkState(migrated, SAVED_AT);
+    expect(JSON.parse(text).schemaVersion).toBe(3);
+    expect(parseWorkState(text)).toEqual(migrated);
+  });
+
+  test('version 2 files are read by the version 2 rules: manual metadata is neither required nor read', () => {
+    const v2 = JSON.parse(v2Text);
+    v2.rows[0].origin = 'manual';
+    v2.columns.manual = [{ key: 'ID', label: 'x' }];
+    const state = parseWorkState(JSON.stringify(v2));
+    expect(state.rows[0].manual).toBe(false);
+    expect(state.manualColumns).toEqual([]);
   });
 });

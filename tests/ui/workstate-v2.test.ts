@@ -89,7 +89,7 @@ describe('work-state schema version 2 (FR-13)', () => {
     ]);
     expect(markers()[1].classList.contains('marker-blue')).toBe(true);
     expect(document.documentElement.dataset.segment).toBe('map');
-    // Saving the migrated work writes schema version 2.
-    expect(JSON.parse(await save()).schemaVersion).toBe(2);
+    // Saving the migrated work writes the current schema version.
+    expect(JSON.parse(await save()).schemaVersion).toBe(3);
   });
 });

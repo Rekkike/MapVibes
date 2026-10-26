@@ -1,14 +1,14 @@
 # MapVibes — Functional Specification
 
-Status: v0.5.1 — Pages deployment supplement to the Pass 4 delivery. See the changelog below.
+Status: v0.6.0 — manual data entry and open-map backgrounds pass delivered. See the changelog below.
 
 MapVibes is a static, client-side web application: a spreadsheet-to-map visualisation tool. It has no backend, no database, and no server-side processing. Everything runs locally in the browser.
 
 ## Hard constraints
 
 1. Fully client-side static web application (HTML, CSS, JavaScript).
-2. No network calls at runtime: no uploads, no analytics, no telemetry, no CDN fetches during use. All fonts, styles, and scripts are bundled locally.
-3. The application must function fully with no internet connection (airplane-mode test applies to every delivery).
+2. No network calls at runtime: no uploads, no analytics, no telemetry, no CDN fetches during use. All fonts, styles, and scripts are bundled locally. The single exception is the explicit, user-initiated, clearly labelled fetch of open map data (FR-31): it is the application's only network operation; it is never made automatically; no user data is ever included in its requests; its result is embedded into the work state like any other background. All other operations, including the exported presentation file, remain fully offline.
+3. The application must function fully with no internet connection (airplane-mode test applies to every delivery). The guarantee holds at all times except during the labelled open-map fetch (FR-31); with no connection, that control is disabled with a clear message and every other function works.
 4. All state remains on the user's device: files are read in the browser and written only on explicit export or save.
 5. No hardcoded column names, headers, or business terminology: the application must work with arbitrary header names in any language.
 6. No automatic selection or filtering logic deciding which rows "fit": data cleaning is deliberately a manual process performed by the user. The application provides generic list conveniences only.
@@ -23,7 +23,7 @@ MapVibes is a static, client-side web application: a spreadsheet-to-map visualis
 - FR-6: Display a legend at the bottom of the map view.
 - FR-7: Display a details panel for a selected marker.
 - FR-8: The main view shows all areas; the user may zoom in or select a box/region of interest to focus on one area.
-- FR-9: Allow the user to add items manually (not originating from the spreadsheet), with all the same fields, colour coding, and marker placement as ingested items.
+- FR-9: Allow the user to add items manually (not originating from the spreadsheet), with the same fields, colour coding, sequential numbering, and marker placement as imported items.
 - FR-10: Allow the user to edit any item's text fields, including start date and end date.
 - FR-11: Export a single self-contained interactive HTML file (all data, map image, and application logic embedded in one file) that opens locally in any browser with zoom, legend, and per-marker details, requiring no server and no internet connection. This is the primary presentation format.
 - FR-12: PDF and PowerPoint export is a secondary, optional feature. If implemented: the map with legend, followed by the relevant rows as a well-formatted table, with pagination or equivalent handling for large numbers of rows.
@@ -38,12 +38,14 @@ MapVibes is a static, client-side web application: a spreadsheet-to-map visualis
 - FR-21: All user preferences (language, theme, column mapping, view state) are stored locally on the device only (browser local storage or the state file), never transmitted.
 - FR-22: Segment structure. The application is organised into three segments with a clear flow: Information (list, cleaning, numbering), Map (background, markers, placement), and Presentation (final view and export). Work performed in one segment is never lost by moving to another segment.
 - FR-23: Saved column presets. The current column configuration (shown and hidden columns, and role assignments) can be saved under a name. When a later import has the same headers, the matching preset applies automatically; presets can also be applied, switched, and removed by the user. Presets persist in the work-state file and in local storage where available (FR-21).
-- FR-24: Manually added columns. The user can add columns by hand; such columns participate in sorting, filtering, and grouping in the same way as imported columns.
+- FR-24: Manually added columns. The user can add columns by hand; such columns participate in sorting, filtering, and grouping exactly like imported columns.
 - FR-25: Map background import from PDF documents. In addition to image files (FR-4), the background can be loaded from a PDF document: the user selects the page, and the rendered page becomes the background image on the same viewport. PDF rendering uses a fully bundled library; no CDN or network access is involved.
 - FR-26: Marker symbol library. Beyond the four colours (FR-5), a library of marker symbols is available, and the symbol is changeable per marker.
 - FR-27: Presentation mode with per-item and per-layer visibility toggles. Items and layers excluded by the user are absent from the exported presentation.
 - FR-28: At-a-glance panel. A panel beside the map shows only the items currently visible in the viewport, updating live as the viewport changes, with cross-highlighting between list entries and markers.
 - FR-29: Design quality bar. The interface maintains a consistent visual language, spacing, and theming across the light and dark modes; where practical, this is pinned by automated DOM and CSS assertions.
+- FR-30: Manual population of the entire list. An empty list can be started with no import at all, so that the application is fully usable where no files can be opened; rows and columns are then added and edited by hand.
+- FR-31: Open-map backgrounds. OpenStreetMap XML (.osm) files can be loaded locally and rendered as map backgrounds. In addition, an explicit, clearly labelled, user-initiated action fetches open map data by place name or bounding box from open services and renders it the same way (see hard constraints 2 and 3).
 
 ## Non-goals
 
@@ -52,6 +54,39 @@ MapVibes is a static, client-side web application: a spreadsheet-to-map visualis
 - No hardcoded schema: no fixed column names or formats.
 
 ## Changelog
+
+### v0.6.0
+
+Manual data entry and open-map backgrounds pass (Pass 5).
+
+Specification amendments (recorded before implementation; all implemented in this pass):
+
+- FR-9 manual item entry (previously deferred): items can be added entirely by hand, with the same fields, colour coding, numbering, and marker placement as imported items. Implemented.
+- FR-24 manual columns (previously deferred): columns can be added by hand and take part in sorting, filtering, and grouping exactly like imported columns. Implemented.
+- FR-30 (new): manual population of the entire list: an empty list can be started with no import at all. Implemented.
+- FR-31 (new): open-map backgrounds: OpenStreetMap XML (.osm) files load locally and render as backgrounds; an explicit, labelled action fetches open map data by place name or bounding box. Implemented.
+- Hard constraints 2 and 3 (amended): the labelled open-map fetch is the application's only network operation; nothing is fetched automatically; no user data is included in a request; the result is embedded into the work state like any other background; everything else, including the future exported presentation, stays fully offline; the airplane-mode guarantee holds except during that one action, and the action is disabled with a clear message when the application is offline. Implemented. Because the standing discipline rule 6 (privacy constraints are non-negotiable; no network calls at runtime) conflicted with this amendment, the conflict was reported before implementation, and on the owner's decision docs/ENVIRONMENT_DISCIPLINE.md rule 6 was amended with the same single, narrow exception; any further network operation requires a further explicit amendment of both documents.
+
+Delivered units:
+
+1. Manual list (FR-9, FR-24, FR-30): "Start an empty list" begins a list with no import (asking first when there are unsaved changes). "Add row" appends a row that takes the next number; "Add column" adds a named column with an empty value in every row. Manual columns have stable internal keys, so their names can be repeated and renamed (in the column heading) without affecting roles, presets, or markers; they take part in sorting, filtering (including empty and non-empty), roles (including area/grouping and name/title), presets, and showing and hiding, like imported columns. Manual rows are coloured, numbered, placed as markers, removed, and renumbered like imported rows, and rows can also be added to an imported list. Cells of manual rows and of manual columns are edited in the list; imported values of imported columns remain read-only, as editing them (FR-10) is not part of this pass.
+2. OpenStreetMap file backgrounds (FR-31): a .osm file loads by drop or by the background file picker and is parsed in the browser (nodes, ways, and their tags; relations are not interpreted). Ways are classified as major roads, minor roads, paths, rail, waterways, water areas, buildings, and green areas, projected in Web Mercator with the true aspect ratio, and drawn onto an image of 3000 pixels on its longest side (at most 4096), with line widths scaled to the image so that the map stays legible when fitted. The image is an ordinary background, like an image file or a PDF page: zoom, pan, fit, markers, the presentation stage, and the work state work unchanged, and the background is embedded in the work-state file. The style uses one fixed palette (backgrounds are content, not themed interface): roads are light lines with darker casings, water is blue, buildings are beige with darker outlines, green areas are green; every line edge and outline keeps at least 3:1 contrast against the land colour. Markers gain a thin dark halo so that every marker colour stays legible on light maps in both interface themes. Malformed, truncated, or non-OSM XML fails with a clear message, as does data with no drawable features; the current background is kept.
+3. Open-map fetch (FR-31): "Fetch open map data (online)", marked with a network symbol, opens a panel marked "Network" that states that this is the only network operation and what is sent. A place name is searched with the Nominatim geocoder (the request carries only the name); the user chooses a result; its area (reduced about its centre to at most 0.0025 square degrees, about 5.5 by 5.5 kilometres at the equator, with a notice when reduced) is fetched from the Overpass API (the request carries only the bounding box and the feature classes drawn); a bounding box can also be entered directly. Requests are GET requests without credentials or cookies and with the referrer limited to the page origin. The result is parsed and rendered exactly like a local .osm file, with the attribution "© OpenStreetMap contributors" drawn into the image so that it travels with the background, and is embedded into the work state. Offline (as reported by the browser), the action is disabled and a message points to local .osm loading; going offline with the panel open disables its request buttons. Network failures, busy services, empty results, invalid or too large areas, and unexpected answers are reported and change nothing. All network code is confined to one module, and a test fails if any other source file contains a network call or a remote address.
+4. Work-state schema version 3 (FR-13): adds the manual-list metadata: the manual columns (key and label) and, per row, whether it was imported or added by hand. Files of schema versions 1 (v0.4.0) and 2 (v0.5.x) still open: they are migrated on reading, with no manual columns and all rows imported, and keep all their content; saving then writes version 3. Any other version is rejected with a clear message.
+5. Tests and delivery: unit tests for .osm parsing, classification, and the render plan; for the fetch requests (only the name or the bounding box is sent, only to the two services), bounding boxes, and the confinement of network code; for manual keys; and for schema version 3 and the migration of versions 1 and 2 (against files written by v0.4.0 and v0.5.0, in example-data); UI tests for the manual list flow, .osm loading, the fetch action and its offline state (with the services replaced by a stand-in), and marker placement on rendered backgrounds; stylesheet and palette assertions for the rendered map's legibility in both themes; and the build regression suite. The release workflow publishes the archive and deploys the identical build to the hosted page.
+
+Verification: type checking; the unit, UI, and build regression suites in chunked invocations; and headless-Chromium runs of both built artifacts via file:// (manual list, .osm loading and rendering in both themes, malformed files, offline state of the fetch action with the browser context offline, and only the local file requested otherwise), plus fetch runs from file:// and from a local HTTP origin with the two services emulated by request interception, confirming that requests occur only after the explicit presses, carry only the place name or the bounding box, send no cookies, send the referrer as the origin only (none from file://), and that the fetched data is rendered and placed like a local file.
+
+Known limitations and notices, stated explicitly:
+
+- The fetch was not verified against the live services or on the hosted page: the development environment has no network access to them. Request interception in the test browser does not apply the browser's cross-origin checks, so it cannot show whether a browser accepts the live services' answers in a page opened from a file. The services send headers that allow requests from any origin, so the fetch is expected to work from file:// as well as from the hosted page; if a browser blocks it from a file-based page, the hosted page or a local .osm file is the alternative, and local .osm loading is always the fully offline route. This is stated in the README.
+- Using the open services is subject to their usage policies (fair use; the geocoder allows at most about one request per second). Requests are only ever made by explicit user action, one at a time. The hosted page sends its origin as the referrer, as the geocoder's policy asks; a page opened from a file sends none.
+- Large .osm files: the file is read whole and parsed on the main thread; files above 50 MB are refused with a message asking for a smaller area. Below that, loading takes time in proportion to the size and the page does not respond meanwhile: in the test browser, synthetic files of 10, 25, and 45 MB took about 4, 11, and 20 seconds. The rendered image is at most 4096 pixels on its longest side, so a large area is drawn with less detail; small details may merge at that scale.
+- Relations, including multipolygons, are not interpreted: features that exist only as relations (for example many large lakes and some large buildings) are not drawn. Names and labels are not drawn. Data that is not in the fetched feature classes is not requested.
+- The rendered map uses one fixed palette in both interface themes, like an image or PDF background; it is not re-coloured for the dark theme.
+- The fetched data is OpenStreetMap data (licensed under the Open Database Licence); the attribution is drawn into the rendered image. Local .osm files carry no attribution, as their origin is not known to the application.
+- Manual columns cannot yet be removed (only hidden), and imported values of imported columns cannot be edited (FR-10 remains deferred).
+- The test fixtures for this pass are synthetic: the .osm files describe a fictional town at invented coordinates, as real map extracts would be real-world data.
 
 ### v0.5.1
 

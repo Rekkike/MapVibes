@@ -220,3 +220,33 @@ export async function placeExampleMarkers(points: Array<[number, number, number]
   await loadExampleBackground();
   for (const [index, x, y] of points) dragItemToStage(placementItems()[index], STAGE.left + x, STAGE.top + y);
 }
+
+export function addColumn(name: string): void {
+  byId<HTMLInputElement>('new-column-name').value = name;
+  byId('add-column').click();
+}
+
+export function columnKeyOf(label: string): string {
+  const th = [...document.querySelectorAll<HTMLElement>('#row-table-head th[data-header]')].find(
+    (h) => h.querySelector('.column-label')!.textContent === label,
+  );
+  if (!th) throw new Error(`no column ${label}`);
+  return th.dataset.header!;
+}
+
+// Types a value into an editable cell of the given list row (by position in
+// the displayed list) and commits it.
+export function editCell(rowIndex: number, label: string, value: string): void {
+  const key = columnKeyOf(label);
+  const tr = document.querySelectorAll('#row-table-body tr')[rowIndex];
+  const input = tr.querySelector<HTMLInputElement>(`.cell-input[data-header="${esc(key)}"]`);
+  if (!input) throw new Error(`cell ${rowIndex}/${label} is not editable`);
+  input.value = value;
+  input.dispatchEvent(new Event('change'));
+}
+
+// Escapes a value for use inside a double-quoted attribute selector (jsdom
+// has no CSS.escape).
+export function esc(value: string): string {
+  return value.replace(/["\\]/g, '\\$&');
+}

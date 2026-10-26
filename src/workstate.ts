@@ -1,30 +1,44 @@
 // Work-state file (FR-13). The complete work state is written to, and read
 // from, a single local JSON file on explicit Save and Open only. The file
-// carries a schema version. Version 2 is written; version 1 files (v0.4.0)
-// are read and migrated; a file with any other version is rejected.
+// carries a schema version. Version 3 is written; version 1 files (v0.4.0)
+// and version 2 files (v0.5.x) are read and migrated; a file with any other
+// version is rejected.
 //
 // Schema version 2 adds to version 1: role assignments by column key
 // (replacing the version 1 column mapping, as all columns are now kept), the
 // marker shape per marker, the presentation visibility toggles, and the
 // saved column presets.
+//
+// Schema version 3 adds to version 2 the manual-list metadata: the columns
+// added by hand (key and label) and, per row, whether it was imported or
+// added by hand. Files of versions 1 and 2 have no manual columns and only
+// imported rows.
 
 import { COLOURS, type RowColour, type SortDirection, type ValueFilter } from './dataset';
 import { isRole, ROLES, type Role, type RoleAssignments } from './roles';
 import { DEFAULT_SHAPE, SHAPES, type MarkerShape } from './markers';
+import { isManualKey } from './manual';
 import { parsePresets, type ColumnPreset } from './presets';
 import type { Background } from './mapview';
 import { SEGMENTS, type Segment } from './segments';
 import type { Point, Viewport } from './viewport';
 
 export const WORK_STATE_FORMAT = 'mapvibes-work-state';
-export const WORK_STATE_SCHEMA_VERSION = 2;
-export const READABLE_SCHEMA_VERSIONS = [1, 2];
+export const WORK_STATE_SCHEMA_VERSION = 3;
+export const READABLE_SCHEMA_VERSIONS = [1, 2, 3];
 export const SUGGESTED_FILE_NAME = 'mapvibes-work-state.json';
 
 export interface WorkStateRow {
   values: Record<string, string>;
   colour: RowColour;
   removed: boolean;
+  // Added by hand (FR-9) rather than imported.
+  manual: boolean;
+}
+
+export interface ManualColumn {
+  key: string;
+  label: string;
 }
 
 export interface WorkStateMarker {
@@ -40,6 +54,8 @@ export interface WorkState {
   // Column keys in file order, and role assignments to column keys.
   headers: string[];
   roles: RoleAssignments;
+  // Columns added by hand (FR-24), in the order of headers.
+  manualColumns: ManualColumn[];
   hiddenHeaders: string[];
   rows: WorkStateRow[];
   background: Background | null;
@@ -117,11 +133,13 @@ export function serialiseWorkState(state: WorkState, savedAt: Date): string {
       headers: [...state.headers],
       hiddenInList: [...state.hiddenHeaders],
       roles: Object.fromEntries(ROLES.filter((r) => state.roles[r] !== undefined).map((r) => [r, state.roles[r]])),
+      manual: state.manualColumns.map((c) => ({ key: c.key, label: c.label })),
     },
     rows: state.rows.map((r, i) => ({
       values: { ...r.values },
       colour: r.colour,
       status: r.removed ? 'removed' : 'retained',
+      origin: r.manual ? 'manual' : 'imported',
       number: numbers[i],
     })),
     background: state.background
@@ -190,7 +208,7 @@ export function parseWorkState(text: string): WorkState {
   }
   const file = raw as Json;
   const version = file.schemaVersion;
-  if (version !== 1 && version !== 2) {
+  if (version !== 1 && version !== 2 && version !== 3) {
     throw new WorkStateError('unknown-version', String(version));
   }
 
@@ -198,6 +216,7 @@ export function parseWorkState(text: string): WorkState {
   const headers = arr(columns.headers, 'columns.headers').map((h, i) => str(h, `columns.headers[${i}]`));
   if (new Set(headers).size !== headers.length) invalid('duplicateEntry', 'columns.headers');
   const roles = version === 1 ? migrateMappingV1(columns, headers) : parseRolesV2(columns, headers);
+  const manualColumns = version === 3 ? parseManualColumns(columns, headers) : [];
   const hiddenHeaders = arr(columns.hiddenInList, 'columns.hiddenInList').map((h, i) => {
     const header = str(h, `columns.hiddenInList[${i}]`);
     if (!headers.includes(header)) invalid('notAColumn', `columns.hiddenInList[${i}]`);
@@ -216,6 +235,8 @@ export function parseWorkState(text: string): WorkState {
       values,
       colour: oneOf(o.colour, COLOURS, `rows[${i}].colour`),
       removed: oneOf(o.status, ['retained', 'removed'] as const, `rows[${i}].status`) === 'removed',
+      // Versions 1 and 2 have no manual rows.
+      manual: version === 3 && oneOf(o.origin, ['imported', 'manual'] as const, `rows[${i}].origin`) === 'manual',
     };
   });
   const expected = rowNumbers(rows);
@@ -265,7 +286,7 @@ export function parseWorkState(text: string): WorkState {
   // Version 1 has no presentation toggles and no presets.
   const excluded: number[] = [];
   let presets: ColumnPreset[] = [];
-  if (version === 2) {
+  if (version >= 2) {
     const presentation = obj(file.presentation, 'presentation');
     for (const [i, h] of arr(presentation.hidden, 'presentation.hidden').entries()) {
       const row = num(h, `presentation.hidden[${i}]`);
@@ -282,6 +303,7 @@ export function parseWorkState(text: string): WorkState {
   return {
     headers,
     roles,
+    manualColumns,
     hiddenHeaders,
     rows,
     background,
@@ -338,4 +360,20 @@ function parseRolesV2(columns: Json, headers: string[]): RoleAssignments {
     roles[role] = header;
   }
   return roles;
+}
+
+// Version 3: the columns added by hand. Each is a kept column with a manual
+// key (which no imported column can have) and a non-empty label.
+function parseManualColumns(columns: Json, headers: string[]): ManualColumn[] {
+  const out: ManualColumn[] = [];
+  for (const [i, c] of arr(columns.manual, 'columns.manual').entries()) {
+    const o = obj(c, `columns.manual[${i}]`);
+    const key = str(o.key, `columns.manual[${i}].key`);
+    const label = str(o.label, `columns.manual[${i}].label`);
+    if (!headers.includes(key) || !isManualKey(key)) invalid('notAColumn', `columns.manual[${i}].key`);
+    if (out.some((m) => m.key === key)) invalid('duplicateEntry', `columns.manual[${i}]`);
+    if (label.trim() === '') invalid('notText', `columns.manual[${i}].label`);
+    out.push({ key, label });
+  }
+  return out;
 }

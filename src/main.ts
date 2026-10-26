@@ -1,12 +1,16 @@
 import { applyFilter, counters, COLOURS, makeRow, numberRows, NO_FILTER, sortRows, type NumberedRow, type RowColour, type RowData, type SortDirection, type ValueFilter } from './dataset';
 import { importColumns, parseWorkbook, ParseError, type ParseResult } from './ingest';
 import { columnLabel } from './columns';
+import { emptyValues, newManualKey } from './manual';
 import { clonePreset, findMatchingPreset, loadStoredPresets, presetConfiguration, presetMatches, removePreset, storePresets, upsertPreset, type ColumnPreset } from './presets';
 import { assignRole, displayName, isRole, listColumnOrder, roleOfColumn, ROLES, type Role, type RoleAssignments } from './roles';
 import { strings, type Lang, type Strings } from './i18n';
 import { loadPreferences, savePreferences, type Preferences, type ThemeChoice } from './preferences';
 import { MapView } from './mapview';
 import { isPdfFile, openPdf, type PdfDocument } from './pdfbackground';
+import { isOsmFile, MAX_OSM_BYTES, OsmError, parseOsm, planRender, type OsmBounds } from './osm';
+import { renderPlanToDataUrl } from './osmrender';
+import { checkBounds, fetchableBounds, FetchError, fetchMapData, isOnline, parseBoundsText, searchPlace, type FetchErrorCode, type PlaceResult } from './openmap';
 import { MarkerLayer } from './markerlayer';
 import { renderLegend, shapeName } from './legend';
 import { markersInView } from './glance';
@@ -20,6 +24,9 @@ const DEFAULT_COLOUR: RowColour = 'green';
 interface AppState {
   prefs: Preferences;
   roles: RoleAssignments;
+  // Manual columns (FR-24): key to label; and the rows added by hand (FR-9).
+  manualColumns: Map<string, string>;
+  manualRows: Set<RowData>;
   // Saved column presets (FR-23), latest last, and the preset in effect.
   presets: ColumnPreset[];
   activePreset: string | null;
@@ -51,6 +58,8 @@ interface AppState {
 const state: AppState = {
   prefs: loadPreferences(),
   roles: {},
+  manualColumns: new Map(),
+  manualRows: new Set(),
   presets: loadStoredPresets(),
   activePreset: null,
   headers: [],
@@ -117,6 +126,27 @@ function renderStaticText(): void {
   el('marker-remove').textContent = t.markerRemove;
   el('marker-shape-text').textContent = t.markerShape;
   el('work-save').textContent = t.workSave;
+  el('fetch-open').textContent = t.fetchOpen;
+  el('fetch-offline').textContent = t.fetchOffline;
+  el('fetch-heading').textContent = t.fetchHeading;
+  el('fetch-badge').textContent = t.fetchBadge;
+  el('fetch-notice').textContent = t.fetchNotice;
+  el('fetch-mode-place-label').textContent = t.fetchModePlace;
+  el('fetch-mode-bbox-label').textContent = t.fetchModeBbox;
+  el('fetch-place').setAttribute('aria-label', t.fetchPlace);
+  el<HTMLInputElement>('fetch-place').placeholder = t.fetchPlace;
+  el('fetch-bbox').setAttribute('aria-label', t.fetchModeBbox);
+  el<HTMLInputElement>('fetch-bbox').placeholder = t.fetchBboxHint;
+  el('fetch-search').textContent = t.fetchSearch;
+  el('fetch-go').textContent = t.fetchGo;
+  el('fetch-close').textContent = t.fetchClose;
+  el('manual-start-hint').textContent = t.manualStartHint;
+  el('start-empty').textContent = t.manualStartEmpty;
+  el('manual-heading').textContent = t.manualHeading;
+  el('add-row').textContent = t.manualAddRow;
+  el('add-column').textContent = t.manualAddColumn;
+  el('new-column-name').setAttribute('aria-label', t.manualColumnName);
+  el<HTMLInputElement>('new-column-name').placeholder = t.manualColumnName;
   el('preset-heading').textContent = t.presetHeading;
   el('preset-select').setAttribute('aria-label', t.presetHeading);
   el('preset-apply').textContent = t.presetApply;
@@ -225,8 +255,26 @@ async function handleFile(file: File): Promise<void> {
 
 function applyImport(parse: ParseResult): void {
   const { headers, rows } = importColumns(parse);
+  resetList(headers, rows);
+  const preset = findMatchingPreset(state.presets, headers);
+  if (preset) applyPreset(preset, 'auto');
+  renderList();
+}
+
+// Starts an empty list with no import (FR-30); rows and columns are then
+// added by hand.
+function startEmptyList(): void {
+  if (state.dirty && !window.confirm(strings(state.prefs.lang).manualConfirmReplace)) return;
+  el('ingest-error').classList.add('hidden');
+  resetList([], []);
+  renderList();
+}
+
+function resetList(headers: string[], rows: Record<string, string>[]): void {
   state.headers = headers;
   state.roles = {};
+  state.manualColumns = new Map();
+  state.manualRows = new Set();
   state.ingested = rows.map((values) => makeRow(values));
   state.rows = [...state.ingested];
   state.hiddenHeaders = new Set();
@@ -238,11 +286,68 @@ function applyImport(parse: ParseResult): void {
   el<HTMLInputElement>('filter-text').classList.add('hidden');
   state.activePreset = null;
   presetMessage = null;
-  const preset = findMatchingPreset(state.presets, headers);
-  if (preset) applyPreset(preset, 'auto');
   markDirty();
   el('list-panel').classList.remove('hidden');
   el('no-file').classList.add('hidden');
+}
+
+// The header text shown for a column: a manual column's own label, or the
+// file's header.
+function labelOf(key: string): string {
+  const t = strings(state.prefs.lang);
+  const manual = state.manualColumns.get(key);
+  if (manual !== undefined) return manual.trim() === '' ? t.untitledHeader : manual;
+  return columnLabel(key, t.untitledHeader);
+}
+
+// Adds a row by hand (FR-9): it is appended, so it takes the next number,
+// and is coloured, placed, removed, and renumbered like any imported row.
+function addManualRow(): void {
+  const row = makeRow(emptyValues(state.headers));
+  state.ingested.push(row);
+  state.rows.push(row);
+  state.manualRows.add(row);
+  markDirty();
+  renderList();
+  // Focus the new row's first editable cell, if any.
+  const id = rowId(row);
+  document.querySelector<HTMLInputElement>(`#row-table-body tr[data-row-id="${id}"] .cell-input`)?.focus();
+}
+
+// Adds a column by hand (FR-24): every row gets an empty value; the column
+// then takes part in sorting, filtering, roles, presets, and visibility.
+function addManualColumn(): void {
+  const input = el<HTMLInputElement>('new-column-name');
+  const label = input.value.trim();
+  if (label === '') return;
+  const key = newManualKey(state.headers);
+  state.manualColumns.set(key, label);
+  state.headers = [...state.headers, key];
+  state.visibleHeaders = [...state.headers];
+  for (const row of state.ingested) row.values[key] = '';
+  input.value = '';
+  markDirty();
+  renderList();
+}
+
+function renameManualColumn(key: string, label: string): void {
+  if (!state.manualColumns.has(key) || label.trim() === '') return;
+  state.manualColumns.set(key, label.trim());
+  markDirty();
+  renderList();
+}
+
+// A cell is edited by hand when it belongs to a manual row or a manual
+// column; imported values of imported columns are not edited here (FR-10
+// remains deferred).
+function isEditableCell(row: RowData, key: string): boolean {
+  return state.manualRows.has(row) || state.manualColumns.has(key);
+}
+
+function setCellValue(row: RowData, key: string, value: string): void {
+  if (!isEditableCell(row, key) || row.values[key] === value) return;
+  row.values[key] = value;
+  markDirty();
   renderList();
 }
 
@@ -287,7 +392,7 @@ function renderList(): void {
   };
   columns.forEach((header) => {
     const th = document.createElement('th');
-    const labelText = columnLabel(header, t.untitledHeader);
+    const labelText = labelOf(header);
     const role = roleOfColumn(state.roles, header);
     th.className = 'sortable';
     th.dataset.header = header;
@@ -332,6 +437,19 @@ function renderList(): void {
       setColumnRole(header, isRole(roleSelect.value) ? roleSelect.value : null);
     });
     th.append(sortButton, roleSelect);
+    // A manual column's name is edited in its heading (FR-24).
+    const manualLabel = state.manualColumns.get(header);
+    if (manualLabel !== undefined) {
+      th.dataset.manual = 'true';
+      const nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.className = 'column-name-input';
+      nameInput.value = manualLabel;
+      nameInput.dataset.header = header;
+      nameInput.setAttribute('aria-label', `${t.manualRenameColumn}: ${labelText}`);
+      nameInput.addEventListener('change', () => renameManualColumn(header, nameInput.value));
+      th.appendChild(nameInput);
+    }
     head.appendChild(th);
   });
 
@@ -343,6 +461,8 @@ function renderList(): void {
   rows.forEach(({ row, number }) => {
     const tr = document.createElement('tr');
     const id = rowId(row);
+    tr.dataset.rowId = id;
+    if (state.manualRows.has(row)) tr.dataset.manual = 'true';
     if (state.selected.has(id)) tr.dataset.selected = 'true';
 
     const selectTd = document.createElement('td');
@@ -365,7 +485,19 @@ function renderList(): void {
 
     columns.forEach((header) => {
       const td = document.createElement('td');
-      td.textContent = row.values[header] ?? '';
+      if (isEditableCell(row, header)) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'cell-input';
+        input.value = row.values[header] ?? '';
+        input.dataset.header = header;
+        input.setAttribute('aria-label', `${labelOf(header)}, ${t.numberColumn} ${number}`);
+        input.addEventListener('change', () => setCellValue(row, header, input.value));
+        td.appendChild(input);
+        td.classList.add('editable');
+      } else {
+        td.textContent = row.values[header] ?? '';
+      }
       td.dataset.header = header;
       if (header === state.roles.name) td.classList.add('primary-label');
       if (state.hiddenHeaders.has(header)) td.classList.add('hidden');
@@ -417,7 +549,7 @@ function renderFilterColumnSelect(): void {
   state.headers.forEach((header) => {
     const opt = document.createElement('option');
     opt.value = header;
-    opt.textContent = columnLabel(header, strings(state.prefs.lang).untitledHeader);
+    opt.textContent = labelOf(header);
     select.appendChild(opt);
   });
   select.value = state.headers.includes(state.filter.header) ? state.filter.header : '';
@@ -440,7 +572,7 @@ function renderColumnVisibility(): void {
       else state.hiddenHeaders.add(header);
       renderList();
     });
-    label.append(input, document.createTextNode(columnLabel(header, t.untitledHeader)));
+    label.append(input, document.createTextNode(labelOf(header)));
     container.appendChild(label);
   });
 }
@@ -477,8 +609,14 @@ export function captureWorkState(): WorkState {
   return {
     roles: { ...state.roles },
     headers: [...state.headers],
+    manualColumns: state.headers.filter((h) => state.manualColumns.has(h)).map((key) => ({ key, label: state.manualColumns.get(key)! })),
     hiddenHeaders: state.headers.filter((h) => state.hiddenHeaders.has(h)),
-    rows: state.ingested.map((row) => ({ values: { ...row.values }, colour: row.colour, removed: !retained.has(row) })),
+    rows: state.ingested.map((row) => ({
+      values: { ...row.values },
+      colour: row.colour,
+      removed: !retained.has(row),
+      manual: state.manualRows.has(row),
+    })),
     background: bg ? { ...bg } : null,
     markers,
     excluded: [...state.excluded].filter((row) => retained.has(row)).map((row) => index.get(row)!).sort((a, b) => a - b),
@@ -626,6 +764,7 @@ async function applyWorkState(ws: WorkState): Promise<boolean> {
     mapView.clearBackground(ws.viewport);
   }
   state.roles = { ...ws.roles };
+  state.manualColumns = new Map(ws.manualColumns.map((c) => [c.key, c.label]));
   state.activePreset = null;
   presetMessage = null;
   state.headers = [...ws.headers];
@@ -633,6 +772,7 @@ async function applyWorkState(ws: WorkState): Promise<boolean> {
   state.hiddenHeaders = new Set(ws.hiddenHeaders);
   state.ingested = ws.rows.map((r) => ({ values: { ...r.values }, colour: r.colour }));
   state.rows = state.ingested.filter((_, i) => !ws.rows[i].removed);
+  state.manualRows = new Set(state.ingested.filter((_, i) => ws.rows[i].manual));
   state.rowIds = new Map();
   state.selected = new Set();
   state.selectedMarker = null;
@@ -694,7 +834,16 @@ export function getMapView(): MapView | null {
   return mapView;
 }
 
-type MapError = 'unsupported' | 'unreadable' | 'needs-background' | 'pdf-unreadable' | 'pdf-render';
+type MapError =
+  | 'unsupported'
+  | 'unreadable'
+  | 'needs-background'
+  | 'pdf-unreadable'
+  | 'pdf-render'
+  | 'osm-malformed'
+  | 'osm-empty'
+  | 'osm-too-large'
+  | 'osm-render';
 
 function showMapError(kind: MapError | null): void {
   const t = strings(state.prefs.lang);
@@ -704,6 +853,10 @@ function showMapError(kind: MapError | null): void {
     'needs-background': t.markerNeedsBackground,
     'pdf-unreadable': t.pdfUnreadable,
     'pdf-render': t.pdfRenderFailed,
+    'osm-malformed': t.osmMalformed,
+    'osm-empty': t.osmEmpty,
+    'osm-too-large': t.osmTooLarge,
+    'osm-render': t.osmRenderFailed,
   };
   const errorEl = el('map-error');
   errorEl.classList.toggle('hidden', kind === null);
@@ -1217,9 +1370,166 @@ async function loadPdfFile(file: File): Promise<void> {
   select.focus();
 }
 
+// OpenStreetMap data (FR-31): parsed locally and rendered to an image that
+// becomes the background like an image file or a PDF page.
+export async function useOsmText(text: string, fetched?: { bounds: OsmBounds; attribution: string }): Promise<boolean> {
+  let src: string;
+  try {
+    const data = parseOsm(text);
+    // Fetched data carries no bounds element: the requested area is the extent.
+    if (fetched) data.bounds = fetched.bounds;
+    src = renderPlanToDataUrl(planRender(data), fetched?.attribution);
+  } catch (e) {
+    showMapError(e instanceof OsmError ? (e.code === 'empty' ? 'osm-empty' : 'osm-malformed') : 'osm-render');
+    return false;
+  }
+  await closePdf();
+  return (await mapView?.setBackgroundSource(src)) ?? false;
+}
+
+async function loadOsmFile(file: File): Promise<void> {
+  if (file.size > MAX_OSM_BYTES) {
+    showMapError('osm-too-large');
+    return;
+  }
+  let text: string;
+  try {
+    text = await readText(file);
+  } catch {
+    showMapError('unreadable');
+    return;
+  }
+  await useOsmText(text);
+}
+
+// Open-map fetch, FR-31: the application's only network operation, made
+// only from this panel, by explicit button presses.
+let fetchSelected: OsmBounds | null = null;
+let fetchResults: PlaceResult[] = [];
+let fetchBusy = false;
+let fetchMessage: { text: string; error: boolean } | null = null;
+
+function fetchErrorText(code: FetchErrorCode): string {
+  const t = strings(state.prefs.lang);
+  const texts: Record<FetchErrorCode, string> = {
+    offline: t.fetchErrorOffline,
+    network: t.fetchErrorNetwork,
+    busy: t.fetchErrorBusy,
+    service: t.fetchErrorService,
+    'no-results': t.fetchErrorNoResults,
+    'invalid-area': t.fetchErrorInvalidArea,
+    'too-large': t.fetchErrorTooLarge,
+  };
+  return texts[code];
+}
+
+function fetchMode(): 'place' | 'bbox' {
+  return el<HTMLInputElement>('fetch-mode-bbox').checked ? 'bbox' : 'place';
+}
+
+function renderFetchState(): void {
+  const t = strings(state.prefs.lang);
+  const online = isOnline();
+  const open = el<HTMLButtonElement>('fetch-open');
+  open.disabled = !online;
+  open.title = online ? '' : t.fetchOffline;
+  el('fetch-offline').classList.toggle('hidden', online);
+  const mode = fetchMode();
+  el('fetch-place-row').classList.toggle('hidden', mode !== 'place');
+  el('fetch-results').classList.toggle('hidden', mode !== 'place');
+  el('fetch-bbox-row').classList.toggle('hidden', mode !== 'bbox');
+  el<HTMLButtonElement>('fetch-search').disabled = !online || fetchBusy;
+  const ready = mode === 'place' ? fetchSelected !== null : el<HTMLInputElement>('fetch-bbox').value.trim() !== '';
+  el<HTMLButtonElement>('fetch-go').disabled = !online || fetchBusy || !ready;
+  const list = el('fetch-results');
+  list.innerHTML = '';
+  for (const place of fetchResults) {
+    const li = document.createElement('li');
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'fetch-result';
+    button.textContent = place.name;
+    const chosen = fetchSelected !== null && JSON.stringify(fetchableBounds(place.bounds)) === JSON.stringify(fetchSelected);
+    button.setAttribute('aria-pressed', chosen ? 'true' : 'false');
+    button.addEventListener('click', () => {
+      fetchSelected = fetchableBounds(place.bounds);
+      const reduced = JSON.stringify(fetchSelected) !== JSON.stringify(place.bounds);
+      fetchMessage = reduced ? { text: t.fetchReduced, error: false } : null;
+      renderFetchState();
+    });
+    li.appendChild(button);
+    list.appendChild(li);
+  }
+  const status = el('fetch-status');
+  status.textContent = fetchMessage?.text ?? '';
+  status.classList.toggle('error', fetchMessage?.error === true);
+}
+
+async function searchFetchPlace(): Promise<void> {
+  const t = strings(state.prefs.lang);
+  fetchBusy = true;
+  fetchSelected = null;
+  fetchResults = [];
+  fetchMessage = { text: t.fetchSearching, error: false };
+  renderFetchState();
+  try {
+    fetchResults = await searchPlace(el<HTMLInputElement>('fetch-place').value);
+    fetchMessage = { text: t.fetchChoose, error: false };
+  } catch (e) {
+    fetchMessage = { text: fetchErrorText(e instanceof FetchError ? e.code : 'service'), error: true };
+  }
+  fetchBusy = false;
+  renderFetchState();
+}
+
+async function fetchOpenMap(): Promise<void> {
+  const t = strings(state.prefs.lang);
+  let bounds: OsmBounds;
+  try {
+    bounds = fetchMode() === 'bbox' ? parseBoundsText(el<HTMLInputElement>('fetch-bbox').value) : checkBounds(fetchSelected!);
+  } catch (e) {
+    fetchMessage = { text: fetchErrorText(e instanceof FetchError ? e.code : 'invalid-area'), error: true };
+    renderFetchState();
+    return;
+  }
+  fetchBusy = true;
+  fetchMessage = { text: t.fetchFetching, error: false };
+  renderFetchState();
+  showMapError(null);
+  try {
+    const text = await fetchMapData(bounds);
+    const ok = await useOsmText(text, { bounds, attribution: t.fetchAttribution });
+    fetchMessage = ok ? { text: t.fetchDone, error: false } : null;
+  } catch (e) {
+    fetchMessage = { text: fetchErrorText(e instanceof FetchError ? e.code : 'service'), error: true };
+  }
+  fetchBusy = false;
+  renderFetchState();
+}
+
+function initialiseFetch(): void {
+  el('fetch-open').addEventListener('click', () => {
+    el('fetch-panel').classList.remove('hidden');
+    renderFetchState();
+    el<HTMLInputElement>(fetchMode() === 'place' ? 'fetch-place' : 'fetch-bbox').focus();
+  });
+  el('fetch-close').addEventListener('click', () => el('fetch-panel').classList.add('hidden'));
+  for (const id of ['fetch-mode-place', 'fetch-mode-bbox']) el(id).addEventListener('change', renderFetchState);
+  el('fetch-bbox').addEventListener('input', renderFetchState);
+  el('fetch-search').addEventListener('click', () => void searchFetchPlace());
+  el('fetch-place').addEventListener('keydown', (e) => {
+    if ((e as KeyboardEvent).key === 'Enter' && !el<HTMLButtonElement>('fetch-search').disabled) void searchFetchPlace();
+  });
+  el('fetch-go').addEventListener('click', () => void fetchOpenMap());
+  window.addEventListener('online', renderFetchState);
+  window.addEventListener('offline', renderFetchState);
+  renderFetchState();
+}
+
 async function loadBackgroundFile(file: File): Promise<void> {
   showMapError(null);
-  if (isPdfFile(file)) await loadPdfFile(file);
+  if (isOsmFile(file)) await loadOsmFile(file);
+  else if (isPdfFile(file)) await loadPdfFile(file);
   else await mapView?.loadImageFile(file);
 }
 
@@ -1312,6 +1622,12 @@ function guardUnsavedWork(e: BeforeUnloadEvent): void {
 function wireEvents(): void {
   window.addEventListener('beforeunload', guardUnsavedWork);
   el('work-save').addEventListener('click', () => void saveWork());
+  el('start-empty').addEventListener('click', startEmptyList);
+  el('add-row').addEventListener('click', addManualRow);
+  el('add-column').addEventListener('click', addManualColumn);
+  el('new-column-name').addEventListener('keydown', (e) => {
+    if ((e as KeyboardEvent).key === 'Enter') addManualColumn();
+  });
   const presetSelect = el<HTMLSelectElement>('preset-select');
   presetSelect.addEventListener('change', () => {
     el<HTMLButtonElement>('preset-apply').disabled = presetSelect.value === '';
@@ -1395,6 +1711,7 @@ export function main(): void {
   initialisePreferences();
   initialiseMapView();
   initialisePresentation();
+  initialiseFetch();
   wireEvents();
   renderStaticText();
   renderMapItems();

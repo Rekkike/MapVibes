@@ -50,7 +50,7 @@ describe('PDF background import UI (FR-25)', () => {
   });
 
   test('the file picker accepts PDF documents in addition to images', () => {
-    expect(byId<HTMLInputElement>('map-file-input').accept).toBe('image/*,application/pdf,.pdf');
+    expect(byId<HTMLInputElement>('map-file-input').accept).toBe('image/*,application/pdf,.pdf,.osm');
   });
 
   test('loading a multi-page PDF offers its pages for selection', async () => {

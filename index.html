@@ -50,6 +50,10 @@
             <input type="file" id="file-input" accept=".xlsx" hidden />
           </div>
           <p id="ingest-error" class="error hidden"></p>
+          <p id="manual-start-row">
+            <span id="manual-start-hint" class="notice">No file to import?</span>
+            <button type="button" id="start-empty">Start an empty list</button>
+          </p>
         </div>
         <div id="list-panel" class="hidden">
           <div id="preset-controls" role="group" aria-labelledby="preset-heading">
@@ -60,6 +64,12 @@
             <input type="text" id="preset-name" aria-label="Preset name" />
             <button type="button" id="preset-save">Save preset</button>
             <span id="preset-status" class="notice" aria-live="polite"></span>
+          </div>
+          <div id="manual-controls" role="group" aria-labelledby="manual-heading">
+            <span id="manual-heading">Add by hand</span>
+            <button type="button" id="add-row">Add row</button>
+            <input type="text" id="new-column-name" aria-label="Column name" />
+            <button type="button" id="add-column">Add column</button>
           </div>
           <div id="list-toolbar">
             <label>
@@ -111,7 +121,8 @@
           <h2 id="map-heading">Map</h2>
           <div id="map-toolbar" role="toolbar" aria-labelledby="map-heading">
             <button type="button" id="map-load">Load background</button>
-            <input type="file" id="map-file-input" accept="image/*,application/pdf,.pdf" hidden />
+            <input type="file" id="map-file-input" accept="image/*,application/pdf,.pdf,.osm" hidden />
+            <button type="button" id="fetch-open" class="network-action" aria-describedby="fetch-offline">Fetch open map data (online)</button>
             <span class="toolbar-separator" aria-hidden="true"></span>
             <button type="button" id="map-zoom-out" class="icon-button" aria-label="Zoom out" title="Zoom out">−</button>
             <span id="map-zoom-level" aria-live="polite">100%</span>
@@ -122,6 +133,31 @@
             <span id="marker-selection" class="notice">No marker selected</span>
             <label id="marker-shape-label"><span id="marker-shape-text">Shape</span> <select id="marker-shape"></select></label>
             <button type="button" id="marker-remove">Remove marker</button>
+          </div>
+          <p id="fetch-offline" class="notice hidden">You are offline. Fetching open map data needs a connection; a local OpenStreetMap (.osm) file can be loaded instead.</p>
+          <div id="fetch-panel" class="hidden" role="group" aria-labelledby="fetch-heading">
+            <div class="fetch-row">
+              <span id="fetch-heading">Fetch open map data</span>
+              <span id="fetch-badge" class="network-badge">Network</span>
+            </div>
+            <p id="fetch-notice" class="notice">This is the application's only network operation, made only when you press a button here. Only the place name or area you enter is sent, to the OpenStreetMap services Nominatim (place search) and Overpass API (map data). No list data, markers, or other work is sent.</p>
+            <div class="fetch-row" role="radiogroup" aria-labelledby="fetch-heading">
+              <label><input type="radio" name="fetch-mode" id="fetch-mode-place" value="place" checked /> <span id="fetch-mode-place-label">Place name</span></label>
+              <label><input type="radio" name="fetch-mode" id="fetch-mode-bbox" value="bbox" /> <span id="fetch-mode-bbox-label">Bounding box</span></label>
+            </div>
+            <div class="fetch-row" id="fetch-place-row">
+              <input type="text" id="fetch-place" aria-label="Place name" />
+              <button type="button" id="fetch-search">Search</button>
+            </div>
+            <ul id="fetch-results"></ul>
+            <div class="fetch-row hidden" id="fetch-bbox-row">
+              <input type="text" id="fetch-bbox" aria-label="Bounding box" />
+            </div>
+            <div class="fetch-row">
+              <button type="button" id="fetch-go">Fetch map data</button>
+              <button type="button" id="fetch-close">Close</button>
+              <span id="fetch-status" aria-live="polite"></span>
+            </div>
           </div>
           <p id="map-error" class="error hidden" role="alert"></p>
           <div id="pdf-panel" class="hidden" role="group" aria-labelledby="pdf-heading">
@@ -141,7 +177,7 @@
             </div>
             <div id="marker-layer" class="marker-layer"></div>
             <div id="map-empty">
-              <span id="map-empty-hint">Drop a background image or PDF document here, or use Load background.</span>
+              <span id="map-empty-hint">Drop a background image, PDF document, or OpenStreetMap (.osm) file here, or use Load background.</span>
             </div>
           </div>
           <div id="map-legend" class="legend"></div>

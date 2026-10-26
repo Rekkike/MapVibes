@@ -96,4 +96,37 @@ describe('design tokens and theming (FR-29)', () => {
     const list = css.slice(css.indexOf('.glance-list {'), css.indexOf('}', css.indexOf('.glance-list {')));
     expect(list).toMatch(/gap:\s*var\(--space-1\);/);
   });
+
+  test('rendered OpenStreetMap backgrounds keep legible edges against the land colour (FR-31)', async () => {
+    const { LAND_COLOUR, OSM_STYLE } = await import('../../src/osm');
+    for (const [feature, style] of Object.entries(OSM_STYLE)) {
+      const edge = style.casing ?? style.stroke;
+      expect(edge, feature).toBeDefined();
+      expect(contrast(edge!, LAND_COLOUR), feature).toBeGreaterThanOrEqual(3);
+    }
+    // Area classes are told apart from each other and from the land.
+    const fills = ['green', 'water', 'building'].map((f) => OSM_STYLE[f as keyof typeof OSM_STYLE].fill!);
+    expect(new Set([...fills, LAND_COLOUR]).size).toBe(4);
+    // Roads draw a lighter centre over a darker casing.
+    for (const road of ['minor-road', 'major-road'] as const) {
+      expect(luminance(OSM_STYLE[road].stroke!)).toBeGreaterThan(luminance(OSM_STYLE[road].casing!));
+    }
+  });
+
+  test('markers stay legible on a rendered map in both themes (FR-31, FR-29)', async () => {
+    const { LAND_COLOUR } = await import('../../src/osm');
+    for (const theme of [light, dark]) {
+      expect(contrast(theme['--marker-halo'], LAND_COLOUR)).toBeGreaterThanOrEqual(3);
+      for (const colour of COLOURS) {
+        const best = Math.max(contrast(theme[`--marker-${colour}`], LAND_COLOUR), contrast(theme['--marker-halo'], LAND_COLOUR));
+        expect(best, colour).toBeGreaterThanOrEqual(3);
+      }
+    }
+    expect(css).toMatch(/drop-shadow\(0 0 1px var\(--marker-halo\)\)/);
+    // The rendered map is shown as-is: no filter or opacity on the background image in either theme.
+    for (const selector of ['#map-image,\n#presentation-image {']) {
+      const rule = css.slice(css.indexOf(selector), css.indexOf('}', css.indexOf(selector)));
+      expect(rule).not.toMatch(/filter|opacity/);
+    }
+  });
 });

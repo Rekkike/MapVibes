@@ -14,6 +14,7 @@
   --radius: 6px;
   --radius-pill: 999px;
   --stage-bg: #e9ecf0;
+  --input-bg: #f3f6fa;
   --marker-green: #287a4d;
   --marker-blue: #2f66b3;
   --marker-yellow: #e0b31f;
@@ -25,6 +26,7 @@
   --shadow-offset: 0 1px 1.5px;
   --shadow-colour: rgba(0, 0, 0, 0.45);
   --marker-neutral: #6b7380;
+  --marker-halo: #3a3f47;
 }
 
 html[data-theme='dark'] {
@@ -38,6 +40,7 @@ html[data-theme='dark'] {
   --warning: #f0b45a;
   --on-accent: #0d1410;
   --stage-bg: #101215;
+  --input-bg: #23272d;
   --marker-green: #3fae6e;
   --marker-blue: #4f86d6;
   --marker-yellow: #e8c040;
@@ -49,6 +52,7 @@ html[data-theme='dark'] {
   --shadow-offset: 0 1px 1.5px;
   --shadow-colour: rgba(0, 0, 0, 0.8);
   --marker-neutral: #9aa2ae;
+  --marker-halo: #0d0f12;
 }
 
 * {
@@ -372,7 +376,9 @@ th.sortable {
 .marker-badge,
 .legend-swatch {
   isolation: isolate;
-  filter: drop-shadow(var(--shadow-offset) var(--shadow-colour));
+  /* A thin dark halo outside the ring keeps every marker legible on light
+     map backgrounds, where a pale fill and a white ring alone are not. */
+  filter: drop-shadow(0 0 1px var(--marker-halo)) drop-shadow(var(--shadow-offset) var(--shadow-colour));
 }
 
 .marker::before,
@@ -812,4 +818,119 @@ input[type='text'] {
 
 #popover-title {
   font-weight: 600;
+}
+
+/* Manual data entry (FR-9, FR-24, FR-30). */
+#manual-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+
+#manual-heading {
+  font-weight: 600;
+}
+
+#manual-start-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+}
+
+#row-table td.editable {
+  padding: 0;
+}
+
+.cell-input,
+.column-name-input {
+  width: 100%;
+  min-width: 6rem;
+  border-radius: 0;
+}
+
+.cell-input {
+  border: none;
+  background: var(--input-bg);
+  padding: var(--space-1) var(--space-2);
+}
+
+.cell-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.column-name-input {
+  margin-top: var(--space-1);
+  font-size: 0.8rem;
+  border-radius: var(--radius);
+}
+
+/* Open-map fetch (FR-31): the only network action, visibly marked. */
+.network-action::before {
+  content: '⇅ ';
+}
+
+#fetch-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 2px dashed var(--warning);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+#fetch-panel .notice {
+  margin: 0;
+}
+
+.fetch-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+#fetch-heading {
+  font-weight: 600;
+}
+
+.network-badge {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-pill);
+  color: var(--warning);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+#fetch-place,
+#fetch-bbox {
+  min-width: 18rem;
+}
+
+#fetch-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.fetch-result {
+  width: 100%;
+  text-align: left;
+}
+
+.fetch-result[aria-pressed='true'] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
