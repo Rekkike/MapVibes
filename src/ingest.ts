@@ -1,13 +1,6 @@
 import * as XLSX from 'xlsx';
+import { columnKeys } from './columns';
 
-
-export type ColumnRole = 'none' | 'identifier' | 'start' | 'end' | 'area';
-
-export interface ColumnMapping {
-  header: string;
-  keep: boolean;
-  role: ColumnRole;
-}
 
 export interface ParseResult {
   headers: string[];
@@ -72,29 +65,16 @@ export function parseWorkbook(data: ArrayBuffer): ParseResult {
   return { headers, rows };
 }
 
-export interface AppliedMapping {
-  keptIndices: number[];
-  mapping: ColumnMapping[];
-}
-
-export function applyMapping(
-  parse: ParseResult,
-  mapping: ColumnMapping[],
-): { headers: string[]; rows: { values: Record<string, string> }[] } {
-  if (mapping.length !== parse.headers.length) {
-    throw new Error('mapping length does not match parsed headers');
-  }
-  const keptIndices: number[] = [];
-  parse.headers.forEach((_h, i) => {
-    if (mapping[i].keep) keptIndices.push(i);
-  });
-  const headers = keptIndices.map((i) => parse.headers[i]);
+// Direct import (FR-1): every column of the file, keyed by unique column
+// keys derived from the file's own headers, with all values as text.
+export function importColumns(parse: ParseResult): { headers: string[]; rows: Record<string, string>[] } {
+  const headers = columnKeys(parse.headers);
   const rows = parse.rows.map((raw) => {
     const values: Record<string, string> = {};
-    keptIndices.forEach((srcIdx, outIdx) => {
-      values[headers[outIdx]] = raw[srcIdx] ?? '';
+    headers.forEach((key, i) => {
+      values[key] = raw[i] ?? '';
     });
-    return { values };
+    return values;
   });
   return { headers, rows };
 }

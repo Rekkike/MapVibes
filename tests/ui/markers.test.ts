@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'vitest';
-import { byId, dragItemToStage, importExampleWorkbook, loadExampleBackground, markers, mountApp, placementItems, pointer, STAGE } from './harness';
+import { byId, setRole, dragItemToStage, importExampleWorkbook, loadExampleBackground, markers, mountApp, placementItems, pointer, STAGE } from './harness';
 
 // With the example background (1200x800) fitted into the 800x600 stage the
 // viewport is scale 2/3, offset (0, 33.33...): image = (stage - offset) * 1.5.
@@ -13,6 +13,7 @@ describe('markers (FR-5, FR-18)', () => {
   beforeEach(async () => {
     await mountApp();
     await importExampleWorkbook();
+    setRole('ID', 'identifier');
     byId('tab-map').click();
   });
 
@@ -62,10 +63,10 @@ describe('markers (FR-5, FR-18)', () => {
     byId('tab-map').click();
     placementItems().slice(0, 4).forEach((item, i) => dragItemToStage(item, ...client(100 + i * 50, 100)));
     expect(markers().map((m) => [m.textContent, m.className.replace(' selected', '')])).toEqual([
-      ['1', 'marker marker-green'],
-      ['2', 'marker marker-blue'],
-      ['3', 'marker marker-yellow'],
-      ['4', 'marker marker-red'],
+      ['1', 'marker marker-green marker-shape-circle'],
+      ['2', 'marker marker-blue marker-shape-circle'],
+      ['3', 'marker marker-yellow marker-shape-circle'],
+      ['4', 'marker marker-red marker-shape-circle'],
     ]);
   });
 

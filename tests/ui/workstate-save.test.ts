@@ -36,9 +36,12 @@ describe('Save work (FR-13)', () => {
     expect(written.closed).toBe(true);
     const file = JSON.parse(written.text!);
     expect(file.format).toBe('mapvibes-work-state');
-    expect(file.schemaVersion).toBe(1);
+    expect(file.schemaVersion).toBe(2);
     expect(file.columns.headers).toEqual(['ID', 'Start', 'End', 'Group', 'Note']);
-    expect(file.columns.mapping).toHaveLength(5);
+    expect(file.columns.roles).toEqual({});
+    expect(file.markers[0].shape).toBe('circle');
+    expect(file.presentation).toEqual({ hidden: [] });
+    expect(file.presets).toEqual([]);
     expect(file.rows).toHaveLength(5);
     expect(file.rows.map((r: { status: string }) => r.status)).toEqual(['retained', 'removed', 'retained', 'retained', 'retained']);
     expect(file.rows.map((r: { number: number | null }) => r.number)).toEqual([1, null, 2, 3, 4]);

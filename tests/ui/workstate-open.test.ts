@@ -139,10 +139,10 @@ describe('Open work (FR-13)', () => {
   test('a file with an unknown schema version fails with a clear message and changes nothing', async () => {
     await importExampleWorkbook();
     const confirm = vi.spyOn(window, 'confirm');
-    openWorkFile(textFile('future.json', JSON.stringify({ ...JSON.parse(text), schemaVersion: 2 })));
+    openWorkFile(textFile('future.json', JSON.stringify({ ...JSON.parse(text), schemaVersion: 3 })));
     await flush();
     expect(byId('work-status').textContent).toBe(
-      'The work-state file has schema version 2, which this version of MapVibes cannot read. Nothing was opened.',
+      'The work-state file has schema version 3, which this version of MapVibes cannot read. Nothing was opened.',
     );
     expect(byId('work-status').classList.contains('error')).toBe(true);
     expect(confirm).not.toHaveBeenCalled();
@@ -158,13 +158,21 @@ describe('Open work (FR-13)', () => {
     expect(byId('work-status').textContent).toBe('The file is not a MapVibes work-state file. Nothing was opened.');
   });
 
-  test('a damaged file names the inconsistency', async () => {
+  test('a damaged file names the inconsistency in the interface language', async () => {
     const file = JSON.parse(text);
     file.markers[0].row = 0; // row 1 was removed
     openWorkFile(textFile('damaged.json', JSON.stringify(file)));
     await flush();
     expect(byId('work-status').textContent).toBe(
       'The work-state file is damaged or inconsistent; nothing was opened. Detail: markers[0] belongs to a removed row.',
+    );
+    const select = byId<HTMLSelectElement>('select-language');
+    select.value = 'sv';
+    select.dispatchEvent(new Event('change'));
+    openWorkFile(textFile('damaged.json', JSON.stringify(file)));
+    await flush();
+    expect(byId('work-status').textContent).toBe(
+      'Arbetstillståndsfilen är skadad eller inkonsekvent; ingenting öppnades. Detalj: markers[0] hör till en borttagen rad.',
     );
   });
 

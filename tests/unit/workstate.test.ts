@@ -8,20 +8,16 @@ import {
   WORK_STATE_FORMAT,
   WORK_STATE_SCHEMA_VERSION,
   WorkStateError,
+  PROBLEM_KINDS,
   type WorkState,
 } from '../../src/workstate';
+import { en, sv } from '../../src/i18n';
 
 const png = readFileSync(join(process.cwd(), 'example-data', 'example-background.png')).toString('base64');
 
 function sample(): WorkState {
   return {
-    mapping: [
-      { header: 'ID', keep: true, role: 'identifier' },
-      { header: 'Start', keep: true, role: 'start' },
-      { header: 'End', keep: false, role: 'end' },
-      { header: 'Group', keep: true, role: 'area' },
-      { header: 'Note', keep: true, role: 'none' },
-    ],
+    roles: { identifier: 'ID', name: 'Note', start: 'Start', area: 'Group' },
     headers: ['ID', 'Start', 'Group', 'Note'],
     hiddenHeaders: ['Note'],
     rows: [
@@ -32,8 +28,12 @@ function sample(): WorkState {
     ],
     background: { src: `data:image/png;base64,${png}`, width: 1200, height: 800 },
     markers: [
-      { row: 0, position: { x: 125.25, y: 300.5 } },
-      { row: 3, position: { x: 1000, y: 0.125 } },
+      { row: 0, position: { x: 125.25, y: 300.5 }, shape: 'diamond' },
+      { row: 3, position: { x: 1000, y: 0.125 }, shape: 'circle' },
+    ],
+    excluded: [3],
+    presets: [
+      { name: 'Standard', headers: ['ID', 'Start', 'Group', 'Note'], hidden: ['Note'], roles: { identifier: 'ID', area: 'Group' } },
     ],
     segment: 'map',
     viewport: { scale: 0.6666666666666666, x: 12.5, y: -33.25 },
@@ -60,6 +60,15 @@ function expectError(text: string, code: WorkStateError['code']): WorkStateError
 }
 
 describe('work-state file (FR-13)', () => {
+  test('every problem kind has a message in both interface languages (FR-19)', () => {
+    for (const kind of PROBLEM_KINDS) {
+      const key = `problem${kind[0].toUpperCase()}${kind.slice(1)}` as keyof typeof en;
+      expect(en[key], kind).toContain('{field}');
+      expect(sv[key], kind).toContain('{field}');
+      expect(sv[key]).not.toBe(en[key]);
+    }
+  });
+
   test('a save/load round trip restores an identical state, including background data and marker positions', () => {
     const state = sample();
     const restored = parseWorkState(serialiseWorkState(state, SAVED_AT));
@@ -71,15 +80,15 @@ describe('work-state file (FR-13)', () => {
   });
 
   test('a state without background or markers round-trips too', () => {
-    const state = { ...sample(), background: null, markers: [], segment: 'information' as const };
+    const state = { ...sample(), background: null, markers: [], excluded: [], presets: [], segment: 'information' as const };
     expect(parseWorkState(serialiseWorkState(state, SAVED_AT))).toEqual(state);
   });
 
   test('the file carries the format name, schema version, and save time', () => {
     const file = fileOf(sample());
     expect(file.format).toBe(WORK_STATE_FORMAT);
-    expect(file.schemaVersion).toBe(1);
-    expect(WORK_STATE_SCHEMA_VERSION).toBe(1);
+    expect(file.schemaVersion).toBe(2);
+    expect(WORK_STATE_SCHEMA_VERSION).toBe(2);
     expect(file.savedAt).toBe('2026-01-02T03:04:05.000Z');
   });
 
@@ -95,7 +104,7 @@ describe('work-state file (FR-13)', () => {
   });
 
   test('an unknown schema version is rejected and named, never loaded silently', () => {
-    for (const version of [2, 0, '1', null]) {
+    for (const version of [3, 0, '2', null]) {
       const file = { ...fileOf(sample()), schemaVersion: version };
       expect(expectError(JSON.stringify(file), 'unknown-version').detail).toBe(String(version));
     }
@@ -113,33 +122,33 @@ describe('work-state file (FR-13)', () => {
     for (const src of ['https://example.invalid/map.png', '//example.invalid/x.png', 'file:///tmp/x.png', 'data:text/html,<b>x</b>']) {
       const file = fileOf(sample());
       (file.background as Record<string, unknown>).dataUrl = src;
-      expect(expectError(JSON.stringify(file), 'invalid').detail).toMatch(/embedded image data/);
+      expect(expectError(JSON.stringify(file), 'invalid').problem).toEqual({ kind: 'notEmbedded', field: 'background.dataUrl' });
     }
   });
 
   test('a numbering that breaks the global sequence is rejected', () => {
     const file = fileOf(sample());
     (file.rows as Array<Record<string, unknown>>)[2].number = 5;
-    expect(expectError(JSON.stringify(file), 'invalid').detail).toMatch(/numbering/);
+    expect(expectError(JSON.stringify(file), 'invalid').problem).toEqual({ kind: 'numbering', field: 'rows[2].number' });
   });
 
   test('markers referring to removed, missing, or duplicate rows are rejected', () => {
-    const cases: Array<[unknown[], RegExp]> = [
-      [[{ row: 1, x: 0, y: 0 }], /removed row/],
-      [[{ row: 9, x: 0, y: 0 }], /does not refer/],
-      [[{ row: 0, x: 0, y: 0 }, { row: 0, x: 1, y: 1 }], /duplicates/],
-      [[{ row: 0, x: 'a', y: 0 }], /finite number/],
+    const cases: Array<[unknown[], string, string]> = [
+      [[{ row: 1, x: 0, y: 0, shape: 'circle' }], 'removedRow', 'markers[0]'],
+      [[{ row: 9, x: 0, y: 0, shape: 'circle' }], 'noSuchRow', 'markers[0].row'],
+      [[{ row: 0, x: 0, y: 0, shape: 'circle' }, { row: 0, x: 1, y: 1, shape: 'circle' }], 'duplicateMarker', 'markers[1]'],
+      [[{ row: 0, x: 'a', y: 0, shape: 'circle' }], 'notNumber', 'markers[0].x'],
     ];
-    for (const [markers, message] of cases) {
+    for (const [markers, kind, field] of cases) {
       const file = { ...fileOf(sample()), markers };
-      expect(expectError(JSON.stringify(file), 'invalid').detail).toMatch(message);
+      expect(expectError(JSON.stringify(file), 'invalid').problem).toEqual({ kind, field });
     }
   });
 
   test('inconsistent columns and unknown values are rejected', () => {
     const a = fileOf(sample());
     (a.columns as Record<string, unknown>).headers = ['ID'];
-    expect(expectError(JSON.stringify(a), 'invalid').detail).toMatch(/kept columns/);
+    expect(expectError(JSON.stringify(a), 'invalid').problem!.kind).toBe('notAColumn');
     const b = fileOf(sample());
     (b.rows as Array<Record<string, unknown>>)[0].colour = 'purple';
     expectError(JSON.stringify(b), 'invalid');
@@ -149,5 +158,87 @@ describe('work-state file (FR-13)', () => {
     const d = fileOf(sample());
     (d.rows as Array<Record<string, unknown>>)[0].values = { Unknown: 'x' };
     expectError(JSON.stringify(d), 'invalid');
+  });
+
+  test('schema version 2 stores roles, marker shapes, presentation toggles, and presets', () => {
+    const file = fileOf(sample()) as Record<string, any>;
+    expect(file.columns.roles).toEqual({ identifier: 'ID', name: 'Note', start: 'Start', area: 'Group' });
+    expect(file.columns.mapping).toBeUndefined();
+    expect(file.markers.map((m: { shape: string }) => m.shape)).toEqual(['diamond', 'circle']);
+    expect(file.presentation).toEqual({ hidden: [3] });
+    expect(file.presets[0].name).toBe('Standard');
+  });
+
+  test('version 2 content is validated', () => {
+    const cases: Array<[(f: Record<string, any>) => void, string, string]> = [
+      [(f) => (f.markers[0].shape = 'star'), 'unknownValue', 'markers[0].shape'],
+      [(f) => (f.presentation.hidden = [1]), 'removedRow', 'presentation.hidden[0]'],
+      [(f) => (f.presentation.hidden = [9]), 'noSuchRow', 'presentation.hidden[0]'],
+      [(f) => (f.presentation.hidden = [0, 0]), 'duplicateEntry', 'presentation.hidden[1]'],
+      [(f) => (f.presets = [{ name: 'x' }]), 'invalidPresets', 'presets'],
+      [(f) => (f.columns.roles = { owner: 'ID' }), 'unknownValue', 'columns.roles.owner'],
+      [(f) => (f.columns.roles = { name: 'Missing' }), 'notAColumn', 'columns.roles.name'],
+      [(f) => (f.columns.roles = { name: 'ID', identifier: 'ID' }), 'duplicateRole', 'identifier'],
+      [(f) => delete f.presentation, 'notObject', 'presentation'],
+    ];
+    for (const [mutate, kind, field] of cases) {
+      const file = fileOf(sample()) as Record<string, any>;
+      mutate(file);
+      expect(expectError(JSON.stringify(file), 'invalid').problem, `${kind} ${field}`).toEqual({ kind, field });
+    }
+  });
+});
+
+describe('schema version 1 migration (FR-13)', () => {
+  const v1Text = readFileSync(join(process.cwd(), 'example-data', 'example-work-state-v1.json'), 'utf8');
+
+  test('a version 1 file written by v0.4.0 opens and migrates', () => {
+    expect(JSON.parse(v1Text).schemaVersion).toBe(1);
+    const state = parseWorkState(v1Text);
+    expect(state.headers).toEqual(['ID', 'Start', 'End', 'Group', 'Note']);
+    expect(state.roles).toEqual({});
+    expect(state.rows.map((r) => [r.values.ID, r.removed, r.colour])).toEqual([
+      ['A-01', true, 'green'],
+      ['A-02', false, 'green'],
+      ['A-03', false, 'blue'],
+      ['A-04', false, 'green'],
+      ['A-05', false, 'green'],
+    ]);
+    expect(state.background!.src.startsWith('data:image/png;base64,')).toBe(true);
+    expect([state.background!.width, state.background!.height]).toEqual([1785, 2526]);
+    // Version 1 has no shapes, toggles, or presets: defaults apply.
+    expect(state.markers.map((m) => [m.row, m.shape])).toEqual([
+      [1, 'circle'],
+      [2, 'circle'],
+      [3, 'circle'],
+    ]);
+    expect(state.excluded).toEqual([]);
+    expect(state.presets).toEqual([]);
+    expect(state.segment).toBe('map');
+  });
+
+  test('a migrated file is saved as version 2 and reads back identically', () => {
+    const migrated = parseWorkState(v1Text);
+    const text = serialiseWorkState(migrated, SAVED_AT);
+    expect(JSON.parse(text).schemaVersion).toBe(2);
+    expect(parseWorkState(text)).toEqual(migrated);
+  });
+
+  test('version 1 roles migrate to role assignments; columns not kept lose their roles', () => {
+    const v1 = JSON.parse(v1Text);
+    v1.columns.mapping[0].role = 'identifier';
+    v1.columns.mapping[3].role = 'area';
+    expect(parseWorkState(JSON.stringify(v1)).roles).toEqual({ identifier: 'ID', area: 'Group' });
+    v1.columns.mapping.push({ header: 'Dropped', keep: false, role: 'start' });
+    expect(parseWorkState(JSON.stringify(v1)).roles).toEqual({ identifier: 'ID', area: 'Group' });
+  });
+
+  test('a version 1 file is validated by the version 1 rules', () => {
+    const v1 = JSON.parse(v1Text);
+    v1.columns.mapping[4].role = 'name';
+    expect(expectError(JSON.stringify(v1), 'invalid').problem).toEqual({ kind: 'unknownValue', field: 'columns.mapping[4].role' });
+    const v1b = JSON.parse(v1Text);
+    v1b.columns.mapping[0].keep = false;
+    expect(expectError(JSON.stringify(v1b), 'invalid').problem!.kind).toBe('headersMismatch');
   });
 });

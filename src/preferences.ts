@@ -7,7 +7,9 @@ export interface Preferences {
   theme: ThemeChoice;
 }
 
-export const DEFAULT_PREFERENCES: Preferences = { lang: 'en', theme: 'system' };
+// First run (nothing remembered): Swedish interface, follow-system theme
+// (FR-19, FR-20).
+export const DEFAULT_PREFERENCES: Preferences = { lang: 'sv', theme: 'system' };
 
 const STORAGE_KEY = 'mapvibes.preferences';
 

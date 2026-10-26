@@ -52,7 +52,7 @@ describe('design tokens and theming (FR-29)', () => {
 
   test('each marker colour class uses its own colour token', () => {
     for (const colour of COLOURS) {
-      const rule = new RegExp(`\\.marker-${colour}\\s*\\{[^}]*background:\\s*var\\(--marker-${colour}\\)`);
+      const rule = new RegExp(`\\.marker-${colour}\\s*\\{[^}]*--marker-fill:\\s*var\\(--marker-${colour}\\)`);
       expect(css).toMatch(rule);
       expect(light[`--marker-${colour}`]).toMatch(/^#[0-9a-f]{6}$/i);
       expect(dark[`--marker-${colour}`]).toMatch(/^#[0-9a-f]{6}$/i);
@@ -76,5 +76,24 @@ describe('design tokens and theming (FR-29)', () => {
       expect(contrast(theme['--muted'], theme['--panel'])).toBeGreaterThanOrEqual(4.5);
       expect(contrast(theme['--warning'], theme['--panel'])).toBeGreaterThanOrEqual(4.5);
     }
+  });
+
+  test('every marker shape class sets the clip shape, and the symbol layers use the fill and clip variables (FR-26)', () => {
+    for (const shape of ['circle', 'square', 'diamond', 'triangle', 'hexagon']) {
+      expect(css).toMatch(new RegExp(`\\.marker-shape-${shape}\\s*\\{\\s*--marker-clip:`));
+    }
+    expect(css).toMatch(/\.marker::after,[^{]*\{[^}]*background:\s*var\(--marker-fill\)/);
+    expect(css).toMatch(/\.marker::before,[^{]*\{[^}]*clip-path:\s*var\(--marker-clip\)/);
+    expect(light['--marker-neutral']).toBeDefined();
+    expect(dark['--marker-neutral']).toBeDefined();
+  });
+
+  test('the at-a-glance panel keeps a compact density (FR-28)', () => {
+    const rule = css.slice(css.indexOf('.glance-entry {'), css.indexOf('}', css.indexOf('.glance-entry {')));
+    expect(rule).toMatch(/padding:\s*var\(--space-1\)\s+var\(--space-2\);/);
+    expect(rule).toMatch(/gap:\s*var\(--space-2\);/);
+    expect(rule).toMatch(/font-size:\s*0\.875rem;/);
+    const list = css.slice(css.indexOf('.glance-list {'), css.indexOf('}', css.indexOf('.glance-list {')));
+    expect(list).toMatch(/gap:\s*var\(--space-1\);/);
   });
 });

@@ -1,21 +1,28 @@
 import { applyFilter, counters, COLOURS, makeRow, numberRows, NO_FILTER, sortRows, type NumberedRow, type RowColour, type RowData, type SortDirection, type ValueFilter } from './dataset';
-import { parseWorkbook, ParseError, applyMapping, type ColumnMapping, type ColumnRole, type ParseResult } from './ingest';
-import { strings, type Lang } from './i18n';
+import { importColumns, parseWorkbook, ParseError, type ParseResult } from './ingest';
+import { columnLabel } from './columns';
+import { clonePreset, findMatchingPreset, loadStoredPresets, presetConfiguration, presetMatches, removePreset, storePresets, upsertPreset, type ColumnPreset } from './presets';
+import { assignRole, displayName, isRole, listColumnOrder, roleOfColumn, ROLES, type Role, type RoleAssignments } from './roles';
+import { strings, type Lang, type Strings } from './i18n';
 import { loadPreferences, savePreferences, type Preferences, type ThemeChoice } from './preferences';
 import { MapView } from './mapview';
 import { isPdfFile, openPdf, type PdfDocument } from './pdfbackground';
 import { MarkerLayer } from './markerlayer';
-import { placedMarkers, placeMarker, pruneMarkers, removeMarker, type MarkerPositions, type PlacedMarker } from './markers';
-import { BUTTON_ZOOM_FACTOR, screenToImage, type Point } from './viewport';
+import { renderLegend, shapeName } from './legend';
+import { markersInView } from './glance';
+import { DEFAULT_SHAPE, isShape, placedMarkers, placeMarker, pruneMarkers, removeMarker, SHAPES, type MarkerPositions, type MarkerShapes, type PlacedMarker } from './markers';
+import { BUTTON_ZOOM_FACTOR, imageToScreen, screenToImage, type Point } from './viewport';
 import { isSegment, SEGMENTS, showSegment, type Segment } from './segments';
-import { parseWorkState, serialiseWorkState, SUGGESTED_FILE_NAME, WorkStateError, type WorkState } from './workstate';
+import { type Problem, parseWorkState, serialiseWorkState, SUGGESTED_FILE_NAME, WorkStateError, type WorkState } from './workstate';
 
 const DEFAULT_COLOUR: RowColour = 'green';
 
 interface AppState {
   prefs: Preferences;
-  parse: ParseResult | null;
-  mapping: ColumnMapping[];
+  roles: RoleAssignments;
+  // Saved column presets (FR-23), latest last, and the preset in effect.
+  presets: ColumnPreset[];
+  activePreset: string | null;
   headers: string[];
   // All ingested rows in ingestion order, retained and removed.
   ingested: RowData[];
@@ -30,15 +37,22 @@ interface AppState {
   rowIds: Map<RowData, string>;
   segment: Segment;
   positions: MarkerPositions;
+  // Marker shapes (FR-26), per marker; circle where unset.
+  shapes: MarkerShapes;
   selectedMarker: string | null;
   // True when the work has changed since it was last saved or opened.
   dirty: boolean;
+  // Items switched off for the presentation (FR-27).
+  excluded: Set<RowData>;
+  // The item selected on the presentation stage.
+  presentationSelected: string | null;
 }
 
 const state: AppState = {
   prefs: loadPreferences(),
-  parse: null,
-  mapping: [],
+  roles: {},
+  presets: loadStoredPresets(),
+  activePreset: null,
   headers: [],
   ingested: [],
   rows: [],
@@ -51,8 +65,11 @@ const state: AppState = {
   rowIds: new Map(),
   segment: 'information',
   positions: new Map(),
+  shapes: new Map(),
   selectedMarker: null,
   dirty: false,
+  excluded: new Set(),
+  presentationSelected: null,
 };
 
 // Drag-and-drop data type identifying a list row dragged onto the map.
@@ -85,6 +102,7 @@ function applyTheme(theme: ThemeChoice): void {
 
 function renderStaticText(): void {
   const t = strings(state.prefs.lang);
+  document.documentElement.lang = state.prefs.lang;
   el('app-name').textContent = t.appName;
   el('list-heading').textContent = t.listArea;
   el('map-heading').textContent = t.mapArea;
@@ -97,25 +115,39 @@ function renderStaticText(): void {
   el('map-reset').textContent = t.mapReset;
   el('map-empty-hint').textContent = t.mapEmptyHint;
   el('marker-remove').textContent = t.markerRemove;
+  el('marker-shape-text').textContent = t.markerShape;
   el('work-save').textContent = t.workSave;
+  el('preset-heading').textContent = t.presetHeading;
+  el('preset-select').setAttribute('aria-label', t.presetHeading);
+  el('preset-apply').textContent = t.presetApply;
+  el('preset-remove').textContent = t.presetRemove;
+  el('preset-save').textContent = t.presetSave;
+  el('preset-name').setAttribute('aria-label', t.presetName);
+  el<HTMLInputElement>('preset-name').placeholder = t.presetName;
   el('work-open').textContent = t.workOpen;
   el('work-controls').setAttribute('aria-label', t.workGroup);
   renderWorkStatus();
-  el('legend-heading').textContent = t.legend;
+  renderLegend(el('map-legend'), t);
+  renderLegend(el('presentation-legend'), t);
+  el('visibility-heading').textContent = t.visibilityHeading;
+  el('visibility-hint').textContent = t.visibilityHint;
+  el('visibility-empty').textContent = t.visibilityEmpty;
+  el('presentation-empty-hint').textContent = t.presentationEmptyHint;
+  el('pres-fit').textContent = t.mapFit;
+  el('pres-reset').textContent = t.mapReset;
+  for (const [id, label] of [['pres-zoom-in', t.mapZoomIn], ['pres-zoom-out', t.mapZoomOut]] as const) {
+    el(id).setAttribute('aria-label', label);
+    el(id).title = label;
+  }
   el('pdf-heading').textContent = t.pdfHeading;
   el('pdf-page-label').textContent = t.pdfPage;
   el('pdf-use').textContent = t.pdfUse;
   el('pdf-cancel').textContent = t.pdfCancel;
-  el('legend-green').textContent = t.colourGreen;
-  el('legend-blue').textContent = t.colourBlue;
-  el('legend-yellow').textContent = t.colourYellow;
-  el('legend-red').textContent = t.colourRed;
   el('segment-nav').setAttribute('aria-label', t.segmentsLabel);
   el('tab-information').textContent = t.segmentInformation;
   el('tab-map').textContent = t.segmentMap;
   el('tab-presentation').textContent = t.segmentPresentation;
   el('presentation-heading').textContent = t.segmentPresentation;
-  el('presentation-placeholder').textContent = t.presentationPlaceholder;
   el('placement-heading').textContent = t.placementHeading;
   el('placement-hint').textContent = t.placementHint;
   el('placement-empty').textContent = t.placementEmpty;
@@ -123,12 +155,6 @@ function renderStaticText(): void {
   el('label-theme').textContent = t.theme;
   el('drop-hint').textContent = t.dropHere;
   el('browse-button').textContent = t.browse;
-  el('mapping-heading').textContent = t.mapColumns;
-  el('mapping-intro').textContent = t.mapColumnsIntro;
-  el('th-column').textContent = t.columnHeader;
-  el('th-keep').textContent = t.keep;
-  el('th-role').textContent = t.role;
-  el('apply-mapping').textContent = t.applyMapping;
   el('label-filter').textContent = t.filter;
   el('columns-summary').textContent = t.columns;
   el('select-all').textContent = t.selectAll;
@@ -158,7 +184,6 @@ function setLanguage(lang: Lang): void {
   savePreferences(state.prefs);
   el<HTMLSelectElement>('select-language').value = lang;
   renderStaticText();
-  renderMappingTable();
   renderList();
 }
 
@@ -178,91 +203,46 @@ function initialisePreferences(): void {
   });
 }
 
+// Direct import (FR-1): the list is populated immediately with every column
+// of the file. Importing over unsaved work asks for confirmation first, as
+// opening a work-state file does.
 async function handleFile(file: File): Promise<void> {
   const errorEl = el('ingest-error');
   errorEl.classList.add('hidden');
+  let parse: ParseResult;
   try {
-    const buffer = await file.arrayBuffer();
-    const parse = parseWorkbook(buffer);
-    state.parse = parse;
-    state.mapping = parse.headers.map((header, i) => ({
-      header,
-      keep: true,
-      role: 'none' as ColumnRole,
-    }));
-    renderMappingTable();
-    el('mapping-panel').classList.remove('hidden');
-    el('list-panel').classList.add('hidden');
-    el('no-file').classList.add('hidden');
-    errorEl.classList.add('hidden');
+    parse = parseWorkbook(await file.arrayBuffer());
   } catch (e) {
     const t = strings(state.prefs.lang);
     const detail = e instanceof ParseError && e.message ? e.message : '';
     errorEl.textContent = detail ? `${t.parseError} ${detail}` : t.parseError;
     errorEl.classList.remove('hidden');
+    return;
   }
+  if (state.dirty && !window.confirm(strings(state.prefs.lang).importConfirmReplace)) return;
+  applyImport(parse);
 }
 
-function renderMappingTable(): void {
-  const t = strings(state.prefs.lang);
-  const body = el('mapping-body');
-  body.innerHTML = '';
-  if (!state.parse) return;
-  state.mapping.forEach((entry, i) => {
-    const tr = document.createElement('tr');
-    const headerTd = document.createElement('td');
-    headerTd.textContent = entry.header === '' ? t.untitledHeader : entry.header;
-    const keepTd = document.createElement('td');
-    const keepInput = document.createElement('input');
-    keepInput.type = 'checkbox';
-    keepInput.checked = entry.keep;
-    keepInput.dataset.index = String(i);
-    keepInput.className = 'mapping-keep';
-    keepInput.addEventListener('change', () => {
-      state.mapping[i].keep = keepInput.checked;
-    });
-    keepTd.appendChild(keepInput);
-    const roleTd = document.createElement('td');
-    const roleSelect = document.createElement('select');
-    roleSelect.dataset.index = String(i);
-    roleSelect.className = 'mapping-role';
-    const roleOptions: Array<[ColumnRole, string]> = [
-      ['none', t.roleNone],
-      ['identifier', t.roleIdentifier],
-      ['start', t.roleStart],
-      ['end', t.roleEnd],
-      ['area', t.roleArea],
-    ];
-    roleOptions.forEach(([value, label]) => {
-      const opt = document.createElement('option');
-      opt.value = value;
-      opt.textContent = label;
-      roleSelect.appendChild(opt);
-    });
-    roleSelect.value = entry.role;
-    roleSelect.addEventListener('change', () => {
-      state.mapping[i].role = roleSelect.value as ColumnRole;
-    });
-    roleTd.appendChild(roleSelect);
-    tr.append(headerTd, keepTd, roleTd);
-    body.appendChild(tr);
-  });
-}
-
-function applyMappingAndImport(): void {
-  if (!state.parse) return;
-  const { headers, rows } = applyMapping(state.parse, state.mapping);
+function applyImport(parse: ParseResult): void {
+  const { headers, rows } = importColumns(parse);
   state.headers = headers;
-  state.ingested = rows.map((r) => makeRow(r.values));
+  state.roles = {};
+  state.ingested = rows.map((values) => makeRow(values));
   state.rows = [...state.ingested];
   state.hiddenHeaders = new Set();
   state.filter = { ...NO_FILTER };
   state.sort = { header: null, direction: 'asc' };
   state.selected = new Set();
   state.visibleHeaders = [...headers];
+  el<HTMLSelectElement>('select-filter-kind').value = 'all';
+  el<HTMLInputElement>('filter-text').classList.add('hidden');
+  state.activePreset = null;
+  presetMessage = null;
+  const preset = findMatchingPreset(state.presets, headers);
+  if (preset) applyPreset(preset, 'auto');
   markDirty();
-  el('mapping-panel').classList.add('hidden');
   el('list-panel').classList.remove('hidden');
+  el('no-file').classList.add('hidden');
   renderList();
 }
 
@@ -284,19 +264,47 @@ function renderList(): void {
   head.innerHTML = '';
   body.innerHTML = '';
 
+  // One heading cell per body column: the row-selection column first.
+  const selectTh = document.createElement('th');
+  selectTh.className = 'select-column';
+  const selectLabel = document.createElement('span');
+  selectLabel.className = 'visually-hidden';
+  selectLabel.textContent = t.selectColumn;
+  selectTh.appendChild(selectLabel);
+  head.appendChild(selectTh);
+
   const numberTh = document.createElement('th');
   numberTh.textContent = t.numberColumn;
   head.appendChild(numberTh);
 
-  state.headers.forEach((header) => {
+  const columns = listColumnOrder(state.headers, state.roles);
+  const roleLabels: Record<Role, string> = {
+    identifier: t.roleIdentifier,
+    name: t.roleName,
+    start: t.roleStart,
+    end: t.roleEnd,
+    area: t.roleArea,
+  };
+  columns.forEach((header) => {
     const th = document.createElement('th');
-    th.textContent = header;
+    const labelText = columnLabel(header, t.untitledHeader);
+    const role = roleOfColumn(state.roles, header);
     th.className = 'sortable';
     th.dataset.header = header;
+    if (state.hiddenHeaders.has(header)) th.classList.add('hidden');
+    if (role) th.dataset.role = role;
     if (state.sort.header === header) {
       th.dataset.sort = state.sort.direction;
     }
-    th.addEventListener('click', () => {
+    // Sorting by the column heading; the role control sits below it.
+    const sortButton = document.createElement('button');
+    sortButton.type = 'button';
+    sortButton.className = 'sort-button';
+    const label = document.createElement('span');
+    label.className = 'column-label';
+    label.textContent = labelText;
+    sortButton.appendChild(label);
+    sortButton.addEventListener('click', () => {
       if (state.sort.header === header) {
         state.sort.direction = state.sort.direction === 'asc' ? 'desc' : 'asc';
       } else {
@@ -304,6 +312,26 @@ function renderList(): void {
       }
       renderList();
     });
+    // Role assignment in the list (FR-1).
+    const roleSelect = document.createElement('select');
+    roleSelect.className = 'role-select';
+    roleSelect.dataset.header = header;
+    roleSelect.setAttribute('aria-label', `${t.role}: ${labelText}`);
+    const none = document.createElement('option');
+    none.value = '';
+    none.textContent = t.roleNone;
+    roleSelect.appendChild(none);
+    for (const r of ROLES) {
+      const opt = document.createElement('option');
+      opt.value = r;
+      opt.textContent = roleLabels[r];
+      roleSelect.appendChild(opt);
+    }
+    roleSelect.value = role ?? '';
+    roleSelect.addEventListener('change', () => {
+      setColumnRole(header, isRole(roleSelect.value) ? roleSelect.value : null);
+    });
+    th.append(sortButton, roleSelect);
     head.appendChild(th);
   });
 
@@ -335,9 +363,11 @@ function renderList(): void {
     numTd.textContent = String(number);
     tr.append(selectTd, numTd);
 
-    state.headers.forEach((header) => {
+    columns.forEach((header) => {
       const td = document.createElement('td');
       td.textContent = row.values[header] ?? '';
+      td.dataset.header = header;
+      if (header === state.roles.name) td.classList.add('primary-label');
       if (state.hiddenHeaders.has(header)) td.classList.add('hidden');
       tr.appendChild(td);
     });
@@ -374,6 +404,7 @@ function renderList(): void {
 
   renderFilterColumnSelect();
   renderColumnVisibility();
+  renderPresets();
 }
 
 function renderFilterColumnSelect(): void {
@@ -386,7 +417,7 @@ function renderFilterColumnSelect(): void {
   state.headers.forEach((header) => {
     const opt = document.createElement('option');
     opt.value = header;
-    opt.textContent = header;
+    opt.textContent = columnLabel(header, strings(state.prefs.lang).untitledHeader);
     select.appendChild(opt);
   });
   select.value = state.headers.includes(state.filter.header) ? state.filter.header : '';
@@ -409,7 +440,7 @@ function renderColumnVisibility(): void {
       else state.hiddenHeaders.add(header);
       renderList();
     });
-    label.append(input, document.createTextNode(header));
+    label.append(input, document.createTextNode(columnLabel(header, t.untitledHeader)));
     container.appendChild(label);
   });
 }
@@ -440,16 +471,18 @@ export function captureWorkState(): WorkState {
   const index = new Map(state.ingested.map((row, i) => [row, i]));
   const markers = [...state.positions.entries()]
     .filter(([row]) => index.has(row) && retained.has(row))
-    .map(([row, position]) => ({ row: index.get(row)!, position: { ...position } }))
+    .map(([row, position]) => ({ row: index.get(row)!, position: { ...position }, shape: state.shapes.get(row) ?? DEFAULT_SHAPE }))
     .sort((a, b) => a.row - b.row);
   const bg = mapView?.background ?? null;
   return {
-    mapping: state.mapping.map((m) => ({ ...m })),
+    roles: { ...state.roles },
     headers: [...state.headers],
     hiddenHeaders: state.headers.filter((h) => state.hiddenHeaders.has(h)),
     rows: state.ingested.map((row) => ({ values: { ...row.values }, colour: row.colour, removed: !retained.has(row) })),
     background: bg ? { ...bg } : null,
     markers,
+    excluded: [...state.excluded].filter((row) => retained.has(row)).map((row) => index.get(row)!).sort((a, b) => a - b),
+    presets: state.presets.map(clonePreset),
     segment: state.segment,
     viewport: { ...(mapView?.viewport ?? { scale: 1, x: 0, y: 0 }) },
     sort: { ...state.sort },
@@ -555,11 +588,17 @@ function readText(file: File): Promise<string> {
   });
 }
 
+function problemText(problem: Problem): string {
+  const t = strings(state.prefs.lang);
+  const key = `problem${problem.kind[0].toUpperCase()}${problem.kind.slice(1)}` as keyof Strings;
+  return t[key].replace('{field}', problem.field);
+}
+
 function openErrorText(e: unknown): string {
   const t = strings(state.prefs.lang);
   if (e instanceof WorkStateError) {
     if (e.code === 'unknown-version') return t.workOpenUnknownVersion.replace('{version}', e.detail);
-    if (e.code === 'invalid') return `${t.workOpenInvalid} ${e.detail}.`;
+    if (e.code === 'invalid' && e.problem) return `${t.workOpenInvalid} ${problemText(e.problem)}.`;
     return t.workOpenNotWorkState;
   }
   return t.workOpenUnreadable;
@@ -586,8 +625,9 @@ async function applyWorkState(ws: WorkState): Promise<boolean> {
   } else {
     mapView.clearBackground(ws.viewport);
   }
-  state.parse = null;
-  state.mapping = ws.mapping.map((m) => ({ ...m }));
+  state.roles = { ...ws.roles };
+  state.activePreset = null;
+  presetMessage = null;
   state.headers = [...ws.headers];
   state.visibleHeaders = [...ws.headers];
   state.hiddenHeaders = new Set(ws.hiddenHeaders);
@@ -597,11 +637,19 @@ async function applyWorkState(ws: WorkState): Promise<boolean> {
   state.selected = new Set();
   state.selectedMarker = null;
   state.positions = new Map(ws.markers.map((m) => [state.ingested[m.row], { ...m.position }]));
+  state.excluded = new Set(ws.excluded.map((i) => state.ingested[i]));
+  state.presentationSelected = null;
+  state.shapes = new Map(ws.markers.map((m) => [state.ingested[m.row], m.shape]));
+  // Presets in the file are merged into the saved presets; a preset in the
+  // file replaces a saved preset of the same name (FR-23).
+  if (ws.presets.length > 0) {
+    for (const preset of ws.presets) state.presets = upsertPreset(state.presets, preset);
+    storePresets(state.presets);
+  }
   state.sort = { ...ws.sort };
   state.filter = { ...ws.filter };
 
   el('ingest-error').classList.add('hidden');
-  el('mapping-panel').classList.add('hidden');
   const hasRows = state.ingested.length > 0;
   el('list-panel').classList.toggle('hidden', !hasRows);
   el('no-file').classList.toggle('hidden', hasRows);
@@ -635,6 +683,9 @@ export function setSegment(segment: Segment): void {
   state.segment = segment;
   showSegment(document, segment);
   if (segment === 'map') mapView?.shown();
+  if (segment === 'presentation') presentationView?.shown();
+  // Panels depend on the stage size, which is known only while it is shown.
+  renderMapItems();
 }
 
 let mapView: MapView | null = null;
@@ -663,19 +714,99 @@ let markerLayer: MarkerLayer | null = null;
 
 // The column whose value names an item in the placement list: the column
 // assigned the identifier role, otherwise the first kept column.
-function labelHeader(): string | undefined {
-  const identifier = state.mapping.find((m) => m.role === 'identifier' && m.keep && state.headers.includes(m.header));
-  return identifier?.header ?? state.headers[0];
+// Column presets (FR-23).
+let presetMessage: { kind: 'auto' | 'applied' | 'saved' | 'removed'; name: string } | null = null;
+
+function applyPreset(preset: ColumnPreset, kind: 'auto' | 'applied'): void {
+  const config = presetConfiguration(preset, state.headers);
+  state.hiddenHeaders = new Set(config.hidden);
+  state.roles = config.roles;
+  state.activePreset = preset.name;
+  presetMessage = { kind, name: preset.name };
 }
 
-function itemLabel(row: RowData): string {
-  const header = labelHeader();
-  const value = header === undefined ? '' : (row.values[header] ?? '').trim();
-  return value === '' ? strings(state.prefs.lang).emptyValue : value;
+function applySelectedPreset(): void {
+  const preset = state.presets.find((p) => p.name === el<HTMLSelectElement>('preset-select').value);
+  if (!preset) return;
+  applyPreset(preset, 'applied');
+  markDirty();
+  renderList();
+}
+
+function saveCurrentPreset(): void {
+  const t = strings(state.prefs.lang);
+  const input = el<HTMLInputElement>('preset-name');
+  const name = input.value.trim();
+  if (name === '' || state.headers.length === 0) return;
+  if (state.presets.some((p) => p.name === name) && !window.confirm(t.presetConfirmReplace.replace('{name}', name))) return;
+  state.presets = upsertPreset(state.presets, {
+    name,
+    headers: [...state.headers],
+    hidden: state.headers.filter((h) => state.hiddenHeaders.has(h)),
+    roles: { ...state.roles },
+  });
+  storePresets(state.presets);
+  state.activePreset = name;
+  presetMessage = { kind: 'saved', name };
+  input.value = '';
+  markDirty();
+  renderList();
+}
+
+function removeSelectedPreset(): void {
+  const t = strings(state.prefs.lang);
+  const name = el<HTMLSelectElement>('preset-select').value;
+  if (!state.presets.some((p) => p.name === name)) return;
+  if (!window.confirm(t.presetConfirmRemove.replace('{name}', name))) return;
+  state.presets = removePreset(state.presets, name);
+  storePresets(state.presets);
+  if (state.activePreset === name) state.activePreset = null;
+  presetMessage = { kind: 'removed', name };
+  markDirty();
+  renderList();
+}
+
+function renderPresets(): void {
+  const t = strings(state.prefs.lang);
+  const select = el<HTMLSelectElement>('preset-select');
+  const previous = select.value;
+  select.innerHTML = '';
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = state.presets.length === 0 ? t.presetNone : t.presetChoose;
+  select.appendChild(placeholder);
+  for (const preset of state.presets) {
+    const opt = document.createElement('option');
+    const matches = presetMatches(preset, state.headers);
+    opt.value = preset.name;
+    opt.textContent = matches ? preset.name : `${preset.name} (${t.presetOtherColumns})`;
+    opt.dataset.matches = matches ? 'true' : 'false';
+    select.appendChild(opt);
+  }
+  const wanted = state.activePreset ?? previous;
+  select.value = state.presets.some((p) => p.name === wanted) ? wanted : '';
+  select.disabled = state.presets.length === 0;
+  el<HTMLButtonElement>('preset-apply').disabled = select.value === '';
+  el<HTMLButtonElement>('preset-remove').disabled = select.value === '';
+  el<HTMLButtonElement>('preset-save').disabled = state.headers.length === 0;
+  const messages = { auto: t.presetAutoApplied, applied: t.presetApplied, saved: t.presetSaved, removed: t.presetRemoved };
+  el('preset-status').textContent = presetMessage ? messages[presetMessage.kind].replace('{name}', presetMessage.name) : '';
+}
+
+function setColumnRole(header: string, role: Role | null): void {
+  state.roles = assignRole(state.roles, header, role);
+  markDirty();
+  renderList();
+}
+
+// The display name of an item (FR-1): name/title, else identifier, else the
+// item's number.
+function itemLabel(row: RowData, number: number): string {
+  return displayName(row.values, state.roles, `${strings(state.prefs.lang).numberColumn} ${number}`);
 }
 
 function markerLabel(marker: PlacedMarker): string {
-  return `${strings(state.prefs.lang).markerLabel} ${marker.number}: ${itemLabel(marker.row)}`;
+  return `${strings(state.prefs.lang).markerLabel} ${marker.number}: ${itemLabel(marker.row, marker.number)}`;
 }
 
 function selectMarker(id: string | null): void {
@@ -727,18 +858,18 @@ function renderPlacementList(): void {
     li.dataset.placed = placed ? 'true' : 'false';
     if (state.selectedMarker === id) li.dataset.selected = 'true';
     const badge = document.createElement('span');
-    badge.className = `marker-badge marker-${row.colour}`;
+    badge.className = `marker-badge marker-${row.colour} marker-shape-${state.shapes.get(row) ?? 'circle'}`;
     badge.textContent = String(number);
     const label = document.createElement('span');
     label.className = 'placement-label';
-    label.textContent = itemLabel(row);
+    label.textContent = itemLabel(row, number);
     const status = document.createElement('span');
     status.className = 'placement-status';
     status.textContent = placed ? t.placementPlaced : t.placementNotPlaced;
     li.append(badge, label, status);
     li.addEventListener('dragstart', (e) => {
       e.dataTransfer?.setData(ROW_DRAG_TYPE, id);
-      e.dataTransfer?.setData('text/plain', itemLabel(row));
+      e.dataTransfer?.setData('text/plain', itemLabel(row, number));
       if (e.dataTransfer) e.dataTransfer.effectAllowed = 'copyMove';
     });
     li.addEventListener('click', () => {
@@ -758,13 +889,253 @@ function renderMapItems(): void {
     const row = rowById(state.selectedMarker);
     if (!row || !state.positions.has(row)) state.selectedMarker = null;
   }
-  const markers = placedMarkers(state.rows, state.positions);
+  for (const row of [...state.excluded]) if (!state.rows.includes(row)) state.excluded.delete(row);
+  for (const row of [...state.shapes.keys()]) if (!state.rows.includes(row)) state.shapes.delete(row);
+  const markers = placedMarkers(state.rows, state.positions, state.shapes);
   markerLayer?.render(markers, state.selectedMarker);
+  renderGlance('map', mapView, state.selectedMarker, (id) => selectMarker(id));
+  renderPresentation();
+  applyHighlight();
   renderPlacementList();
   const t = strings(state.prefs.lang);
   const selected = markers.find((m) => rowId(m.row) === state.selectedMarker);
   el('marker-selection').textContent = selected ? `${t.markerSelected}: ${selected.number}` : t.markerNoSelection;
   el<HTMLButtonElement>('marker-remove').disabled = !selected;
+  const shapeSelect = el<HTMLSelectElement>('marker-shape');
+  shapeSelect.disabled = !selected;
+  if (shapeSelect.options.length !== SHAPES.length) {
+    shapeSelect.innerHTML = '';
+    for (const shape of SHAPES) {
+      const opt = document.createElement('option');
+      opt.value = shape;
+      shapeSelect.appendChild(opt);
+    }
+  }
+  for (const opt of shapeSelect.options) opt.textContent = shapeName(t, opt.value as (typeof SHAPES)[number]);
+  shapeSelect.value = selected?.shape ?? 'circle';
+}
+
+// Presentation stage (FR-27): the same background on its own viewport, with
+// the markers of the items that are switched on. Nothing is edited here.
+let presentationView: MapView | null = null;
+let presentationLayer: MarkerLayer | null = null;
+
+function syncPresentationBackground(): void {
+  if (!presentationView || !mapView) return;
+  const bg = mapView.background;
+  if (!bg) {
+    if (presentationView.background) presentationView.clearBackground({ scale: 1, x: 0, y: 0 });
+  } else if (presentationView.background?.src !== bg.src) {
+    void presentationView.setBackgroundSource(bg.src);
+  }
+}
+
+function setExcluded(row: RowData, excluded: boolean): void {
+  if (excluded) state.excluded.add(row);
+  else state.excluded.delete(row);
+  markDirty();
+  renderMapItems();
+}
+
+function selectPresentationItem(id: string | null): void {
+  state.presentationSelected = id;
+  renderMapItems();
+}
+
+function renderVisibilityList(): void {
+  const t = strings(state.prefs.lang);
+  const list = el('visibility-list');
+  list.innerHTML = '';
+  const placed = placedMarkers(state.rows, state.positions, state.shapes);
+  for (const marker of placed) {
+    const id = rowId(marker.row);
+    const shown = !state.excluded.has(marker.row);
+    const li = document.createElement('li');
+    li.className = 'visibility-item';
+    li.dataset.rowId = id;
+    li.dataset.shown = shown ? 'true' : 'false';
+    if (state.presentationSelected === id) li.dataset.selected = 'true';
+    const label = document.createElement('label');
+    label.className = 'visibility-control';
+    const toggle = document.createElement('input');
+    toggle.type = 'checkbox';
+    toggle.className = 'visibility-toggle';
+    toggle.dataset.rowId = id;
+    toggle.checked = shown;
+    const name = itemLabel(marker.row, marker.number);
+    toggle.setAttribute('aria-label', `${t.visibilityShown}: ${name}`);
+    toggle.addEventListener('change', () => setExcluded(marker.row, !toggle.checked));
+    const badge = document.createElement('span');
+    badge.className = `marker-badge marker-${marker.colour} marker-shape-${marker.shape}`;
+    badge.textContent = String(marker.number);
+    const text = document.createElement('span');
+    text.className = 'placement-label';
+    text.textContent = name;
+    label.append(toggle, badge, text);
+    li.appendChild(label);
+    list.appendChild(li);
+  }
+  el('visibility-empty').classList.toggle('hidden', placed.length > 0);
+  el('visibility-hint').classList.toggle('hidden', placed.length === 0);
+}
+
+// At-a-glance panels (FR-28): the switched-on items whose markers are inside
+// the visible part of a stage, with cross-highlighting between entries and
+// markers.
+let hoverId: string | null = null;
+
+function setHover(id: string | null): void {
+  hoverId = id;
+  applyHighlight();
+}
+
+function applyHighlight(): void {
+  document.querySelectorAll<HTMLElement>('.marker[data-row-id], .glance-entry[data-row-id]').forEach((node) => {
+    node.classList.toggle('highlighted', hoverId !== null && node.dataset.rowId === hoverId);
+  });
+}
+
+function renderGlance(prefix: 'map' | 'presentation', view: MapView | null, selectedId: string | null, onSelect: (id: string) => void): void {
+  const t = strings(state.prefs.lang);
+  const list = el(`${prefix}-glance-list`);
+  list.innerHTML = '';
+  const candidates = placedMarkers(state.rows, state.positions, state.shapes).filter((m) => !state.excluded.has(m.row));
+  const inView = view?.background ? markersInView(candidates, view.viewport, view.stageSize()) : [];
+  const areaKey = state.roles.area;
+  for (const marker of inView) {
+    const id = rowId(marker.row);
+    const li = document.createElement('li');
+    const entry = document.createElement('button');
+    entry.type = 'button';
+    entry.className = 'glance-entry';
+    entry.dataset.rowId = id;
+    if (selectedId === id) entry.dataset.selected = 'true';
+    const badge = document.createElement('span');
+    badge.className = `marker-badge marker-${marker.colour} marker-shape-${marker.shape}`;
+    badge.textContent = String(marker.number);
+    const text = document.createElement('span');
+    text.className = 'glance-text';
+    const name = document.createElement('span');
+    name.className = 'glance-name';
+    name.textContent = itemLabel(marker.row, marker.number);
+    text.appendChild(name);
+    const area = areaKey === undefined ? '' : (marker.row.values[areaKey] ?? '').trim();
+    if (area !== '') {
+      const areaEl = document.createElement('span');
+      areaEl.className = 'glance-area';
+      areaEl.textContent = area;
+      text.appendChild(areaEl);
+    }
+    entry.append(badge, text);
+    entry.addEventListener('mouseenter', () => setHover(id));
+    entry.addEventListener('mouseleave', () => setHover(null));
+    entry.addEventListener('focus', () => setHover(id));
+    entry.addEventListener('blur', () => setHover(null));
+    entry.addEventListener('click', () => onSelect(id));
+    li.appendChild(entry);
+    list.appendChild(li);
+  }
+  const heading = el(`${prefix}-glance-heading`);
+  heading.textContent = t.glanceHeading;
+  const count = document.createElement('span');
+  count.className = 'glance-count';
+  count.textContent = String(inView.length);
+  heading.appendChild(count);
+  el(`${prefix}-glance-empty`).textContent = t.glanceEmpty;
+  el(`${prefix}-glance-empty`).classList.toggle('hidden', inView.length > 0);
+}
+
+// The visibility control of a presentation marker, opened by clicking it.
+let popoverId: string | null = null;
+
+function openPopover(id: string | null): void {
+  popoverId = id;
+  renderPopover();
+}
+
+function renderPopover(): void {
+  const popover = el('presentation-popover');
+  const row = popoverId ? rowById(popoverId) : undefined;
+  const position = row ? state.positions.get(row) : undefined;
+  if (!row || !position || !presentationView) {
+    popoverId = null;
+    popover.classList.add('hidden');
+    return;
+  }
+  const t = strings(state.prefs.lang);
+  const number = state.rows.indexOf(row) + 1;
+  const screen = imageToScreen(presentationView.viewport, position);
+  popover.style.left = `${screen.x}px`;
+  popover.style.top = `${screen.y}px`;
+  popover.dataset.rowId = popoverId ?? '';
+  el('popover-title').textContent = `${number}. ${itemLabel(row, number)}`;
+  el('popover-visibility-label').textContent = t.visibilityShown;
+  el<HTMLInputElement>('popover-visibility').checked = !state.excluded.has(row);
+  el('popover-close').setAttribute('aria-label', t.close);
+  el('popover-close').title = t.close;
+  popover.classList.remove('hidden');
+}
+
+function renderPresentation(): void {
+  const shown = placedMarkers(state.rows, state.positions, state.shapes).filter((m) => !state.excluded.has(m.row));
+  if (state.presentationSelected && !shown.some((m) => rowId(m.row) === state.presentationSelected)) {
+    state.presentationSelected = null;
+  }
+  presentationLayer?.render(shown, state.presentationSelected);
+  renderVisibilityList();
+  renderGlance('presentation', presentationView, state.presentationSelected, (id) => selectPresentationItem(id));
+  renderPopover();
+  const has = presentationView?.background != null;
+  for (const id of ['pres-zoom-in', 'pres-zoom-out', 'pres-fit', 'pres-reset']) {
+    el<HTMLButtonElement>(id).disabled = !has;
+  }
+  el('pres-zoom-level').textContent = `${Math.round((presentationView?.viewport.scale ?? 1) * 100)}%`;
+  el('presentation-empty').classList.toggle('hidden', has);
+}
+
+function initialisePresentation(): void {
+  presentationView = new MapView(el('presentation-stage'), el('presentation-content'), el<HTMLImageElement>('presentation-image'), {
+    onError: () => undefined,
+    onBackgroundChanged: () => renderPresentation(),
+    onViewportChanged: () => renderPresentation(),
+  });
+  presentationLayer = new MarkerLayer(el('presentation-marker-layer'), {
+    editable: false,
+    viewport: () => presentationView?.viewport ?? { scale: 1, x: 0, y: 0 },
+    stagePoint: (x, y) => presentationView?.stagePoint(x, y) ?? { x, y },
+    rowId: (marker) => rowId(marker.row),
+    markerLabel,
+    onSelect: (id) => {
+      selectPresentationItem(id);
+      openPopover(id);
+    },
+    onMove: () => undefined,
+    onRemove: () => undefined,
+    onHover: setHover,
+  });
+  el<HTMLInputElement>('popover-visibility').addEventListener('change', (e) => {
+    const row = popoverId ? rowById(popoverId) : undefined;
+    if (row) setExcluded(row, !(e.target as HTMLInputElement).checked);
+  });
+  el('popover-close').addEventListener('click', () => openPopover(null));
+  el('presentation-popover').addEventListener('pointerdown', (e) => e.stopPropagation());
+  el('presentation-popover').addEventListener('keydown', (e) => {
+    if ((e as KeyboardEvent).key === 'Escape') openPopover(null);
+  });
+  el('pres-zoom-in').addEventListener('click', () => presentationView?.zoomBy(BUTTON_ZOOM_FACTOR));
+  el('pres-zoom-out').addEventListener('click', () => presentationView?.zoomBy(1 / BUTTON_ZOOM_FACTOR));
+  el('pres-fit').addEventListener('click', () => presentationView?.fit());
+  el('pres-reset').addEventListener('click', () => presentationView?.reset());
+  const stage = el('presentation-stage');
+  stage.addEventListener('pointerdown', (e) => {
+    if ((e.target as HTMLElement).closest('.marker')) return;
+    if (popoverId) openPopover(null);
+    if (state.presentationSelected) selectPresentationItem(null);
+  });
+  // A stage, not an editor: nothing can be dropped here. Default handling is
+  // prevented so that a dropped file is not opened by the browser either.
+  stage.addEventListener('dragover', (e) => e.preventDefault());
+  stage.addEventListener('drop', (e) => e.preventDefault());
 }
 
 function renderMapControls(): void {
@@ -857,6 +1228,7 @@ function initialiseMapView(): void {
     onError: (kind) => showMapError(kind),
     onBackgroundChanged: () => {
       markDirty();
+      syncPresentationBackground();
       renderMapControls();
       renderWorkStatus();
     },
@@ -866,6 +1238,9 @@ function initialiseMapView(): void {
     },
   });
   markerLayer = new MarkerLayer(el('marker-layer'), {
+    editable: true,
+    isExcluded: (marker) => state.excluded.has(marker.row),
+    onHover: setHover,
     viewport: () => mapView?.viewport ?? { scale: 1, x: 0, y: 0 },
     stagePoint: (x, y) => mapView?.stagePoint(x, y) ?? { x, y },
     rowId: (marker) => rowId(marker.row),
@@ -891,6 +1266,14 @@ function initialiseMapView(): void {
     void usePdfPage(Number(el<HTMLSelectElement>('pdf-page').value));
   });
   el('pdf-cancel').addEventListener('click', () => void closePdf());
+  el('marker-shape').addEventListener('change', (e) => {
+    const value = (e.target as HTMLSelectElement).value;
+    const row = state.selectedMarker ? rowById(state.selectedMarker) : undefined;
+    if (!row || !isShape(value)) return;
+    state.shapes.set(row, value);
+    markDirty();
+    renderMapItems();
+  });
   el('marker-remove').addEventListener('click', () => {
     if (state.selectedMarker) deleteMarker(state.selectedMarker);
   });
@@ -929,6 +1312,17 @@ function guardUnsavedWork(e: BeforeUnloadEvent): void {
 function wireEvents(): void {
   window.addEventListener('beforeunload', guardUnsavedWork);
   el('work-save').addEventListener('click', () => void saveWork());
+  const presetSelect = el<HTMLSelectElement>('preset-select');
+  presetSelect.addEventListener('change', () => {
+    el<HTMLButtonElement>('preset-apply').disabled = presetSelect.value === '';
+    el<HTMLButtonElement>('preset-remove').disabled = presetSelect.value === '';
+  });
+  el('preset-apply').addEventListener('click', applySelectedPreset);
+  el('preset-remove').addEventListener('click', removeSelectedPreset);
+  el('preset-save').addEventListener('click', saveCurrentPreset);
+  el('preset-name').addEventListener('keydown', (e) => {
+    if ((e as KeyboardEvent).key === 'Enter') saveCurrentPreset();
+  });
   const workInput = el<HTMLInputElement>('work-file-input');
   el('work-open').addEventListener('click', () => workInput.click());
   workInput.addEventListener('change', () => {
@@ -975,7 +1369,6 @@ function wireEvents(): void {
     if (file) void handleFile(file);
   });
 
-  el('apply-mapping').addEventListener('click', applyMappingAndImport);
 
   const filterKind = el<HTMLSelectElement>('select-filter-kind');
   const filterText = el<HTMLInputElement>('filter-text');
@@ -1001,6 +1394,7 @@ function wireEvents(): void {
 export function main(): void {
   initialisePreferences();
   initialiseMapView();
+  initialisePresentation();
   wireEvents();
   renderStaticText();
   renderMapItems();

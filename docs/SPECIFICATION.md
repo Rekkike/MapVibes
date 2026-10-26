@@ -1,6 +1,6 @@
 # MapVibes — Functional Specification
 
-Status: v0.4.0 — work-state persistence pass delivered. See the changelog below.
+Status: v0.5.0 — ingestion experience and presentation mode pass delivered. See the changelog below.
 
 MapVibes is a static, client-side web application: a spreadsheet-to-map visualisation tool. It has no backend, no database, and no server-side processing. Everything runs locally in the browser.
 
@@ -15,7 +15,7 @@ MapVibes is a static, client-side web application: a spreadsheet-to-map visualis
 
 ## Functional requirements
 
-- FR-1: Ingest a spreadsheet (xlsx) by file drop or file picker; parse all columns; surface parsing errors clearly. On import, present the file's actual headers and let the user map them: choose which columns to keep or hide, and assign roles (identifier, start date, end date, area/grouping) where the application needs semantics. All column data is treated as generic text.
+- FR-1: Ingest a spreadsheet (xlsx) by file drop or file picker; parse all columns; surface parsing errors clearly. Ingestion is direct: importing a spreadsheet populates the list immediately with all of the file's columns, named by the file's own headers, shown as-is; no configuration dialog interrupts the import, and no header names are hardcoded. Columns are shown and hidden in the list itself. Role assignment also takes place in the list: a per-column control in the list header assigns the optional roles identifier, name/title, start date, end date, and area/grouping (each role to at most one column). All column data is treated as generic text. The name/title is the display name of an item, used by the list, the marker labels, and the at-a-glance panel; where it is unassigned or empty, the display name falls back to the identifier value, and otherwise to the item's number.
 - FR-2: Support the user's manual cleaning process: present all ingested rows in the list; the user removes rows by hand. The list shall support: sorting by column; setting the marker colour per row; showing and hiding columns; filtering on column values, including empty and non-empty cells in a chosen column; and selecting multiple or all rows for bulk deletion. Show running counts of retained and removed rows.
 - FR-3: Assign sequential presentation numbers, starting at 1, globally across all items. When rows are removed or added after numbering, numbers regenerate so the sequence remains continuous.
 - FR-4: Display a zoomable, pannable background map image supplied by the user.
@@ -33,11 +33,11 @@ MapVibes is a static, client-side web application: a spreadsheet-to-map visualis
 - FR-16: Present the item list alongside the map; selecting a line displays all details and comments for that item below the list.
 - FR-17: Generate sequential presentation numbers in the list per FR-3, with the list grouped or groupable by area for readability.
 - FR-18: Support drag-and-drop of an item from the list onto the map to create its numbered, colour-coded marker at the drop position.
-- FR-19: Provide a UI language toggle between Swedish and English, with all interface strings externalised in translation files; the choice is remembered.
+- FR-19: Provide a UI language toggle between Swedish and English, with all interface strings externalised in translation files; the choice is remembered. On first run (no remembered choice), the interface is in Swedish.
 - FR-20: Provide dark, light, and follow-system theme options, defaulting to follow-system; the choice is remembered. The exported interactive map file shall respect the same theming options.
 - FR-21: All user preferences (language, theme, column mapping, view state) are stored locally on the device only (browser local storage or the state file), never transmitted.
 - FR-22: Segment structure. The application is organised into three segments with a clear flow: Information (list, cleaning, numbering), Map (background, markers, placement), and Presentation (final view and export). Work performed in one segment is never lost by moving to another segment.
-- FR-23: Saved column-mapping presets. The user can save a column mapping under a name and apply it at a later import.
+- FR-23: Saved column presets. The current column configuration (shown and hidden columns, and role assignments) can be saved under a name. When a later import has the same headers, the matching preset applies automatically; presets can also be applied, switched, and removed by the user. Presets persist in the work-state file and in local storage where available (FR-21).
 - FR-24: Manually added columns. The user can add columns by hand; such columns participate in sorting, filtering, and grouping in the same way as imported columns.
 - FR-25: Map background import from PDF documents. In addition to image files (FR-4), the background can be loaded from a PDF document: the user selects the page, and the rendered page becomes the background image on the same viewport. PDF rendering uses a fully bundled library; no CDN or network access is involved.
 - FR-26: Marker symbol library. Beyond the four colours (FR-5), a library of marker symbols is available, and the symbol is changeable per marker.
@@ -52,6 +52,40 @@ MapVibes is a static, client-side web application: a spreadsheet-to-map visualis
 - No hardcoded schema: no fixed column names or formats.
 
 ## Changelog
+
+### v0.5.0
+
+Ingestion experience and presentation mode pass (Pass 4).
+
+Specification amendments (recorded before implementation; all implemented in this pass):
+
+- FR-1 flow amendment: ingestion is direct. Importing a spreadsheet populates the list immediately with all of the file's columns, named by the file's own headers and shown as-is; no configuration dialog interrupts the import. Implemented.
+- FR-1 role amendment: roles are assigned in the list, through a per-column control in the list header (identifier, name/title, start date, end date, area/grouping; each role to at most one column). The name/title role is new; it is the display name used by the list, the marker labels, and the at-a-glance panel, with the fallbacks identifier value, then the item number. Implemented.
+- FR-23 saved column presets (previously deferred): save under a name, automatic application on an import with the same headers, apply, switch, and remove; persisted in local storage and in the work-state file. Implemented.
+- FR-19 amendment: Swedish interface on first run; a remembered language choice is unaffected. Implemented.
+
+Delivered units:
+
+1. Direct import (FR-1): the upfront mapping dialog is removed; every column is imported and shown with the file's headers, and showing and hiding columns remains an in-list control. Columns whose headers repeat in the file keep separate values under internal unique keys and are all displayed with the file's header text; an empty header is shown as "(untitled header)". Importing over unsaved changes asks for confirmation first, as opening a work-state file does, because the removed dialog no longer stands between a dropped file and the replacement of the work.
+2. In-list role assignment (FR-1): a role control below each column heading; assigning a role to a column moves it from any other column. The name/title column leads the list as the primary label (shown first after the number, in bold). Display names: name/title, else identifier, else "No. n" (Swedish "Nr n").
+3. Saved presets (FR-23): presets hold the hidden columns and the role assignments for a set of column keys. A preset matches an import with the same headers in any order; on import, the most recently saved matching preset applies automatically and this is announced. Presets can be applied (also to other columns, where only the settings for present columns apply; such presets are marked "other columns"), switched, and removed after confirmation; saving under an existing name asks before replacing. Presets are stored in local storage (key mapvibes.presets) and in the work-state file; on opening a file, its presets are merged into the stored presets, a preset of the same name being replaced by the one in the file.
+4. Defect fixes (both pre-existing): (a) the list header row now has a cell for the row-selection column, so every heading sits above its values; a hidden column now hides its heading as well as its values (a second pre-existing misalignment found while fixing the first). Pinned by a UI test that fails against the previous code. (b) The damaged-file detail texts are externalised into both dictionaries: each inconsistency is reported as a problem kind with its own Swedish and English message; the field path in the message remains a language-neutral technical identifier.
+5. Presentation mode (FR-27): the Presentation segment is a stage over the whole map with the background, the markers, the legend, zoom and pan on its own viewport, and a visibility list with a toggle per placed item; switched-off items' markers are hidden on the stage. No placement, moving, or removal occurs on the stage, and drops onto it are refused; editing remains in the Map segment, where switched-off markers stay editable and are shown faded.
+6. At-a-glance panel (FR-28): a panel beside the stage in both the Map and the Presentation segments lists only the switched-on items whose markers are inside the visible part of that stage, updating live as the view moves; entries show the number, colour, and shape, the display name, and the area value where the area role is assigned. Hovering or focusing an entry highlights its marker and hovering a marker highlights its entry; clicking an entry selects its marker. In the Presentation segment, clicking a marker also opens its visibility control, which stays open so that the choice can be reversed, and closes on its close button, on Escape, or on a click on the empty stage.
+7. Marker symbol library (FR-26): five shapes (circle, the default; square; diamond; triangle; hexagon), chosen per marker in the Map segment toolbar for the selected marker, independently of the colour, which remains set in the list. Markers remain numbered; the shape is shown on the map, on the stage, and in all side lists; the legend explains the colours and the shapes. The specification assigns no meaning to colours or shapes, so the legend names them only.
+8. Work-state schema version 2 (FR-13): adds role assignments by column key (replacing the version 1 column mapping), the shape per marker, the presentation visibility toggles (as row references), and the presets. Version 1 files (written by v0.4.0) still open: they are migrated on reading, with all columns kept as before, version 1 roles carried over, circle shapes, all items switched on, and no presets; saving then writes version 2. Any other version is rejected with a clear message.
+9. Tests and delivery: unit tests for the viewport-visibility computation, preset matching and validation, roles and display names, direct import with repeated headers, and the schema version 2 format and version 1 migration (against a version 1 file written by v0.4.0, now in example-data); UI tests for every unit, including both defect fixes and the Swedish first run; stylesheet assertions pinning the marker colour and shape classes, the symbol layers, and the at-a-glance panel density; and the build regression suite.
+
+Verification: type checking; the unit, UI, and build regression suites in chunked invocations; and headless-Chromium runs of both built artifacts via file:// with the browser context offline, covering the Swedish first run, direct import, role assignment, presets, the list alignment, shapes in both themes, the at-a-glance panel and cross-highlighting, the presentation stage with its visibility controls, saving and reopening a schema version 2 file, and opening the version 1 fixture. The only request made was the local file itself.
+
+Known limitations and notices, stated explicitly:
+
+- Terminology: the pass directive referred to "projects"; the generic term "item" of this specification is used throughout the interface and this document, in keeping with the rule against domain terminology.
+- FR-27 is implemented for per-item visibility only; per-layer visibility toggles are not implemented (no layers exist yet), and the exported presentation remains deferred with the interactive HTML export.
+- The presentation stage viewport is not saved in the work-state file; the stage is fitted to the background when the work is opened. The presentation selection, marker selection, and hover state are transient.
+- A preset's role and visibility settings apply to columns present in the current import only; a preset is not altered when it is applied to other columns. Changing the configuration after applying a preset does not change the stored preset until it is saved again.
+- Presets are stored in local storage only when the user saves, removes, or opens a file containing presets; where local storage is unavailable, presets remain available for the session and in saved work-state files.
+- The work-state file continues to capture only the features implemented so far; later passes will extend the schema further.
 
 ### v0.4.0
 

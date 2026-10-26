@@ -38,10 +38,16 @@ window.addEventListener = ((type: string, listener: EventListenerOrEventListener
   originalAddEventListener(type, listener, options as AddEventListenerOptions);
 }) as typeof window.addEventListener;
 
-export async function mountApp(options: { keepStorage?: boolean } = {}): Promise<typeof import('../../src/main')> {
+// Mounts the application. Unless a first run is requested (empty storage),
+// English is remembered as the language, so that tests read English strings;
+// the first-run default itself is Swedish (FR-19).
+export async function mountApp(options: { keepStorage?: boolean; firstRun?: boolean } = {}): Promise<typeof import('../../src/main')> {
   for (const [type, listener] of windowListeners.splice(0)) window.removeEventListener(type, listener);
   stubMatchMedia();
-  if (!options.keepStorage) localStorage.clear();
+  if (!options.keepStorage) {
+    localStorage.clear();
+    if (!options.firstRun) localStorage.setItem('mapvibes.preferences', JSON.stringify({ lang: 'en', theme: 'system' }));
+  }
   const doc = new DOMParser().parseFromString(indexHtml, 'text/html');
   doc.querySelectorAll('script').forEach((s) => s.remove());
   document.head.innerHTML = '';
@@ -63,15 +69,13 @@ export function byId<T extends HTMLElement = HTMLElement>(id: string): T {
   return e as T;
 }
 
-// Imports the example workbook through the real file-picker path and applies
-// the default column mapping.
+// Imports the example workbook through the real file-picker path (direct
+// import: the list is populated without any further step).
 export async function importExampleWorkbook(): Promise<void> {
   const input = byId<HTMLInputElement>('file-input');
   const file = exampleFile('example.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   Object.defineProperty(input, 'files', { value: [file], configurable: true });
   input.dispatchEvent(new Event('change'));
-  await flush();
-  byId('apply-mapping').click();
   await flush();
 }
 
@@ -79,15 +83,20 @@ export const STAGE = { left: 100, top: 50, width: 800, height: 600 };
 
 // jsdom performs no layout: give the map stage a fixed bounding box.
 export function stubStageLayout(): void {
-  const stage = byId('map-stage');
-  stage.getBoundingClientRect = () =>
-    ({ ...STAGE, x: STAGE.left, y: STAGE.top, right: STAGE.left + STAGE.width, bottom: STAGE.top + STAGE.height, toJSON: () => ({}) }) as DOMRect;
+  for (const id of ['map-stage', 'presentation-stage']) {
+    const stage = byId(id);
+    stage.getBoundingClientRect = () =>
+      ({ ...STAGE, x: STAGE.left, y: STAGE.top, right: STAGE.left + STAGE.width, bottom: STAGE.top + STAGE.height, toJSON: () => ({}) }) as DOMRect;
+  }
 }
 
 // jsdom does not decode images: once the application assigns a source to the
 // background image, report the given intrinsic size and fire its load event.
 export function stubImageDecoding(width: number, height: number, fail = false): void {
-  const img = byId<HTMLImageElement>('map-image');
+  for (const id of ['map-image', 'presentation-image']) stubOneImage(byId<HTMLImageElement>(id), width, height, fail);
+}
+
+function stubOneImage(img: HTMLImageElement, width: number, height: number, fail: boolean): void {
   Object.defineProperty(img, 'naturalWidth', { get: () => width, configurable: true });
   Object.defineProperty(img, 'naturalHeight', { get: () => height, configurable: true });
   const observer = new MutationObserver(() => {
@@ -188,4 +197,26 @@ export function openWorkFile(file: File): void {
   const input = byId<HTMLInputElement>('work-file-input');
   Object.defineProperty(input, 'files', { value: [file], configurable: true });
   input.dispatchEvent(new Event('change'));
+}
+
+// Assigns a role to a column through the in-list role control.
+export function setRole(header: string, role: string): void {
+  const select = document.querySelector<HTMLSelectElement>(`#row-table-head .role-select[data-header="${header}"]`);
+  if (!select) throw new Error(`no role control for ${header}`);
+  select.value = role;
+  select.dispatchEvent(new Event('change'));
+}
+
+export function presentationMarkers(): HTMLElement[] {
+  return [...document.querySelectorAll<HTMLElement>('#presentation-marker-layer .marker')];
+}
+
+// Imports the example, assigns the identifier role, loads the background, and
+// places markers for the given list positions at the given stage points.
+export async function placeExampleMarkers(points: Array<[number, number, number]>): Promise<void> {
+  await importExampleWorkbook();
+  setRole('ID', 'identifier');
+  byId('tab-map').click();
+  await loadExampleBackground();
+  for (const [index, x, y] of points) dragItemToStage(placementItems()[index], STAGE.left + x, STAGE.top + y);
 }

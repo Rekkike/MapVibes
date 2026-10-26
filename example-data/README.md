@@ -13,3 +13,5 @@ Files:
 - `example.xlsx` — example workbook (one sheet, generic headers ID, Start, End, Group, Note; five fictional rows).
 - `example-background.png` — generic 1200 × 800 pixel background image (a grid with four plain zones labelled A to D), used as a map background fixture.
 - `example-background.pdf` — generic two-page PDF document (page 1: landscape, 842 × 595 points, zones A to D; page 2: portrait, 595 × 842 points, zones E to G), used as a PDF map background fixture. It uses only vector drawing and the standard Helvetica font.
+- `example-repeated-headers.xlsx` — generic workbook with a repeated header (Label, Label), an empty header, and a Note column; two fictional rows. Used to verify that every column is imported and shown with the file's own headers.
+- `example-work-state-v1.json` — a work-state file of schema version 1, written by MapVibes v0.4.0 from the example workbook and the example PDF background (page 2). Used to verify the migration of version 1 files.

@@ -22,6 +22,9 @@
   --marker-text-on-yellow: #1a1c20;
   --marker-ring: #ffffff;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  --shadow-offset: 0 1px 1.5px;
+  --shadow-colour: rgba(0, 0, 0, 0.45);
+  --marker-neutral: #6b7380;
 }
 
 html[data-theme='dark'] {
@@ -43,6 +46,9 @@ html[data-theme='dark'] {
   --marker-text-on-yellow: #0d0f12;
   --marker-ring: #0d0f12;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  --shadow-offset: 0 1px 1.5px;
+  --shadow-colour: rgba(0, 0, 0, 0.8);
+  --marker-neutral: #9aa2ae;
 }
 
 * {
@@ -136,16 +142,19 @@ button:focus-visible {
   grid-template-columns: minmax(0, 1fr);
 }
 
-#segment-map {
+#segment-map,
+#segment-presentation {
   height: calc(100vh - 5.5rem);
   min-height: 30rem;
   display: grid;
-  grid-template-columns: minmax(12rem, 18rem) minmax(0, 1fr);
+  grid-template-columns: minmax(11rem, 16rem) minmax(0, 1fr) minmax(11rem, 15rem);
   gap: var(--space-3);
 }
 
 #list-area,
 #placement-area,
+#visibility-area,
+.glance-panel,
 #presentation-area,
 #map-area {
   background: var(--panel);
@@ -155,14 +164,16 @@ button:focus-visible {
   overflow: auto;
 }
 
-#map-area {
+#map-area,
+#presentation-area {
   display: flex;
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
 }
 
-#map-toolbar {
+#map-toolbar,
+#presentation-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -181,14 +192,15 @@ button:focus-visible {
   font-weight: 700;
 }
 
-#map-zoom-level {
+#map-zoom-level,
+#pres-zoom-level {
   min-width: 3.5rem;
   text-align: center;
   font-variant-numeric: tabular-nums;
   color: var(--muted);
 }
 
-#map-stage {
+.stage {
   position: relative;
   flex: 1;
   min-height: 24rem;
@@ -200,20 +212,21 @@ button:focus-visible {
   user-select: none;
 }
 
-#map-stage[data-has-background='true'] {
+.stage[data-has-background='true'] {
   cursor: grab;
 }
 
-#map-stage.panning {
+.stage.panning {
   cursor: grabbing;
 }
 
-#map-stage.dragover {
+.stage.dragover {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
 
-#map-content {
+#map-content,
+#presentation-content {
   position: absolute;
   top: 0;
   left: 0;
@@ -221,13 +234,15 @@ button:focus-visible {
   will-change: transform;
 }
 
-#map-image {
+#map-image,
+#presentation-image {
   display: block;
   max-width: none;
   pointer-events: none;
 }
 
-#map-empty {
+#map-empty,
+.stage-empty {
   position: absolute;
   inset: var(--space-3);
   display: flex;
@@ -247,6 +262,15 @@ h2 {
 
 .hidden {
   display: none !important;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .error {
@@ -270,15 +294,12 @@ h2 {
   border-color: var(--accent);
 }
 
-#mapping-table,
 #row-table {
   width: 100%;
   border-collapse: collapse;
   margin-bottom: 0.5rem;
 }
 
-#mapping-table th,
-#mapping-table td,
 #row-table th,
 #row-table td {
   border: 1px solid var(--border);
@@ -325,14 +346,76 @@ th.sortable {
 .colour-chip.yellow { background: var(--marker-yellow); }
 .colour-chip.red { background: var(--marker-red); }
 
-/* Markers (FR-5). The four colour classes are shared by markers on the map,
-   badges in the placement list, and the legend. */
-.marker-green { background: var(--marker-green); color: var(--marker-text); }
-.marker-blue { background: var(--marker-blue); color: var(--marker-text); }
-.marker-yellow { background: var(--marker-yellow); color: var(--marker-text-on-yellow); }
-.marker-red { background: var(--marker-red); color: var(--marker-text); }
+/* Markers (FR-5, FR-26). A marker symbol is a shape filled with a colour,
+   drawn by two layers behind the number: a ring and the fill, both clipped
+   to the shape. Colour classes set the fill and the number colour; shape
+   classes set the clip shape. Both are shared by markers on the map, the
+   badges in the side lists, and the legend. */
+.marker-green { --marker-fill: var(--marker-green); color: var(--marker-text); }
+.marker-blue { --marker-fill: var(--marker-blue); color: var(--marker-text); }
+.marker-yellow { --marker-fill: var(--marker-yellow); color: var(--marker-text-on-yellow); }
+.marker-red { --marker-fill: var(--marker-red); color: var(--marker-text); }
 
-#marker-layer {
+.marker-shape-circle { --marker-clip: inset(0 round 999px); }
+.marker-shape-square { --marker-clip: inset(0 round 3px); }
+.marker-shape-diamond { --marker-clip: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.marker-shape-triangle { --marker-clip: polygon(50% 0, 100% 100%, 0 100%); }
+.marker-shape-hexagon { --marker-clip: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); }
+
+/* Defaults with zero specificity, so that colour and shape classes win. */
+:where(.marker, .marker-badge, .legend-swatch) {
+  --marker-fill: var(--marker-neutral);
+  --marker-clip: inset(0 round 999px);
+}
+
+.marker,
+.marker-badge,
+.legend-swatch {
+  isolation: isolate;
+  filter: drop-shadow(var(--shadow-offset) var(--shadow-colour));
+}
+
+.marker::before,
+.marker-badge::before,
+.legend-swatch::before,
+.marker::after,
+.marker-badge::after,
+.legend-swatch::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  clip-path: var(--marker-clip);
+}
+
+.marker::before,
+.marker-badge::before,
+.legend-swatch::before {
+  inset: 0;
+  background: var(--marker-ring);
+}
+
+.marker::after,
+.marker-badge::after,
+.legend-swatch::after {
+  inset: 2px;
+  background: var(--marker-fill);
+}
+
+/* Shapes with a narrower interior get more room for the number. */
+.marker.marker-shape-diamond,
+.marker-badge.marker-shape-diamond,
+.marker.marker-shape-triangle,
+.marker-badge.marker-shape-triangle {
+  min-width: 2.25rem;
+  height: 2.25rem;
+}
+
+.marker.marker-shape-triangle,
+.marker-badge.marker-shape-triangle {
+  padding-top: 0.6rem;
+}
+
+.marker-layer {
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -343,12 +426,10 @@ th.sortable {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  position: relative;
   min-width: 1.75rem;
   height: 1.75rem;
   padding: 0 var(--space-1);
-  border-radius: var(--radius-pill);
-  border: 2px solid var(--marker-ring);
-  box-shadow: var(--shadow);
   font-size: 0.8rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -378,7 +459,8 @@ th.sortable {
   outline-offset: 2px;
 }
 
-#placement-area {
+#placement-area,
+#visibility-area {
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -483,7 +565,7 @@ input[type='text'] {
 }
 
 /* Legend (FR-6): fixed below the map stage; it does not move with the view. */
-#map-legend {
+.legend {
   flex: none;
   display: flex;
   flex-wrap: wrap;
@@ -496,11 +578,11 @@ input[type='text'] {
   background: var(--panel);
 }
 
-#legend-heading {
+.legend-heading {
   font-weight: 600;
 }
 
-#legend-list {
+.legend-list {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
@@ -516,10 +598,218 @@ input[type='text'] {
 }
 
 .legend-swatch {
+  position: relative;
   display: inline-block;
-  width: 1rem;
-  height: 1rem;
-  border-radius: var(--radius-pill);
-  border: 2px solid var(--marker-ring);
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.legend-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.legend-group-label {
+  color: var(--muted);
+}
+
+.visibility-control {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-width: 0;
+}
+
+#marker-shape-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* In-list column headings (FR-1): sort control above the role control. */
+#row-table th.sortable {
+  vertical-align: top;
+}
+
+.sort-button {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  font-weight: 600;
+  text-align: left;
+}
+
+#row-table th[data-sort='asc'] .column-label::after {
+  content: ' ▲';
+  color: var(--muted);
+}
+
+#row-table th[data-sort='desc'] .column-label::after {
+  content: ' ▼';
+  color: var(--muted);
+}
+
+.role-select {
+  margin-top: var(--space-1);
+  max-width: 100%;
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+#row-table th[data-role] .role-select {
+  color: var(--fg);
+  border-color: var(--accent);
+}
+
+#row-table td.primary-label {
+  font-weight: 600;
+}
+
+/* Column presets (FR-23). */
+#preset-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+
+#preset-heading {
+  font-weight: 600;
+}
+
+/* Presentation segment (FR-27): a stage, not an editor. */
+#presentation-stage .marker {
+  cursor: pointer;
+}
+
+#visibility-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.visibility-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.visibility-item[data-shown='false'] .placement-label {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.visibility-item[data-selected='true'] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+/* In the Map segment, markers switched off for the presentation stay
+   editable but are shown faded. */
+#map-stage .marker.marker-excluded {
+  opacity: 0.45;
+}
+
+/* At-a-glance panel (FR-28): compact entries for the markers in view. */
+.glance-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.glance-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.glance-count {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.glance-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.glance-entry {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  font-size: 0.875rem;
+  line-height: 1.3;
+  text-align: left;
+}
+
+.glance-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.glance-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.glance-area {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.glance-entry.highlighted,
+.glance-entry[data-selected='true'] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.marker.highlighted {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  z-index: 2;
+}
+
+#presentation-popover {
+  position: absolute;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--panel);
   box-shadow: var(--shadow);
+  transform: translate(-50%, calc(-100% - 1.5rem));
+  white-space: nowrap;
+}
+
+#popover-title {
+  font-weight: 600;
 }

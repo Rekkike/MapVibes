@@ -7,15 +7,20 @@ describe('preferences (FR-19, FR-20, FR-21)', () => {
     localStorage.clear();
   });
 
-  test('defaults are English and follow-system when nothing is stored', () => {
+  test('defaults are Swedish and follow-system when nothing is stored (first run)', () => {
     expect(loadPreferences()).toEqual(DEFAULT_PREFERENCES);
-    expect(DEFAULT_PREFERENCES.lang).toBe('en');
+    expect(DEFAULT_PREFERENCES.lang).toBe('sv');
     expect(DEFAULT_PREFERENCES.theme).toBe('system');
   });
 
   test('the language choice is remembered in local storage', () => {
     savePreferences({ lang: 'sv', theme: 'system' });
     expect(loadPreferences().lang).toBe('sv');
+  });
+
+  test('a remembered English choice is unaffected by the Swedish default', () => {
+    savePreferences({ lang: 'en', theme: 'system' });
+    expect(loadPreferences().lang).toBe('en');
   });
 
   test('the theme choice is remembered in local storage', () => {

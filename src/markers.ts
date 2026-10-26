@@ -8,18 +8,33 @@ import type { Point } from './viewport';
 
 export type MarkerPositions = Map<RowData, Point>;
 
+// Marker symbol library (FR-26): the shape of a marker, chosen per marker and
+// independent of its colour. Circle is the default.
+export type MarkerShape = 'circle' | 'square' | 'diamond' | 'triangle' | 'hexagon';
+
+export const SHAPES: MarkerShape[] = ['circle', 'square', 'diamond', 'triangle', 'hexagon'];
+
+export const DEFAULT_SHAPE: MarkerShape = 'circle';
+
+export type MarkerShapes = Map<RowData, MarkerShape>;
+
+export function isShape(value: unknown): value is MarkerShape {
+  return typeof value === 'string' && (SHAPES as string[]).includes(value);
+}
+
 export interface PlacedMarker {
   row: RowData;
   number: number;
   colour: RowColour;
+  shape: MarkerShape;
   position: Point;
 }
 
-export function placedMarkers(rows: RowData[], positions: MarkerPositions): PlacedMarker[] {
+export function placedMarkers(rows: RowData[], positions: MarkerPositions, shapes: MarkerShapes = new Map()): PlacedMarker[] {
   const out: PlacedMarker[] = [];
   for (const { row, number } of numberRows(rows)) {
     const position = positions.get(row);
-    if (position) out.push({ row, number, colour: row.colour, position: { ...position } });
+    if (position) out.push({ row, number, colour: row.colour, shape: shapes.get(row) ?? DEFAULT_SHAPE, position: { ...position } });
   }
   return out;
 }

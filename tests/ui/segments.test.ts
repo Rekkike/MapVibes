@@ -32,12 +32,13 @@ describe('segment navigation (FR-22)', () => {
     expect(document.documentElement.dataset.segment).toBe('map');
   });
 
-  test('the Presentation segment is a labelled placeholder only', () => {
+  test('the Presentation segment is a stage: it offers view controls but no editing controls', () => {
     byId('tab-presentation').click();
     expect(visible('segment-presentation')).toBe(true);
     expect(byId('presentation-heading').textContent).toBe('Presentation');
-    expect(byId('presentation-placeholder').textContent).toMatch(/not yet available/);
-    expect(byId('segment-presentation').querySelectorAll('button, input, select').length).toBe(0);
+    const segment = byId('segment-presentation');
+    expect(segment.querySelector('#pres-fit')).not.toBeNull();
+    expect(segment.querySelector('input[type="file"], #marker-remove, .placement-item')).toBeNull();
   });
 
   test('arrow keys move between tabs', () => {

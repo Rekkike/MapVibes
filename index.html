@@ -51,22 +51,16 @@
           </div>
           <p id="ingest-error" class="error hidden"></p>
         </div>
-        <div id="mapping-panel" class="hidden">
-          <h3 id="mapping-heading">Column mapping</h3>
-          <p id="mapping-intro"></p>
-          <table id="mapping-table">
-            <thead>
-              <tr>
-                <th id="th-column">Column</th>
-                <th id="th-keep">Keep</th>
-                <th id="th-role">Role</th>
-              </tr>
-            </thead>
-            <tbody id="mapping-body"></tbody>
-          </table>
-          <button id="apply-mapping">Apply and import</button>
-        </div>
         <div id="list-panel" class="hidden">
+          <div id="preset-controls" role="group" aria-labelledby="preset-heading">
+            <span id="preset-heading">Column presets</span>
+            <select id="preset-select" aria-label="Preset"></select>
+            <button type="button" id="preset-apply">Apply</button>
+            <button type="button" id="preset-remove">Remove</button>
+            <input type="text" id="preset-name" aria-label="Preset name" />
+            <button type="button" id="preset-save">Save preset</button>
+            <span id="preset-status" class="notice" aria-live="polite"></span>
+          </div>
           <div id="list-toolbar">
             <label>
               <span id="label-filter">Filter</span>
@@ -126,6 +120,7 @@
             <button type="button" id="map-reset">Reset</button>
             <span class="toolbar-separator" aria-hidden="true"></span>
             <span id="marker-selection" class="notice">No marker selected</span>
+            <label id="marker-shape-label"><span id="marker-shape-text">Shape</span> <select id="marker-shape"></select></label>
             <button type="button" id="marker-remove">Remove marker</button>
           </div>
           <p id="map-error" class="error hidden" role="alert"></p>
@@ -140,31 +135,60 @@
             <button type="button" id="pdf-cancel">Cancel</button>
             <span id="pdf-status" class="notice" aria-live="polite"></span>
           </div>
-          <div id="map-stage" data-has-background="false">
+          <div id="map-stage" class="stage" data-has-background="false">
             <div id="map-content" class="hidden">
               <img id="map-image" alt="" draggable="false" />
             </div>
-            <div id="marker-layer"></div>
+            <div id="marker-layer" class="marker-layer"></div>
             <div id="map-empty">
               <span id="map-empty-hint">Drop a background image or PDF document here, or use Load background.</span>
             </div>
           </div>
-          <div id="map-legend" role="group" aria-labelledby="legend-heading">
-            <span id="legend-heading">Legend</span>
-            <ul id="legend-list">
-              <li class="legend-entry" data-colour="green"><span class="legend-swatch marker-green" aria-hidden="true"></span><span class="legend-label" id="legend-green">Green</span></li>
-              <li class="legend-entry" data-colour="blue"><span class="legend-swatch marker-blue" aria-hidden="true"></span><span class="legend-label" id="legend-blue">Blue</span></li>
-              <li class="legend-entry" data-colour="yellow"><span class="legend-swatch marker-yellow" aria-hidden="true"></span><span class="legend-label" id="legend-yellow">Yellow</span></li>
-              <li class="legend-entry" data-colour="red"><span class="legend-swatch marker-red" aria-hidden="true"></span><span class="legend-label" id="legend-red">Red</span></li>
-            </ul>
-          </div>
+          <div id="map-legend" class="legend"></div>
         </section>
+        <aside id="map-glance" class="glance-panel" aria-labelledby="map-glance-heading">
+          <h2 id="map-glance-heading" class="glance-heading">In view</h2>
+          <p id="map-glance-empty" class="notice glance-empty">No markers in view.</p>
+          <ul id="map-glance-list" class="glance-list"></ul>
+        </aside>
       </div>
       <div id="segment-presentation" class="segment hidden" role="tabpanel" aria-labelledby="tab-presentation">
+        <aside id="visibility-area" aria-labelledby="visibility-heading">
+          <h2 id="visibility-heading">Visibility</h2>
+          <p id="visibility-hint" class="notice">Items switched off here are hidden in the presentation.</p>
+          <p id="visibility-empty" class="notice">No markers placed. Place markers in the Map segment.</p>
+          <ul id="visibility-list"></ul>
+        </aside>
         <section id="presentation-area" aria-labelledby="presentation-heading">
           <h2 id="presentation-heading">Presentation</h2>
-          <p id="presentation-placeholder" class="notice">The presentation segment is not yet available. It is planned for a later pass.</p>
+          <div id="presentation-toolbar" role="toolbar" aria-labelledby="presentation-heading">
+            <button type="button" id="pres-zoom-out" class="icon-button" aria-label="Zoom out" title="Zoom out">−</button>
+            <span id="pres-zoom-level" aria-live="polite">100%</span>
+            <button type="button" id="pres-zoom-in" class="icon-button" aria-label="Zoom in" title="Zoom in">+</button>
+            <button type="button" id="pres-fit">Fit view</button>
+            <button type="button" id="pres-reset">Reset</button>
+          </div>
+          <div id="presentation-stage" class="stage" data-has-background="false">
+            <div id="presentation-content" class="hidden">
+              <img id="presentation-image" alt="" draggable="false" />
+            </div>
+            <div id="presentation-marker-layer" class="marker-layer"></div>
+            <div id="presentation-popover" class="hidden" role="dialog" aria-labelledby="popover-title">
+              <span id="popover-title"></span>
+              <label><input type="checkbox" id="popover-visibility" /> <span id="popover-visibility-label">Shown in the presentation</span></label>
+              <button type="button" id="popover-close" class="icon-button" aria-label="Close" title="Close">×</button>
+            </div>
+            <div id="presentation-empty" class="stage-empty">
+              <span id="presentation-empty-hint">No background loaded. Load one in the Map segment.</span>
+            </div>
+          </div>
+          <div id="presentation-legend" class="legend"></div>
         </section>
+        <aside id="presentation-glance" class="glance-panel" aria-labelledby="presentation-glance-heading">
+          <h2 id="presentation-glance-heading" class="glance-heading">In view</h2>
+          <p id="presentation-glance-empty" class="notice glance-empty">No markers in view.</p>
+          <ul id="presentation-glance-list" class="glance-list"></ul>
+        </aside>
       </div>
     </main>
     <script type="module" src="./src/main.ts"></script>

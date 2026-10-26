@@ -14,11 +14,12 @@ MapVibes turns a spreadsheet export into an interactive, zoomable map: clean the
 ## Core features
 
 - Three segments with a clear flow: Information (list, cleaning, numbering), Map (background, markers, placement), and Presentation (final view and export).
-- Excel/spreadsheet ingestion with column mapping (keep, hide, and assign roles to columns of any language).
+- Direct spreadsheet ingestion: every column appears at once under the file's own headers, in any language; columns are shown, hidden, and assigned roles in the list itself, and column configurations can be saved as named presets that apply automatically to matching files.
 - Manual data cleaning with sorting, column filters (including empty/non-empty), per-row colouring, show/hide columns, and bulk deletion.
 - Global sequential numbering with automatic renumbering when rows are removed or added.
 - Zoomable, pannable map on a user-supplied background: an image file or a chosen page of a PDF document.
-- Drag-and-drop rows from the list onto the map as numbered, colour-coded markers (green, blue, yellow, red), with a legend at the bottom.
+- Drag-and-drop rows from the list onto the map as numbered markers in four colours (green, blue, yellow, red) and five shapes, with a legend at the bottom and an at-a-glance panel of the items in view.
+- Presentation mode: a read-only stage with per-item visibility toggles.
 - Details panel per item, including free-text comments.
 - Explicit save and reopen of the complete work state as a local file, with an unsaved-changes indicator.
 - Manual item entry and editing of all fields, including dates.
