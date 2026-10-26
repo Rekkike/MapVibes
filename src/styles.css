@@ -6,6 +6,21 @@
   --accent: #2f6f4f;
   --muted: #5a6270;
   --error: #a02020;
+  --on-accent: #ffffff;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 1rem;
+  --radius: 6px;
+  --radius-pill: 999px;
+  --stage-bg: #e9ecf0;
+  --marker-green: #287a4d;
+  --marker-blue: #2f66b3;
+  --marker-yellow: #e0b31f;
+  --marker-red: #c03a3a;
+  --marker-text: #ffffff;
+  --marker-text-on-yellow: #1a1c20;
+  --marker-ring: #ffffff;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
 html[data-theme='dark'] {
@@ -16,6 +31,16 @@ html[data-theme='dark'] {
   --accent: #4f9f77;
   --muted: #9aa2ae;
   --error: #e08080;
+  --on-accent: #0d1410;
+  --stage-bg: #101215;
+  --marker-green: #3fae6e;
+  --marker-blue: #4f86d6;
+  --marker-yellow: #e8c040;
+  --marker-red: #dc5a5a;
+  --marker-text: #0d0f12;
+  --marker-text-on-yellow: #0d0f12;
+  --marker-ring: #0d0f12;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
 }
 
 * {
@@ -33,7 +58,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.5rem 1rem;
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--border);
   background: var(--panel);
 }
@@ -45,7 +70,7 @@ body {
 
 .controls {
   display: flex;
-  gap: 1rem;
+  gap: var(--space-3);
 }
 
 .controls label {
@@ -54,36 +79,148 @@ body {
   gap: 0.4rem;
 }
 
+#segment-nav {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.segment-tab {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+  border-radius: var(--radius);
+  padding: var(--space-1) var(--space-3);
+}
+
+.segment-tab[aria-selected='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+.segment-tab:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 #app-main {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 1rem;
-  padding: 1rem;
+  padding: var(--space-3);
   min-height: calc(100vh - 3.5rem);
 }
 
+.segment {
+  min-height: calc(100vh - 5.5rem);
+}
+
+#segment-information {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+#segment-map {
+  height: calc(100vh - 5.5rem);
+  min-height: 30rem;
+  display: grid;
+  grid-template-columns: minmax(12rem, 18rem) minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
 #list-area,
+#placement-area,
+#presentation-area,
 #map-area {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 1rem;
+  border-radius: var(--radius);
+  padding: var(--space-3);
   overflow: auto;
 }
 
 #map-area {
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
-#map-placeholder {
+#map-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.toolbar-separator {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border);
+}
+
+.icon-button {
+  min-width: 2rem;
+  font-weight: 700;
+}
+
+#map-zoom-level {
+  min-width: 3.5rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+#map-stage {
+  position: relative;
   flex: 1;
+  min-height: 24rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--stage-bg);
+  touch-action: none;
+  user-select: none;
+}
+
+#map-stage[data-has-background='true'] {
+  cursor: grab;
+}
+
+#map-stage.panning {
+  cursor: grabbing;
+}
+
+#map-stage.dragover {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+#map-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+#map-image {
+  display: block;
+  max-width: none;
+  pointer-events: none;
+}
+
+#map-empty {
+  position: absolute;
+  inset: var(--space-3);
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px dashed var(--border);
-  border-radius: 6px;
+  text-align: center;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
   color: var(--muted);
+  pointer-events: none;
 }
 
 h2 {
@@ -106,8 +243,8 @@ h2 {
 
 #drop-zone {
   border: 2px dashed var(--border);
-  border-radius: 6px;
-  padding: 1rem;
+  border-radius: var(--radius);
+  padding: var(--space-3);
   text-align: center;
   margin-bottom: 0.5rem;
 }
@@ -142,7 +279,7 @@ h2 {
 
 #list-counts {
   display: flex;
-  gap: 1rem;
+  gap: var(--space-3);
   margin-bottom: 0.5rem;
   color: var(--muted);
 }
@@ -166,10 +303,111 @@ th.sortable {
   cursor: pointer;
 }
 
-.colour-chip.green { background: #3c9a5f; }
-.colour-chip.blue { background: #3a6ea5; }
-.colour-chip.yellow { background: #d8b13c; }
-.colour-chip.red { background: #b04545; }
+.colour-chip.green { background: var(--marker-green); }
+.colour-chip.blue { background: var(--marker-blue); }
+.colour-chip.yellow { background: var(--marker-yellow); }
+.colour-chip.red { background: var(--marker-red); }
+
+/* Markers (FR-5). The four colour classes are shared by markers on the map,
+   badges in the placement list, and the legend. */
+.marker-green { background: var(--marker-green); color: var(--marker-text); }
+.marker-blue { background: var(--marker-blue); color: var(--marker-text); }
+.marker-yellow { background: var(--marker-yellow); color: var(--marker-text-on-yellow); }
+.marker-red { background: var(--marker-red); color: var(--marker-text); }
+
+#marker-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.marker,
+.marker-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--marker-ring);
+  box-shadow: var(--shadow);
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  cursor: move;
+  touch-action: none;
+}
+
+.marker.selected {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  z-index: 2;
+}
+
+.marker.dragging {
+  z-index: 3;
+}
+
+.marker:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+#placement-area {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+#placement-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.placement-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  cursor: grab;
+}
+
+.placement-item[data-selected='true'] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.placement-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.placement-status {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.placement-item[data-placed='true'] .placement-status {
+  color: var(--accent);
+}
 
 #row-table td.num {
   font-variant-numeric: tabular-nums;
@@ -179,4 +417,92 @@ th.sortable {
 button {
   font: inherit;
   cursor: pointer;
+  color: var(--fg);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-1) var(--space-2);
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+select,
+input[type='text'] {
+  font: inherit;
+  color: var(--fg);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-1);
+}
+
+#pdf-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+#pdf-panel label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+#pdf-heading {
+  font-weight: 600;
+}
+
+/* Legend (FR-6): fixed below the map stage; it does not move with the view. */
+#map-legend {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+#legend-heading {
+  font-weight: 600;
+}
+
+#legend-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legend-entry {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.legend-swatch {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--marker-ring);
+  box-shadow: var(--shadow);
 }

@@ -11,11 +11,12 @@ function screen(): Document {
 }
 
 describe('application shell markup', () => {
-  test('the layout contains a list area and a map area (Pass 1 shell)', () => {
+  test('the layout contains a list area and a map area; the Pass 1 map placeholder is replaced by the map stage', () => {
     const doc = screen();
     expect(doc.getElementById('list-area')).not.toBeNull();
     expect(doc.getElementById('map-area')).not.toBeNull();
-    expect(doc.getElementById('map-placeholder')).not.toBeNull();
+    expect(doc.getElementById('map-placeholder')).toBeNull();
+    expect(doc.getElementById('map-stage')).not.toBeNull();
   });
 
   test('the language and theme controls exist (FR-19, FR-20)', () => {

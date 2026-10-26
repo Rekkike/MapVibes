@@ -63,6 +63,18 @@ function renderedBodyText(html: string): { scriptTextLength: number; bodyText: s
   return { scriptTextLength: close - openTagEnd, bodyText: bodyPart, unterminated: false };
 }
 
+// The text of the source index.html after its head, with tags and the
+// development script element removed: what the interface itself displays.
+function sourceInterfaceText(): string {
+  const source = readFileSync(join(process.cwd(), 'index.html'), 'utf8');
+  const body = source.slice(source.indexOf('</head>') + '</head>'.length);
+  return body
+    .replace(/<script[\s\S]*?<\/script>/g, '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 const builds: Array<[string, string]> = [
   ['folder build (index.html)', builtIndex],
   ['single-file build (mapvibes-singlefile.html)', builtSingleFile],
@@ -89,7 +101,9 @@ describe.each(builtIndex ? builds : [])('inlined build renders no script source 
     const { bodyText, unterminated } = renderedBodyText(html);
     expect(unterminated).toBe(false);
     const text = bodyText.replace(/\s+/g, ' ').trim();
-    expect(text.length).toBeLessThan(500);
+    // The rendered text is exactly the interface text of the source markup:
+    // no script source precedes, follows, or is interleaved with it.
+    expect(text).toBe(sourceInterfaceText());
     for (const marker of ['function', 'return ', '=>', 'var ', 'const ', 'document.', 'Object.defineProperty']) {
       expect(text).not.toContain(marker);
     }

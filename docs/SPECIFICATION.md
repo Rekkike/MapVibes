@@ -1,6 +1,6 @@
 # MapVibes — Functional Specification
 
-Status: v0.2.1 — defect-fix pass delivered. See the changelog below.
+Status: v0.3.0 — Map segment core pass delivered. See the changelog below.
 
 MapVibes is a static, client-side web application: a spreadsheet-to-map visualisation tool. It has no backend, no database, and no server-side processing. Everything runs locally in the browser.
 
@@ -36,6 +36,14 @@ MapVibes is a static, client-side web application: a spreadsheet-to-map visualis
 - FR-19: Provide a UI language toggle between Swedish and English, with all interface strings externalised in translation files; the choice is remembered.
 - FR-20: Provide dark, light, and follow-system theme options, defaulting to follow-system; the choice is remembered. The exported interactive map file shall respect the same theming options.
 - FR-21: All user preferences (language, theme, column mapping, view state) are stored locally on the device only (browser local storage or the state file), never transmitted.
+- FR-22: Segment structure. The application is organised into three segments with a clear flow: Information (list, cleaning, numbering), Map (background, markers, placement), and Presentation (final view and export). Work performed in one segment is never lost by moving to another segment.
+- FR-23: Saved column-mapping presets. The user can save a column mapping under a name and apply it at a later import.
+- FR-24: Manually added columns. The user can add columns by hand; such columns participate in sorting, filtering, and grouping in the same way as imported columns.
+- FR-25: Map background import from PDF documents. In addition to image files (FR-4), the background can be loaded from a PDF document: the user selects the page, and the rendered page becomes the background image on the same viewport. PDF rendering uses a fully bundled library; no CDN or network access is involved.
+- FR-26: Marker symbol library. Beyond the four colours (FR-5), a library of marker symbols is available, and the symbol is changeable per marker.
+- FR-27: Presentation mode with per-item and per-layer visibility toggles. Items and layers excluded by the user are absent from the exported presentation.
+- FR-28: At-a-glance panel. A panel beside the map shows only the items currently visible in the viewport, updating live as the viewport changes, with cross-highlighting between list entries and markers.
+- FR-29: Design quality bar. The interface maintains a consistent visual language, spacing, and theming across the light and dark modes; where practical, this is pinned by automated DOM and CSS assertions.
 
 ## Non-goals
 
@@ -44,6 +52,42 @@ MapVibes is a static, client-side web application: a spreadsheet-to-map visualis
 - No hardcoded schema: no fixed column names or formats.
 
 ## Changelog
+
+### v0.3.0
+
+Map segment core pass (Pass 2).
+
+Specification amendment (recorded before implementation; each item marked as implemented in this pass, deferred, or continuous):
+
+- FR-22 segment structure (Information, Map, Presentation; no work lost between segments): implemented in this pass for the Information and Map segments; the Presentation segment is present as a labelled placeholder only.
+- FR-23 saved column-mapping presets: deferred.
+- FR-24 manually added columns participating in sorting, filtering, and grouping: deferred.
+- FR-25 map background import from PDF documents: implemented in this pass.
+- FR-26 marker symbol library beyond the four colours, changeable per marker: deferred.
+- FR-27 presentation mode with per-item and per-layer visibility toggles: deferred.
+- FR-28 at-a-glance panel of the items visible in the viewport, with cross-highlighting: deferred.
+- FR-29 design quality bar: continuous; pinned in this pass by stylesheet assertions (every light-theme colour token redefined for the dark theme, no literal colours outside the theme token blocks, shared spacing and radius tokens, one colour token per marker colour, and a minimum 4.5:1 contrast for marker numbers and for body and muted text in both themes).
+
+Delivered units:
+
+1. Segment navigation (FR-22): a tab bar in the header switches between the Information, Map, and Presentation segments, by pointer or by the arrow keys. Segments are panels of one document, so the list, its deletions, colours, filters, the background, the view, and the markers are retained across every switch.
+2. Background and viewport (FR-4): a background image (PNG, JPEG, GIF, WebP, BMP, SVG, AVIF) is loaded by drop onto the map stage or by the file picker, read locally as a data URL, and fitted to the stage. Zoom by the mouse wheel (anchored at the cursor) and by the zoom controls (anchored at the stage centre), pan by dragging, a fit-view control (whole image, centred), and a reset control (actual size, centred). Unsupported or undecodable files are reported clearly.
+3. Markers (FR-5, FR-18): the Map segment lists every item with its number and colour; dragging an item onto the map creates its numbered, colour-coded marker (green default, blue, yellow, red, taken from the row colour set in the list) at the drop point. A marker can be selected, moved by dragging, and removed with the toolbar control or the Delete key. Marker numbers are not stored: each marker shows its row's global sequential number (FR-3), so markers renumber with the list, and deleting a row removes its marker. Each item has at most one marker; dropping a placed item again moves its marker. Positions are stored in image coordinates; markers keep a constant on-screen size at every zoom level.
+4. Legend (FR-6): a fixed legend below the map stage lists the four colours in order with their names; it does not move with the view.
+5. PDF background import (FR-25): a PDF document is loaded by the same drop or picker route. The bundled PDF.js library (pdfjs-dist 6.4.299, legacy build, pinned exactly) parses the document; for a multi-page document the user selects the page (a single-page document is used directly); the page is rendered to an image at three times its point size, bounded to 4096 pixels on the longest side, and becomes the background on the same viewport machinery. The PDF.js worker module is bundled and runs in-thread, so no worker script, font, or other resource is fetched; no URL is ever given to the library.
+
+Verification: type checking; unit tests (viewport mathematics, marker numbering, PDF page parsing and render scale with the real library against the example document); UI tests against the real application markup and module (segment navigation and retained work, background load by picker and by drop, zoom, pan, fit, reset, drag-and-drop marker creation, colour classes and numbers of markers, marker move and removal, renumbering after deletion, legend, PDF page selection); the build regression suite, now asserting that the rendered body text of both built artifacts is exactly the interface text of the source markup (confirmed to fail against the reverted v0.2.1 inliner defect); and headless-Chromium end-to-end runs of both built artifacts opened via file:// with the browser context set offline, confirming every feature of this pass and that the only request made is the local file itself.
+
+Known limitations, stated explicitly:
+
+- Marker positions persist only within the session. The state save and load file (FR-13) is a later pass, so placed markers, the background, and the view do not survive a reload yet. Importing a new spreadsheet replaces the rows and therefore removes the markers of the previous rows.
+- The legend names the four colours; the specification assigns no meaning to the colours, and no user-defined legend labels are specified, so none are invented.
+- PDF rendering: fonts that are not embedded in the document are substituted by system fonts, because the standard font data and character maps of PDF.js are not bundled; JPEG 2000 images, which need the WebAssembly decoders of PDF.js, are not bundled and may not render; XFA forms are not rendered. Rendering runs on the main thread. The bundled library raises the application bundle to approximately 2.2 MB (approximately 0.7 MB compressed).
+- The theme option labels are not yet translated by the language toggle; this is a pre-existing gap from v0.2.0 and was outside the scope of this pass.
+
+Still deferred: FR-7 to FR-17 (FR-8: zooming exists, region selection does not), FR-23, FR-24, FR-26, FR-27, FR-28, and the Presentation segment itself.
+
+Release: from this version onward, the release body includes the SHA-256 of the released mapvibes.zip archive. The release archive now also contains THIRD_PARTY_LICENSES.txt with the licence texts of the bundled libraries (PDF.js and SheetJS, both Apache-2.0), because the minified bundle does not retain their licence headers.
 
 ### v0.2.1
 

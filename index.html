@@ -9,6 +9,11 @@
   <body>
     <header id="app-header">
       <span id="app-name">MapVibes</span>
+      <nav id="segment-nav" role="tablist" aria-label="Segments">
+        <button type="button" class="segment-tab" role="tab" id="tab-information" data-segment="information" aria-controls="segment-information" aria-selected="true">Information</button>
+        <button type="button" class="segment-tab" role="tab" id="tab-map" data-segment="map" aria-controls="segment-map" aria-selected="false">Map</button>
+        <button type="button" class="segment-tab" role="tab" id="tab-presentation" data-segment="presentation" aria-controls="segment-presentation" aria-selected="false">Presentation</button>
+      </nav>
       <div class="controls">
         <label>
           <span id="label-language">Language</span>
@@ -28,6 +33,7 @@
       </div>
     </header>
     <main id="app-main">
+      <div id="segment-information" class="segment" role="tabpanel" aria-labelledby="tab-information">
       <section id="list-area" aria-labelledby="list-heading">
         <h2 id="list-heading">List</h2>
         <div id="ingest-panel">
@@ -92,10 +98,67 @@
         </div>
         <p id="no-file" class="notice">No file imported.</p>
       </section>
-      <section id="map-area" aria-labelledby="map-heading">
-        <h2 id="map-heading">Map</h2>
-        <div id="map-placeholder">Map view — a placeholder in this pass.</div>
-      </section>
+      </div>
+      <div id="segment-map" class="segment hidden" role="tabpanel" aria-labelledby="tab-map">
+        <aside id="placement-area" aria-labelledby="placement-heading">
+          <h2 id="placement-heading">Items</h2>
+          <p id="placement-hint" class="notice">Drag an item onto the map to place its marker.</p>
+          <p id="placement-empty" class="notice">No items. Import a spreadsheet in the Information segment.</p>
+          <ul id="placement-list"></ul>
+        </aside>
+        <section id="map-area" aria-labelledby="map-heading">
+          <h2 id="map-heading">Map</h2>
+          <div id="map-toolbar" role="toolbar" aria-labelledby="map-heading">
+            <button type="button" id="map-load">Load background</button>
+            <input type="file" id="map-file-input" accept="image/*,application/pdf,.pdf" hidden />
+            <span class="toolbar-separator" aria-hidden="true"></span>
+            <button type="button" id="map-zoom-out" class="icon-button" aria-label="Zoom out" title="Zoom out">−</button>
+            <span id="map-zoom-level" aria-live="polite">100%</span>
+            <button type="button" id="map-zoom-in" class="icon-button" aria-label="Zoom in" title="Zoom in">+</button>
+            <button type="button" id="map-fit">Fit view</button>
+            <button type="button" id="map-reset">Reset</button>
+            <span class="toolbar-separator" aria-hidden="true"></span>
+            <span id="marker-selection" class="notice">No marker selected</span>
+            <button type="button" id="marker-remove">Remove marker</button>
+          </div>
+          <p id="map-error" class="error hidden" role="alert"></p>
+          <div id="pdf-panel" class="hidden" role="group" aria-labelledby="pdf-heading">
+            <span id="pdf-heading">PDF document</span>
+            <label>
+              <span id="pdf-page-label">Page</span>
+              <select id="pdf-page"></select>
+            </label>
+            <span id="pdf-page-count" class="notice"></span>
+            <button type="button" id="pdf-use">Use page</button>
+            <button type="button" id="pdf-cancel">Cancel</button>
+            <span id="pdf-status" class="notice" aria-live="polite"></span>
+          </div>
+          <div id="map-stage" data-has-background="false">
+            <div id="map-content" class="hidden">
+              <img id="map-image" alt="" draggable="false" />
+            </div>
+            <div id="marker-layer"></div>
+            <div id="map-empty">
+              <span id="map-empty-hint">Drop a background image or PDF document here, or use Load background.</span>
+            </div>
+          </div>
+          <div id="map-legend" role="group" aria-labelledby="legend-heading">
+            <span id="legend-heading">Legend</span>
+            <ul id="legend-list">
+              <li class="legend-entry" data-colour="green"><span class="legend-swatch marker-green" aria-hidden="true"></span><span class="legend-label" id="legend-green">Green</span></li>
+              <li class="legend-entry" data-colour="blue"><span class="legend-swatch marker-blue" aria-hidden="true"></span><span class="legend-label" id="legend-blue">Blue</span></li>
+              <li class="legend-entry" data-colour="yellow"><span class="legend-swatch marker-yellow" aria-hidden="true"></span><span class="legend-label" id="legend-yellow">Yellow</span></li>
+              <li class="legend-entry" data-colour="red"><span class="legend-swatch marker-red" aria-hidden="true"></span><span class="legend-label" id="legend-red">Red</span></li>
+            </ul>
+          </div>
+        </section>
+      </div>
+      <div id="segment-presentation" class="segment hidden" role="tabpanel" aria-labelledby="tab-presentation">
+        <section id="presentation-area" aria-labelledby="presentation-heading">
+          <h2 id="presentation-heading">Presentation</h2>
+          <p id="presentation-placeholder" class="notice">The presentation segment is not yet available. It is planned for a later pass.</p>
+        </section>
+      </div>
     </main>
     <script type="module" src="./src/main.ts"></script>
   </body>
