@@ -13,7 +13,9 @@ import { isOsmFile, MAX_OSM_BYTES, OsmError, parseOsm, planRender, type OsmBound
 import { renderPlanToDataUrl } from './osmrender';
 import { fetchableBounds, FetchError, fetchMapData, isOnline, parseBounds, searchPlace, type BoundsField, type FetchErrorCode, type PlaceResult } from './openmap';
 import { MarkerLayer } from './markerlayer';
-import { renderLegend, shapeName } from './legend';
+import { colourName, renderLegend, shapeName } from './legend';
+import { addComment, commentsOf, formatCommentDate, removeComment, restoreComments, type CommentStore } from './comments';
+import { renderDetails, type DetailField, type DetailLabels, type DetailModel } from './details';
 import { drawSymbol, isSymbol, SYMBOLS, symbolClasses, type MarkerSymbol } from './symbols';
 import { markersInView } from './glance';
 import { DEFAULT_SHAPE, placedMarkers, placeMarker, pruneMarkers, removeMarker, type MarkerPositions, type MarkerShapes, type PlacedMarker } from './markers';
@@ -61,6 +63,12 @@ interface AppState {
   excluded: Set<RowData>;
   // The item selected on the presentation stage.
   presentationSelected: string | null;
+  // The item whose details panel is open (FR-7), if any.
+  detailsId: string | null;
+  // The comments of each item (FR-15).
+  comments: CommentStore;
+  // The imported values edited by hand (FR-10), with their imported value.
+  edited: Map<RowData, Record<string, string>>;
 }
 
 const state: AppState = {
@@ -90,6 +98,9 @@ const state: AppState = {
   dirty: false,
   excluded: new Set(),
   presentationSelected: null,
+  detailsId: null,
+  comments: new Map(),
+  edited: new Map(),
 };
 
 // Drag-and-drop data type identifying a list row dragged onto the map.
@@ -306,6 +317,8 @@ function resetList(headers: string[], rows: Record<string, string>[]): void {
   state.roles = {};
   state.manualColumns = new Map();
   state.manualRows = new Set();
+  state.comments = new Map();
+  state.edited = new Map();
   state.ingested = rows.map((values) => makeRow(values));
   state.rows = [...state.ingested];
   state.hiddenHeaders = new Set();
@@ -368,27 +381,16 @@ function renameManualColumn(key: string, label: string): void {
   renderList();
 }
 
-// A cell is edited by hand when it belongs to a manual row or a manual
-// column; imported values of imported columns are not edited here (FR-10
-// remains deferred).
-// The cells of the area column are choose-from comboboxes in every row,
-// imported rows included (FR-32 scope note): the one exception to imported
-// values being read-only.
-function isEditableCell(row: RowData, key: string): boolean {
-  return state.manualRows.has(row) || state.manualColumns.has(key) || isVocabularyColumn(key);
-}
-
-function isVocabularyColumn(key: string): boolean {
-  return key === state.roles.area || key === state.roles.status;
-}
-
+// Every value is edited by hand (FR-10), imported values included, in the
+// list and in the details panel; an edit is an unsaved change. The cells of
+// the area column are choose-from comboboxes and those of the status column
+// choose from the status list (FR-32, FR-33).
 function setCellValue(row: RowData, key: string, value: string): void {
-  if (!isEditableCell(row, key) || row.values[key] === value) return;
+  if (key === state.roles.area) value = value.trim();
+  if (row.values[key] === value) return;
+  noteEdit(row, key, value);
   // A new value typed into the area column joins the area vocabulary.
-  if (key === state.roles.area) {
-    value = value.trim();
-    state.areaValues = addValue(state.areaValues, value);
-  }
+  if (key === state.roles.area) state.areaValues = addValue(state.areaValues, value);
   row.values[key] = value;
   markDirty();
   renderList();
@@ -524,35 +526,35 @@ function renderList(): void {
 
     const numTd = document.createElement('td');
     numTd.className = 'num';
-    numTd.textContent = String(number);
+    const detailsButton = document.createElement('button');
+    detailsButton.type = 'button';
+    detailsButton.className = 'row-details';
+    detailsButton.textContent = String(number);
+    detailsButton.setAttribute('aria-label', `${t.detailsShow}: ${itemLabel(row, number)}`);
+    detailsButton.title = t.detailsShow;
+    detailsButton.addEventListener('click', () => openDetails(id, true));
+    numTd.appendChild(detailsButton);
     tr.append(selectTd, numTd);
+    if (state.detailsId === id) tr.dataset.details = 'true';
+    // A click on a line, away from its controls, selects it for the
+    // details panel (FR-16).
+    tr.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).closest('.row-select, .row-details, .colour-chip')) return;
+      if (state.detailsId !== id) openDetails(id);
+    });
+    // Moving through the cells by keyboard keeps an open panel on the line.
+    tr.addEventListener('focusin', (e) => {
+      if (state.detailsId !== null && state.detailsId !== id && (e.target as HTMLElement).classList.contains('cell-input')) openDetails(id);
+    });
 
     columns.forEach((header) => {
       const td = document.createElement('td');
       if (header === state.roles.status) {
         td.appendChild(statusCell(row, header, number));
         td.classList.add('editable');
-      } else if (isEditableCell(row, header)) {
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'cell-input';
-        input.value = row.values[header] ?? '';
-        input.dataset.header = header;
-        input.setAttribute('aria-label', `${labelOf(header)}, ${t.numberColumn} ${number}`);
-        input.addEventListener('change', () => setCellValue(row, header, input.value));
-        if (header === state.roles.area) {
-          input.setAttribute('list', 'area-values');
-          input.classList.add('combobox');
-          const value = (row.values[header] ?? '').trim();
-          if (value !== '' && !hasValue(state.areaValues, value)) {
-            input.classList.add('not-in-vocabulary');
-            input.title = t.vocabNotInList;
-          }
-        }
-        td.appendChild(input);
-        td.classList.add('editable');
       } else {
-        td.textContent = row.values[header] ?? '';
+        td.appendChild(valueInput(row, header, number));
+        td.classList.add('editable');
       }
       td.dataset.header = header;
       if (header === state.roles.name) td.classList.add('primary-label');
@@ -596,6 +598,7 @@ function renderList(): void {
   renderAreaPanel();
   renderStatusPanel();
   renderLegends();
+  renderDetailsPanel();
 }
 
 function renderFilterColumnSelect(): void {
@@ -675,6 +678,8 @@ export function captureWorkState(): WorkState {
       colour: row.colour,
       removed: !retained.has(row),
       manual: state.manualRows.has(row),
+      edited: { ...(state.edited.get(row) ?? {}) },
+      comments: commentsOf(state.comments, row).map((c) => ({ date: c.date, text: c.text })),
     })),
     background: bg ? { ...bg } : null,
     markers,
@@ -835,6 +840,9 @@ async function applyWorkState(ws: WorkState): Promise<boolean> {
   state.ingested = ws.rows.map((r) => ({ values: { ...r.values }, colour: r.colour }));
   state.rows = state.ingested.filter((_, i) => !ws.rows[i].removed);
   state.manualRows = new Set(state.ingested.filter((_, i) => ws.rows[i].manual));
+  state.edited = new Map(state.ingested.flatMap((row, i) => (Object.keys(ws.rows[i].edited).length > 0 ? [[row, { ...ws.rows[i].edited }]] : [])));
+  state.comments = new Map(state.ingested.flatMap((row, i) => (ws.rows[i].comments.length > 0 ? [[row, restoreComments(ws.rows[i].comments)]] : [])));
+  state.detailsId = null;
   state.rowIds = new Map();
   state.selected = new Set();
   state.selectedMarker = null;
@@ -891,6 +899,7 @@ export function setSegment(segment: Segment): void {
   if (segment === 'presentation') presentationView?.shown();
   // Panels depend on the stage size, which is known only while it is shown.
   renderMapItems();
+  renderDetailsPanel();
 }
 
 let mapView: MapView | null = null;
@@ -1015,6 +1024,52 @@ function renderPresets(): void {
   el('preset-status').textContent = presetMessage ? messages[presetMessage.kind].replace('{name}', presetMessage.name) : '';
 }
 
+// An imported value changed by hand keeps its imported value on record
+// (FR-10); changing it back clears the record. Values of rows or columns
+// added by hand were never imported.
+function noteEdit(row: RowData, key: string, value: string): void {
+  if (state.manualRows.has(row) || state.manualColumns.has(key)) return;
+  const record = { ...(state.edited.get(row) ?? {}) };
+  const imported = key in record ? record[key] : (row.values[key] ?? '');
+  if (value === imported) delete record[key];
+  else record[key] = imported;
+  if (Object.keys(record).length === 0) state.edited.delete(row);
+  else state.edited.set(row, record);
+}
+
+// Marks a control whose imported value was edited by hand.
+function markEdited(control: HTMLElement, row: RowData, key: string, t: Strings): void {
+  const record = state.edited.get(row);
+  if (!record || !(key in record)) return;
+  control.classList.add('edited');
+  control.dataset.edited = 'true';
+  control.title = record[key] === '' ? t.valueEditedEmpty : t.valueEdited.replace('{value}', record[key]);
+}
+
+// The editing control of one value: a text field, a combobox in the area
+// column (FR-32). The status column has its own list (statusCell).
+function valueInput(row: RowData, key: string, number: number): HTMLInputElement {
+  const t = strings(state.prefs.lang);
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'cell-input';
+  input.value = row.values[key] ?? '';
+  input.dataset.header = key;
+  input.setAttribute('aria-label', `${labelOf(key)}, ${t.numberColumn} ${number}`);
+  input.addEventListener('change', () => setCellValue(row, key, input.value));
+  if (key === state.roles.area) {
+    input.setAttribute('list', 'area-values');
+    input.classList.add('combobox');
+    const value = (row.values[key] ?? '').trim();
+    if (value !== '' && !hasValue(state.areaValues, value)) {
+      input.classList.add('not-in-vocabulary');
+      input.title = t.vocabNotInList;
+    }
+  }
+  markEdited(input, row, key, t);
+  return input;
+}
+
 // A cell of the status column (FR-33): chosen from the status list. A value
 // that is not in the list is kept and shown as such until another is chosen.
 function statusCell(row: RowData, key: string, number: number): HTMLSelectElement {
@@ -1044,6 +1099,7 @@ function statusCell(row: RowData, key: string, number: number): HTMLSelectElemen
   }
   select.value = current;
   select.addEventListener('change', () => setCellValue(row, key, select.value));
+  markEdited(select, row, key, t);
   return select;
 }
 
@@ -1253,6 +1309,186 @@ function markerLabel(marker: PlacedMarker): string {
 function selectMarker(id: string | null): void {
   state.selectedMarker = id;
   renderMapItems();
+  // Selecting a marker opens its details; the panel follows the selection.
+  if (id !== null) openDetails(id);
+}
+
+// Details panel (FR-7): the complete data of one item, open in the
+// Information and Map segments, following the selection and the live data.
+let detailsReturnFocus: HTMLElement | null = null;
+
+function openDetails(id: string | null, focus = false): void {
+  const previous = state.detailsId;
+  state.detailsId = id;
+  if (id !== null && focus) detailsReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  renderDetailsPanel();
+  document.querySelectorAll<HTMLElement>('#row-table-body tr[data-row-id]').forEach((tr) => {
+    if (tr.dataset.rowId === state.detailsId) tr.dataset.details = 'true';
+    else delete tr.dataset.details;
+  });
+  if (id !== null && focus) document.querySelector<HTMLElement>('#details-panel .details-close')?.focus();
+  if (id === null && previous !== null) {
+    const target = detailsReturnFocus;
+    detailsReturnFocus = null;
+    if (target?.isConnected) target.focus();
+  }
+}
+
+function detailLabels(t: Strings): DetailLabels {
+  return {
+    number: t.detailsNumber,
+    colour: t.colour,
+    symbol: t.detailsSymbol,
+    comments: t.detailsComments,
+    noComments: t.detailsNoComments,
+    close: t.close,
+    empty: t.detailsEmpty,
+    removeComment: t.commentRemove,
+  };
+}
+
+// Every column, hidden ones included, in the list's column order.
+function detailModel(row: RowData, t: Strings): DetailModel {
+  const number = state.rows.indexOf(row) + 1;
+  const symbol = symbolOf(row);
+  const fields: DetailField[] = listColumnOrder(state.headers, state.roles).map((key) => ({
+    key,
+    label: labelOf(key),
+    value: row.values[key] ?? '',
+    kind: key === state.roles.status ? 'status' : key === state.roles.area ? 'area' : 'text',
+  }));
+  return {
+    rowId: rowId(row),
+    number,
+    name: itemLabel(row, number),
+    colour: row.colour,
+    colourName: colourName(t, row.colour),
+    symbol,
+    symbolName: shapeName(t, symbol),
+    fields,
+    comments: commentsOf(state.comments, row).map((c) => ({ id: c.id, date: c.date, dateText: formatCommentDate(c.date), text: c.text })),
+  };
+}
+
+function renderDetailsPanel(): void {
+  const panel = el('details-panel');
+  const row = state.detailsId ? rowById(state.detailsId) : undefined;
+  if (!row) {
+    // The item was removed, or nothing is selected: the panel closes.
+    state.detailsId = null;
+    panel.classList.add('hidden');
+    panel.replaceChildren();
+    delete panel.dataset.rowId;
+    setDetailsLayout(false);
+    return;
+  }
+  const t = strings(state.prefs.lang);
+  const sameRow = panel.dataset.rowId === state.detailsId;
+  // An unsent comment survives re-rendering for the same item.
+  const draft = sameRow ? (panel.querySelector<HTMLTextAreaElement>('.details-comment-input')?.value ?? '') : '';
+  const model = detailModel(row, t);
+  // What decides the panel's controls: when only values change for the same
+  // item, the panel is updated in place, so that focus and keyboard
+  // navigation are not disturbed by an edit.
+  const structure = JSON.stringify([
+    state.prefs.lang,
+    model.fields.map((f) => [f.key, f.kind]),
+    model.comments.map((c) => c.id),
+    state.statuses,
+  ]);
+  const target = sameRow && panel.dataset.structure === structure ? document.createElement('div') : panel;
+  if (target !== panel) target.id = panel.id;
+  renderDetails(target, model, detailLabels(t), {
+    close: () => openDetails(null),
+    edit: {
+      renderField: (field) => (field.kind === 'status' ? statusCell(row, field.key, model.number) : valueInput(row, field.key, model.number)),
+      removeComment: (id) => {
+        if (!removeComment(state.comments, row, id)) return;
+        markDirty();
+        renderDetailsPanel();
+        panel.querySelector<HTMLElement>('.details-comment-input')?.focus();
+      },
+      commentForm: () => commentForm(row, t, draft),
+    },
+  });
+  if (target !== panel) patchDetails(panel, target);
+  panel.dataset.structure = structure;
+  panel.classList.toggle('hidden', state.segment === 'presentation');
+  setDetailsLayout(true);
+}
+
+// Brings an open panel up to date from a fresh rendering of the same item
+// with the same controls: the texts are replaced, and every control takes
+// the fresh value and marks, the focused one keeping its node (and so its
+// focus, selection, and place in the tab order).
+function patchDetails(panel: HTMLElement, fresh: HTMLElement): void {
+  const swap = (selector: string) => {
+    const now = panel.querySelector(selector);
+    const next = fresh.querySelector(selector);
+    if (now && next) now.replaceWith(next);
+  };
+  swap('.details-badge');
+  swap('.details-title');
+  swap('.details-facts');
+  swap('.details-comment-list');
+  const nextValues = [...fresh.querySelectorAll<HTMLElement>('.details-fields dd')];
+  panel.querySelectorAll<HTMLElement>('.details-fields dd').forEach((dd, i) => {
+    const next = nextValues[i];
+    if (!next) return;
+    const control = dd.querySelector<HTMLInputElement | HTMLSelectElement>('.cell-input');
+    const replacement = next.querySelector<HTMLInputElement | HTMLSelectElement>('.cell-input');
+    if (control && replacement && control === document.activeElement) {
+      control.className = replacement.className;
+      control.title = replacement.title;
+      if (replacement.dataset.edited) control.dataset.edited = replacement.dataset.edited;
+      else delete control.dataset.edited;
+      if (control.value !== replacement.value) control.value = replacement.value;
+    } else {
+      dd.replaceChildren(...next.childNodes);
+    }
+  });
+}
+
+// Appending a comment (FR-15): plain text; Ctrl+Enter or the button adds it.
+function commentForm(row: RowData, t: Strings, draft: string): HTMLElement {
+  const form = document.createElement('div');
+  form.className = 'details-comment-form';
+  const input = document.createElement('textarea');
+  input.className = 'details-comment-input';
+  input.rows = 3;
+  input.value = draft;
+  input.setAttribute('aria-label', t.commentNew);
+  input.placeholder = t.commentNew;
+  const add = document.createElement('button');
+  add.type = 'button';
+  add.className = 'details-comment-add';
+  add.textContent = t.commentAdd;
+  const submit = () => {
+    if (!addComment(state.comments, row, input.value)) return;
+    input.value = '';
+    markDirty();
+    renderDetailsPanel();
+    el('details-panel').querySelector<HTMLElement>('.details-comment-input')?.focus();
+  };
+  add.addEventListener('click', submit);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      submit();
+    }
+  });
+  form.append(input, add);
+  return form;
+}
+
+// While the panel is open, wide layouts make room for it beside the segment
+// instead of covering it.
+function setDetailsLayout(open: boolean): void {
+  const value = open ? 'open' : 'closed';
+  if (document.documentElement.dataset.details === value) return;
+  document.documentElement.dataset.details = value;
+  // The stages change size: the at-a-glance panels follow.
+  if (state.segment !== 'information') renderMapItems();
 }
 
 function moveMarker(id: string, position: Point): void {
@@ -1316,6 +1552,7 @@ function renderPlacementList(): void {
     });
     li.addEventListener('click', () => {
       if (state.positions.has(row)) selectMarker(id);
+      else openDetails(id);
     });
     list.appendChild(li);
   });
@@ -1376,11 +1613,6 @@ function setExcluded(row: RowData, excluded: boolean): void {
   if (excluded) state.excluded.add(row);
   else state.excluded.delete(row);
   markDirty();
-  renderMapItems();
-}
-
-function selectPresentationItem(id: string | null): void {
-  state.presentationSelected = id;
   renderMapItems();
 }
 
@@ -1487,35 +1719,76 @@ function renderGlance(prefix: 'map' | 'presentation', view: MapView | null, sele
   el(`${prefix}-glance-empty`).classList.toggle('hidden', inView.length > 0);
 }
 
-// The visibility control of a presentation marker, opened by clicking it.
-let popoverId: string | null = null;
+// The presentation data card (FR-35): a view-only floating card with the
+// same details as the details panel, opened by clicking a marker on the
+// stage. Opening and closing it change nothing in the work.
+let cardId: string | null = null;
+let cardSignature = '';
 
-function openPopover(id: string | null): void {
-  popoverId = id;
-  renderPopover();
+function openCard(id: string | null): void {
+  const previous = cardId;
+  const hadFocus = el('presentation-card').contains(document.activeElement);
+  cardId = id;
+  state.presentationSelected = id;
+  renderMapItems();
+  if (id !== null) el('presentation-card').querySelector<HTMLElement>('.details-close')?.focus({ preventScroll: true });
+  else if (previous !== null && hadFocus) {
+    // Focus returns to the marker the card belonged to.
+    document.querySelector<HTMLElement>(`#presentation-marker-layer .marker[data-row-id="${previous}"]`)?.focus({ preventScroll: true });
+  }
 }
 
-function renderPopover(): void {
-  const popover = el('presentation-popover');
-  const row = popoverId ? rowById(popoverId) : undefined;
+function closeCard(): void {
+  el('presentation-card').dataset.state = 'closed';
+  openCard(null);
+}
+
+// The gap between a marker and the card beside it, in pixels.
+const CARD_GAP = 28;
+
+function renderCard(): void {
+  const card = el('presentation-card');
+  const row = cardId ? rowById(cardId) : undefined;
   const position = row ? state.positions.get(row) : undefined;
-  if (!row || !position || !presentationView) {
-    popoverId = null;
-    popover.classList.add('hidden');
+  if (!row || !position || state.excluded.has(row) || !presentationView?.background) {
+    cardId = null;
+    // The content stays during the exit transition; it is replaced on the
+    // next opening.
+    card.dataset.state = 'closed';
+    card.setAttribute('aria-hidden', 'true');
+    card.inert = true;
+    card.setAttribute('inert', '');
     return;
   }
   const t = strings(state.prefs.lang);
-  const number = state.rows.indexOf(row) + 1;
+  const model = detailModel(row, t);
+  const signature = JSON.stringify([state.prefs.lang, model]);
+  if (signature !== cardSignature || card.dataset.rowId !== model.rowId || card.childElementCount === 0) {
+    const refocus = card.contains(document.activeElement);
+    cardSignature = signature;
+    renderDetails(card, model, detailLabels(t), { close: closeCard });
+    if (refocus) card.querySelector<HTMLElement>('.details-close')?.focus({ preventScroll: true });
+  }
+  // Beside the marker, on the side with more room, and within the stage.
+  const size = presentationView.stageSize();
   const screen = imageToScreen(presentationView.viewport, position);
-  popover.style.left = `${screen.x}px`;
-  popover.style.top = `${screen.y}px`;
-  popover.dataset.rowId = popoverId ?? '';
-  el('popover-title').textContent = `${number}. ${itemLabel(row, number)}`;
-  el('popover-visibility-label').textContent = t.visibilityShown;
-  el<HTMLInputElement>('popover-visibility').checked = !state.excluded.has(row);
-  el('popover-close').setAttribute('aria-label', t.close);
-  el('popover-close').title = t.close;
-  popover.classList.remove('hidden');
+  const side = screen.x <= size.width / 2 ? 'right' : 'left';
+  card.dataset.side = side;
+  if (side === 'right') {
+    card.style.left = `${Math.round(screen.x + CARD_GAP)}px`;
+    card.style.right = '';
+  } else {
+    card.style.right = `${Math.round(size.width - screen.x + CARD_GAP)}px`;
+    card.style.left = '';
+  }
+  const height = card.offsetHeight;
+  const margin = 16;
+  const top = Math.max(margin, Math.min(screen.y - height / 2, size.height - height - margin));
+  card.style.top = `${Math.round(top)}px`;
+  card.dataset.state = 'open';
+  card.setAttribute('aria-hidden', 'false');
+  card.inert = false;
+  card.removeAttribute('inert');
 }
 
 function renderPresentation(): void {
@@ -1525,8 +1798,8 @@ function renderPresentation(): void {
   }
   presentationLayer?.render(shown, state.presentationSelected);
   renderVisibilityList();
-  renderGlance('presentation', presentationView, state.presentationSelected, (id) => selectPresentationItem(id));
-  renderPopover();
+  renderGlance('presentation', presentationView, state.presentationSelected, (id) => openCard(id));
+  renderCard();
   const has = presentationView?.background != null;
   for (const id of ['pres-zoom-in', 'pres-zoom-out', 'pres-fit', 'pres-reset']) {
     el<HTMLButtonElement>(id).disabled = !has;
@@ -1540,7 +1813,7 @@ function initialisePresentation(): void {
     onError: () => undefined,
     onBackgroundChanged: () => renderPresentation(),
     onViewportChanged: () => renderPresentation(),
-  });
+  }, { panOverMarkers: true });
   presentationLayer = new MarkerLayer(el('presentation-marker-layer'), {
     editable: false,
     viewport: () => presentationView?.viewport ?? { scale: 1, x: 0, y: 0 },
@@ -1548,22 +1821,17 @@ function initialisePresentation(): void {
     rowId: (marker) => rowId(marker.row),
     symbolSource: (marker) => symbolSource(marker.row),
     markerLabel,
-    onSelect: (id) => {
-      selectPresentationItem(id);
-      openPopover(id);
-    },
+    onSelect: (id) => openCard(id),
     onMove: () => undefined,
     onRemove: () => undefined,
     onHover: setHover,
   });
-  el<HTMLInputElement>('popover-visibility').addEventListener('change', (e) => {
-    const row = popoverId ? rowById(popoverId) : undefined;
-    if (row) setExcluded(row, !(e.target as HTMLInputElement).checked);
-  });
-  el('popover-close').addEventListener('click', () => openPopover(null));
-  el('presentation-popover').addEventListener('pointerdown', (e) => e.stopPropagation());
-  el('presentation-popover').addEventListener('keydown', (e) => {
-    if ((e as KeyboardEvent).key === 'Escape') openPopover(null);
+  const card = el('presentation-card');
+  // The card is not part of the stage's pan and zoom.
+  card.addEventListener('pointerdown', (e) => e.stopPropagation());
+  card.addEventListener('wheel', (e) => e.stopPropagation());
+  el('presentation-stage').addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && cardId !== null) closeCard();
   });
   el('pres-zoom-in').addEventListener('click', () => presentationView?.zoomBy(BUTTON_ZOOM_FACTOR));
   el('pres-zoom-out').addEventListener('click', () => presentationView?.zoomBy(1 / BUTTON_ZOOM_FACTOR));
@@ -1572,8 +1840,7 @@ function initialisePresentation(): void {
   const stage = el('presentation-stage');
   stage.addEventListener('pointerdown', (e) => {
     if ((e.target as HTMLElement).closest('.marker')) return;
-    if (popoverId) openPopover(null);
-    if (state.presentationSelected) selectPresentationItem(null);
+    if (cardId !== null || state.presentationSelected !== null) closeCard();
   });
   // A stage, not an editor: nothing can be dropped here. Default handling is
   // prevented so that a dropped file is not opened by the browser either.
@@ -1980,6 +2247,7 @@ function initialiseMapView(): void {
     state.shapes.set(row, value);
     markDirty();
     renderMapItems();
+    renderDetailsPanel();
   });
   el('marker-remove').addEventListener('click', () => {
     if (state.selectedMarker) deleteMarker(state.selectedMarker);
@@ -2122,6 +2390,9 @@ function wireEvents(): void {
     renderList();
   });
 
+  el('details-panel').addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') openDetails(null);
+  });
   el('select-all').addEventListener('click', selectAllVisible);
   el('delete-selected').addEventListener('click', deleteSelected);
 }

@@ -1,6 +1,6 @@
 # MapVibes — Functional Specification
 
-Status: v0.7.0 — vocabularies and symbols pass delivered. See the changelog below.
+Status: v0.8.0 — information layer pass delivered (details panel, value editing, comments, presentation data card, zoom and pan parity, work-state schema version 5). See the changelog below.
 
 MapVibes is a static, client-side web application: a spreadsheet-to-map visualisation tool. It has no backend, no database, and no server-side processing. Everything runs locally in the browser.
 
@@ -21,16 +21,16 @@ MapVibes is a static, client-side web application: a spreadsheet-to-map visualis
 - FR-4: Display a zoomable, pannable background map image supplied by the user.
 - FR-5: Allow the user to place, move, and remove numbered markers, with the colours green (default), blue, yellow, and red.
 - FR-6: Display a legend at the bottom of the map view.
-- FR-7: Display a details panel for a selected marker.
+- FR-7: Display a details panel for a selected item. Selecting an item (a line in the list, its marker in the Map segment, or its entry in the at-a-glance panel) opens a details panel showing all of the item's data: number, name/title, colour, symbol, every column with its value, and its comments. The panel follows the selection and closes cleanly.
 - FR-8: The main view shows all areas; the user may zoom in or select a box/region of interest to focus on one area.
 - FR-9: Allow the user to add items manually (not originating from the spreadsheet), with the same fields, colour coding, sequential numbering, and marker placement as imported items.
-- FR-10: Allow the user to edit any item's text fields, including start date and end date.
+- FR-10: Allow the user to edit any item's values, including values that came from an import, in the list and in the details panel; edits count as unsaved changes and are stored in the work state.
 - FR-11: Export a single self-contained interactive HTML file (all data, map image, and application logic embedded in one file) that opens locally in any browser with zoom, legend, and per-marker details, requiring no server and no internet connection. This is the primary presentation format.
 - FR-12: PDF and PowerPoint export is a secondary, optional feature. If implemented: the map with legend, followed by the relevant rows as a well-formatted table, with pagination or equivalent handling for large numbers of rows.
 - FR-13: Support saving and reloading work state locally (an overlay/state file): marker positions, manually added items, field edits, comments, and the column mapping, so no work is lost between sessions.
 - FR-14: Support importing a previously exported interactive map file so existing markers can be compared with a newly imported spreadsheet; reconciliation is performed by the user, not automatically.
-- FR-15: Allow the user to attach a free-text comment to any item; comments are visible in the details view.
-- FR-16: Present the item list alongside the map; selecting a line displays all details and comments for that item below the list.
+- FR-15: Comments. Each item carries comments: entries of plain text with a date, appended in the details panel; entries can be removed; comments show in the details panel and in the presentation data card (FR-35).
+- FR-16: Present the item list alongside the map; selecting a line displays all details and comments for that item in the details panel (FR-7).
 - FR-17: Generate sequential presentation numbers in the list per FR-3, with the list grouped or groupable by area for readability.
 - FR-18: Support drag-and-drop of an item from the list onto the map to create its numbered, colour-coded marker at the drop position.
 - FR-19: Provide a UI language toggle between Swedish and English, with all interface strings externalised in translation files; the choice is remembered. On first run (no remembered choice), the interface is in Swedish.
@@ -49,7 +49,11 @@ MapVibes is a static, client-side web application: a spreadsheet-to-map visualis
 - FR-32: Area vocabulary. The area/grouping role is choose-from: each cell of the area column offers a combobox in which an existing value is picked or a new value is typed. The list of values is managed by the user in a panel (add, rename, remove), with an action that collects all values currently present in the column. The list is empty by default and persists in the work state and in presets.
 - FR-33: Status role and vocabulary. A column can be assigned the status role; its values are chosen, through a combobox in each cell, from a status list managed by the user in a panel (add, rename, remove, reorder, and assign a symbol from the symbol library to each status). The list is empty by default and persists in the work state and in presets. No status words are predefined.
 - FR-34: Status-to-symbol assignment. An explicit toggle "assign marker symbols from status", off by default. While it is off, choosing a status never changes any marker's symbol; symbols change only per marker in the Map segment. While it is on, each item whose marker has no manually chosen symbol shows the symbol of its status; a manually chosen symbol is never overridden.
-- Scope note to FR-32 and FR-33: the comboboxes apply to every row, imported rows included. This is a narrow, deliberate exception for the two role-governed vocabulary columns only; all other imported values remain read-only, and FR-10 (editing any field) remains deferred.
+- FR-35: Presentation interactivity. In the Presentation segment, markers are clickable: clicking a marker opens a view-only floating data card with the same details as the details panel (FR-7), closable without side effects. Nothing can be edited in the Presentation segment.
+- FR-36: Zoom and pan parity. The Presentation segment's viewport matches the Map segment's exactly: wheel zoom at the cursor, control zoom, drag pan, fit view, and touch pinch; viewport motion is smooth.
+- FR-37: Presentation design bar. The Presentation segment holds up when projected: typography sized for distance, at least 4.5:1 text contrast over any background, smooth viewport motion, and a subtle entrance and exit for the data card; pinned by DOM and CSS assertions where practicable.
+- Scope note to FR-32 and FR-33: the comboboxes apply to every row, imported rows included. (Since v0.8.0, FR-10 makes every value editable; the area and status columns keep their combobox cells.)
+- Scope note to FR-35: "nothing can be edited" applies to the item data (values, comments, colours, symbols, and marker positions). The per-item visibility toggles of FR-27 configure the presentation itself and remain in the Presentation segment's visibility list; the marker visibility control that clicking a presentation marker opened up to v0.7.0 is replaced by the data card.
 
 ## Non-goals
 
@@ -58,6 +62,40 @@ MapVibes is a static, client-side web application: a spreadsheet-to-map visualis
 - No hardcoded schema: no fixed column names or formats.
 
 ## Changelog
+
+### v0.8.0
+
+Information layer pass (Pass 7).
+
+Specification amendments (recorded before implementation, in a separate commit; all implemented in this pass). The directive described its items by content rather than by the specification's numbering; on the owner's decision they were mapped by content onto the requirements that already covered them, and new numbers were given only to what had none:
+
+- FR-7 (amended): details panel for a selected item, opened from a list line, a marker in the Map segment, or an at-a-glance entry, with all of the item's data (number, name/title, colour, symbol, every column with its value, comments); it follows the selection and closes cleanly. Implemented.
+- FR-10 (amended; previously deferred): every value is editable, imported values included, in the list and in the details panel; edits are unsaved changes and are stored in the work state. Implemented.
+- FR-15 (amended; previously deferred): comments are entries of plain text with a date, appended and removed in the details panel, and shown in the panel and on the presentation data card. Implemented.
+- FR-16 (amended): selecting a line shows the item in the details panel. Implemented.
+- FR-35 (new): presentation interactivity: clicking a marker in the Presentation segment opens a view-only floating data card, closable without side effects; nothing is editable in the Presentation segment. Implemented, with the scope note to FR-35.
+- FR-36 (new): zoom and pan parity of the Presentation stage with the Map stage, including touch pinch, with smooth motion. Implemented.
+- FR-37 (new): presentation design bar: projection typography, at least 4.5:1 text contrast over any background, smooth viewport motion, and a subtle entrance and exit for the card. Implemented.
+
+Delivered units:
+
+1. Details panel (FR-7, FR-16): a drawer at the side of the Information and Map segments (on wide screens the segment makes room for it; on narrow ones it lies over the segment). It opens from the number button of a list line or a click on the line, from a marker or a placement-list item in the Map segment, and from an at-a-glance entry; while open, it follows the selection, and moving through the cells of another line by keyboard moves it to that line. It shows the item's number badge and name, its number, colour, and symbol, every column (hidden ones included) in the list's column order, and its comments. It follows the live data (edits, colour, symbol, renumbering, language) and closes on its close button or Escape, returning focus to the button that opened it, and by itself when the item is removed. It is hidden in the Presentation segment and reappears on leaving it.
+2. Value editing (FR-10): every cell of the list is a text field, imported values included; the area column keeps its combobox and the status column its list. Every field of the details panel is editable in the same way; an edit in either place appears in the other at once. An edit is an unsaved change (an unchanged value is not). When the panel shows the edited item, it is updated in place, so the edited field keeps its focus and Tab moves on from it. An imported value changed by hand is marked, with its imported value in the field's title; changing it back clears the mark. Values of rows and columns added by hand were never imported and are not marked.
+3. Comments (FR-15): the panel lists the item's comments, oldest first, each with its date and time (year-month-day and hours:minutes, local time, the same in both languages) and its text with line breaks kept; a field and "Add comment" (or Ctrl+Enter) append one; each entry has a remove button labelled with its date. An empty comment is not added; an unsent comment survives other edits in the panel. Adding and removing are unsaved changes. Comments belong to the item and follow it through sorting, filtering, and renumbering; a removed row keeps its comments in the work state.
+4. Presentation data card (FR-35, FR-37): clicking (tapping) a marker on the presentation stage, or an entry of its at-a-glance panel, opens a floating card beside the marker, on the side with more room, kept within the stage and following the view. It shows the same details as the panel, read-only (empty values read "No value"), with the comments. It closes on its close button, Escape, or a click on the empty stage, returning focus to the marker; opening and closing it change nothing in the work (pinned by comparing the captured work state and the unsaved-changes flag before and after). Clicks and the wheel inside the card neither close it nor move the view. The card is opaque, in the theme's panel colour, so that its text keeps its contrast over any background; it is sized for projection (title 1.75 rem, values 1.25 rem, labels and dates 1 rem), and the Presentation segment's text is larger than in the editing segments. It enters and leaves with a 160 ms fade and lift, and is hidden only once the exit has played.
+5. Zoom and pan parity (FR-36): the audit found that both stages already share one view implementation (wheel zoom at the cursor, control zoom, drag pan, fit view, reset), so parity held for those gestures, and that touch pinch was missing on both. Pinch was added to the shared view: two fingers zoom by the change in their distance about their midpoint and pan with it; lifting one finger continues as a pan. On the presentation stage a press on a marker may also pan or pinch, and only a tap (a press and release within 6 pixels, without a second finger) selects the marker and opens its card; in the Map segment a press on a marker still drags the marker. Zooming by control or wheel, fitting, and resetting ease the background and the markers together into place (240 ms); dragging and pinching follow the pointer directly; loading a background fits it without motion; all motion is switched off when the user asks for reduced motion. A parity test plays each gesture on both stages from the same view and requires identical results, in both themes.
+6. Work-state schema version 5 (FR-13): adds, per row, the imported values edited by hand (each with the value as imported, so that edits remain traceable; the current values stay in the row's values) and the comments (each with an ISO 8601 timestamp and its text). Files of schema versions 1, 2, 3, and 4 still open, migrated on reading with no edits and no comments; the migration of version 4 is verified against a file written by v0.7.0 (example-data/example-work-state-v4.json). A damaged edit or comment is reported in the interface language; any other version is rejected with a clear message.
+7. Tests and delivery: unit tests for comment storage (append, remove, ownership, restoring, date validation and display), the pinch arithmetic, and the schema version 5 format, its validation, and the migration of versions 1 to 4; UI tests for the details panel, value editing, comments, the presentation data card (in both themes), zoom and pan parity in both themes, smooth motion, and saving and opening version 5 and version 4 files; stylesheet assertions for the panel's typographic hierarchy, the card's opacity, contrast, and projection sizes, the card's entrance and exit, the eased view changes, and reduced motion; and the build regression suite.
+
+Verification: type checking; the unit, UI, and build regression suites in chunked invocations; and headless-Chromium runs of both built artifacts via file:// with the browser context offline, covering the panel from the list and from markers, editing in the panel and the list with Tab moving on from an edited field, comments, the eased zoom, the card in both themes over a light, a dark, and the example background (its background opaque, its smallest text contrast 6.15:1 in the light theme and 6.34:1 in the dark theme, its title 28 px and values 20 px, its exit played on Escape), touch pinch dispatched as real touch events on both stages (the same zoom factor on both), saving a version 5 file and reopening it in a fresh page, and opening the version 4 file written by v0.7.0. The only request made was the local file itself. The browser runs found two defects that the jsdom tests had not shown, both fixed in this pass: re-rendering the panel after an edit lost the focus when Tab moved on, and on the presentation stage a finger on a marker prevented a pinch.
+
+Notices:
+
+- The details panel and the presentation card show the item number; grouped numbering by area is not part of this pass.
+- An edited value is marked in the list and the panel only; the presentation card shows the current value without a mark.
+- A comment cannot be edited after it is added; it can be removed and added again.
+- Markers on the presentation stage are selected on release (a tap) rather than on press, so that a press on a marker can start a pan or a pinch.
+- Touch pinch was verified with emulated touch input in headless Chromium; it was not verified on a physical touch device.
 
 ### v0.7.0
 

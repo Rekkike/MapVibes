@@ -46,8 +46,8 @@ describe('area vocabulary (FR-32)', () => {
     expect(areaCells()).toHaveLength(5);
     expect(areaCells().every((c) => c.getAttribute('list') === 'area-values' && c.classList.contains('combobox'))).toBe(true);
     expect(areaCells().map((c) => c.value)).toEqual(['North', 'North', 'South', '', '']);
-    // Other imported columns stay read-only.
-    expect(document.querySelector('#row-table-body .cell-input[data-header="ID"]')).toBeNull();
+    // Other columns are plain text fields (FR-10).
+    expect(document.querySelector('#row-table-body .cell-input[data-header="ID"]')!.hasAttribute('list')).toBe(false);
   });
 
   test('collecting from the column fills the list with the values present', () => {

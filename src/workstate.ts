@@ -1,8 +1,8 @@
 // Work-state file (FR-13). The complete work state is written to, and read
 // from, a single local JSON file on explicit Save and Open only. The file
-// carries a schema version. Version 4 is written; version 1 files (v0.4.0),
-// version 2 files (v0.5.x), and version 3 files (v0.6.0) are read and
-// migrated; a file with any other version is rejected.
+// carries a schema version. Version 5 is written; version 1 files (v0.4.0),
+// version 2 files (v0.5.x), version 3 files (v0.6.0), and version 4 files
+// (v0.7.0) are read and migrated; a file with any other version is rejected.
 //
 // Schema version 2 adds to version 1: role assignments by column key
 // (replacing the version 1 column mapping, as all columns are now kept), the
@@ -20,6 +20,14 @@
 // when no symbol was chosen manually for it. Versions 2 and 3 stored a shape
 // for every marker: on migration the default shape (circle) counts as no
 // manual choice and any other shape as a manual choice.
+//
+// Schema version 5 adds to version 4, per row, the values edited by hand
+// (FR-10) and the comments (FR-15). The current values stay in the row's
+// values; "edited" maps each imported value changed by hand to the value it
+// had when imported, so that edits remain traceable. Rows added by hand and
+// columns added by hand have no imported values, so they have no edits.
+// Comments are entries of plain text with an ISO 8601 timestamp. Files of
+// versions 1 to 4 have no edits and no comments.
 
 import { COLOURS, type RowColour, type SortDirection, type ValueFilter } from './dataset';
 import { isRole, ROLES, type Role, type RoleAssignments } from './roles';
@@ -28,13 +36,14 @@ import { isSymbol, SYMBOLS, type MarkerSymbol } from './symbols';
 import { parseStatuses, parseValueList, type StatusEntry } from './vocab';
 import { isManualKey } from './manual';
 import { clonePreset, parsePresets, type ColumnPreset } from './presets';
+import { isCommentDate } from './comments';
 import type { Background } from './mapview';
 import { SEGMENTS, type Segment } from './segments';
 import type { Point, Viewport } from './viewport';
 
 export const WORK_STATE_FORMAT = 'mapvibes-work-state';
-export const WORK_STATE_SCHEMA_VERSION = 4;
-export const READABLE_SCHEMA_VERSIONS = [1, 2, 3, 4];
+export const WORK_STATE_SCHEMA_VERSION = 5;
+export const READABLE_SCHEMA_VERSIONS = [1, 2, 3, 4, 5];
 export const SUGGESTED_FILE_NAME = 'mapvibes-work-state.json';
 
 export interface WorkStateRow {
@@ -43,6 +52,16 @@ export interface WorkStateRow {
   removed: boolean;
   // Added by hand (FR-9) rather than imported.
   manual: boolean;
+  // The imported values changed by hand (FR-10): column key to the value as
+  // imported.
+  edited: Record<string, string>;
+  // The item's comments (FR-15), oldest first.
+  comments: StoredComment[];
+}
+
+export interface StoredComment {
+  date: string;
+  text: string;
 }
 
 export interface ManualColumn {
@@ -108,6 +127,8 @@ export const PROBLEM_KINDS = [
   'duplicateEntry',
   'invalidPresets',
   'invalidVocabulary',
+  'invalidEdit',
+  'invalidComment',
 ] as const;
 
 export type ProblemKind = (typeof PROBLEM_KINDS)[number];
@@ -156,6 +177,8 @@ export function serialiseWorkState(state: WorkState, savedAt: Date): string {
       status: r.removed ? 'removed' : 'retained',
       origin: r.manual ? 'manual' : 'imported',
       number: numbers[i],
+      edited: { ...r.edited },
+      comments: r.comments.map((c) => ({ date: c.date, text: c.text })),
     })),
     background: state.background
       ? { dataUrl: state.background.src, width: state.background.width, height: state.background.height }
@@ -228,7 +251,7 @@ export function parseWorkState(text: string): WorkState {
   }
   const file = raw as Json;
   const version = file.schemaVersion;
-  if (version !== 1 && version !== 2 && version !== 3 && version !== 4) {
+  if (typeof version !== 'number' || !READABLE_SCHEMA_VERSIONS.includes(version)) {
     throw new WorkStateError('unknown-version', String(version));
   }
 
@@ -251,12 +274,18 @@ export function parseWorkState(text: string): WorkState {
       if (!headers.includes(k)) invalid('notAColumn', `rows[${i}].values`);
       values[k] = str(v, `rows[${i}].values`);
     }
+    // Versions 1 and 2 have no manual rows.
+    const manual = version >= 3 && oneOf(o.origin, ['imported', 'manual'] as const, `rows[${i}].origin`) === 'manual';
+    // Versions 1 to 4 have no edits and no comments.
+    const edited = version >= 5 ? parseEdited(o.edited, `rows[${i}].edited`, headers, manual) : {};
+    const comments = version >= 5 ? parseComments(o.comments, `rows[${i}].comments`) : [];
     return {
       values,
       colour: oneOf(o.colour, COLOURS, `rows[${i}].colour`),
       removed: oneOf(o.status, ['retained', 'removed'] as const, `rows[${i}].status`) === 'removed',
-      // Versions 1 and 2 have no manual rows.
-      manual: version >= 3 && oneOf(o.origin, ['imported', 'manual'] as const, `rows[${i}].origin`) === 'manual',
+      manual,
+      edited,
+      comments,
     };
   });
   const expected = rowNumbers(rows);
@@ -286,7 +315,7 @@ export function parseWorkState(text: string): WorkState {
     if (placed.has(row)) invalid('duplicateMarker', `markers[${i}]`);
     placed.add(row);
     let symbol: MarkerSymbol | null = null;
-    if (version === 4) {
+    if (version >= 4) {
       symbol = o.symbol === null ? null : oneOf(o.symbol, SYMBOLS, `markers[${i}].symbol`);
     } else if (version >= 2) {
       // Versions 2 and 3: shapes only; the default shape counts as no choice.
@@ -330,7 +359,7 @@ export function parseWorkState(text: string): WorkState {
   let areaValues: string[] = [];
   let statuses: StatusEntry[] = [];
   let symbolsFromStatus = false;
-  if (version === 4) {
+  if (version >= 4) {
     const vocab = obj(file.vocabularies, 'vocabularies');
     const areas = parseValueList(vocab.areas);
     if (areas === null) invalid('invalidVocabulary', 'vocabularies.areas');
@@ -420,4 +449,27 @@ function parseManualColumns(columns: Json, headers: string[]): ManualColumn[] {
     out.push({ key, label });
   }
   return out;
+}
+
+// Version 5: the imported values edited by hand. Only imported columns of
+// imported rows have imported values.
+function parseEdited(value: unknown, where: string, headers: string[], manualRow: boolean): Record<string, string> {
+  const o = obj(value, where);
+  const out: Record<string, string> = {};
+  for (const [key, original] of Object.entries(o)) {
+    if (!headers.includes(key)) invalid('notAColumn', where);
+    if (manualRow || isManualKey(key)) invalid('invalidEdit', `${where}.${key}`);
+    out[key] = str(original, `${where}.${key}`);
+  }
+  return out;
+}
+
+// Version 5: the comments of a row, each with a timestamp and some text.
+function parseComments(value: unknown, where: string): StoredComment[] {
+  return arr(value, where).map((c, i) => {
+    const o = obj(c, `${where}[${i}]`);
+    const text = str(o.text, `${where}[${i}].text`);
+    if (!isCommentDate(o.date) || text.trim() === '') invalid('invalidComment', `${where}[${i}]`);
+    return { date: o.date, text };
+  });
 }

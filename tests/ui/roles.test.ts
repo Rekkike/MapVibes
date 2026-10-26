@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'vitest';
-import { byId, dragItemToStage, importExampleWorkbook, loadExampleBackground, markers, mountApp, placementItems, setRole, STAGE } from './harness';
+import { byId, cellValue, dragItemToStage, importExampleWorkbook, loadExampleBackground, markers, mountApp, placementItems, setRole, STAGE } from './harness';
 
 function headingOrder(): string[] {
   return [...document.querySelectorAll<HTMLElement>('#row-table-head th[data-header]')].map((th) => th.dataset.header ?? '');
@@ -61,7 +61,7 @@ describe('in-list role assignment (FR-1)', () => {
     expect(headingOrder()).toEqual(['Note', 'ID', 'Start', 'End', 'Group']);
     const firstRow = document.querySelectorAll('#row-table-body tr')[0];
     const cells = [...firstRow.querySelectorAll('td')];
-    expect(cells[2].textContent).toBe('Alpha item');
+    expect(cellValue(cells[2])).toBe('Alpha item');
     expect(cells[2].classList.contains('primary-label')).toBe(true);
     // Row 2 has an empty Note: the identifier applies.
     expect(placementLabels()).toEqual(['Alpha item', 'A-02', 'Beta item', 'Gamma item', 'Delta item']);

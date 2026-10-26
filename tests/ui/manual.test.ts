@@ -110,8 +110,6 @@ describe('manual list (FR-9, FR-24, FR-30)', () => {
     addColumn('Rank');
     expect(column('Rank')).toEqual(['', '', '', '', '']);
     ['3', '1', '', '2', '1'].forEach((v, i) => editCell(i, 'Rank', v));
-    // Imported values of imported columns stay read-only.
-    expect(document.querySelector('#row-table-body td[data-header="ID"] .cell-input')).toBeNull();
     // Sorting.
     document.querySelector<HTMLButtonElement>(`th[data-header="${esc(columnKeyOf('Rank'))}"] .sort-button`)!.click();
     expect(column('Rank')).toEqual(['', '1', '1', '2', '3']);

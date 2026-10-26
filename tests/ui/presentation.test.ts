@@ -47,11 +47,18 @@ describe('presentation mode (FR-27)', () => {
 
   test('the stage is not an editor: markers cannot be moved, removed, or placed there', () => {
     const marker = presentationMarkers()[0];
+    const mapPositions = markers().map((m) => [m.style.left, m.style.top]);
+    // Dragging from a marker pans the whole view (FR-36): the marker keeps its
+    // place on the map and moves only with the view.
     pointer('pointerdown', marker, STAGE.left + 100, STAGE.top + 100);
     pointer('pointermove', marker, STAGE.left + 300, STAGE.top + 300);
     pointer('pointerup', marker, STAGE.left + 300, STAGE.top + 300);
     marker.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true }));
+    expect(presentationMarkers()[0].style.left).toBe('300px');
+    expect(presentationMarkers()[1].style.left).toBe('600px');
+    byId('pres-fit').click();
     expect(presentationMarkers()[0].style.left).toBe('100px');
+    expect(markers().map((m) => [m.style.left, m.style.top])).toEqual(mapPositions);
     expect(presentationMarkers()).toHaveLength(3);
     expect(markers()).toHaveLength(3);
     // A row dropped onto the presentation stage creates nothing.
@@ -66,8 +73,26 @@ describe('presentation mode (FR-27)', () => {
   test('clicking a marker selects it without panning the stage', () => {
     const before = byId('presentation-content').style.transform;
     pointer('pointerdown', presentationMarkers()[1], STAGE.left + 400, STAGE.top + 300);
+    pointer('pointerup', presentationMarkers()[1], STAGE.left + 400, STAGE.top + 300);
     expect(presentationMarkers()[1].classList.contains('selected')).toBe(true);
     expect(byId('presentation-content').style.transform).toBe(before);
+  });
+
+  test('a press on a marker that moves pans the stage and selects nothing (FR-36)', () => {
+    const before = byId('presentation-content').style.transform;
+    pointer('pointerdown', presentationMarkers()[1], STAGE.left + 400, STAGE.top + 300);
+    pointer('pointermove', byId('presentation-stage'), STAGE.left + 440, STAGE.top + 320);
+    pointer('pointerup', byId('presentation-stage'), STAGE.left + 440, STAGE.top + 320);
+    expect(presentationMarkers().some((m) => m.classList.contains('selected'))).toBe(false);
+    expect(byId('presentation-content').style.transform).not.toBe(before);
+    expect(byId('presentation-card').dataset.state).toBe('closed');
+  });
+
+  test('a small tremor during a tap still selects', () => {
+    pointer('pointerdown', presentationMarkers()[0], STAGE.left + 100, STAGE.top + 100);
+    pointer('pointermove', presentationMarkers()[0], STAGE.left + 103, STAGE.top + 102);
+    pointer('pointerup', presentationMarkers()[0], STAGE.left + 103, STAGE.top + 102);
+    expect(byId('presentation-card').dataset.state).toBe('open');
   });
 
   test('the visibility list offers a toggle per placed item, all shown by default', () => {

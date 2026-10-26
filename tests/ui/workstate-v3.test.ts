@@ -52,7 +52,7 @@ describe('work-state schema version 3 (FR-13, FR-9, FR-24)', () => {
     editCell(1, 'Zone', 'West');
     const text = await save();
     const file = JSON.parse(text);
-    expect(file.schemaVersion).toBe(4);
+    expect(file.schemaVersion).toBe(5);
     expect(file.columns.manual.map((c: { label: string }) => c.label)).toEqual(['Label', 'Zone']);
     expect(file.rows.map((r: { origin: string }) => r.origin)).toEqual(['manual', 'manual']);
 
@@ -71,7 +71,7 @@ describe('work-state schema version 3 (FR-13, FR-9, FR-24)', () => {
     expect(document.querySelectorAll('#row-table-body td.num')[2].textContent).toBe('3');
   });
 
-  test('manual additions to an imported list keep their origin; imported cells stay read-only after opening', async () => {
+  test('manual additions to an imported list keep their origin after opening', async () => {
     await importExampleWorkbook();
     addColumn('Rank');
     editCell(0, 'Rank', '7');
@@ -83,7 +83,6 @@ describe('work-state schema version 3 (FR-13, FR-9, FR-24)', () => {
     await flush();
     const rank = columnKeyOf('Rank');
     expect(document.querySelector<HTMLInputElement>(`#row-table-body tr .cell-input[data-header="${rank}"]`)!.value).toBe('7');
-    expect(document.querySelectorAll('#row-table-body tr')[0].querySelector('td[data-header="ID"] .cell-input')).toBeNull();
     expect(document.querySelectorAll('#row-table-body tr')[5].getAttribute('data-manual')).toBe('true');
     expect(document.querySelectorAll('#row-table-body tr')[5].querySelector<HTMLInputElement>('td[data-header="ID"] .cell-input')!.value).toBe('M-01');
   });
@@ -103,9 +102,9 @@ describe('work-state schema version 3 (FR-13, FR-9, FR-24)', () => {
       ['4', 'circle', false],
       ['5', 'circle', false],
     ]);
-    // Only the area column (FR-32) is choose-from; other imported values stay read-only.
-    expect(document.querySelectorAll('.cell-input')).toHaveLength(5);
-    expect(document.querySelectorAll('.cell-input:not([data-header="Group"])')).toHaveLength(0);
-    expect(JSON.parse(await save()).schemaVersion).toBe(4);
+    // Only the area column (FR-32) is choose-from; every value is editable (FR-10).
+    expect(document.querySelectorAll('#row-table-body .cell-input.combobox')).toHaveLength(5);
+    expect(document.querySelectorAll('#row-table-body .cell-input.combobox:not([data-header="Group"])')).toHaveLength(0);
+    expect(JSON.parse(await save()).schemaVersion).toBe(5);
   });
 });

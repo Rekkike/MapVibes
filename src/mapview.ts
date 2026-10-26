@@ -1,11 +1,14 @@
-// Map view (FR-4): background image, zoom by wheel and controls, pan by
-// dragging, fit-view and reset. Viewport arithmetic lives in viewport.ts.
+// Map view (FR-4, FR-36): background image, zoom by wheel, controls, and
+// touch pinch, pan by dragging, fit-view and reset. The Map and the
+// Presentation stages are both map views, so their zoom and pan are the same.
+// Viewport arithmetic lives in viewport.ts.
 
 import {
   BUTTON_ZOOM_FACTOR,
   fitView,
   IDENTITY,
   panBy,
+  pinchStep,
   resetView,
   wheelZoomFactor,
   zoomAt,
@@ -21,6 +24,10 @@ export function isImageFile(file: File): boolean {
   const ext = file.name.toLowerCase().split('.').pop() ?? '';
   return IMAGE_EXTENSIONS.includes(ext);
 }
+
+// How long the stage keeps its easing class after a zoom by wheel or
+// control, a fit, or a reset; slightly longer than the CSS transition.
+export const EASE_MS = 300;
 
 export interface Background {
   src: string;
@@ -48,12 +55,19 @@ export class MapView {
   background: Background | null = null;
   private pendingFit = false;
   private pan: { pointerId: number; last: Point } | null = null;
+  // The pointers down on the stage (client coordinates), and the two that
+  // make a pinch while it lasts.
+  private pointers = new Map<number, Point>();
+  private pinch: [number, number] | null = null;
+  private easeTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private readonly stage: HTMLElement,
     private readonly content: HTMLElement,
     private readonly image: HTMLImageElement,
     private readonly hooks: MapViewHooks,
+    // On a view-only stage, a press on a marker may pan and pinch too.
+    private readonly options: { panOverMarkers?: boolean } = {},
   ) {
     this.wire();
     this.render();
@@ -104,7 +118,7 @@ export class MapView {
             this.setViewport({ ...restoreViewport });
           } else {
             this.pendingFit = true;
-            this.fit();
+            this.fit(false);
           }
           this.hooks.onBackgroundChanged();
         } else {
@@ -142,10 +156,11 @@ export class MapView {
   zoomBy(factor: number, anchor?: Point): void {
     if (!this.background) return;
     const size = this.stageSize();
+    this.ease();
     this.setViewport(zoomAt(this.viewport, factor, anchor ?? { x: size.width / 2, y: size.height / 2 }));
   }
 
-  fit(): void {
+  fit(animate = true): void {
     if (!this.background) return;
     const size = this.stageSize();
     if (size.width <= 0 || size.height <= 0) {
@@ -153,18 +168,35 @@ export class MapView {
       return;
     }
     this.pendingFit = false;
+    if (animate) this.ease();
     this.setViewport(fitView(this.background, size));
   }
 
   reset(): void {
     if (!this.background) return;
+    this.ease();
     this.setViewport(resetView(this.background, this.stageSize()));
+  }
+
+  // Smooth motion (FR-36): the stylesheet eases the background and the
+  // markers into place while the class is set.
+  private ease(): void {
+    this.stage.classList.add('easing');
+    if (this.easeTimer !== null) clearTimeout(this.easeTimer);
+    this.easeTimer = setTimeout(() => this.stopEasing(), EASE_MS);
+  }
+
+  // Dragging and pinching follow the pointer directly.
+  private stopEasing(): void {
+    if (this.easeTimer !== null) clearTimeout(this.easeTimer);
+    this.easeTimer = null;
+    this.stage.classList.remove('easing');
   }
 
   // Called when the map segment becomes visible: a background loaded while
   // the stage had no layout size is fitted now.
   shown(): void {
-    if (this.pendingFit) this.fit();
+    if (this.pendingFit) this.fit(false);
     else this.render();
   }
 
@@ -192,17 +224,47 @@ export class MapView {
       { passive: false },
     );
     this.stage.addEventListener('pointerdown', (e) => {
+      this.stopEasing();
       if (!this.background || e.button !== 0) return;
-      if ((e.target as HTMLElement).closest('.marker, .map-overlay-control')) return;
-      this.pan = { pointerId: e.pointerId, last: { x: e.clientX, y: e.clientY } };
-      this.stage.classList.add('panning');
-      try {
-        this.stage.setPointerCapture?.(e.pointerId);
-      } catch {
-        // Pointer capture is an enhancement only.
+      if ((e.target as HTMLElement).closest('.map-overlay-control')) return;
+      const onMarker = (e.target as HTMLElement).closest('.marker') !== null;
+      if (onMarker && !this.options.panOverMarkers) return;
+      this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      // A press on a marker is not captured, so that its release still
+      // reaches the marker when it is a tap.
+      if (!onMarker) {
+        try {
+          this.stage.setPointerCapture?.(e.pointerId);
+        } catch {
+          // Pointer capture is an enhancement only.
+        }
+      }
+      if (this.pointers.size >= 2 && this.pinch === null) {
+        // A second finger turns the pan into a pinch.
+        const [a, b] = [...this.pointers.keys()];
+        this.pinch = [a, b];
+        this.pan = null;
+        this.stage.classList.remove('panning');
+        this.stage.classList.add('pinching');
+        return;
+      }
+      if (this.pinch === null) {
+        this.pan = { pointerId: e.pointerId, last: { x: e.clientX, y: e.clientY } };
+        this.stage.classList.add('panning');
       }
     });
     this.stage.addEventListener('pointermove', (e) => {
+      const previous = this.pointers.get(e.pointerId);
+      if (previous) this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (this.pinch && previous && this.pinch.includes(e.pointerId)) {
+        const [a, b] = this.pinch;
+        const other = this.pointers.get(e.pointerId === a ? b : a)!;
+        const stage = (p: Point) => this.stagePoint(p.x, p.y);
+        const from: [Point, Point] = [stage(previous), stage(other)];
+        const to: [Point, Point] = [stage({ x: e.clientX, y: e.clientY }), stage(other)];
+        this.setViewport(pinchStep(this.viewport, from, to));
+        return;
+      }
       if (!this.pan || e.pointerId !== this.pan.pointerId) return;
       const dx = e.clientX - this.pan.last.x;
       const dy = e.clientY - this.pan.last.y;
@@ -210,6 +272,18 @@ export class MapView {
       if (dx !== 0 || dy !== 0) this.setViewport(panBy(this.viewport, dx, dy));
     });
     const endPan = (e: PointerEvent) => {
+      this.pointers.delete(e.pointerId);
+      if (this.pinch?.includes(e.pointerId)) {
+        this.pinch = null;
+        this.stage.classList.remove('pinching');
+        // The finger that stays down goes on panning.
+        const [rest] = [...this.pointers.entries()];
+        if (rest) {
+          this.pan = { pointerId: rest[0], last: { ...rest[1] } };
+          this.stage.classList.add('panning');
+          return;
+        }
+      }
       if (!this.pan || e.pointerId !== this.pan.pointerId) return;
       this.pan = null;
       this.stage.classList.remove('panning');

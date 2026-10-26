@@ -23,8 +23,16 @@ export interface MarkerLayerHooks {
   onRemove(rowId: string): void;
 }
 
+// How far, in pixels, a tap may move and still select its marker.
+const TAP_SLOP = 6;
+
 export class MarkerLayer {
   private drag: { pointerId: number; rowId: string; offset: Point } | null = null;
+  // On the presentation stage, a marker is selected by a tap: a press and
+  // release without movement and without a second finger. A press on a
+  // marker that moves pans the stage, and a second finger makes a pinch
+  // (FR-36), as anywhere else on the stage.
+  private tap: { pointerId: number; rowId: string; x: number; y: number } | null = null;
 
   constructor(
     private readonly layer: HTMLElement,
@@ -79,13 +87,14 @@ export class MarkerLayer {
     this.layer.addEventListener('pointerdown', (e) => {
       const node = (e.target as HTMLElement).closest<HTMLElement>('.marker');
       if (!node || e.button !== 0) return;
-      e.preventDefault();
-      e.stopPropagation();
       const id = node.dataset.rowId ?? '';
       if (!this.hooks.editable) {
-        this.hooks.onSelect(id);
+        // The press goes on to the stage, which may pan or pinch.
+        this.tap = this.tap ? null : { pointerId: e.pointerId, rowId: id, x: e.clientX, y: e.clientY };
         return;
       }
+      e.preventDefault();
+      e.stopPropagation();
       const pointer = this.hooks.stagePoint(e.clientX, e.clientY);
       const centre = { x: parseFloat(node.style.left) || 0, y: parseFloat(node.style.top) || 0 };
       this.drag = { pointerId: e.pointerId, rowId: id, offset: { x: pointer.x - centre.x, y: pointer.y - centre.y } };
@@ -120,6 +129,7 @@ export class MarkerLayer {
     });
     this.layer.addEventListener('pointerup', end);
     this.layer.addEventListener('pointercancel', end);
+    if (!this.hooks.editable) this.wireTap();
     this.layer.addEventListener('keydown', (e) => {
       const node = (e.target as HTMLElement).closest<HTMLElement>('.marker');
       if (!node) return;
@@ -132,5 +142,27 @@ export class MarkerLayer {
         this.hooks.onSelect(id);
       }
     });
+  }
+
+  private wireTap(): void {
+    const stage = this.layer.parentElement;
+    if (!stage) return;
+    stage.addEventListener(
+      'pointerdown',
+      (e) => {
+        if (this.tap && e.pointerId !== this.tap.pointerId) this.tap = null;
+      },
+      true,
+    );
+    stage.addEventListener('pointermove', (e) => {
+      if (this.tap && e.pointerId === this.tap.pointerId && Math.hypot(e.clientX - this.tap.x, e.clientY - this.tap.y) > TAP_SLOP) this.tap = null;
+    });
+    stage.addEventListener('pointerup', (e) => {
+      const tap = this.tap;
+      if (!tap || e.pointerId !== tap.pointerId) return;
+      this.tap = null;
+      if (Math.hypot(e.clientX - tap.x, e.clientY - tap.y) <= TAP_SLOP) this.hooks.onSelect(tap.rowId);
+    });
+    stage.addEventListener('pointercancel', () => (this.tap = null));
   }
 }

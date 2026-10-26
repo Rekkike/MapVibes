@@ -54,6 +54,19 @@ export function panBy(v: Viewport, dx: number, dy: number): Viewport {
   return { scale: v.scale, x: v.x + dx, y: v.y + dy };
 }
 
+// One step of a two-finger pinch (FR-36): the view zooms by the change in
+// the distance between the two points, and the image point that was under
+// their midpoint stays under the midpoint as it moves.
+export function pinchStep(v: Viewport, from: [Point, Point], to: [Point, Point]): Viewport {
+  const distance = (p: [Point, Point]) => Math.hypot(p[1].x - p[0].x, p[1].y - p[0].y);
+  const mid = (p: [Point, Point]) => ({ x: (p[0].x + p[1].x) / 2, y: (p[0].y + p[1].y) / 2 });
+  const before = distance(from);
+  const factor = before > 0 ? distance(to) / before : 1;
+  const a = mid(from);
+  const b = mid(to);
+  return panBy(zoomAt(v, factor, a), b.x - a.x, b.y - a.y);
+}
+
 function centredAt(scale: number, image: Size, stage: Size): Viewport {
   return {
     scale,

@@ -69,8 +69,8 @@ describe('status role and vocabulary (FR-33)', () => {
     expect(cell.selectedOptions[0].textContent).toBe('Alpha item (not in the list)');
     addStatus('Alpha item');
     expect(statusCells()[0].classList.contains('not-in-vocabulary')).toBe(false);
-    // Other imported columns stay read-only.
-    expect(document.querySelector('#row-table-body .cell-input[data-header="ID"]')).toBeNull();
+    // Other columns are plain text fields (FR-10).
+    expect(document.querySelector('#row-table-body .cell-input[data-header="ID"]')!.tagName).toBe('INPUT');
   });
 
   test('the panel assigns a symbol to each status, renames (cells follow), reorders, and removes', () => {

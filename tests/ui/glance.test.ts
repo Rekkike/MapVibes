@@ -96,42 +96,9 @@ describe('at-a-glance panel (FR-28)', () => {
     expect(numbers('map')).toEqual(['1', '3', '5']);
   });
 
-  test('in Presentation mode a marker click opens its visibility control', async () => {
-    byId('tab-presentation').click();
-    await flush();
-    const marker = presentationMarkers()[1];
-    pointer('pointerdown', marker, STAGE.left + 400, STAGE.top + 300);
-    const popover = byId('presentation-popover');
-    expect(popover.classList.contains('hidden')).toBe(false);
-    expect(byId('popover-title').textContent).toBe('3. A-03');
-    expect(popover.style.left).toBe('400px');
-    const checkbox = byId<HTMLInputElement>('popover-visibility');
-    expect(checkbox.checked).toBe(true);
-    checkbox.click();
-    expect(presentationMarkers().map((m) => m.textContent)).toEqual(['1', '5']);
-    // The control stays open so that the choice can be reversed.
-    expect(popover.classList.contains('hidden')).toBe(false);
-    checkbox.click();
-    expect(presentationMarkers().map((m) => m.textContent)).toEqual(['1', '3', '5']);
-    byId('popover-close').click();
-    expect(popover.classList.contains('hidden')).toBe(true);
-  });
-
-  test('the visibility control closes on Escape and on a click on the empty stage', async () => {
-    byId('tab-presentation').click();
-    await flush();
-    pointer('pointerdown', presentationMarkers()[0], STAGE.left + 60, STAGE.top + 100);
-    byId('presentation-popover').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-    expect(byId('presentation-popover').classList.contains('hidden')).toBe(true);
-    pointer('pointerdown', presentationMarkers()[0], STAGE.left + 60, STAGE.top + 100);
-    pointer('pointerdown', byId('presentation-stage'), STAGE.left + 300, STAGE.top + 50);
-    pointer('pointerup', byId('presentation-stage'), STAGE.left + 300, STAGE.top + 50);
-    expect(byId('presentation-popover').classList.contains('hidden')).toBe(true);
-  });
-
-  test('in the Map segment a marker click selects without opening a visibility control', () => {
+  test('in the Map segment a marker click selects without opening the presentation card', () => {
     pointer('pointerdown', markers()[0], STAGE.left + 60, STAGE.top + 100);
     pointer('pointerup', markers()[0], STAGE.left + 60, STAGE.top + 100);
-    expect(byId('presentation-popover').classList.contains('hidden')).toBe(true);
+    expect(byId('presentation-card').dataset.state).toBe('closed');
   });
 });

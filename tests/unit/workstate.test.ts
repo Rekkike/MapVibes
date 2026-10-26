@@ -24,11 +24,11 @@ function sample(): WorkState {
     manualColumns: [{ key: MK, label: 'Rank' }],
     hiddenHeaders: ['Note'],
     rows: [
-      { values: { ID: 'A-01', Start: '2024-01-05', Group: 'North', Note: 'Alpha item' }, colour: 'green', removed: false, manual: false },
-      { values: { ID: 'A-02', Start: '2024-01-10', Group: 'North', Note: '' }, colour: 'blue', removed: true, manual: false },
-      { values: { ID: 'A-03', Start: '', Group: 'South', Note: 'Beta item' }, colour: 'yellow', removed: false, manual: false },
-      { values: { ID: 'A-04', Start: '', Group: 'South', Note: '' }, colour: 'red', removed: false, manual: false },
-      { values: { ID: 'M-01', Start: '', Group: '', Note: 'By hand', [MK]: '1' }, colour: 'green', removed: false, manual: true },
+      { values: { ID: 'A-01', Start: '2024-01-05', Group: 'North', Note: 'Alpha item' }, colour: 'green', removed: false, manual: false, edited: { Start: '2024-01-04' }, comments: [{ date: '2024-02-01T09:00:00.000Z', text: 'First check.' }, { date: '2024-02-03T15:30:00.000Z', text: 'Second\nline.' }] },
+      { values: { ID: 'A-02', Start: '2024-01-10', Group: 'North', Note: '' }, colour: 'blue', removed: true, manual: false, edited: {}, comments: [] },
+      { values: { ID: 'A-03', Start: '', Group: 'South', Note: 'Beta item' }, colour: 'yellow', removed: false, manual: false, edited: {}, comments: [] },
+      { values: { ID: 'A-04', Start: '', Group: 'South', Note: '' }, colour: 'red', removed: false, manual: false, edited: {}, comments: [] },
+      { values: { ID: 'M-01', Start: '', Group: '', Note: 'By hand', [MK]: '1' }, colour: 'green', removed: false, manual: true, edited: {}, comments: [] },
     ],
     background: { src: `data:image/png;base64,${png}`, width: 1200, height: 800 },
     markers: [
@@ -97,8 +97,8 @@ describe('work-state file (FR-13)', () => {
   test('the file carries the format name, schema version, and save time', () => {
     const file = fileOf(sample());
     expect(file.format).toBe(WORK_STATE_FORMAT);
-    expect(file.schemaVersion).toBe(4);
-    expect(WORK_STATE_SCHEMA_VERSION).toBe(4);
+    expect(file.schemaVersion).toBe(5);
+    expect(WORK_STATE_SCHEMA_VERSION).toBe(5);
     expect(file.savedAt).toBe('2026-01-02T03:04:05.000Z');
   });
 
@@ -115,7 +115,7 @@ describe('work-state file (FR-13)', () => {
   });
 
   test('an unknown schema version is rejected and named, never loaded silently', () => {
-    for (const version of [5, 0, '4', null]) {
+    for (const version of [6, 0, '5', null]) {
       const file = { ...fileOf(sample()), schemaVersion: version };
       expect(expectError(JSON.stringify(file), 'unknown-version').detail).toBe(String(version));
     }
@@ -228,12 +228,12 @@ describe('schema version 1 migration (FR-13)', () => {
     expect(state.segment).toBe('map');
   });
 
-  test('a migrated file is saved as version 3 and reads back identically', () => {
+  test('a migrated file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v1Text);
     expect(migrated.manualColumns).toEqual([]);
     expect(migrated.rows.every((r) => !r.manual)).toBe(true);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(4);
+    expect(JSON.parse(text).schemaVersion).toBe(5);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 
@@ -297,10 +297,10 @@ describe('schema version 2 migration (FR-13)', () => {
     expect(state.rows.every((r) => !r.manual)).toBe(true);
   });
 
-  test('a migrated version 2 file is saved as version 3 and reads back identically', () => {
+  test('a migrated version 2 file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v2Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(4);
+    expect(JSON.parse(text).schemaVersion).toBe(5);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 
@@ -369,10 +369,96 @@ describe('schema version 3 migration (FR-13)', () => {
     expect([state.areaValues, state.statuses, state.symbolsFromStatus]).toEqual([[], [], false]);
   });
 
-  test('a migrated version 3 file is saved as version 4 and reads back identically', () => {
+  test('a migrated version 3 file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v3Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(4);
+    expect(JSON.parse(text).schemaVersion).toBe(5);
+    expect(parseWorkState(text)).toEqual(migrated);
+  });
+});
+
+describe('schema version 5: edited values and comments (FR-10, FR-15, FR-13)', () => {
+  test('edited values and comments are stored per row and round-trip', () => {
+    const rows = fileOf(sample()).rows as Array<{ values: Record<string, string>; edited: Record<string, string>; comments: unknown[] }>;
+    expect(rows[0].edited).toEqual({ Start: '2024-01-04' });
+    // The current value stays in the values; the edit keeps the imported one.
+    expect(rows[0].values.Start).toBe('2024-01-05');
+    expect(rows[0].comments).toEqual([
+      { date: '2024-02-01T09:00:00.000Z', text: 'First check.' },
+      { date: '2024-02-03T15:30:00.000Z', text: 'Second\nline.' },
+    ]);
+    expect(rows.slice(1).every((r) => Object.keys(r.edited).length === 0 && r.comments.length === 0)).toBe(true);
+    const text = serialiseWorkState(sample(), SAVED_AT);
+    expect(parseWorkState(text)).toEqual(sample());
+  });
+
+  test('edited values and comments are validated', () => {
+    const cases: Array<[(f: Record<string, any>) => void, string, string]> = [
+      [(f) => (f.rows[0].edited = { Missing: 'x' }), 'notAColumn', 'rows[0].edited'],
+      [(f) => (f.rows[0].edited = { [MK]: 'x' }), 'invalidEdit', `rows[0].edited.${MK}`],
+      [(f) => (f.rows[4].edited = { ID: 'x' }), 'invalidEdit', 'rows[4].edited.ID'],
+      [(f) => (f.rows[0].edited = { Start: 5 }), 'notText', 'rows[0].edited.Start'],
+      [(f) => (f.rows[0].edited = []), 'notObject', 'rows[0].edited'],
+      [(f) => delete f.rows[0].edited, 'notObject', 'rows[0].edited'],
+      [(f) => (f.rows[0].comments = {}), 'notList', 'rows[0].comments'],
+      [(f) => (f.rows[0].comments[1].date = 'yesterday'), 'invalidComment', 'rows[0].comments[1]'],
+      [(f) => (f.rows[0].comments[0].text = '   '), 'invalidComment', 'rows[0].comments[0]'],
+      [(f) => (f.rows[0].comments[0].text = 7), 'notText', 'rows[0].comments[0].text'],
+      [(f) => (f.rows[0].comments[0] = 'note'), 'notObject', 'rows[0].comments[0]'],
+    ];
+    for (const [mutate, kind, field] of cases) {
+      const file = fileOf(sample()) as Record<string, any>;
+      mutate(file);
+      expect(expectError(JSON.stringify(file), 'invalid').problem, `${kind} ${field}`).toEqual({ kind, field });
+    }
+  });
+
+  test('files of versions 1 to 3 migrate with no edits and no comments', () => {
+    for (const name of ['example-work-state-v1.json', 'example-work-state-v2.json', 'example-work-state-v3.json']) {
+      const state = parseWorkState(readFileSync(join(process.cwd(), 'example-data', name), 'utf8'));
+      expect(state.rows.length, name).toBeGreaterThan(0);
+      expect(state.rows.every((r) => Object.keys(r.edited).length === 0 && r.comments.length === 0), name).toBe(true);
+    }
+  });
+
+  test('older files are read by their own rules: edits and comments in them are neither required nor read', () => {
+    const v4 = JSON.parse(readFileSync(join(process.cwd(), 'example-data', 'example-work-state-v4.json'), 'utf8'));
+    v4.rows[0].edited = { Missing: 'x' };
+    v4.rows[0].comments = 'not a list';
+    const state = parseWorkState(JSON.stringify(v4));
+    expect(state.rows[0].edited).toEqual({});
+    expect(state.rows[0].comments).toEqual([]);
+  });
+});
+
+describe('schema version 4 migration (FR-13)', () => {
+  const v4Text = readFileSync(join(process.cwd(), 'example-data', 'example-work-state-v4.json'), 'utf8');
+
+  test('a version 4 file written by v0.7.0 opens with its vocabularies and symbols; no edits and no comments', () => {
+    expect(JSON.parse(v4Text).schemaVersion).toBe(4);
+    const state = parseWorkState(v4Text);
+    expect(state.roles.identifier).toBe('ID');
+    expect(state.roles.area).toBe('Group');
+    expect(state.roles.status).toBe(state.manualColumns[0].key);
+    expect(state.manualColumns.map((c) => c.label)).toEqual(['Phase']);
+    expect(state.areaValues).toEqual(['North', 'South']);
+    expect(state.statuses).toEqual([
+      { name: 'Open', symbol: 'pause' },
+      { name: 'Done', symbol: 'check' },
+    ]);
+    expect(state.symbolsFromStatus).toBe(true);
+    expect(state.markers.map((m) => [m.row, m.symbol])).toEqual([
+      [0, null],
+      [2, null],
+      [4, 'gear'],
+    ]);
+    expect(state.rows.map((r) => [r.edited, r.comments])).toEqual(state.rows.map(() => [{}, []]));
+  });
+
+  test('a migrated version 4 file is saved as the current version and reads back identically', () => {
+    const migrated = parseWorkState(v4Text);
+    const text = serialiseWorkState(migrated, SAVED_AT);
+    expect(JSON.parse(text).schemaVersion).toBe(5);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 });

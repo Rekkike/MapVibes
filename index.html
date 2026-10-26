@@ -244,11 +244,7 @@
               <img id="presentation-image" alt="" draggable="false" />
             </div>
             <div id="presentation-marker-layer" class="marker-layer"></div>
-            <div id="presentation-popover" class="hidden" role="dialog" aria-labelledby="popover-title">
-              <span id="popover-title"></span>
-              <label><input type="checkbox" id="popover-visibility" /> <span id="popover-visibility-label">Shown in the presentation</span></label>
-              <button type="button" id="popover-close" class="icon-button" aria-label="Close" title="Close">×</button>
-            </div>
+            <div id="presentation-card" class="presentation-card" role="dialog" data-state="closed" aria-hidden="true" tabindex="-1" inert></div>
             <div id="presentation-empty" class="stage-empty">
               <span id="presentation-empty-hint">No background loaded. Load one in the Map segment.</span>
             </div>
@@ -261,6 +257,7 @@
           <ul id="presentation-glance-list" class="glance-list"></ul>
         </aside>
       </div>
+      <aside id="details-panel" class="details-panel hidden" aria-label="Item details" tabindex="-1"></aside>
     </main>
     <script type="module" src="./src/main.ts"></script>
   </body>

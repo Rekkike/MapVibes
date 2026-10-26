@@ -116,8 +116,7 @@ export async function loadExampleBackground(): Promise<void> {
 
 export function pointer(type: string, target: Element, clientX: number, clientY: number, extra: Record<string, unknown> = {}): void {
   const e = new MouseEvent(type, { bubbles: true, cancelable: true, clientX, clientY, button: 0 });
-  Object.defineProperty(e, 'pointerId', { value: 1 });
-  for (const [k, v] of Object.entries(extra)) Object.defineProperty(e, k, { value: v });
+  for (const [k, v] of Object.entries({ pointerId: 1, ...extra })) Object.defineProperty(e, k, { value: v });
   target.dispatchEvent(e);
 }
 
@@ -249,4 +248,12 @@ export function editCell(rowIndex: number, label: string, value: string): void {
 // has no CSS.escape).
 export function esc(value: string): string {
   return value.replace(/["\\]/g, '\\$&');
+}
+
+// The value shown in a list cell: every value is edited in place (FR-10), so
+// the value is that of the cell's control; cells without one (the number,
+// the selection, the colour) give their text.
+export function cellValue(td: Element): string {
+  const control = td.querySelector<HTMLInputElement | HTMLSelectElement>('.cell-input');
+  return control ? control.value : (td.textContent ?? '');
 }

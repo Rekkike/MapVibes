@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { byId, exampleFile, flush, importExampleWorkbook, mountApp } from './harness';
+import { byId, cellValue, exampleFile, flush, importExampleWorkbook, mountApp } from './harness';
 
 function headings(): string[] {
   return [...document.querySelectorAll<HTMLElement>('#row-table-head th[data-header] .column-label')].map((th) => th.textContent ?? '');
@@ -32,7 +32,7 @@ describe('direct import (FR-1)', () => {
     expect(byId('no-file').classList.contains('hidden')).toBe(true);
     expect(headings()).toEqual(['ID', 'Start', 'End', 'Group', 'Note']);
     expect(document.querySelectorAll('#row-table-body tr')).toHaveLength(5);
-    const first = [...document.querySelectorAll('#row-table-body tr')[0].querySelectorAll('td')].map((td) => td.textContent);
+    const first = [...document.querySelectorAll('#row-table-body tr')[0].querySelectorAll('td')].map(cellValue);
     expect(first.slice(2, 7)).toEqual(['A-01', '2024-01-05', '2024-02-01', 'North', 'Alpha item']);
   });
 
@@ -47,7 +47,7 @@ describe('direct import (FR-1)', () => {
   test('repeated and empty headers are shown as-is, each column with its own values', async () => {
     await importFile('example-repeated-headers.xlsx');
     expect(headings()).toEqual(['Label', 'Label', '(untitled header)', 'Note']);
-    const cells = [...document.querySelectorAll('#row-table-body tr')[0].querySelectorAll('td')].map((td) => td.textContent);
+    const cells = [...document.querySelectorAll('#row-table-body tr')[0].querySelectorAll('td')].map(cellValue);
     expect(cells.slice(2, 6)).toEqual(['B-01', 'first', 'x', 'one']);
   });
 

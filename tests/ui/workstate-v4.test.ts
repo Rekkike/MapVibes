@@ -66,7 +66,7 @@ describe('work-state schema version 4 (FR-13, FR-32 to FR-34)', () => {
     manual.dispatchEvent(new Event('change'));
     const text = await save();
     const file = JSON.parse(text);
-    expect(file.schemaVersion).toBe(4);
+    expect(file.schemaVersion).toBe(5);
     expect(file.vocabularies).toEqual({ areas: ['North', 'South'], statuses: [{ name: 'Ready', symbol: 'check' }] });
     expect(file.symbolsFromStatus).toBe(true);
     expect(file.markers.map((m: { symbol: string | null }) => m.symbol)).toEqual([null, 'gear']);
@@ -99,6 +99,6 @@ describe('work-state schema version 4 (FR-13, FR-32 to FR-34)', () => {
     expect(document.querySelectorAll('#area-list .vocab-item')).toHaveLength(0);
     expect(byId<HTMLInputElement>('symbols-from-status').checked).toBe(false);
     expect(document.querySelectorAll('.column-name-input')).toHaveLength(1);
-    expect(JSON.parse(await save()).schemaVersion).toBe(4);
+    expect(JSON.parse(await save()).schemaVersion).toBe(5);
   });
 });

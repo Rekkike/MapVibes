@@ -6,6 +6,7 @@ import {
   MAX_SCALE,
   MIN_SCALE,
   panBy,
+  pinchStep,
   resetView,
   screenToImage,
   wheelZoomFactor,
@@ -86,5 +87,39 @@ describe('viewport mathematics (FR-4)', () => {
     expect(wheelZoomFactor(0)).toBe(1);
     expect(wheelZoomFactor(100) * wheelZoomFactor(-100)).toBeCloseTo(1, 10);
     expect(wheelZoomFactor(1e9)).toBeCloseTo(wheelZoomFactor(400), 12);
+  });
+});
+
+describe('touch pinch (FR-36)', () => {
+  test('spreading two fingers zooms by the change in their distance, about their midpoint', () => {
+    const start: Viewport = { scale: 1, x: 0, y: 0 };
+    const next = pinchStep(start, [{ x: 100, y: 100 }, { x: 300, y: 100 }], [{ x: 50, y: 100 }, { x: 350, y: 100 }]);
+    expect(next.scale).toBeCloseTo(1.5, 10);
+    // The midpoint (200, 100) stays over the same image point.
+    const p = screenToImage(next, { x: 200, y: 100 });
+    expect(p.x).toBeCloseTo(200, 10);
+    expect(p.y).toBeCloseTo(100, 10);
+  });
+
+  test('moving both fingers together pans the view', () => {
+    const next = pinchStep(v, [{ x: 0, y: 0 }, { x: 100, y: 0 }], [{ x: 30, y: 40 }, { x: 130, y: 40 }]);
+    expect(next).toEqual({ scale: v.scale, x: v.x + 30, y: v.y + 40 });
+  });
+
+  test('the image point under the old midpoint ends under the new midpoint', () => {
+    const from: [{ x: number; y: number }, { x: number; y: number }] = [{ x: 120, y: 80 }, { x: 220, y: 180 }];
+    const to: typeof from = [{ x: 90, y: 70 }, { x: 300, y: 260 }];
+    const under = screenToImage(v, { x: 170, y: 130 });
+    const next = pinchStep(v, from, to);
+    const screen = imageToScreen(next, under);
+    expect(screen.x).toBeCloseTo(195, 10);
+    expect(screen.y).toBeCloseTo(165, 10);
+  });
+
+  test('the scale stays within its limits, and coincident fingers do not zoom', () => {
+    const tiny = pinchStep({ scale: MIN_SCALE, x: 0, y: 0 }, [{ x: 0, y: 0 }, { x: 100, y: 0 }], [{ x: 49, y: 0 }, { x: 51, y: 0 }]);
+    expect(tiny.scale).toBe(MIN_SCALE);
+    const same = pinchStep(v, [{ x: 5, y: 5 }, { x: 5, y: 5 }], [{ x: 5, y: 5 }, { x: 9, y: 5 }]);
+    expect(same.scale).toBe(v.scale);
   });
 });
