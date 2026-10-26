@@ -1,6 +1,6 @@
 # MapVibes — Functional Specification
 
-Status: v0.5.0 — ingestion experience and presentation mode pass delivered. See the changelog below.
+Status: v0.5.1 — Pages deployment supplement to the Pass 4 delivery. See the changelog below.
 
 MapVibes is a static, client-side web application: a spreadsheet-to-map visualisation tool. It has no backend, no database, and no server-side processing. Everything runs locally in the browser.
 
@@ -47,11 +47,29 @@ MapVibes is a static, client-side web application: a spreadsheet-to-map visualis
 
 ## Non-goals
 
-- No GitHub Pages deployment: the application is a locally run tool.
+- GitHub Pages hosts the generic application build; it never hosts user data, work states, or exported presentation files.
 - No automatic data matching, merging, or selection logic.
 - No hardcoded schema: no fixed column names or formats.
 
 ## Changelog
+
+### v0.5.1
+
+Supplement to Pass 4: GitHub Pages deployment.
+
+Specification amendment: the non-goal "No GitHub Pages deployment: the application is a locally run tool." is replaced by "GitHub Pages hosts the generic application build; it never hosts user data, work states, or exported presentation files." Implemented in this version.
+
+Delivered:
+
+- The release workflow deploys to GitHub Pages the same built artifact that the release archive publishes: the Pages content is the release archive's directory from the same workflow run (index.html, mapvibes-singlefile.html, README.txt, THIRD_PARTY_LICENSES.txt), with no separate build. Before upload, a workflow step stops the deployment if the directory contains any file other than these four, and confirms byte for byte that both HTML files are the built artifacts.
+- Pages therefore hosts only the generic application. It hosts no example data, no user data, no work states, and no exported presentation files; files that a user opens in the hosted application are read in the browser and are never uploaded.
+- The README describes the hosted application as a second way to run MapVibes, alongside the release archive.
+
+Notices:
+
+- The hosted page is downloaded from GitHub's servers when it is opened, so that visit is a network access subject to GitHub's own logging; once loaded, the application makes no network calls. The release archive remains the fully offline route and the one that satisfies the airplane-mode requirement.
+- This supplement is delivered as version 0.5.1 because version 0.5.0 had already been merged and released; re-releasing under the v0.5.0 tag would have published an archive from a later commit under a tag that points to an earlier one.
+- The deployment requires the repository's Pages source to be set to GitHub Actions; the workflow cannot enable Pages by itself with its default token.
 
 ### v0.5.0
 

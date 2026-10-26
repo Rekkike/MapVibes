@@ -36,6 +36,8 @@ The runnable application is distributed as the Release archive, which requires n
 
 Both files work fully offline; all scripts, styles, and assets are bundled, and the application makes no network calls.
 
+The same build is also hosted on the repository's GitHub Pages site. The hosted page is the generic application only: no data of any kind is hosted with it, and files you open in it are read in your browser and never uploaded. Opening the hosted page downloads it from GitHub, so that visit is a network access; for fully offline use, run the Release archive locally.
+
 For development, the repository remains code-only: install Node.js, run `npm ci`, then `npm run dev` for a development server, `npm test` for the test suites, and `npm run build` to produce the built artifacts under `dist/build/`.
 
 ## Documentation

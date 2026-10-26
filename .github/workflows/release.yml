@@ -38,6 +38,28 @@ jobs:
       - name: Package release archive
         run: npx vite-node scripts/package-release.ts && (cd dist/release && zip -qr mapvibes.zip mapvibes)
 
+      # GitHub Pages hosts the generic application build only: exactly the
+      # files of the release archive, from this same build. Any other file
+      # (user data, work states, exported presentations, extra data) stops
+      # the deployment.
+      - name: Check the Pages content against the release archive
+        run: |
+          cd dist/release/mapvibes
+          expected="README.txt THIRD_PARTY_LICENSES.txt index.html mapvibes-singlefile.html"
+          actual=$(find . -type f -printf '%P\n' | sort | tr '\n' ' ' | sed 's/ $//')
+          if [ "$actual" != "$expected" ]; then
+            echo "Unexpected Pages content: $actual"
+            exit 1
+          fi
+          cmp index.html ../../build/index.html
+          cmp mapvibes-singlefile.html ../../build/mapvibes-singlefile.html
+          sha256sum index.html mapvibes-singlefile.html
+
+      - name: Upload the Pages artifact (the release archive content)
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/release/mapvibes
+
       - name: Compute archive SHA-256
         id: sha
         run: echo "sha256=$(sha256sum dist/release/mapvibes.zip | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
@@ -63,3 +85,24 @@ jobs:
             SHA-256 of mapvibes.zip: `${{ steps.sha.outputs.sha256 }}`
 
             The archive contains the folder build (open index.html directly from a local folder, no server required) and a fully self-contained single-file build (mapvibes-singlefile.html). All assets are bundled; the application makes no network calls and works fully offline.
+
+  deploy-pages:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
