@@ -59,7 +59,7 @@ describe('full-test demo (FR-41)', () => {
     expect(byId('map-stage').dataset.hasBackground).toBe('true');
     expect(byId<HTMLImageElement>('map-image').getAttribute('src')).toBe('data:image/png;base64,T1NN3000x2000');
     expect(markers()).toHaveLength(11);
-    expect(markers().map((m) => m.dataset.shape)).toEqual(['check', 'hammer-shovel', 'bulb', 'diamond', 'hammer-shovel', 'pause', 'check', 'cross', 'square', 'bulb', 'magnifier']);
+    expect(markers().map((m) => m.dataset.shape)).toEqual(['check', 'hammer-shovel', 'bulb', 'diamond', 'hammer-shovel', 'pause', 'check', 'cross', 'square', 'bolt', 'magnifier']);
     expect(new Set(markers().map((m) => m.dataset.colour))).toEqual(new Set(['green', 'blue', 'yellow', 'red']));
     expect(document.querySelectorAll('.placement-item[data-placed="false"]')).toHaveLength(1);
     // It opens in the Map segment, labelled as example data, as unsaved work.

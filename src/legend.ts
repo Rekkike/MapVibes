@@ -25,6 +25,7 @@ export function shapeName(t: Strings, symbol: MarkerSymbol): string {
     cross: t.iconCross,
     check: t.iconCheck,
     'hammer-shovel': t.iconHammerShovel,
+    bolt: t.iconBolt,
   };
   return names[symbol];
 }
@@ -55,12 +56,66 @@ export interface LegendGroup {
 // The colour labels shown (FR-45): the user's name for each colour.
 export type ColourLabels = Record<RowColour, string>;
 
+// One section of the legend and its entries, as a model shared by the
+// on-screen legends and the documents (FR-50, FR-51), so that they cannot
+// drift apart.
+export interface LegendItem {
+  label: string;
+  colour?: RowColour;
+  symbol?: MarkerSymbol;
+  status?: string;
+  group?: number;
+}
+
+export interface LegendSection {
+  kind: 'colours' | 'shapes' | 'statuses' | 'programs';
+  label: string;
+  items: LegendItem[];
+}
+
+export function defaultColourLabels(t: Strings): ColourLabels {
+  return { green: colourName(t, 'green'), blue: colourName(t, 'blue'), yellow: colourName(t, 'yellow'), red: colourName(t, 'red') };
+}
+
+export function legendModel(t: Strings, statuses: StatusEntry[] = [], numberGroups: LegendGroup[] = [], colourLabels: ColourLabels = defaultColourLabels(t)): LegendSection[] {
+  const sections: LegendSection[] = [
+    { kind: 'colours', label: t.legendColours, items: COLOURS.map((c) => ({ label: colourLabels[c], colour: c })) },
+    { kind: 'shapes', label: t.legendShapes, items: SYMBOLS.map((s) => ({ label: shapeName(t, s), symbol: s })) },
+  ];
+  if (statuses.length > 0) {
+    sections.push({ kind: 'statuses', label: t.legendStatuses, items: statuses.map((s) => ({ label: s.name, status: s.name, symbol: s.symbol as MarkerSymbol })) });
+  }
+  if (numberGroups.length > 0) {
+    sections.push({ kind: 'programs', label: t.legendProgramGroups, items: numberGroups.map((g) => ({ label: g.name, group: g.index })) });
+  }
+  return sections;
+}
+
+function legendEntry(item: LegendItem): HTMLLIElement {
+  if (item.group !== undefined) {
+    const li = document.createElement('li');
+    li.className = 'legend-entry';
+    li.dataset.group = String(item.group);
+    const number = document.createElement('span');
+    number.className = 'legend-group-number';
+    number.textContent = `${item.group}.`;
+    const text = document.createElement('span');
+    text.className = 'legend-label';
+    text.textContent = item.label;
+    li.append(number, text);
+    return li;
+  }
+  if (item.colour) return entry(`marker-${item.colour} marker-shape-circle`, item.label, { colour: item.colour });
+  if (item.status !== undefined) return entry(symbolClasses(item.symbol!), item.label, { status: item.status, shape: item.symbol! }, item.symbol);
+  return entry(symbolClasses(item.symbol!), item.label, { shape: item.symbol! }, item.symbol);
+}
+
 export function renderLegend(
   container: HTMLElement,
   t: Strings,
   statuses: StatusEntry[] = [],
   numberGroups: LegendGroup[] = [],
-  colourLabels: ColourLabels = { green: colourName(t, 'green'), blue: colourName(t, 'blue'), yellow: colourName(t, 'yellow'), red: colourName(t, 'red') },
+  colourLabels: ColourLabels = defaultColourLabels(t),
 ): void {
   container.innerHTML = '';
   const heading = document.createElement('span');
@@ -69,48 +124,18 @@ export function renderLegend(
   heading.textContent = t.legend;
   container.setAttribute('role', 'group');
   container.setAttribute('aria-labelledby', heading.id);
-  const groups: Array<[string, string, HTMLLIElement[]]> = [
-    ['colours', t.legendColours, COLOURS.map((c) => entry(`marker-${c} marker-shape-circle`, colourLabels[c], { colour: c }))],
-    ['shapes', t.legendShapes, SYMBOLS.map((s) => entry(symbolClasses(s), shapeName(t, s), { shape: s }, s))],
-  ];
-  if (statuses.length > 0) {
-    groups.push([
-      'statuses',
-      t.legendStatuses,
-      statuses.map((s) => entry(symbolClasses(s.symbol as MarkerSymbol), s.name, { status: s.name, shape: s.symbol }, s.symbol as MarkerSymbol)),
-    ]);
-  }
-  if (numberGroups.length > 0) {
-    groups.push([
-      'programs',
-      t.legendProgramGroups,
-      numberGroups.map((g) => {
-        const li = document.createElement('li');
-        li.className = 'legend-entry';
-        li.dataset.group = String(g.index);
-        const number = document.createElement('span');
-        number.className = 'legend-group-number';
-        number.textContent = `${g.index}.`;
-        const text = document.createElement('span');
-        text.className = 'legend-label';
-        text.textContent = g.name;
-        li.append(number, text);
-        return li;
-      }),
-    ]);
-  }
   container.append(heading);
-  for (const [kind, label, entries] of groups) {
+  for (const section of legendModel(t, statuses, numberGroups, colourLabels)) {
     const group = document.createElement('div');
     group.className = 'legend-group';
-    group.dataset.kind = kind;
+    group.dataset.kind = section.kind;
     const groupLabel = document.createElement('span');
     groupLabel.className = 'legend-group-label';
-    groupLabel.textContent = label;
+    groupLabel.textContent = section.label;
     const list = document.createElement('ul');
     list.className = 'legend-list';
-    list.dataset.kind = kind;
-    list.append(...entries);
+    list.dataset.kind = section.kind;
+    list.append(...section.items.map(legendEntry));
     group.append(groupLabel, list);
     container.appendChild(group);
   }

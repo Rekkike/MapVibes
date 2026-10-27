@@ -26,7 +26,7 @@ MapVibes turns a spreadsheet export into an interactive, zoomable map: clean the
 - Details panel per item, including free-text comments.
 - Explicit save and reopen of the complete work state as a local file, with an unsaved-changes indicator.
 - Manual item entry and editing of all fields, including dates.
-- Single-file interactive HTML export (primary output); optional PDF and PowerPoint export.
+- Single-file interactive HTML export (primary output); PDF and PowerPoint documents of the presentation stage with its legend and a table of the shown items, written in the browser.
 - Swedish and English interface; dark, light, and system-following themes.
 
 ## Running

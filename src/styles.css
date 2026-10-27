@@ -1461,9 +1461,10 @@ input[type='text'] {
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
-/* Export dialog (FR-11, FR-39): states what the file will hold before it is
-   written. */
-#export-panel {
+/* Export dialogs (FR-11, FR-39, FR-52): state what the file will hold
+   before it is written. */
+#export-panel,
+#document-panel {
   margin-bottom: var(--space-2);
   padding: var(--space-3);
   border: 1px solid var(--accent);
@@ -1474,21 +1475,26 @@ input[type='text'] {
 }
 
 #export-panel h3,
-#export-panel h4 {
+#export-panel h4,
+#document-panel h3,
+#document-panel h4 {
   margin: 0 0 var(--space-2);
 }
 
-#export-panel h4 {
+#export-panel h4,
+#document-panel h4 {
   margin-top: var(--space-3);
   font-size: 1rem;
 }
 
-#export-panel ul {
+#export-panel ul,
+#document-panel ul {
   margin: 0;
   padding-left: calc(1.25 * var(--space-3));
 }
 
-#export-size {
+#export-size,
+#document-size {
   font-weight: 600;
 }
 
@@ -1497,7 +1503,8 @@ input[type='text'] {
   gap: var(--space-2);
 }
 
-#export-status:empty {
+#export-status:empty,
+#document-status:empty {
   display: none;
 }
 
@@ -1775,7 +1782,8 @@ input[type='text'] {
 
 /* The dialogs. */
 #export-panel,
-#compare-panel {
+#compare-panel,
+#document-panel {
   margin-bottom: var(--dense-3);
   padding: var(--dense-3);
   font-size: var(--dense-font);
@@ -1784,15 +1792,19 @@ input[type='text'] {
 
 #export-panel h3,
 #export-panel h4,
-.compare-group h3 {
+.compare-group h3,
+#document-panel h3,
+#document-panel h4 {
   margin: 0 0 var(--dense-2);
 }
 
-#export-panel h4 {
+#export-panel h4,
+#document-panel h4 {
   margin-top: var(--dense-3);
 }
 
-#export-panel p {
+#export-panel p,
+#document-panel p {
   margin: 0 0 var(--dense-2);
 }
 

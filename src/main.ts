@@ -14,7 +14,9 @@ import { isOsmFile, MAX_OSM_BYTES, OsmError, parseOsm, planRender, type Mercator
 import { renderPlanToDataUrl } from './osmrender';
 import { fetchableBounds, FetchError, fetchMapData, isOnline, parseBounds, searchPlace, type BoundsField, type FetchErrorCode, type PlaceResult } from './openmap';
 import { MarkerLayer } from './markerlayer';
-import { colourName, renderLegend, shapeName, type ColourLabels, type LegendGroup } from './legend';
+import { colourName, legendModel, renderLegend, shapeName, type ColourLabels, type LegendGroup } from './legend';
+import { buildPdf, buildPptxDocument, PPTX_PAGE, pptxTables, sceneFromStage, type DocumentTable, type StageScene } from './documents';
+import { backgroundJpeg, stagePagePng } from './raster';
 import { addComment, commentsOf, formatCommentDate, removeComment, restoreComments, type CommentStore } from './comments';
 import { renderCard as renderCardContent, renderDetails, type DetailField, type DetailLabels, type DetailModel } from './details';
 import { drawSymbol, isSymbol, SYMBOLS, symbolClasses, type MarkerSymbol } from './symbols';
@@ -270,6 +272,9 @@ function renderStaticText(): void {
   el('presentation-empty-hint').textContent = t.presentationEmptyHint;
   el('pres-fit').textContent = t.mapFit;
   el('export-open').textContent = t.exportOpen;
+  el('pdf-open').textContent = t.pdfOpen;
+  el('pptx-open').textContent = t.pptxOpen;
+  renderDocument();
   el('export-heading').textContent = t.exportHeading;
   el('export-intro').textContent = t.exportIntro;
   el('export-contains-heading').textContent = t.exportContainsHeading;
@@ -1118,6 +1123,207 @@ async function runExport(): Promise<void> {
   renderExport();
 }
 
+// Document exports (FR-12, FR-50 to FR-52): the visible presentation stage
+// and the table of the shown items, as a PDF or a PowerPoint document. The
+// file is prepared
+// when the dialog opens, so that the dialog states what the file holds and
+// its size before it is written.
+type DocumentKind = 'pdf' | 'pptx';
+type DocumentMessage = 'preparing' | 'done' | 'cancelled' | 'failed' | 'unavailable';
+
+interface PreparedDocument {
+  kind: DocumentKind;
+  bytes: Uint8Array;
+  scene: StageScene;
+  table: DocumentTable;
+  pages: number;
+  columnGroups: number;
+  replaced: number;
+}
+
+let documentKind: DocumentKind | null = null;
+let preparedDocument: PreparedDocument | null = null;
+let documentMessage: DocumentMessage | null = null;
+// Each preparation has its own token, so that a late result of an earlier
+// preparation is ignored.
+let documentToken = 0;
+
+function documentLocale(): string {
+  return state.prefs.lang === 'sv' ? 'sv-SE' : 'en-GB';
+}
+
+// The shown items: the rows not removed and not switched off, in their
+// number order; the columns shown in the list, in its order, after the
+// number.
+export function documentTable(): DocumentTable {
+  const t = strings(state.prefs.lang);
+  const columns = listColumnOrder(state.headers, state.roles).filter((h) => !state.hiddenHeaders.has(h));
+  const rows = numbered()
+    .filter((n) => !state.excluded.has(n.row))
+    .map((n) => [n.label, ...columns.map((key) => (n.row.values[key] ?? '').trim())]);
+  return { headings: [t.documentNumber, ...columns.map(labelOf)], rows };
+}
+
+export function documentScene(): StageScene | null {
+  const view = presentationView;
+  const bg = view?.background;
+  if (!view || !bg) return null;
+  const t = strings(state.prefs.lang);
+  const markers = placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered())
+    .filter((m) => !state.excluded.has(m.row))
+    .map((m) => ({ position: m.position, symbol: m.shape, colour: m.colour, label: m.label }));
+  return sceneFromStage({
+    viewport: view.viewport,
+    stage: view.stageSize(),
+    background: { width: bg.width, height: bg.height },
+    markers,
+    annotations: state.annotations.filter((a) => annotationShown(a)),
+    legendTitle: t.legend,
+    legend: legendModel(t, state.statuses, shownProgramGroups(), colourLabels()),
+  });
+}
+
+function documentTexts(t: Strings) {
+  const date = new Intl.DateTimeFormat(documentLocale(), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date());
+  return {
+    title: t.documentTitle,
+    footer: fill(t.documentFooter, { version: __APP_VERSION__, date }),
+    slideFooter: fill(t.documentSlideFooter, { version: __APP_VERSION__, date }),
+    tableTitle: t.documentTableTitle,
+    tableTitleParts: t.documentTableTitleParts,
+  };
+}
+
+async function prepareDocument(kind: DocumentKind, scene: StageScene, table: DocumentTable): Promise<PreparedDocument | null> {
+  const src = presentationView?.background?.src;
+  if (!src) return null;
+  const t = strings(state.prefs.lang);
+  const texts = documentTexts(t);
+  if (kind === 'pptx') {
+    // The slide image at twice the slide's size in points: 1920 by 1080
+    // pixels.
+    const frame = { width: PPTX_PAGE.width, height: PPTX_PAGE.height, margin: PPTX_PAGE.margin, footer: texts.slideFooter };
+    const image = await stagePagePng(scene, frame, 2, scene.background ? src : null);
+    const tables = pptxTables(table, texts);
+    const bytes = buildPptxDocument(image.png, t.documentImageDescription, tables, texts.title, documentLocale(), new Date());
+    return { kind, bytes, scene, table, pages: 1 + tables.slides.length, columnGroups: tables.columnGroups, replaced: 0 };
+  }
+  const background = scene.background ? await backgroundJpeg(src, scene.background.image) : null;
+  const pdf = buildPdf(scene, table, background, texts, new Date());
+  return { kind, bytes: pdf.bytes, scene, table, pages: pdf.pages, columnGroups: pdf.columnGroups, replaced: pdf.replaced };
+}
+
+async function openDocumentDialog(kind: DocumentKind): Promise<void> {
+  if (state.viewOnly) return;
+  const token = ++documentToken;
+  documentKind = kind;
+  preparedDocument = null;
+  if (!presentationView?.background) {
+    documentMessage = 'unavailable';
+    el('document-panel').classList.add('hidden');
+    renderDocument();
+    return;
+  }
+  // The stage as it is in view, captured before the dialog opens above it
+  // and narrows the stage.
+  const scene = documentScene();
+  const table = documentTable();
+  documentMessage = 'preparing';
+  el('document-panel').classList.remove('hidden');
+  renderDocument();
+  let prepared: PreparedDocument | null = null;
+  try {
+    prepared = scene ? await prepareDocument(kind, scene, table) : null;
+  } catch {
+    prepared = null;
+  }
+  if (token !== documentToken) return;
+  preparedDocument = prepared;
+  documentMessage = prepared ? null : 'failed';
+  if (!prepared) el('document-panel').classList.add('hidden');
+  renderDocument();
+  if (prepared) el('document-go').focus();
+}
+
+function closeDocumentDialog(): void {
+  documentToken++;
+  preparedDocument = null;
+  el('document-panel').classList.add('hidden');
+  if (documentKind) el(`${documentKind}-open`).focus();
+}
+
+// The dialog states what the document holds and what it leaves out (FR-52).
+function renderDocument(): void {
+  const t = strings(state.prefs.lang);
+  const status = el('document-status');
+  const messages: Record<DocumentMessage, string> = {
+    preparing: t.documentPreparing,
+    done: t.documentDone,
+    cancelled: t.exportCancelled,
+    failed: t.documentFailed,
+    unavailable: t.documentUnavailable,
+  };
+  status.textContent = documentMessage ? messages[documentMessage] : '';
+  status.classList.toggle('error', documentMessage === 'failed' || documentMessage === 'unavailable');
+  const pptx = documentKind === 'pptx';
+  el('document-heading').textContent = pptx ? t.pptxExportHeading : t.pdfExportHeading;
+  el('document-intro').textContent = pptx ? t.pptxExportIntro : t.pdfExportIntro;
+  el('document-contains-heading').textContent = t.documentContainsHeading;
+  el('document-omitted-heading').textContent = t.documentOmittedHeading;
+  el('document-go').textContent = t.documentGo;
+  el('document-cancel').textContent = t.exportCancel;
+  const doc = preparedDocument;
+  el<HTMLButtonElement>('document-go').disabled = doc === null;
+  if (el('document-panel').classList.contains('hidden')) return;
+  if (!doc) {
+    el('document-contains').replaceChildren();
+    el('document-omitted').replaceChildren();
+    el('document-size').textContent = t.documentPreparing;
+    return;
+  }
+  const item = (text: string) => {
+    const li = document.createElement('li');
+    li.textContent = text;
+    return li;
+  };
+  const shownItems = doc.table.rows.length;
+  const columns = doc.table.headings.length - 1;
+  const outside = state.rows.filter((r) => !state.excluded.has(r) && state.positions.has(r)).length - doc.scene.markers.length;
+  const bg = presentationView?.background;
+  const contains = [
+    item(fill(t.documentStage, { markers: doc.scene.markers.length, annotations: doc.scene.annotations.length })),
+    item(doc.scene.background && bg ? fill(t.documentBackground, { width: Math.round(doc.scene.background.image.width), height: Math.round(doc.scene.background.image.height) }) : t.documentNoBackground),
+    item(t.documentLegend),
+    item(fill(pptx ? t.documentTableSlides : t.documentTable, { items: shownItems, columns, pages: doc.pages - 1 })),
+  ];
+  if (doc.columnGroups > 1) contains.push(item(fill(t.documentColumnGroups, { groups: doc.columnGroups })));
+  el('document-contains').replaceChildren(...contains);
+  const hiddenColumns = state.headers.filter((h) => state.hiddenHeaders.has(h)).length;
+  const removed = state.ingested.length - state.rows.length;
+  const annotationsOff = state.annotations.filter((a) => !annotationShown(a)).length;
+  el('document-omitted').replaceChildren(
+    item(fill(t.exportRemoved, { removed })),
+    item(fill(t.exportExcluded, { excluded: state.rows.filter((r) => state.excluded.has(r)).length })),
+    item(fill(t.documentAnnotationsOff, { annotations: annotationsOff })),
+    item(fill(t.documentHiddenColumns, { hidden: hiddenColumns })),
+    item(fill(t.documentOutside, { outside: Math.max(0, outside) })),
+    item(t.documentNoComments),
+    item(t.documentLongValues),
+    // The PowerPoint document holds its text as Unicode: nothing is replaced.
+    ...(pptx ? [] : [item(doc.replaced > 0 ? fill(t.documentReplaced, { replaced: doc.replaced }) : t.documentNoReplaced)]),
+  );
+  el('document-size').textContent = fill(t.exportSize, { size: formatSize(doc.bytes.length) });
+}
+
+async function runDocumentExport(): Promise<void> {
+  const doc = preparedDocument;
+  if (!doc) return;
+  const outcome = await writeFile(doc.bytes, doc.kind === 'pptx' ? PPTX_FILE : PDF_FILE);
+  documentMessage = outcome === 'saved' ? 'done' : outcome;
+  closeDocumentDialog();
+  renderDocument();
+}
+
 function hasWork(): boolean {
   return state.ingested.length > 0 || mapView?.background != null;
 }
@@ -1143,11 +1349,18 @@ interface FileKind {
 
 const WORK_STATE_FILE: FileKind = { name: SUGGESTED_FILE_NAME, mime: 'application/json', extension: '.json', description: 'MapVibes work state' };
 const EXPORT_FILE: FileKind = { name: SUGGESTED_EXPORT_NAME, mime: 'text/html', extension: '.html', description: 'MapVibes presentation' };
+const PDF_FILE: FileKind = { name: 'mapvibes-presentation.pdf', mime: 'application/pdf', extension: '.pdf', description: 'PDF document' };
+const PPTX_FILE: FileKind = {
+  name: 'mapvibes-presentation.pptx',
+  mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  extension: '.pptx',
+  description: 'PowerPoint presentation',
+};
 
 // Writes a file only on the user's explicit action: through the save dialog
 // where the browser has one, otherwise as a download.
-async function writeFile(text: string, kind: FileKind): Promise<WriteOutcome> {
-  const blob = new Blob([text], { type: kind.mime });
+async function writeFile(data: string | Uint8Array, kind: FileKind): Promise<WriteOutcome> {
+  const blob = new Blob([data as BlobPart], { type: kind.mime });
   const picker = (window as unknown as SaveFilePickerWindow).showSaveFilePicker;
   if (typeof picker === 'function') {
     try {
@@ -3172,6 +3385,10 @@ function initialisePresentation(): void {
   el('pres-fit').addEventListener('click', () => presentationView?.fit());
   el('pres-reset').addEventListener('click', () => presentationView?.reset());
   el('export-open').addEventListener('click', openExportDialog);
+  el('pdf-open').addEventListener('click', () => void openDocumentDialog('pdf'));
+  el('pptx-open').addEventListener('click', () => void openDocumentDialog('pptx'));
+  el('document-go').addEventListener('click', () => void runDocumentExport());
+  el('document-cancel').addEventListener('click', closeDocumentDialog);
   el('export-cancel').addEventListener('click', closeExportDialog);
   el('export-go').addEventListener('click', () => void runExport());
   el('export-panel').addEventListener('keydown', (e) => {
@@ -3781,7 +3998,7 @@ function wireEvents(): void {
 // island of an exported file, in view-only mode. Only the Presentation
 // segment is offered; the controls that edit, toggle visibility, open,
 // save, or export are not shown and cannot be reached.
-const VIEWER_HIDDEN = ['compare-panel', 'segment-nav', 'work-controls', 'export-separator', 'export-open', 'export-panel', 'export-status', 'segment-information', 'segment-map', 'details-panel'];
+const VIEWER_HIDDEN = ['compare-panel', 'segment-nav', 'work-controls', 'export-separator', 'export-open', 'export-panel', 'export-status', 'pdf-open', 'pptx-open', 'document-panel', 'document-status', 'segment-information', 'segment-map', 'details-panel'];
 
 async function startViewer(text: string): Promise<void> {
   document.documentElement.dataset.mode = 'viewer';

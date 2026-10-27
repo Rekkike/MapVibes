@@ -62,6 +62,7 @@ const DENSE = [
   '.placement-item',
   '#map-toolbar',
   '#export-panel',
+  '#document-panel',
   '#compare-panel',
   '#compare-groups',
   '.compare-entry',

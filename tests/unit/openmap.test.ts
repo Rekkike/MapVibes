@@ -20,6 +20,7 @@ import {
   searchPlace,
   statusError,
 } from '../../src/openmap';
+import { XML_IDENTIFIERS } from '../../src/pptxwriter';
 
 function failure(f: () => unknown): FetchError {
   try {
@@ -198,14 +199,25 @@ describe('failure classes (FR-31)', () => {
 // Hard constraint 2 (FR-31): the labelled fetch is the only network
 // operation. No other application source may open a network request.
 describe('the only network operation', () => {
+  test('the exempted identifiers of the PowerPoint format are schema namespaces only', () => {
+    for (const id of XML_IDENTIFIERS) expect(id).toMatch(/^http:\/\/(schemas\.openxmlformats\.org\/|purl\.org\/dc\/|www\.w3\.org\/2001\/XMLSchema-instance$)/);
+  });
+
   const srcDir = join(process.cwd(), 'src');
   const NETWORK = /\bfetch\s*\(|XMLHttpRequest|WebSocket|EventSource|sendBeacon|navigator\.connection|new\s+Worker\s*\(|importScripts|https?:\/\//;
 
   test('only src/openmap.ts contains network calls or remote addresses', () => {
     const offenders = readdirSync(srcDir)
       .filter((f) => f.endsWith('.ts') && f !== 'openmap.ts')
-      // The SVG namespace is an XML identifier, not an address that is fetched.
-      .filter((f) => NETWORK.test(readFileSync(join(srcDir, f), 'utf8').replaceAll("'http://www.w3.org/2000/svg'", "''")));
+      .filter((f) => {
+        // The SVG namespace, and in the PowerPoint writer the XML namespaces
+        // and relationship types of the format, are identifiers written into
+        // documents, not addresses that are fetched; exactly these literals
+        // are exempted, nothing else.
+        let text = readFileSync(join(srcDir, f), 'utf8').replaceAll("'http://www.w3.org/2000/svg'", "''");
+        if (f === 'pptxwriter.ts') for (const id of XML_IDENTIFIERS) text = text.replaceAll(`'${id}'`, "''");
+        return NETWORK.test(text);
+      });
     expect(offenders).toEqual([]);
     expect(NETWORK.test(readFileSync(join(srcDir, 'openmap.ts'), 'utf8'))).toBe(true);
   });

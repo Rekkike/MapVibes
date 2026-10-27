@@ -169,7 +169,7 @@ export type Picker = (options: { suggestedName: string }) => Promise<unknown>;
 // Stands in for the browser's save dialog (File System Access API) and
 // records what the application writes.
 export function stubSaveDialog(outcome: 'save' | 'cancel' | 'fail' = 'save') {
-  const written: { name?: string; text?: string; closed: boolean } = { closed: false };
+  const written: { name?: string; text?: string; bytes?: Uint8Array; type?: string; closed: boolean } = { closed: false };
   const picker: Picker = async (options) => {
     written.name = options.suggestedName;
     if (outcome === 'cancel') throw new DOMException('The user aborted a request.', 'AbortError');
@@ -177,10 +177,16 @@ export function stubSaveDialog(outcome: 'save' | 'cancel' | 'fail' = 'save') {
     return {
       createWritable: async () => ({
         write: async (blob: Blob) => {
+          written.type = blob.type;
           written.text = await new Promise<string>((resolve) => {
             const reader = new FileReader();
             reader.onload = () => resolve(String(reader.result));
             reader.readAsText(blob);
+          });
+          written.bytes = await new Promise<Uint8Array>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(new Uint8Array(reader.result as ArrayBuffer));
+            reader.readAsArrayBuffer(blob);
           });
         },
         close: async () => {

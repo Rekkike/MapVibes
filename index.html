@@ -323,6 +323,8 @@
             <button type="button" id="pres-reset">Reset</button>
             <span id="export-separator" class="toolbar-separator" aria-hidden="true"></span>
             <button type="button" id="export-open">Export presentation</button>
+            <button type="button" id="pdf-open">Export PDF</button>
+            <button type="button" id="pptx-open">Export PowerPoint</button>
           </div>
           <div id="export-panel" class="hidden" role="dialog" aria-labelledby="export-heading">
             <h3 id="export-heading">Export presentation</h3>
@@ -338,6 +340,20 @@
             </div>
           </div>
           <p id="export-status" class="notice" aria-live="polite"></p>
+          <div id="document-panel" class="hidden" role="dialog" aria-labelledby="document-heading">
+            <h3 id="document-heading"></h3>
+            <p id="document-intro"></p>
+            <h4 id="document-contains-heading"></h4>
+            <ul id="document-contains"></ul>
+            <h4 id="document-omitted-heading"></h4>
+            <ul id="document-omitted"></ul>
+            <p id="document-size"></p>
+            <div class="export-actions">
+              <button type="button" id="document-go"></button>
+              <button type="button" id="document-cancel"></button>
+            </div>
+          </div>
+          <p id="document-status" class="notice" aria-live="polite"></p>
           <div id="presentation-stage" class="stage" data-has-background="false">
             <div id="presentation-content" class="hidden">
               <img id="presentation-image" alt="" draggable="false" />

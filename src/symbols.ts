@@ -1,14 +1,14 @@
-// Marker symbol library (FR-26): the geometric shapes and seven icons. Icons
+// Marker symbol library (FR-26): the geometric shapes and eight icons. Icons
 // are vector paths (24 by 24 units) drawn with the marker's number colour, so
 // that they share its pinned contrast against every marker fill.
 
 import { SHAPES, type MarkerShape } from './markers';
 
-export type MarkerIcon = 'bulb' | 'magnifier' | 'gear' | 'pause' | 'cross' | 'check' | 'hammer-shovel';
+export type MarkerIcon = 'bulb' | 'magnifier' | 'gear' | 'pause' | 'cross' | 'check' | 'hammer-shovel' | 'bolt';
 
 export type MarkerSymbol = MarkerShape | MarkerIcon;
 
-export const ICONS: MarkerIcon[] = ['bulb', 'magnifier', 'gear', 'pause', 'cross', 'check', 'hammer-shovel'];
+export const ICONS: MarkerIcon[] = ['bulb', 'magnifier', 'gear', 'pause', 'cross', 'check', 'hammer-shovel', 'bolt'];
 
 export const SYMBOLS: MarkerSymbol[] = [...SHAPES, ...ICONS];
 
@@ -23,6 +23,8 @@ export const ICON_PATHS: Record<MarkerIcon, string> = {
   // with a shovel (handle from the lower right with a grip, blade at the
   // upper left).
   'hammer-shovel': 'M4 20L14.9 9.1M14.2 4.1L19.9 9.8L17.8 11.9L12.1 6.2ZM20 20L9 9M18.5 21.5L21.5 18.5M10.4 7.6L7.4 4.6Q5 3 4 4Q3 5 4.6 7.4L7.6 10.4Z',
+  // A lightning bolt: one closed zigzag outline, stroked like the others.
+  bolt: 'M13.5 2.5L5.5 13.5L11.5 13.5L10.5 21.5L18.5 10.5L12.5 10.5Z',
 };
 
 export function isIcon(value: unknown): value is MarkerIcon {
