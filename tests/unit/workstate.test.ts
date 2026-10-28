@@ -39,6 +39,7 @@ function sample(): WorkState {
     areaValues: ['North', 'South'],
     programValues: ['First programme', 'Second programme'],
     colourLabels: { green: 'On track', red: 'At risk' },
+    symbolLabels: { bolt: 'Urgent', square: 'Depot' },
     glanceColumns: ['Group', 'Start'],
     annotations: [
       { kind: 'polygon', points: [{ x: 100, y: 100 }, { x: 300, y: 120 }, { x: 200, y: 260.5 }], colour: 'blue', fillOpacity: 0.3, outline: 'black', lineStyle: 'solid', label: 'Footprint', link: 0, hidden: false },
@@ -56,6 +57,8 @@ function sample(): WorkState {
     viewport: { scale: 0.6666666666666666, x: 12.5, y: -33.25 },
     sort: { header: 'Group', direction: 'desc' },
     filter: { kind: 'contains', header: 'Note', text: 'item' },
+    numbering: 'grouped',
+    listView: 'grouped',
   };
 }
 
@@ -97,15 +100,15 @@ describe('work-state file (FR-13)', () => {
   });
 
   test('a state without background or markers round-trips too', () => {
-    const state = { ...sample(), background: null, markers: [], excluded: [], presets: [], manualColumns: [], areaValues: [], programValues: [], colourLabels: {}, glanceColumns: null, annotations: [], statuses: [], symbolsFromStatus: false, segment: 'information' as const };
+    const state = { ...sample(), background: null, markers: [], excluded: [], presets: [], manualColumns: [], areaValues: [], programValues: [], colourLabels: {}, symbolLabels: {}, glanceColumns: null, annotations: [], statuses: [], symbolsFromStatus: false, segment: 'information' as const };
     expect(parseWorkState(serialiseWorkState(state, SAVED_AT))).toEqual(state);
   });
 
   test('the file carries the format name, schema version, and save time', () => {
     const file = fileOf(sample());
     expect(file.format).toBe(WORK_STATE_FORMAT);
-    expect(file.schemaVersion).toBe(6);
-    expect(WORK_STATE_SCHEMA_VERSION).toBe(6);
+    expect(file.schemaVersion).toBe(7);
+    expect(WORK_STATE_SCHEMA_VERSION).toBe(7);
     expect(file.savedAt).toBe('2026-01-02T03:04:05.000Z');
   });
 
@@ -122,7 +125,7 @@ describe('work-state file (FR-13)', () => {
   });
 
   test('an unknown schema version is rejected and named, never loaded silently', () => {
-    for (const version of [7, 0, '6', null]) {
+    for (const version of [8, 0, '7', null]) {
       const file = { ...fileOf(sample()), schemaVersion: version };
       expect(expectError(JSON.stringify(file), 'unknown-version').detail).toBe(String(version));
     }
@@ -240,7 +243,7 @@ describe('schema version 1 migration (FR-13)', () => {
     expect(migrated.manualColumns).toEqual([]);
     expect(migrated.rows.every((r) => !r.manual)).toBe(true);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(6);
+    expect(JSON.parse(text).schemaVersion).toBe(7);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 
@@ -307,7 +310,7 @@ describe('schema version 2 migration (FR-13)', () => {
   test('a migrated version 2 file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v2Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(6);
+    expect(JSON.parse(text).schemaVersion).toBe(7);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 
@@ -379,7 +382,7 @@ describe('schema version 3 migration (FR-13)', () => {
   test('a migrated version 3 file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v3Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(6);
+    expect(JSON.parse(text).schemaVersion).toBe(7);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 });
@@ -465,7 +468,7 @@ describe('schema version 4 migration (FR-13)', () => {
   test('a migrated version 4 file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v4Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(6);
+    expect(JSON.parse(text).schemaVersion).toBe(7);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 });
@@ -530,7 +533,7 @@ describe('schema version 6: programs, colour labels, at-a-glance columns, annota
     const state = parseWorkState(JSON.stringify(file));
     expect([state.programValues, state.colourLabels, state.glanceColumns, state.annotations]).toEqual([[], {}, null, []]);
     expect(state.background!.projection).toBeUndefined();
-    expect(JSON.parse(serialiseWorkState(state, SAVED_AT)).schemaVersion).toBe(6);
+    expect(JSON.parse(serialiseWorkState(state, SAVED_AT)).schemaVersion).toBe(7);
   });
 
   test('version 6 fields in an older file are ignored, as that version never wrote them', () => {
@@ -539,5 +542,79 @@ describe('schema version 6: programs, colour labels, at-a-glance columns, annota
     const state = parseWorkState(JSON.stringify(file));
     expect(state.annotations).toEqual([]);
     expect(state.programValues).toEqual([]);
+  });
+});
+
+describe('schema version 7: the at-a-glance end column (FR-46 as amended in v1.3.0)', () => {
+  const v6Text = readFileSync(join(process.cwd(), 'example-data', 'example-work-state-v6.json'), 'utf8');
+
+  test('the version 6 fixture is a version 6 file with a saved choice that lacks the end column', () => {
+    const file = JSON.parse(v6Text);
+    expect(file.schemaVersion).toBe(6);
+    expect(file.glance.columns).toEqual(['Group', 'Start']);
+    expect(file.columns.roles.end).toBe('End');
+  });
+
+  test('opening it adds the end-role column to the saved choice, once', () => {
+    const state = parseWorkState(v6Text);
+    expect(state.glanceColumns).toEqual(['Group', 'Start', 'End']);
+    // Saved again, it is a version 7 file and stays as it is.
+    const again = parseWorkState(serialiseWorkState(state, SAVED_AT));
+    expect(again.glanceColumns).toEqual(['Group', 'Start', 'End']);
+  });
+
+  test('a version 7 choice without the end column is the user’s and stays as it is', () => {
+    const state = parseWorkState(v6Text);
+    state.glanceColumns = ['Group'];
+    expect(parseWorkState(serialiseWorkState(state, SAVED_AT)).glanceColumns).toEqual(['Group']);
+  });
+
+  test('without an end role, or with the default columns, nothing is added', () => {
+    const file = JSON.parse(v6Text);
+    delete file.columns.roles.end;
+    expect(parseWorkState(JSON.stringify(file)).glanceColumns).toEqual(['Group', 'Start']);
+    const defaults = JSON.parse(v6Text);
+    defaults.glance.columns = null;
+    expect(parseWorkState(JSON.stringify(defaults)).glanceColumns).toBeNull();
+  });
+});
+
+describe('schema version 7: symbol labels (FR-54)', () => {
+  test('the labels round-trip; unknown symbols are rejected; older files have none', () => {
+    const file = fileOf(sample()) as Record<string, any>;
+    expect(file.symbolLabels).toEqual({ square: 'Depot', bolt: 'Urgent' });
+    expect(parseWorkState(serialiseWorkState(sample(), SAVED_AT)).symbolLabels).toEqual({ bolt: 'Urgent', square: 'Depot' });
+    file.symbolLabels.star = 'Odd';
+    expectError(JSON.stringify(file), 'invalid');
+    const v6 = readFileSync(join(process.cwd(), 'example-data', 'example-work-state-v6.json'), 'utf8');
+    expect(parseWorkState(v6).symbolLabels).toEqual({});
+  });
+});
+
+describe('schema version 7: comment edit dates (FR-15)', () => {
+  test('an edit date round-trips; a damaged one is rejected; older files have none', () => {
+    const state = sample();
+    state.rows[0].comments[0] = { ...state.rows[0].comments[0], edited: '2024-02-02T08:00:00.000Z' };
+    const back = parseWorkState(serialiseWorkState(state, SAVED_AT));
+    expect(back.rows[0].comments[0]).toEqual({ date: '2024-02-01T09:00:00.000Z', text: 'First check.', edited: '2024-02-02T08:00:00.000Z' });
+    expect(back.rows[0].comments[1].edited).toBeUndefined();
+    const file = fileOf(state) as Record<string, any>;
+    file.rows[0].comments[0].edited = 'yesterday';
+    expectError(JSON.stringify(file), 'invalid');
+    file.schemaVersion = 6;
+    expect(parseWorkState(JSON.stringify(file)).rows[0].comments[0].edited).toBeUndefined();
+  });
+});
+
+describe('schema version 7: the numbering mode and the list view (FR-17)', () => {
+  test('both round-trip; damaged values are rejected; older files have the global numbering and the flat list', () => {
+    const file = fileOf(sample()) as Record<string, any>;
+    expect([file.view.list.numbering, file.view.list.grouping]).toEqual(['grouped', 'grouped']);
+    const back = parseWorkState(serialiseWorkState(sample(), SAVED_AT));
+    expect([back.numbering, back.listView]).toEqual(['grouped', 'grouped']);
+    file.view.list.numbering = 'by-colour';
+    expectError(JSON.stringify(file), 'invalid');
+    const v6 = parseWorkState(readFileSync(join(process.cwd(), 'example-data', 'example-work-state-v6.json'), 'utf8'));
+    expect([v6.numbering, v6.listView]).toEqual(['global', 'flat']);
   });
 });

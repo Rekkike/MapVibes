@@ -1,9 +1,10 @@
 // Work-state file (FR-13). The complete work state is written to, and read
 // from, a single local JSON file on explicit Save and Open only. The file
-// carries a schema version. Version 6 is written; version 1 files (v0.4.0),
+// carries a schema version. Version 7 is written; version 1 files (v0.4.0),
 // version 2 files (v0.5.x), version 3 files (v0.6.0), version 4 files
-// (v0.7.0), and version 5 files (v0.8.0 to v1.0.0) are read and migrated; a
-// file with any other version is rejected.
+// (v0.7.0), version 5 files (v0.8.0 to v1.0.0), and version 6 files (v1.1.0
+// and v1.2.0) are read and migrated; a file with any other version is
+// rejected.
 //
 // Schema version 2 adds to version 1: role assignments by column key
 // (replacing the version 1 column mapping, as all columns are now kept), the
@@ -37,6 +38,12 @@
 // its scale known (FR-49). Files of versions 1 to 5 have none of these: an
 // empty program list, no colour labels, the default at-a-glance columns, no
 // annotations, and backgrounds of unknown scale.
+//
+// Schema version 7 adds to version 6 the numbering mode and the list view
+// (FR-17), the symbol labels (FR-54), and the comments' edit dates (FR-15).
+// On migration, a saved at-a-glance choice that lacks the end-role column
+// gains it (FR-46). Files of versions 1 to 6 have the global numbering, the
+// flat list, no symbol labels, and no edited comments.
 
 import { COLOURS, type RowColour, type SortDirection, type ValueFilter } from './dataset';
 import { isRole, ROLES, type Role, type RoleAssignments } from './roles';
@@ -53,8 +60,8 @@ import { SEGMENTS, type Segment } from './segments';
 import type { Point, Viewport } from './viewport';
 
 export const WORK_STATE_FORMAT = 'mapvibes-work-state';
-export const WORK_STATE_SCHEMA_VERSION = 6;
-export const READABLE_SCHEMA_VERSIONS = [1, 2, 3, 4, 5, 6];
+export const WORK_STATE_SCHEMA_VERSION = 7;
+export const READABLE_SCHEMA_VERSIONS = [1, 2, 3, 4, 5, 6, 7];
 export const SUGGESTED_FILE_NAME = 'mapvibes-work-state.json';
 
 export interface WorkStateRow {
@@ -73,6 +80,8 @@ export interface WorkStateRow {
 export interface StoredComment {
   date: string;
   text: string;
+  // Version 7: the moment of the last edit, if the entry was edited (FR-15).
+  edited?: string;
 }
 
 export interface ManualColumn {
@@ -125,6 +134,8 @@ export interface WorkState {
   // The user's colour labels (FR-45), the at-a-glance columns or null for the
   // defaults (FR-46), and the annotations (FR-47).
   colourLabels: Partial<Record<RowColour, string>>;
+  // The user's symbol labels (FR-54).
+  symbolLabels: Partial<Record<MarkerSymbol, string>>;
   glanceColumns: string[] | null;
   annotations: WorkStateAnnotation[];
   statuses: StatusEntry[];
@@ -133,6 +144,9 @@ export interface WorkState {
   viewport: Viewport;
   sort: { header: string | null; direction: SortDirection };
   filter: ValueFilter;
+  // Version 7: the numbering mode and the list view (FR-17).
+  numbering: 'global' | 'grouped';
+  listView: 'flat' | 'grouped';
 }
 
 export type WorkStateErrorCode = 'not-json' | 'not-work-state' | 'unknown-version' | 'invalid';
@@ -212,7 +226,7 @@ export function serialiseWorkState(state: WorkState, savedAt: Date): string {
       origin: r.manual ? 'manual' : 'imported',
       number: numbers[i],
       edited: { ...r.edited },
-      comments: r.comments.map((c) => ({ date: c.date, text: c.text })),
+      comments: r.comments.map((c) => ({ date: c.date, text: c.text, ...(c.edited ? { edited: c.edited } : {}) })),
     })),
     background: state.background
       ? {
@@ -232,6 +246,7 @@ export function serialiseWorkState(state: WorkState, savedAt: Date): string {
     },
     symbolsFromStatus: state.symbolsFromStatus,
     colourLabels: Object.fromEntries(COLOURS.filter((c) => state.colourLabels[c] !== undefined).map((c) => [c, state.colourLabels[c]])),
+    symbolLabels: Object.fromEntries(SYMBOLS.filter((s) => state.symbolLabels[s] !== undefined).map((s) => [s, state.symbolLabels[s]])),
     glance: { columns: state.glanceColumns === null ? null : [...state.glanceColumns] },
     annotations: state.annotations.map((a) => ({
       kind: a.kind,
@@ -250,6 +265,8 @@ export function serialiseWorkState(state: WorkState, savedAt: Date): string {
       list: {
         sort: { header: state.sort.header, direction: state.sort.direction },
         filter: { kind: state.filter.kind, header: state.filter.header, text: state.filter.text },
+        numbering: state.numbering,
+        grouping: state.listView,
       },
     },
   };
@@ -331,7 +348,7 @@ export function parseWorkState(text: string): WorkState {
     const manual = version >= 3 && oneOf(o.origin, ['imported', 'manual'] as const, `rows[${i}].origin`) === 'manual';
     // Versions 1 to 4 have no edits and no comments.
     const edited = version >= 5 ? parseEdited(o.edited, `rows[${i}].edited`, headers, manual) : {};
-    const comments = version >= 5 ? parseComments(o.comments, `rows[${i}].comments`) : [];
+    const comments = version >= 5 ? parseComments(o.comments, `rows[${i}].comments`, version) : [];
     return {
       values,
       colour: oneOf(o.colour, COLOURS, `rows[${i}].colour`),
@@ -420,6 +437,15 @@ export function parseWorkState(text: string): WorkState {
   let areaValues: string[] = [];
   let programValues: string[] = [];
   let colourLabels: Partial<Record<RowColour, string>> = {};
+  const symbolLabels: Partial<Record<MarkerSymbol, string>> = {};
+  // Version 7: the symbol labels (FR-54).
+  if (version >= 7) {
+    const labels = obj(file.symbolLabels, 'symbolLabels');
+    for (const [symbol, label] of Object.entries(labels)) {
+      const sym = oneOf(symbol, SYMBOLS, `symbolLabels.${symbol}`);
+      symbolLabels[sym] = str(label, `symbolLabels.${symbol}`);
+    }
+  }
   let glanceColumns: string[] | null = null;
   let annotations: WorkStateAnnotation[] = [];
   let statuses: StatusEntry[] = [];
@@ -456,6 +482,12 @@ export function parseWorkState(text: string): WorkState {
     annotations = arr(file.annotations, 'annotations').map((a, i) => parseAnnotation(a, `annotations[${i}]`, rows.length));
     if (annotations.length > 0 && !background) invalid('markersWithoutBackground', 'annotations');
   }
+  // Version 7 (FR-46 as amended in v1.3.0): the at-a-glance panels show the
+  // end column at minimum. A saved choice of an earlier version that lacks
+  // the end-role column gains it, once, at the end of the choice.
+  if (version < 7 && glanceColumns !== null && roles.end !== undefined && !glanceColumns.includes(roles.end)) {
+    glanceColumns = [...glanceColumns, roles.end];
+  }
 
   return {
     headers,
@@ -470,6 +502,7 @@ export function parseWorkState(text: string): WorkState {
     areaValues,
     programValues,
     colourLabels,
+    symbolLabels,
     glanceColumns,
     annotations,
     statuses,
@@ -482,6 +515,8 @@ export function parseWorkState(text: string): WorkState {
       header: filterHeader,
       text: str(filterIn.text, 'view.list.filter.text'),
     },
+    numbering: version >= 7 ? oneOf(list.numbering, ['global', 'grouped'] as const, 'view.list.numbering') : 'global',
+    listView: version >= 7 ? oneOf(list.grouping, ['flat', 'grouped'] as const, 'view.list.grouping') : 'flat',
   };
 }
 
@@ -555,12 +590,17 @@ function parseEdited(value: unknown, where: string, headers: string[], manualRow
   return out;
 }
 
-// Version 5: the comments of a row, each with a timestamp and some text.
-function parseComments(value: unknown, where: string): StoredComment[] {
+// Version 5: the comments of a row, each with a timestamp and some text;
+// version 7: and the timestamp of the last edit, if any.
+function parseComments(value: unknown, where: string, version: number): StoredComment[] {
   return arr(value, where).map((c, i) => {
     const o = obj(c, `${where}[${i}]`);
     const text = str(o.text, `${where}[${i}].text`);
     if (!isCommentDate(o.date) || text.trim() === '') invalid('invalidComment', `${where}[${i}]`);
+    if (version >= 7 && o.edited !== undefined) {
+      if (!isCommentDate(o.edited)) invalid('invalidComment', `${where}[${i}].edited`);
+      return { date: o.date, text, edited: o.edited };
+    }
     return { date: o.date, text };
   });
 }

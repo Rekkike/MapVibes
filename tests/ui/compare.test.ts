@@ -110,7 +110,9 @@ describe('re-import and comparison (FR-14)', () => {
     expect(groups()).toEqual({
       'matched-markers': ['1. A-01 / position differs', '3. A-03 / same position'],
       'matched-no-markers': ['2. A-02 / marker in the current work', '4. A-04'],
-      'file-only': ['5. A-05'],
+      // A file number is named as such, so that it is not taken for a
+      // current number (v1.3.0).
+      'file-only': ['file no. 5: A-05'],
       'current-only': ['5. M-01'],
       unpairable: [],
     });
@@ -139,7 +141,7 @@ describe('re-import and comparison (FR-14)', () => {
     expect(wasSaved).toBe(true);
     byId('compare-adopt').click();
     expect(dirty()).toBe(true);
-    expect(byId('compare-status').textContent).toBe('1 marker positions were adopted from the file. They are unsaved changes.');
+    expect(byId('compare-status').textContent).toBe('1 marker position was adopted from the file. It is an unsaved change.');
     byId('tab-map').click();
     // A-01 now sits where the file has it (stage point 60, 100).
     expect([markers()[0].style.left, markers()[0].style.top]).toEqual(['60px', '100px']);
@@ -171,7 +173,7 @@ describe('re-import and comparison (FR-14)', () => {
     editCell(3, 'ID', 'A-03');
     editCell(4, 'ID', '');
     await openExport(page);
-    expect(groups().unpairable).toEqual(['3. A-03 / in the current work', '4. A-03 / in the current work', '5. No. 5 / in the current work', '3. A-03 / in the file']);
+    expect(groups().unpairable).toEqual(['3. A-03 / in the current work', '4. A-03 / in the current work', '5. No. 5 / in the current work', 'file no. 3: A-03 / in the file']);
   });
 
   test('without the identifier role nothing is paired, and the panel says why', async () => {

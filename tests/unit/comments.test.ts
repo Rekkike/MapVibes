@@ -69,3 +69,25 @@ describe('comment storage (FR-15)', () => {
     expect(formatCommentDate('not a date')).toBe('not a date');
   });
 });
+
+describe('editing a comment (FR-15 as amended in v1.3.0)', () => {
+  test('the text changes, the creation date stays, and the edit date is recorded', async () => {
+    const { addComment, editComment, commentsOf } = await import('../../src/comments');
+    const store = new Map();
+    const row = { values: {}, colour: 'green' as const };
+    const c = addComment(store, row, 'First text', new Date('2026-01-01T10:00:00.000Z'))!;
+    expect(editComment(store, row, c.id, '  Second text ', new Date('2026-01-02T11:00:00.000Z'))).toBe(true);
+    expect(commentsOf(store, row)).toEqual([{ id: c.id, date: '2026-01-01T10:00:00.000Z', text: 'Second text', edited: '2026-01-02T11:00:00.000Z' }]);
+  });
+
+  test('an edit to no text, to the same text, or of an unknown entry changes nothing', async () => {
+    const { addComment, editComment, commentsOf } = await import('../../src/comments');
+    const store = new Map();
+    const row = { values: {}, colour: 'green' as const };
+    const c = addComment(store, row, 'Kept')!;
+    expect(editComment(store, row, c.id, '   ')).toBe(false);
+    expect(editComment(store, row, c.id, 'Kept')).toBe(false);
+    expect(editComment(store, row, 'comment-none', 'New')).toBe(false);
+    expect(commentsOf(store, row)[0]).toEqual({ id: c.id, date: c.date, text: 'Kept' });
+  });
+});

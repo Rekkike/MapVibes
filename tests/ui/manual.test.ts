@@ -45,7 +45,10 @@ describe('manual list (FR-9, FR-24, FR-30)', () => {
     expect(byId('list-panel').classList.contains('hidden')).toBe(false);
     expect(byId('no-file').classList.contains('hidden')).toBe(true);
     expect(rowsShown()).toBe(0);
-    expect(document.querySelectorAll('#row-table-head th[data-header]')).toHaveLength(0);
+    // Four starter columns with their roles (FR-30 as amended in v1.3.0).
+    const heads = [...document.querySelectorAll<HTMLElement>('#row-table-head th[data-header]')];
+    expect(heads.map((th) => th.querySelector<HTMLInputElement>('.column-name-input')!.value)).toEqual(['Name', 'Start year', 'End year', 'Note']);
+    expect(heads.map((th) => th.dataset.role)).toEqual(['name', 'start', 'end', 'note']);
     expect(byId('counter-retained').textContent).toBe('Retained rows: 0');
     expect(byId('work-dirty').classList.contains('hidden')).toBe(false);
   });
@@ -160,7 +163,7 @@ describe('manual list (FR-9, FR-24, FR-30)', () => {
   test('an empty column name adds nothing', () => {
     byId('start-empty').click();
     addColumn('   ');
-    expect(document.querySelectorAll('#row-table-head th[data-header]')).toHaveLength(0);
+    expect(document.querySelectorAll('#row-table-head th[data-header]')).toHaveLength(4);
   });
 
   test('starting an empty list over unsaved work asks first', async () => {

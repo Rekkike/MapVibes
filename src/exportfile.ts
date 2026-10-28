@@ -41,6 +41,10 @@ export interface ExportData {
   // Version 2: the program groups of the grouped numbering, by group number
   // and in that order (FR-17, FR-43); absent when the numbering is global.
   programGroups?: ProgramGroup[];
+  // The size of the presentation stage when the file was exported, so that
+  // the viewer opens at the same view, centred (FR-38 as amended in v1.3.0);
+  // an optional addition to version 2.
+  stage?: { width: number; height: number };
 }
 
 export interface ProgramGroup {
@@ -73,6 +77,7 @@ export function serialiseExport(data: Omit<ExportData, 'exportedAt'>, exportedAt
     numbers: [...data.numbers],
     ...(data.labels ? { labels: [...data.labels] } : {}),
     ...(data.programGroups ? { programGroups: data.programGroups.map((g) => ({ ...g })) } : {}),
+    ...(data.stage ? { stage: { width: data.stage.width, height: data.stage.height } } : {}),
     workState: JSON.parse(serialiseWorkState(data.workState, exportedAt)) as unknown,
   };
   return JSON.stringify(file, null, 2);
@@ -147,6 +152,16 @@ export function parseExport(text: string): ExportData {
   ) {
     throw new ExportError('invalid', 'programGroups');
   }
+  const stage = file.stage;
+  if (
+    stage !== undefined &&
+    (typeof stage !== 'object' ||
+      stage === null ||
+      !(Number.isFinite((stage as Json).width) && ((stage as Json).width as number) > 0) ||
+      !(Number.isFinite((stage as Json).height) && ((stage as Json).height as number) > 0))
+  ) {
+    throw new ExportError('invalid', 'stage');
+  }
   return {
     exportedAt,
     application: file.application,
@@ -156,5 +171,6 @@ export function parseExport(text: string): ExportData {
     numbers: numbers as number[],
     ...(labels !== undefined ? { labels: labels as string[] } : {}),
     ...(groups !== undefined ? { programGroups: (groups as Json[]).map((g) => ({ index: g.index as number, name: g.name as string })) } : {}),
+    ...(stage !== undefined ? { stage: { width: (stage as Json).width as number, height: (stage as Json).height as number } } : {}),
   };
 }

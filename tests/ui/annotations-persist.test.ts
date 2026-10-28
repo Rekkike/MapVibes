@@ -178,7 +178,7 @@ describe('annotations in the work-state file (schema version 6, FR-13)', () => {
     const app = await annotated();
     const text = serialiseWorkState(app.captureWorkState(), new Date());
     const file = JSON.parse(text);
-    expect(file.schemaVersion).toBe(6);
+    expect(file.schemaVersion).toBe(7);
     expect(file.annotations.map((a: { kind: string; link: number | null; hidden: boolean; label: string }) => [a.kind, a.link, a.hidden, a.label])).toEqual([
       ['rectangle', 0, false, 'Site footprint'],
       ['line', null, true, ''],

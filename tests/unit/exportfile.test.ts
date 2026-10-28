@@ -39,7 +39,7 @@ describe('export format (FR-40)', () => {
     expect(f.application).toBe('0.9.0');
     expect(f.preferences).toEqual({ language: 'sv', theme: 'dark' });
     expect(f.workState.format).toBe('mapvibes-work-state');
-    expect(f.workState.schemaVersion).toBe(6);
+    expect(f.workState.schemaVersion).toBe(7);
   });
 
   test('a round trip restores the same data', () => {
@@ -61,7 +61,7 @@ describe('export format (FR-40)', () => {
     expect(data.workState.rows.every((r) => r.comments.length === 0)).toBe(true);
     expect(data.workState.statuses.map((s) => s.name)).toEqual(['Open', 'Done']);
     // It is written back at the current schema version.
-    expect(JSON.parse(serialiseExport(data, AT)).workState.schemaVersion).toBe(6);
+    expect(JSON.parse(serialiseExport(data, AT)).workState.schemaVersion).toBe(7);
   });
 
   test('an unknown export version is rejected and named, never read silently', () => {
@@ -158,5 +158,18 @@ describe('export format version 2 (FR-40 as amended in v1.1.0)', () => {
     f.workState = JSON.parse(v4Text);
     const data = parseExport(JSON.stringify(f));
     expect([data.workState.annotations, data.workState.colourLabels, data.workState.glanceColumns, data.workState.programValues]).toEqual([[], {}, null, []]);
+  });
+});
+
+describe('the exported stage size (FR-38 as amended in v1.3.0)', () => {
+  test('it round-trips, is optional, and must be a positive size', () => {
+    const data = { ...sample(), stage: { width: 905, height: 555 } };
+    expect(parseExport(serialiseExport(data, AT)).stage).toEqual({ width: 905, height: 555 });
+    expect(parseExport(serialiseExport(sample(), AT)).stage).toBeUndefined();
+    for (const stage of [{ width: 0, height: 5 }, { width: 5 }, 'big', null]) {
+      const f = JSON.parse(serialiseExport(data, AT));
+      f.stage = stage;
+      expect(expectError(JSON.stringify(f), 'invalid').detail).toBe('stage');
+    }
   });
 });

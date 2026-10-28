@@ -23,6 +23,9 @@ export interface DetailComment {
   date: string;
   dateText: string;
   text: string;
+  // The last edit, if any, as an ISO 8601 timestamp and as shown.
+  edited?: string;
+  editedText?: string;
 }
 
 export interface DetailModel {
@@ -61,6 +64,11 @@ export interface DetailLabels {
   empty: string;
   // The label of an entry's remove button; {date} is replaced.
   removeComment: string;
+  // The label of an entry's edit button; {date} is replaced.
+  editComment: string;
+  edit: string;
+  save: string;
+  cancel: string;
   footprints: string;
 }
 
@@ -70,6 +78,8 @@ export interface DetailHandlers {
   edit?: {
     renderField(field: DetailField): HTMLElement;
     removeComment(id: string): void;
+    // Changes an entry's text (FR-15 as amended in v1.3.0).
+    editComment(id: string, text: string): void;
     // The controls that append a comment, below the entries.
     commentForm(): HTMLElement;
   };
@@ -90,6 +100,13 @@ function footprintList(model: DetailModel, heading: string, className: string): 
   }
   section.appendChild(list);
   return section;
+}
+
+// The edit date of an edited comment, beside its creation date (FR-15).
+function editedMark(comment: DetailComment): HTMLElement {
+  const mark = el('time', 'details-comment-edited', comment.editedText);
+  mark.setAttribute('datetime', comment.edited!);
+  return mark;
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
@@ -153,16 +170,53 @@ export function renderDetails(container: HTMLElement, model: DetailModel, labels
     const time = el('time', 'details-comment-date', comment.dateText);
     time.setAttribute('datetime', comment.date);
     const text = el('p', 'details-comment-text', comment.text);
-    li.append(time, text);
+    li.append(time);
+    if (comment.editedText) li.appendChild(editedMark(comment));
+    li.appendChild(text);
     if (handlers.edit) {
       const edit = handlers.edit;
+      const editButton = el('button', 'details-comment-edit', labels.edit);
+      editButton.type = 'button';
+      editButton.setAttribute('aria-label', labels.editComment.replace('{date}', comment.dateText));
+      // Editing happens in place: the text becomes a field with Save and
+      // Cancel.
+      editButton.addEventListener('click', () => {
+        const field = el('textarea', 'details-comment-editor');
+        field.rows = 3;
+        field.value = comment.text;
+        field.setAttribute('aria-label', labels.editComment.replace('{date}', comment.dateText));
+        const save = el('button', 'details-comment-save', labels.save);
+        save.type = 'button';
+        const cancel = el('button', 'details-comment-cancel', labels.cancel);
+        cancel.type = 'button';
+        const form = el('div', 'details-comment-edit-form');
+        form.append(field, save, cancel);
+        save.addEventListener('click', () => edit.editComment(comment.id, field.value));
+        cancel.addEventListener('click', () => {
+          form.replaceWith(text);
+          editButton.hidden = false;
+          editButton.focus();
+        });
+        field.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            edit.editComment(comment.id, field.value);
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            cancel.click();
+          }
+        });
+        text.replaceWith(form);
+        editButton.hidden = true;
+        field.focus();
+      });
       const remove = el('button', 'details-comment-remove icon-button', '×');
       remove.type = 'button';
       const label = labels.removeComment.replace('{date}', comment.dateText);
       remove.setAttribute('aria-label', label);
       remove.title = label;
       remove.addEventListener('click', () => edit.removeComment(comment.id));
-      li.appendChild(remove);
+      li.append(editButton, remove);
     }
     list.appendChild(li);
   }
@@ -207,7 +261,9 @@ export function renderCard(container: HTMLElement, model: DetailModel, labels: {
       li.dataset.commentId = comment.id;
       const time = el('time', 'details-comment-date', comment.dateText);
       time.setAttribute('datetime', comment.date);
-      li.append(time, el('p', 'details-comment-text', comment.text));
+      li.append(time);
+      if (comment.editedText) li.appendChild(editedMark(comment));
+      li.appendChild(el('p', 'details-comment-text', comment.text));
       list.appendChild(li);
     }
     section.appendChild(list);

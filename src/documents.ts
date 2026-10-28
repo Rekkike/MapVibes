@@ -12,6 +12,7 @@ import type { LegendSection } from './legend';
 import { fitText, PdfDocument, textWidth, type PdfFont, type PdfImage, type Rgb, type Transform } from './pdfwriter';
 import { ICON_PATHS, isIcon, type MarkerSymbol } from './symbols';
 import { buildPptx, type PptxTableSlide } from './pptxwriter';
+import { format } from './i18n';
 import { imageToScreen, type Point, type Viewport } from './viewport';
 
 // The documents use the light theme's palette: they are read on white
@@ -761,7 +762,7 @@ export interface PdfResult {
 }
 
 function fillIn(template: string, values: Record<string, string | number>): string {
-  return template.replace(/\{(\w+)\}/g, (m, key: string) => (key in values ? String(values[key]) : m));
+  return format(template, values);
 }
 
 // The PDF document (FR-12, FR-50): the stage page, then the table pages.

@@ -52,21 +52,22 @@ describe('work-state schema version 3 (FR-13, FR-9, FR-24)', () => {
     editCell(1, 'Zone', 'West');
     const text = await save();
     const file = JSON.parse(text);
-    expect(file.schemaVersion).toBe(6);
-    expect(file.columns.manual.map((c: { label: string }) => c.label)).toEqual(['Label', 'Zone']);
+    expect(file.schemaVersion).toBe(7);
+    expect(file.columns.manual.map((c: { label: string }) => c.label)).toEqual(['Name', 'Start year', 'End year', 'Note', 'Label', 'Zone']);
     expect(file.rows.map((r: { origin: string }) => r.origin)).toEqual(['manual', 'manual']);
 
     await mountApp();
     openWorkFile(textFile('work.json', text));
     await flush();
-    expect(cellValues()).toEqual([
+    // The starter columns lead; the columns added by hand follow.
+    expect(cellValues().map((r) => r.slice(-2))).toEqual([
       ['First', ''],
       ['Second', 'West'],
     ]);
     // Still a manual list: cells remain editable and columns renameable.
     editCell(0, 'Zone', 'East');
-    expect(cellValues()[0]).toEqual(['First', 'East']);
-    expect(document.querySelectorAll('.column-name-input')).toHaveLength(2);
+    expect(cellValues()[0].slice(-2)).toEqual(['First', 'East']);
+    expect(document.querySelectorAll('.column-name-input')).toHaveLength(6);
     byId('add-row').click();
     expect(document.querySelectorAll('#row-table-body td.num')[2].textContent).toBe('3');
   });
@@ -105,6 +106,6 @@ describe('work-state schema version 3 (FR-13, FR-9, FR-24)', () => {
     // Only the area column (FR-32) is choose-from; every value is editable (FR-10).
     expect(document.querySelectorAll('#row-table-body .cell-input.combobox')).toHaveLength(5);
     expect(document.querySelectorAll('#row-table-body .cell-input.combobox:not([data-header="Group"])')).toHaveLength(0);
-    expect(JSON.parse(await save()).schemaVersion).toBe(6);
+    expect(JSON.parse(await save()).schemaVersion).toBe(7);
   });
 });

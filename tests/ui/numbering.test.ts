@@ -177,6 +177,23 @@ describe('numbering modes (FR-3, FR-17)', () => {
     expect(names).toContain('2. A-05');
   });
 
+  test("the file's numbers in the comparison follow the chosen numbering mode (v1.3.0)", async () => {
+    programRole();
+    setRole('ID', 'identifier');
+    mode('grouped');
+    const page = app.exportPage()!;
+    // The first item is then left only in the file.
+    document.querySelectorAll<HTMLElement>('#row-table-body tr')[0].querySelector<HTMLInputElement>('.row-select')!.click();
+    byId('delete-selected').click();
+    const { openWorkFile, textFile } = await import('./harness');
+    openWorkFile(textFile('presentation.html', page));
+    await flush();
+    const fileOnly = () => [...document.querySelectorAll('#compare-groups [data-group="file-only"] .compare-name')].map((n) => n.textContent);
+    expect(fileOnly()).toEqual(['file no. 1.1: A-01']);
+    mode('global');
+    expect(fileOnly()).toEqual(['file no. 1: A-01']);
+  });
+
   test('the controls follow the language', () => {
     const lang = byId<HTMLSelectElement>('select-language');
     lang.value = 'sv';

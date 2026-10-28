@@ -155,3 +155,21 @@ describe('label placement (FR-47)', () => {
     expect(labelAnchor({ kind: 'line', points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 20 }] })).toEqual({ x: 10, y: 10 });
   });
 });
+
+describe('the straight-line constraint (FR-47 as amended in v1.3.0)', () => {
+  test('a point moves onto the nearest of horizontal, vertical, and the diagonals through the anchor', async () => {
+    const { snapToAxis, constrained } = await import('../../src/annotationlayer');
+    const o = { x: 10, y: 10 };
+    expect(snapToAxis(o, { x: 50, y: 14 })).toEqual({ x: 50, y: 10 });
+    expect(snapToAxis(o, { x: 13, y: -40 })).toEqual({ x: 10, y: -40 });
+    const d = snapToAxis(o, { x: 40, y: 44 });
+    expect(d.x - o.x).toBeCloseTo(d.y - o.y, 9);
+    expect(d.x).toBeCloseTo(42, 9);
+    const a = snapToAxis(o, { x: 40, y: -18 });
+    expect(a.x - o.x).toBeCloseTo(-(a.y - o.y), 9);
+    // Leftwards and upwards work the same way.
+    expect(snapToAxis(o, { x: -30, y: 12 })).toEqual({ x: -30, y: 10 });
+    expect(snapToAxis(o, o)).toEqual(o);
+    expect([constrained({ shiftKey: true }), constrained({ ctrlKey: true }), constrained({})]).toEqual([true, true, false]);
+  });
+});

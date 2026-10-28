@@ -6,7 +6,7 @@ import { emptyValues, newManualKey } from './manual';
 import { addStatus, statusSymbol, addValue, collectValues, hasValue, mergeValues, moveStatus, removeStatus, removeValue, renameStatus, renameValue, setStatusSymbol, statusNames, type StatusEntry } from './vocab';
 import { clonePreset, findMatchingPreset, loadStoredPresets, presetConfiguration, presetMatches, removePreset, storePresets, upsertPreset, type ColumnPreset } from './presets';
 import { assignRole, displayName, isRole, listColumnOrder, roleOfColumn, ROLES, type Role, type RoleAssignments } from './roles';
-import { strings, type Lang, type Strings } from './i18n';
+import { format, strings, type Lang, type Strings } from './i18n';
 import { loadPreferences, savePreferences, type Preferences, type ThemeChoice } from './preferences';
 import { MapView } from './mapview';
 import { isPdfFile, openPdf, type PdfDocument } from './pdfbackground';
@@ -14,15 +14,15 @@ import { isOsmFile, MAX_OSM_BYTES, OsmError, parseOsm, planRender, type Mercator
 import { renderPlanToDataUrl } from './osmrender';
 import { fetchableBounds, FetchError, fetchMapData, isOnline, parseBounds, searchPlace, type BoundsField, type FetchErrorCode, type PlaceResult } from './openmap';
 import { MarkerLayer } from './markerlayer';
-import { colourName, legendModel, renderLegend, shapeName, type ColourLabels, type LegendGroup } from './legend';
+import { colourName, legendModel, renderLegend, shapeName, type ColourLabels, type LegendGroup, type SymbolLabels } from './legend';
 import { buildPdf, buildPptxDocument, PPTX_PAGE, pptxTables, sceneFromStage, type DocumentTable, type StageScene } from './documents';
 import { backgroundJpeg, stagePagePng } from './raster';
-import { addComment, commentsOf, formatCommentDate, removeComment, restoreComments, type CommentStore } from './comments';
+import { addComment, commentsOf, editComment, formatCommentDate, removeComment, restoreComments, type CommentStore } from './comments';
 import { renderCard as renderCardContent, renderDetails, type DetailField, type DetailLabels, type DetailModel } from './details';
 import { drawSymbol, isSymbol, SYMBOLS, symbolClasses, type MarkerSymbol } from './symbols';
 import { markersInView } from './glance';
 import { DEFAULT_SHAPE, placedMarkers, placeMarker, pruneMarkers, removeMarker, type MarkerPositions, type MarkerShapes, type PlacedMarker } from './markers';
-import { BUTTON_ZOOM_FACTOR, imageToScreen, screenToImage, type Point } from './viewport';
+import { BUTTON_ZOOM_FACTOR, imageToScreen, screenToImage, type Point, type Viewport } from './viewport';
 import { isSegment, SEGMENTS, showSegment, type Segment } from './segments';
 import { type Problem, parseWorkState, rowNumbers, serialiseWorkState, SUGGESTED_FILE_NAME, WorkStateError, type WorkState } from './workstate';
 import { ExportError, parseExport, serialiseExport, SUGGESTED_EXPORT_NAME, type ExportData } from './exportfile';
@@ -48,6 +48,8 @@ interface AppState {
   // The user's names for the four colours (FR-45); a missing or empty name
   // shows the colour's own name.
   colourLabels: Partial<Record<RowColour, string>>;
+  // The user's symbol labels (FR-54); a symbol without one shows its name.
+  symbolLabels: Partial<Record<MarkerSymbol, string>>;
   // The columns the at-a-glance entries show (FR-46), or null for the
   // defaults: the area, start, and end columns.
   glanceColumns: string[] | null;
@@ -121,6 +123,7 @@ const state: AppState = {
   areaValues: [],
   programValues: [],
   colourLabels: {},
+  symbolLabels: {},
   glanceColumns: null,
   annotations: [],
   annotationStyle: { ...DEFAULT_STYLE },
@@ -271,6 +274,7 @@ function renderStaticText(): void {
   el('visibility-empty').textContent = t.visibilityEmpty;
   el('presentation-empty-hint').textContent = t.presentationEmptyHint;
   el('pres-fit').textContent = t.mapFit;
+  el('details-panel').setAttribute('aria-label', t.detailsPanel);
   el('export-open').textContent = t.exportOpen;
   el('pdf-open').textContent = t.pdfOpen;
   el('pptx-open').textContent = t.pptxOpen;
@@ -389,10 +393,25 @@ function applyImport(parse: ParseResult): void {
 // labelled as example data until other work replaces it.
 let demoLoaded = false;
 
-export async function loadDemo(): Promise<boolean> {
+// The number of changes made, and its value when the demo finished loading,
+// so that a reset of an untouched demo needs no confirmation (FR-56).
+let changeCount = 0;
+let demoBaseline = -1;
+
+export async function loadDemo(options: { confirmed?: boolean } = {}): Promise<boolean> {
   const t = strings(state.prefs.lang);
-  if (state.dirty && !window.confirm(t.demoConfirmReplace)) return false;
+  if (!options.confirmed && state.dirty && !window.confirm(t.demoConfirmReplace)) return false;
   const scenario = demoScenario();
+  // The session's own settings start afresh, so that the demo is pristine.
+  state.excluded = new Set();
+  state.positions = new Map();
+  state.shapes = new Map();
+  state.symbolLabels = {};
+  state.numbering = 'global';
+  state.listView = 'flat';
+  state.detailsId = null;
+  state.selectedMarker = null;
+  state.presentationSelected = null;
   state.presets = upsertPreset(state.presets, scenario.preset);
   storePresets(state.presets);
   el('ingest-error').classList.add('hidden');
@@ -443,18 +462,46 @@ export async function loadDemo(): Promise<boolean> {
   }
   demoLoaded = true;
   markDirty();
+  demoBaseline = changeCount;
   workMessage = 'demo-loaded';
   renderList();
   setSegment('map');
   return outcome === 'ok';
 }
 
+// Reset demo (FR-56): after the unsaved-changes confirmation (asked only when
+// the demo was changed), the session is discarded and the pristine demo is
+// loaded in one step.
+export async function resetDemo(): Promise<boolean> {
+  if (!demoLoaded) return false;
+  if (changeCount !== demoBaseline && !window.confirm(strings(state.prefs.lang).demoResetConfirm)) return false;
+  return loadDemo({ confirmed: true });
+}
+
 // Starts an empty list with no import (FR-30); rows and columns are then
 // added by hand.
+// Starts an empty list (FR-30) with four starter columns, named in the
+// interface language and assigned the name, start, end, and note roles by
+// key (hard constraint 5: the labels are interface text that no logic reads;
+// the columns are ordinary manual columns, freely renamed or removed).
 function startEmptyList(): void {
-  if (state.dirty && !window.confirm(strings(state.prefs.lang).manualConfirmReplace)) return;
+  const t = strings(state.prefs.lang);
+  if (state.dirty && !window.confirm(t.manualConfirmReplace)) return;
   el('ingest-error').classList.add('hidden');
   resetList([], []);
+  const starters: Array<[string, Role]> = [
+    [t.starterName, 'name'],
+    [t.starterStart, 'start'],
+    [t.starterEnd, 'end'],
+    [t.starterNote, 'note'],
+  ];
+  for (const [label, role] of starters) {
+    const key = newManualKey(state.headers);
+    state.manualColumns.set(key, label);
+    state.headers = [...state.headers, key];
+    state.roles = { ...state.roles, [role]: key };
+  }
+  state.visibleHeaders = [...state.headers];
   renderList();
 }
 
@@ -648,6 +695,46 @@ function setListView(view: 'flat' | 'grouped'): void {
   renderList();
 }
 
+// The role explanation (FR-55): what each role feeds, and which column holds
+// it now, so that a role left unassigned explains itself.
+function roleLabel(t: Strings, role: Role): string {
+  return { identifier: t.roleIdentifier, name: t.roleName, start: t.roleStart, end: t.roleEnd, area: t.roleArea, status: t.roleStatus, program: t.roleProgram, note: t.roleNote }[role];
+}
+
+const ROLE_HELP: Record<Role, keyof Strings> = {
+  identifier: 'roleHelpIdentifier',
+  name: 'roleHelpName',
+  start: 'roleHelpStart',
+  end: 'roleHelpEnd',
+  area: 'roleHelpArea',
+  status: 'roleHelpStatus',
+  program: 'roleHelpProgram',
+  note: 'roleHelpNote',
+};
+
+function renderRoleHelp(): void {
+  const t = strings(state.prefs.lang);
+  el('role-help-summary').textContent = t.roleHelpSummary;
+  el('role-help-intro').textContent = t.roleHelpIntro;
+  el('role-help-list').replaceChildren(
+    ...ROLES.map((role) => {
+      const li = document.createElement('li');
+      li.dataset.role = role;
+      const name = document.createElement('strong');
+      name.textContent = roleLabel(t, role);
+      const what = document.createElement('span');
+      what.className = 'role-help-text';
+      what.textContent = ` ${t[ROLE_HELP[role]] as string}`;
+      const key = state.roles[role];
+      const status = document.createElement('span');
+      status.className = `role-help-status${key === undefined ? ' is-missing' : ''}`;
+      status.textContent = ` ${key === undefined ? t.roleHelpUnassigned : fill(t.roleHelpAssigned, { column: labelOf(key) })}`;
+      li.append(name, what, status);
+      return li;
+    }),
+  );
+}
+
 function renderList(): void {
   const t = strings(state.prefs.lang);
   const head = el('row-table-head');
@@ -669,16 +756,8 @@ function renderList(): void {
   head.appendChild(numberTh);
 
   const columns = listColumnOrder(state.headers, state.roles);
-  const roleLabels: Record<Role, string> = {
-    identifier: t.roleIdentifier,
-    name: t.roleName,
-    start: t.roleStart,
-    end: t.roleEnd,
-    area: t.roleArea,
-    status: t.roleStatus,
-    program: t.roleProgram,
-    note: t.roleNote,
-  };
+  const roleLabels = Object.fromEntries(ROLES.map((r) => [r, roleLabel(t, r)])) as Record<Role, string>;
+  renderRoleHelp();
   columns.forEach((header) => {
     const th = document.createElement('th');
     const labelText = labelOf(header);
@@ -847,6 +926,7 @@ function renderList(): void {
   renderPresets();
   for (const kind of VALUE_VOCABULARIES) renderVocabPanel(kind);
   renderColourPanel();
+  renderSymbolPanel();
   renderGlanceColumnPicker();
   renderAnnotationToolbar();
   renderAnnotationInspector();
@@ -935,7 +1015,7 @@ export function captureWorkState(): WorkState {
       removed: !retained.has(row),
       manual: state.manualRows.has(row),
       edited: { ...(state.edited.get(row) ?? {}) },
-      comments: commentsOf(state.comments, row).map((c) => ({ date: c.date, text: c.text })),
+      comments: commentsOf(state.comments, row).map((c) => ({ date: c.date, text: c.text, ...(c.edited ? { edited: c.edited } : {}) })),
     })),
     background: bg ? { ...bg } : null,
     markers,
@@ -944,6 +1024,7 @@ export function captureWorkState(): WorkState {
     areaValues: [...state.areaValues],
     programValues: [...state.programValues],
     colourLabels: { ...state.colourLabels },
+    symbolLabels: { ...state.symbolLabels },
     glanceColumns: state.glanceColumns ? [...state.glanceColumns] : null,
     annotations: state.annotations.map((a) => {
       const linked = state.annotationLinks.get(a.id);
@@ -965,6 +1046,8 @@ export function captureWorkState(): WorkState {
     viewport: { ...(mapView?.viewport ?? { scale: 1, x: 0, y: 0 }) },
     sort: { ...state.sort },
     filter: { ...state.filter },
+    numbering: state.numbering,
+    listView: state.listView,
   };
 }
 
@@ -975,6 +1058,8 @@ export function captureWorkState(): WorkState {
 interface ExportSummary {
   items: number;
   columns: number;
+  allColumns: number;
+  notShared: number;
   hidden: number;
   placed: number;
   comments: number;
@@ -991,15 +1076,47 @@ function labelsOf(indices: number[]): string[] {
   return indices.map((i) => labels.get(state.ingested[i]) ?? '');
 }
 
-export function captureExport(): { data: Omit<ExportData, 'exportedAt'>; summary: ExportSummary } {
+// What the export shares (FR-53): the items chosen and the columns chosen.
+// The choice starts from the visibility state when the dialog opens.
+export interface ExportChoice {
+  items: Set<RowData>;
+  columns: Set<string>;
+}
+
+let exportChoice: ExportChoice | null = null;
+
+function defaultExportChoice(): ExportChoice {
+  return { items: new Set(state.rows.filter((r) => !state.excluded.has(r))), columns: new Set(state.headers) };
+}
+
+export function captureExport(choice: ExportChoice = exportChoice ?? defaultExportChoice()): { data: Omit<ExportData, 'exportedAt'>; summary: ExportSummary } {
   const ws = captureWorkState();
   const numbersAll = rowNumbers(ws.rows);
-  const shown = ws.rows.map((_, i) => i).filter((i) => !ws.rows[i].removed && !ws.excluded.includes(i));
+  const shown = ws.rows.map((_, i) => i).filter((i) => !ws.rows[i].removed && choice.items.has(state.ingested[i]));
   const newIndex = new Map(shown.map((old, i) => [old, i]));
-  const rows = shown.map((i) => ({ ...ws.rows[i], edited: {} }));
+  // Columns not chosen are absent from the file, not hidden in it.
+  const keep = (key: string) => choice.columns.has(key);
+  const headers = ws.headers.filter(keep);
+  const pick = (values: Record<string, string>) => Object.fromEntries(Object.entries(values).filter(([k]) => keep(k)));
+  const rows = shown.map((i) => ({ ...ws.rows[i], values: pick(ws.rows[i].values), edited: {} }));
+  const roles = Object.fromEntries(Object.entries(ws.roles).filter(([, key]) => key !== undefined && keep(key))) as RoleAssignments;
+  // A vocabulary keeps only the values the shared items use, so that the
+  // names of areas and programs left out are not in the file either.
+  const used = (key: string | undefined) => new Set(key === undefined ? [] : rows.map((r) => (r.values[key] ?? '').trim()));
+  const areasUsed = used(roles.area);
+  const programsUsed = used(roles.program);
+  const labels = groupedNumbering() ? labelsOf(shown) : null;
+  const groups = labels ? shownProgramGroups().filter((g) => labels.some((l) => l.startsWith(`${g.index}.`))) : null;
   const workState: WorkState = {
     ...ws,
+    headers,
+    roles,
+    manualColumns: ws.manualColumns.filter((c) => keep(c.key)),
+    hiddenHeaders: ws.hiddenHeaders.filter(keep),
     rows,
+    areaValues: ws.areaValues.filter((v) => areasUsed.has(v)),
+    programValues: ws.programValues.filter((v) => programsUsed.has(v)),
+    glanceColumns: ws.glanceColumns ? ws.glanceColumns.filter(keep) : null,
     markers: ws.markers.filter((m) => newIndex.has(m.row)).map((m) => ({ ...m, row: newIndex.get(m.row)! })),
     excluded: [],
     presets: [],
@@ -1015,8 +1132,10 @@ export function captureExport(): { data: Omit<ExportData, 'exportedAt'>; summary
   };
   const summary: ExportSummary = {
     items: rows.length,
-    columns: ws.headers.length,
-    hidden: ws.hiddenHeaders.length,
+    columns: headers.length,
+    allColumns: ws.headers.length,
+    notShared: ws.rows.filter((r, i) => !r.removed && !choice.items.has(state.ingested[i])).length,
+    hidden: workState.hiddenHeaders.length,
     placed: workState.markers.length,
     comments: rows.reduce((n, r) => n + r.comments.length, 0),
     background: ws.background ? { width: ws.background.width, height: ws.background.height } : null,
@@ -1033,7 +1152,8 @@ export function captureExport(): { data: Omit<ExportData, 'exportedAt'>; summary
       workState,
       numbers: shown.map((i) => numbersAll[i]!),
       // In the grouped numbering, the numbers as shown (FR-17).
-      ...(groupedNumbering() ? { labels: labelsOf(shown), programGroups: shownProgramGroups() } : {}),
+      ...(labels && groups ? { labels, programGroups: groups } : {}),
+      ...(presentationView && presentationView.stageSize().width > 0 ? { stage: presentationView.stageSize() } : {}),
     },
     summary,
   };
@@ -1061,6 +1181,7 @@ function formatSize(bytes: number): string {
 
 function openExportDialog(): void {
   if (state.viewOnly) return;
+  exportChoice = defaultExportChoice();
   preparedExport = exportPage();
   if (preparedExport === null) {
     exportMessage = 'unavailable';
@@ -1069,18 +1190,129 @@ function openExportDialog(): void {
   }
   exportMessage = null;
   el('export-panel').classList.remove('hidden');
+  buildExportSelection();
   renderExport();
   el('export-go').focus();
 }
 
 function closeExportDialog(): void {
   preparedExport = null;
+  exportChoice = null;
   el('export-panel').classList.add('hidden');
   el('export-open').focus();
 }
 
+// The selection controls (FR-53): the items grouped by area, each area with
+// a control for the whole group, and the columns. Built when the dialog
+// opens; a change updates the controls in place and prepares the file again.
+function exportGroups(): Array<{ area: string; rows: RowData[] }> {
+  const areaKey = state.roles.area;
+  const groups = new Map<string, RowData[]>();
+  for (const { row } of numbered()) {
+    const area = areaKey === undefined ? '' : (row.values[areaKey] ?? '').trim();
+    groups.set(area, [...(groups.get(area) ?? []), row]);
+  }
+  const ordered = [...groups.keys()].sort((a, b) => (a === '' ? 1 : b === '' ? -1 : 0));
+  return ordered.map((area) => ({ area, rows: groups.get(area)! }));
+}
+
+function buildExportSelection(): void {
+  const t = strings(state.prefs.lang);
+  const choice = exportChoice;
+  if (!choice) return;
+  el('export-select-heading').textContent = t.exportSelectHeading;
+  el('export-select-hint').textContent = t.exportSelectHint;
+  el('export-columns-heading').textContent = t.exportColumnsHeading;
+  el('export-columns-hint').textContent = t.exportColumnsHint;
+  const byArea = state.roles.area !== undefined;
+  const lists = exportGroups().map(({ area, rows }) => {
+    const group = document.createElement('li');
+    group.className = 'export-area';
+    if (byArea) {
+      const label = document.createElement('label');
+      const box = document.createElement('input');
+      box.type = 'checkbox';
+      box.className = 'export-area-toggle';
+      box.dataset.area = area;
+      box.addEventListener('change', () => {
+        for (const row of rows) {
+          if (box.checked) choice.items.add(row);
+          else choice.items.delete(row);
+        }
+        exportChoiceChanged();
+      });
+      label.append(box, document.createTextNode(area === '' ? t.exportNoArea : area));
+      group.appendChild(label);
+    }
+    const list = document.createElement('ul');
+    list.className = 'export-items';
+    for (const row of rows) {
+      const li = document.createElement('li');
+      const label = document.createElement('label');
+      const box = document.createElement('input');
+      box.type = 'checkbox';
+      box.className = 'export-item-toggle';
+      box.dataset.rowId = rowId(row);
+      box.addEventListener('change', () => {
+        if (box.checked) choice.items.add(row);
+        else choice.items.delete(row);
+        exportChoiceChanged();
+      });
+      const number = numberLabel(row);
+      label.append(box, document.createTextNode(`${number}. ${itemLabel(row, number)}`));
+      li.appendChild(label);
+      list.appendChild(li);
+    }
+    group.appendChild(list);
+    return group;
+  });
+  el('export-selection').replaceChildren(...lists);
+  el('export-columns').replaceChildren(
+    ...listColumnOrder(state.headers, state.roles).map((key) => {
+      const li = document.createElement('li');
+      const label = document.createElement('label');
+      const box = document.createElement('input');
+      box.type = 'checkbox';
+      box.className = 'export-column-toggle';
+      box.dataset.header = key;
+      box.addEventListener('change', () => {
+        if (box.checked) choice.columns.add(key);
+        else choice.columns.delete(key);
+        exportChoiceChanged();
+      });
+      label.append(box, document.createTextNode(labelOf(key)));
+      li.appendChild(label);
+      return li;
+    }),
+  );
+  syncExportSelection();
+}
+
+function syncExportSelection(): void {
+  const choice = exportChoice;
+  if (!choice) return;
+  for (const box of document.querySelectorAll<HTMLInputElement>('.export-item-toggle')) {
+    const row = rowById(box.dataset.rowId ?? '');
+    box.checked = row !== undefined && choice.items.has(row);
+  }
+  for (const { area, rows } of exportGroups()) {
+    const box = [...document.querySelectorAll<HTMLInputElement>('.export-area-toggle')].find((b) => b.dataset.area === area);
+    if (!box) continue;
+    const chosen = rows.filter((r) => choice.items.has(r)).length;
+    box.checked = chosen === rows.length;
+    box.indeterminate = chosen > 0 && chosen < rows.length;
+  }
+  for (const box of document.querySelectorAll<HTMLInputElement>('.export-column-toggle')) box.checked = choice.columns.has(box.dataset.header ?? '');
+}
+
+function exportChoiceChanged(): void {
+  syncExportSelection();
+  preparedExport = exportPage();
+  renderExport();
+}
+
 function fill(template: string, values: Record<string, string | number>): string {
-  return template.replace(/\{(\w+)\}/g, (m, key: string) => (key in values ? String(values[key]) : m));
+  return format(template, values);
 }
 
 function renderExport(): void {
@@ -1096,7 +1328,7 @@ function renderExport(): void {
     li.textContent = text;
     return li;
   };
-  const items = fill(t.exportItems, { items: s.items, columns: s.columns });
+  const items = s.columns === s.allColumns ? fill(t.exportItems, { items: s.items, columns: s.columns }) : fill(t.exportItemsSome, { items: s.items, columns: s.columns, all: s.allColumns });
   el('export-contains').replaceChildren(
     item(s.hidden > 0 ? `${items}, ${fill(t.exportHiddenColumns, { hidden: s.hidden })}` : items),
     item(fill(t.exportPlaced, { placed: s.placed })),
@@ -1107,7 +1339,8 @@ function renderExport(): void {
   );
   el('export-omitted').replaceChildren(
     item(fill(t.exportRemoved, { removed: s.removed })),
-    item(fill(t.exportExcluded, { excluded: s.excluded })),
+    item(fill(t.exportNotShared, { count: s.notShared })),
+    item(fill(t.exportColumnsLeftOut, { count: s.allColumns - s.columns })),
     item(fill(t.exportEditedOriginals, { edited: s.edited })),
     item(t.exportPresets),
   );
@@ -1179,7 +1412,7 @@ export function documentScene(): StageScene | null {
     markers,
     annotations: state.annotations.filter((a) => annotationShown(a)),
     legendTitle: t.legend,
-    legend: legendModel(t, state.statuses, shownProgramGroups(), colourLabels()),
+    legend: legendModel(t, state.statuses, shownProgramGroups(), colourLabels(), symbolLabels()),
   });
 }
 
@@ -1404,6 +1637,7 @@ function markDirty(): void {
   // Nothing in the exported viewer is work to save.
   if (state.viewOnly) return;
   state.dirty = true;
+  changeCount++;
   if (workMessage === 'saved' || workMessage === 'opened' || workMessage === 'demo-loaded') workMessage = null;
   renderWorkStatus();
 }
@@ -1428,6 +1662,8 @@ function renderWorkStatus(): void {
   // The demo's work is labelled as example data while it is loaded.
   el('demo-badge').textContent = t.demoBadge;
   el('demo-badge').classList.toggle('hidden', !demoLoaded);
+  el('demo-reset').textContent = t.demoReset;
+  el('demo-reset').classList.toggle('hidden', !demoLoaded);
   document.documentElement.dataset.demo = demoLoaded ? 'true' : 'false';
 }
 
@@ -1511,6 +1747,7 @@ async function applyWorkState(ws: WorkState): Promise<boolean> {
   state.areaValues = [...ws.areaValues];
   state.programValues = [...ws.programValues];
   state.colourLabels = { ...ws.colourLabels };
+  state.symbolLabels = { ...ws.symbolLabels };
   state.glanceColumns = ws.glanceColumns ? [...ws.glanceColumns] : null;
   state.annotations = [];
   state.annotationLinks = new Map();
@@ -1532,6 +1769,8 @@ async function applyWorkState(ws: WorkState): Promise<boolean> {
   }
   state.sort = { ...ws.sort };
   state.filter = { ...ws.filter };
+  state.numbering = ws.numbering;
+  state.listView = ws.listView;
 
   el('ingest-error').classList.add('hidden');
   const hasRows = state.ingested.length > 0;
@@ -1635,11 +1874,15 @@ function comparisonSides(data: ExportData): { current: CompareItem[]; file: Comp
   }));
   const placed = new Map(data.workState.markers.map((m) => [m.row, m.position]));
   const t = strings(state.prefs.lang);
+  // The file's numbers follow the current numbering mode (FR-14 as
+  // amended): its grouped numbers in the grouped mode, where the file
+  // carries them, and its global numbers otherwise.
+  const fileNumber = (i: number) => (groupedNumbering() && data.labels ? data.labels[i] : String(data.numbers[i]));
   const file = data.workState.rows.map((row, i) => ({
     key: String(i),
     identifier: row.values[fileKey] ?? '',
-    number: data.labels?.[i] ?? String(data.numbers[i]),
-    label: displayName(row.values, data.workState.roles, `${t.numberColumn} ${data.labels?.[i] ?? data.numbers[i]}`),
+    number: fileNumber(i),
+    label: displayName(row.values, data.workState.roles, `${t.numberColumn} ${fileNumber(i)}`),
     position: placed.get(i) ?? null,
   }));
   return { current, file };
@@ -1700,13 +1943,16 @@ function renderComparison(): void {
   const adoptable = new Set((result?.matchedWithMarkers ?? []).map((m) => m.current.key));
   for (const key of [...comparison.selected]) if (!adoptable.has(key)) comparison.selected.delete(key);
   if (result) {
-    const entry = (item: CompareItem, notes: string[] = []) => {
+    // An entry of the file alone shows the file's number, named as such, so
+    // that it is not taken for a current number.
+    const entry = (item: CompareItem, notes: string[] = [], side: 'current' | 'file' = 'current') => {
       const li = document.createElement('li');
       li.className = 'compare-entry';
       li.dataset.key = item.key;
+      li.dataset.side = side;
       const name = document.createElement('span');
       name.className = 'compare-name';
-      name.textContent = `${item.number}. ${item.label}`;
+      name.textContent = side === 'file' ? fill(t.compareFileEntry, { number: item.number, label: item.label }) : `${item.number}. ${item.label}`;
       li.appendChild(name);
       for (const note of notes) {
         const n = document.createElement('span');
@@ -1762,11 +2008,11 @@ function renderComparison(): void {
       t.compareMatchedNoMarkers,
       result.matchedWithoutMarkers.map((m) => entry(m.current, m.current.position ? [t.compareHasCurrentMarker] : [])),
     );
-    group('file-only', t.compareFileOnly, result.fileOnly.map((item) => entry(item)));
+    group('file-only', t.compareFileOnly, result.fileOnly.map((item) => entry(item, [], 'file')));
     group('current-only', t.compareCurrentOnly, result.currentOnly.map((item) => entry(item)));
     group('unpairable', t.compareUnpairable, [
       ...result.unpairable.current.map((item) => entry(item, [t.compareInCurrent])),
-      ...result.unpairable.file.map((item) => entry(item, [t.compareInFile])),
+      ...result.unpairable.file.map((item) => entry(item, [t.compareInFile], 'file')),
     ]);
   }
   const differing = (result?.matchedWithMarkers ?? []).filter((m) => m.positionDiffers);
@@ -2053,8 +2299,9 @@ function renderLegends(): void {
   const t = strings(state.prefs.lang);
   const groups = shownProgramGroups();
   const labels = colourLabels();
-  renderLegend(el('map-legend'), t, state.statuses, groups, labels);
-  renderLegend(el('presentation-legend'), t, state.statuses, groups, labels);
+  const names = symbolLabels();
+  renderLegend(el('map-legend'), t, state.statuses, groups, labels, names);
+  renderLegend(el('presentation-legend'), t, state.statuses, groups, labels, names);
 }
 
 // Editable colour labels (FR-45): the user's name for a colour, or the
@@ -2066,6 +2313,55 @@ function colourLabel(colour: RowColour): string {
 
 function colourLabels(): ColourLabels {
   return { green: colourLabel('green'), blue: colourLabel('blue'), yellow: colourLabel('yellow'), red: colourLabel('red') };
+}
+
+// Editable symbol labels (FR-54): the user's name for a symbol, or its name
+// in the interface language.
+function symbolLabel(symbol: MarkerSymbol): string {
+  const label = (state.symbolLabels[symbol] ?? '').trim();
+  return label !== '' ? label : shapeName(strings(state.prefs.lang), symbol);
+}
+
+function symbolLabels(): SymbolLabels {
+  return Object.fromEntries(SYMBOLS.map((s) => [s, symbolLabel(s)])) as SymbolLabels;
+}
+
+function setSymbolLabel(symbol: MarkerSymbol, label: string): void {
+  const value = label.trim();
+  if ((state.symbolLabels[symbol] ?? '') === value) return;
+  if (value === '') delete state.symbolLabels[symbol];
+  else state.symbolLabels[symbol] = value;
+  markDirty();
+  renderList();
+}
+
+function renderSymbolPanel(): void {
+  const t = strings(state.prefs.lang);
+  el('symbol-panel-summary').textContent = t.symbolPanel;
+  el('symbol-panel-hint').textContent = t.symbolPanelHint;
+  const list = el('symbol-label-list');
+  const focused = document.activeElement instanceof HTMLInputElement && list.contains(document.activeElement) ? document.activeElement.dataset.symbol : undefined;
+  list.innerHTML = '';
+  for (const symbol of SYMBOLS) {
+    const li = document.createElement('li');
+    li.className = 'vocab-item symbol-label-item';
+    li.dataset.symbol = symbol;
+    const swatch = document.createElement('span');
+    swatch.className = `legend-swatch ${symbolClasses(symbol)}`;
+    swatch.setAttribute('aria-hidden', 'true');
+    drawSymbol(swatch, symbol, '');
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'vocab-name symbol-label-input';
+    input.dataset.symbol = symbol;
+    input.value = state.symbolLabels[symbol] ?? '';
+    input.placeholder = shapeName(t, symbol);
+    input.setAttribute('aria-label', fill(t.symbolLabelFor, { symbol: shapeName(t, symbol) }));
+    input.addEventListener('change', () => setSymbolLabel(symbol, input.value));
+    li.append(swatch, input);
+    list.appendChild(li);
+  }
+  if (focused) list.querySelector<HTMLInputElement>(`input[data-symbol="${focused}"]`)?.focus();
 }
 
 function setColourLabel(colour: RowColour, label: string): void {
@@ -2178,7 +2474,7 @@ function symbolSelect(value: string, label: string, onChange: (symbol: string) =
   for (const symbol of SYMBOLS) {
     const opt = document.createElement('option');
     opt.value = symbol;
-    opt.textContent = shapeName(t, symbol);
+    opt.textContent = symbolLabel(symbol);
     select.appendChild(opt);
   }
   select.value = value;
@@ -2278,7 +2574,7 @@ function collectVocabValues(kind: ValueVocabulary): void {
   if (key === undefined) return;
   const before = vocabValues(kind).length;
   const next = mergeValues(vocabValues(kind), collectValues(state.rows, key));
-  setVocabValues(kind, next, t.vocabCollected.replace('{count}', String(next.length - before)));
+  setVocabValues(kind, next, fill(t.vocabCollected, { count: next.length - before }));
 }
 
 function addVocabValue(kind: ValueVocabulary): void {
@@ -2377,6 +2673,10 @@ function detailLabels(t: Strings): DetailLabels {
     close: t.close,
     empty: t.detailsEmpty,
     removeComment: t.commentRemove,
+    editComment: t.commentEditLabel,
+    edit: t.commentEdit,
+    save: t.commentSave,
+    cancel: t.commentCancel,
     footprints: t.detailsFootprints,
   };
 }
@@ -2399,9 +2699,15 @@ function detailModel(row: RowData, t: Strings): DetailModel {
     colour: row.colour,
     colourName: colourLabel(row.colour),
     symbol,
-    symbolName: shapeName(t, symbol),
+    symbolName: symbolLabel(symbol),
     fields,
-    comments: commentsOf(state.comments, row).map((c) => ({ id: c.id, date: c.date, dateText: formatCommentDate(c.date), text: c.text })),
+    comments: commentsOf(state.comments, row).map((c) => ({
+      id: c.id,
+      date: c.date,
+      dateText: formatCommentDate(c.date),
+      text: c.text,
+      ...(c.edited ? { edited: c.edited, editedText: fill(t.commentEdited, { date: formatCommentDate(c.edited) }) } : {}),
+    })),
     note: state.roles.note === undefined ? '' : (row.values[state.roles.note] ?? ''),
     cardFields: CARD_ROLES.map((role) => state.roles[role])
       .filter((key): key is string => key !== undefined)
@@ -2459,6 +2765,11 @@ function renderDetailsPanel(): void {
         markDirty();
         renderDetailsPanel();
         panel.querySelector<HTMLElement>('.details-comment-input')?.focus();
+      },
+      editComment: (id, text) => {
+        if (editComment(state.comments, row, id, text)) markDirty();
+        renderDetailsPanel();
+        panel.querySelector<HTMLElement>(`.details-comment[data-comment-id="${id}"] .details-comment-edit`)?.focus();
       },
       commentForm: () => commentForm(row, t, draft),
     },
@@ -2538,8 +2849,11 @@ function commentForm(row: RowData, t: Strings, draft: string): HTMLElement {
 function setDetailsLayout(open: boolean): void {
   const value = open ? 'open' : 'closed';
   if (document.documentElement.dataset.details === value) return;
+  const before = state.segment === 'map' ? mapView?.stageSize() : undefined;
   document.documentElement.dataset.details = value;
-  // The stages change size: the at-a-glance panels follow.
+  // The Map stage changes size: its view is refitted, so that the map stays
+  // in view (FR-16 as amended); the at-a-glance panels follow.
+  if (before) mapView?.refit(before);
   if (state.segment !== 'information') renderMapItems();
 }
 
@@ -2648,7 +2962,7 @@ function renderMapItems(): void {
       shapeSelect.appendChild(opt);
     }
   }
-  for (const opt of shapeSelect.options) opt.textContent = shapeName(t, opt.value as MarkerSymbol);
+  for (const opt of shapeSelect.options) opt.textContent = symbolLabel(opt.value as MarkerSymbol);
   shapeSelect.value = selected?.shape ?? 'circle';
 }
 
@@ -2974,13 +3288,39 @@ function wireAnnotationToolbar(): void {
 let presentationView: MapView | null = null;
 let presentationLayer: MarkerLayer | null = null;
 
+// In the exported viewer, the view the file carries (FR-38 as amended):
+// restored when the viewer's stage first shows the background, with the
+// exported stage's centre at the viewer stage's centre.
+let viewerView: { viewport: Viewport; stage?: { width: number; height: number } } | null = null;
+
 function syncPresentationBackground(): void {
   if (!presentationView || !mapView) return;
   const bg = mapView.background;
   if (!bg) {
     if (presentationView.background) presentationView.clearBackground({ scale: 1, x: 0, y: 0 });
   } else if (presentationView.background?.src !== bg.src) {
-    void presentationView.setBackgroundSource(bg.src);
+    const view = presentationView;
+    const saved = viewerView;
+    viewerView = null;
+    // The saved view, centred on the stage as it is when applied.
+    const centred = (): Viewport | undefined => {
+      const now = view.stageSize();
+      if (!saved || now.width <= 0 || now.height <= 0) return undefined;
+      const v = saved.viewport;
+      const then = saved.stage ?? now;
+      return { scale: v.scale, x: v.x + (now.width - then.width) / 2, y: v.y + (now.height - then.height) / 2 };
+    };
+    void view.setBackgroundSource(bg.src, centred()).then((ok) => {
+      // The viewer's layout settles once its list and legend are drawn: the
+      // view is centred again on the settled stage.
+      if (!ok || !saved) return;
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          const v = centred();
+          if (v) view.restoreView(v);
+        }),
+      );
+    });
   }
 }
 
@@ -3897,6 +4237,7 @@ function wireEvents(): void {
   });
   el('start-empty').addEventListener('click', startEmptyList);
   el('load-demo').addEventListener('click', () => void loadDemo());
+  el('demo-reset').addEventListener('click', () => void resetDemo());
   el('add-row').addEventListener('click', addManualRow);
   el('add-column').addEventListener('click', addManualColumn);
   el('new-column-name').addEventListener('keydown', (e) => {
@@ -4022,6 +4363,7 @@ async function startViewer(text: string): Promise<void> {
   el<HTMLSelectElement>('select-theme').value = data.theme;
   applyTheme(data.theme);
   renderStaticText();
+  viewerView = { viewport: { ...data.workState.viewport }, ...(data.stage ? { stage: { ...data.stage } } : {}) };
   await applyWorkState(data.workState);
   state.numbers = new Map(state.ingested.map((row, i) => [row, data.numbers[i]]));
   const labels = data.labels;

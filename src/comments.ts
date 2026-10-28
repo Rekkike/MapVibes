@@ -1,5 +1,6 @@
 // Comments (FR-15): entries of plain text with a date, appended to an item in
-// the details panel and removable there. They belong to the item, so they
+// the details panel, editable there (an edit keeps the creation date and
+// records the edit date, v1.3.0), and removable there. They belong to the item, so they
 // follow it through sorting, filtering, and renumbering.
 
 import type { RowData } from './dataset';
@@ -10,6 +11,8 @@ export interface ItemComment {
   // The moment the entry was added, as an ISO 8601 timestamp.
   date: string;
   text: string;
+  // The moment of the last edit, if the entry was edited.
+  edited?: string;
 }
 
 export type CommentStore = Map<RowData, ItemComment[]>;
@@ -30,6 +33,21 @@ export function addComment(store: CommentStore, row: RowData, text: string, now:
   return comment;
 }
 
+// Changes an entry's text. The creation date stays; the edit date is
+// recorded. An edit to no text, or to the same text, changes nothing: an
+// entry is removed only by its own action.
+export function editComment(store: CommentStore, row: RowData, id: string, text: string, now: Date = new Date()): boolean {
+  const list = store.get(row);
+  const trimmed = text.trim();
+  const entry = list?.find((c) => c.id === id);
+  if (!list || !entry || trimmed === '' || trimmed === entry.text) return false;
+  store.set(
+    row,
+    list.map((c) => (c.id === id ? { ...c, text: trimmed, edited: now.toISOString() } : c)),
+  );
+  return true;
+}
+
 export function removeComment(store: CommentStore, row: RowData, id: string): boolean {
   const list = store.get(row);
   if (!list || !list.some((c) => c.id === id)) return false;
@@ -44,8 +62,8 @@ export function commentsOf(store: CommentStore, row: RowData): readonly ItemComm
 }
 
 // Restores stored entries (from a work-state file) with fresh identifiers.
-export function restoreComments(entries: ReadonlyArray<{ date: string; text: string }>): ItemComment[] {
-  return entries.map((e) => ({ id: newId(), date: e.date, text: e.text }));
+export function restoreComments(entries: ReadonlyArray<{ date: string; text: string; edited?: string }>): ItemComment[] {
+  return entries.map((e) => ({ id: newId(), date: e.date, text: e.text, ...(e.edited ? { edited: e.edited } : {}) }));
 }
 
 // A stored date must be a timestamp that a date can be read from.

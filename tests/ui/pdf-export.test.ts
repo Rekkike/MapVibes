@@ -87,10 +87,10 @@ describe('PDF export (FR-12, FR-50, FR-52)', () => {
     expect(byId('document-panel').classList.contains('hidden')).toBe(false);
     expect(byId('document-heading').textContent).toBe('Export PDF');
     expect(lines('document-contains')).toEqual([
-      'the presentation stage as shown: 3 markers and 1 annotations in view',
+      'the presentation stage as shown: 3 markers and 1 annotation in view',
       'the visible part of the background (1200 × 800 pixels)',
       'the legend',
-      'a table of the 5 shown items with 5 columns, on 1 pages',
+      'a table of the 5 shown items with 5 columns, on 1 page',
     ]);
     expect(lines('document-omitted')).toEqual([
       '0 rows removed from the list',
@@ -138,10 +138,10 @@ describe('PDF export (FR-12, FR-50, FR-52)', () => {
     await flush();
     await openPdf();
     expect(lines('document-omitted').slice(0, 4)).toEqual([
-      '1 rows removed from the list',
-      '1 items switched off for the presentation',
-      '1 annotations switched off for the presentation',
-      '1 hidden columns',
+      '1 row removed from the list',
+      '1 item switched off for the presentation',
+      '1 annotation switched off for the presentation',
+      '1 hidden column',
     ]);
     byId('document-cancel').click();
     const [stage, table] = await pageTexts(await exportPdf());

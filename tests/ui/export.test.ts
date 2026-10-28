@@ -67,15 +67,16 @@ describe('interactive export (FR-11, FR-39)', () => {
     expect(lines('export-contains')).toEqual([
       '3 items, each with all 5 columns',
       '2 markers with their positions, colours, and symbols',
-      '1 comments with their dates',
+      '1 comment with its date',
       'the background image (1200 × 800 pixels)',
       'the area values and the statuses with their symbols',
       'the language and theme settings',
     ]);
     expect(lines('export-omitted')).toEqual([
-      '1 rows removed from the list',
-      '1 items switched off for the presentation',
-      'the values as imported before your edits (1 edited values)',
+      '1 row removed from the list',
+      '1 item not chosen for sharing, with its marker, comments, and linked annotations',
+      '0 columns not chosen',
+      'the values as imported before your edits (1 edited value)',
       'column presets',
     ]);
     expect(byId('export-size').textContent).toMatch(/^File size: \d+ kB\.$/);
@@ -86,7 +87,7 @@ describe('interactive export (FR-11, FR-39)', () => {
     [...document.querySelectorAll<HTMLInputElement>('#column-visibility input')].find((i) => i.dataset.header === 'End')!.click();
     byId('tab-presentation').click();
     byId('export-open').click();
-    expect(lines('export-contains')[0]).toBe('3 items, each with all 5 columns, including the 1 columns hidden in the list');
+    expect(lines('export-contains')[0]).toBe('3 items, each with all 5 columns, including the 1 column hidden in the list');
   });
 
   test('the file is the application page with the data island; the stated size is the size written', async () => {

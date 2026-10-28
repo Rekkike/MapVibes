@@ -63,6 +63,7 @@ const DENSE = [
   '#map-toolbar',
   '#export-panel',
   '#document-panel',
+  '#role-help',
   '#compare-panel',
   '#compare-groups',
   '.compare-entry',

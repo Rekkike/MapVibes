@@ -184,10 +184,43 @@ const HIT_TOLERANCE = 6;
 const MINIMUM_SIZE = 4;
 const FREEHAND_SPACING = 8;
 
+// The straight-line constraint (FR-47 as amended in v1.3.0): a point moved
+// from an anchor onto the nearest of the horizontal, the vertical, and the
+// two 45-degree diagonals through the anchor, by projection, so that it
+// follows the pointer along that axis.
+const AXES: Point[] = [
+  { x: 1, y: 0 },
+  { x: 0, y: 1 },
+  { x: Math.SQRT1_2, y: Math.SQRT1_2 },
+  { x: Math.SQRT1_2, y: -Math.SQRT1_2 },
+];
+
+export function snapToAxis(anchor: Point, to: Point): Point {
+  const dx = to.x - anchor.x;
+  const dy = to.y - anchor.y;
+  let best = AXES[0];
+  let bestDot = dx;
+  for (const axis of AXES.slice(1)) {
+    const dot = dx * axis.x + dy * axis.y;
+    if (Math.abs(dot) > Math.abs(bestDot)) {
+      best = axis;
+      bestDot = dot;
+    }
+  }
+  return { x: anchor.x + bestDot * best.x, y: anchor.y + bestDot * best.y };
+}
+
+// Whether the constraint key is held: Shift or Ctrl.
+export function constrained(e: { shiftKey?: boolean; ctrlKey?: boolean }): boolean {
+  return e.shiftKey === true || e.ctrlKey === true;
+}
+
 // The drawing tools of the Map stage (FR-47): rectangle and circle by
 // dragging; polygon and line by pressing at each vertex or by dragging
 // freehand. A polygon closes on a press near its first vertex (or Enter); a
 // line finishes on a press on its last vertex (or Enter); Escape cancels.
+// Holding Shift or Ctrl keeps the segment being drawn, and a drag of a shape
+// or a vertex, on the nearest horizontal, vertical, or diagonal axis.
 export class DrawingTools {
   tool: DrawingTool = 'select';
   private draft: Annotation | null = null;
@@ -195,6 +228,10 @@ export class DrawingTools {
   private cursor: Point | null = null;
   // A move of a whole annotation or of one vertex, while pressed.
   private edit: { pointerId: number; original: Annotation; from: Point; index: number | null; moved: boolean } | null = null;
+  // While a freehand stroke is constrained: the vertex its straight segment
+  // starts from; the stroke's last vertex then follows the pointer along the
+  // nearest axis instead of new vertices being added.
+  private straightFrom: Point | null = null;
 
   constructor(
     private readonly stage: HTMLElement,
@@ -286,8 +323,10 @@ export class DrawingTools {
       this.commit();
       return;
     } else {
-      this.draft = { ...this.draft, points: [...this.draft.points, image] };
+      const last = this.draft.points[this.draft.points.length - 1];
+      this.draft = { ...this.draft, points: [...this.draft.points, constrained(e) ? snapToAxis(last, image) : image] };
     }
+    this.straightFrom = null;
     this.cursor = null;
     this.hooks.onDraft(this.draft, null);
   }
@@ -322,8 +361,10 @@ export class DrawingTools {
 
   // The annotation as edited so far: moved as a whole, or with one vertex
   // moved (a circle's centre moves the whole circle).
-  private edited(to: Point): Annotation {
+  private edited(pointer: Point, straight = false): Annotation {
     const { original, from, index } = this.edit!;
+    // Constrained, the drag moves along the nearest axis.
+    const to = straight ? snapToAxis(from, pointer) : pointer;
     const dx = to.x - from.x;
     const dy = to.y - from.y;
     if (index === null || (original.kind === 'circle' && index === 0)) return translate(original, dx, dy);
@@ -333,7 +374,7 @@ export class DrawingTools {
   private move(e: PointerEvent): void {
     if (this.edit && this.edit.pointerId === e.pointerId) {
       this.edit.moved = true;
-      this.hooks.onChange(this.edited(this.image(e).image), false);
+      this.hooks.onChange(this.edited(this.image(e).image, constrained(e)), false);
       return;
     }
     if (!this.draft) return;
@@ -345,25 +386,41 @@ export class DrawingTools {
       return;
     }
     if (this.pressed === e.pointerId) {
-      // Freehand: a vertex every few pixels while pressed.
-      const last = this.draft.points[this.draft.points.length - 1];
-      if (distance(screen, this.screenOf(last)) >= FREEHAND_SPACING) this.draft = { ...this.draft, points: [...this.draft.points, image] };
+      const points = this.draft.points;
+      if (constrained(e)) {
+        // Constrained, live during the stroke: one straight segment from
+        // where the constraint began, its end following the pointer along
+        // the nearest axis.
+        if (this.straightFrom === null) {
+          this.straightFrom = points[points.length - 1];
+          this.draft = { ...this.draft, points: [...points, snapToAxis(this.straightFrom, image)] };
+        } else {
+          this.draft = { ...this.draft, points: [...points.slice(0, -1), snapToAxis(this.straightFrom, image)] };
+        }
+      } else {
+        // Freehand: a vertex every few pixels while pressed.
+        this.straightFrom = null;
+        const last = points[points.length - 1];
+        if (distance(screen, this.screenOf(last)) >= FREEHAND_SPACING) this.draft = { ...this.draft, points: [...points, image] };
+      }
       this.cursor = null;
     } else {
-      this.cursor = image;
+      // The next vertex's preview follows the constraint too.
+      this.cursor = constrained(e) ? snapToAxis(this.draft.points[this.draft.points.length - 1], image) : image;
     }
     this.hooks.onDraft(this.draft, this.cursor);
   }
 
   private up(e: PointerEvent): void {
     if (this.edit && this.edit.pointerId === e.pointerId) {
-      const final = this.edit.moved ? this.edited(this.image(e).image) : null;
+      const final = this.edit.moved ? this.edited(this.image(e).image, constrained(e)) : null;
       this.edit = null;
       if (final) this.hooks.onChange(final, true);
       return;
     }
     if (this.pressed !== e.pointerId) return;
     this.pressed = null;
+    this.straightFrom = null;
     if (this.draft && (this.draft.kind === 'rectangle' || this.draft.kind === 'circle')) this.commit();
   }
 

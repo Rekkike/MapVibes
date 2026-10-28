@@ -42,7 +42,7 @@ describe('group-by-area view (FR-17)', () => {
   test('the grouped view shows a section per area value, the items without one last', () => {
     setRole('Group', 'area');
     view('grouped');
-    expect(shown()).toEqual(['# North (2 items)', 'A-01', 'A-02', '# South (1 items)', 'A-03', '# No area (2 items)', 'A-04', 'A-05']);
+    expect(shown()).toEqual(['# North (2 items)', 'A-01', 'A-02', '# South (1 item)', 'A-03', '# No area (2 items)', 'A-04', 'A-05']);
     // The heading spans the whole table.
     const th = document.querySelector<HTMLTableCellElement>('#row-table-body tr.group-row th')!;
     expect(th.colSpan).toBe(document.querySelectorAll('#row-table-head th').length);
@@ -54,7 +54,7 @@ describe('group-by-area view (FR-17)', () => {
     expect(toggle('North').getAttribute('aria-expanded')).toBe('true');
     expect(toggle('North').getAttribute('aria-label')).toBe('Collapse the section: North');
     toggle('North').click();
-    expect(shown()).toEqual(['# North (2 items)', '# South (1 items)', 'A-03', '# No area (2 items)', 'A-04', 'A-05']);
+    expect(shown()).toEqual(['# North (2 items)', '# South (1 item)', 'A-03', '# No area (2 items)', 'A-04', 'A-05']);
     expect(toggle('North').getAttribute('aria-expanded')).toBe('false');
     toggle('North').click();
     expect(shown()[1]).toBe('A-01');
@@ -72,10 +72,10 @@ describe('group-by-area view (FR-17)', () => {
     const text = byId<HTMLInputElement>('filter-text');
     text.value = 'item';
     text.dispatchEvent(new Event('input'));
-    expect(shown()).toEqual(['# North (1 items)', 'A-01', '# South (1 items)', 'A-03', '# No area (2 items)', 'A-04', 'A-05']);
+    expect(shown()).toEqual(['# North (1 item)', 'A-01', '# South (1 item)', 'A-03', '# No area (2 items)', 'A-04', 'A-05']);
     text.value = 'Beta';
     text.dispatchEvent(new Event('input'));
-    expect(shown()).toEqual(['# South (1 items)', 'A-03']);
+    expect(shown()).toEqual(['# South (1 item)', 'A-03']);
   });
 
   test('sorting works within the sections', () => {
@@ -83,7 +83,7 @@ describe('group-by-area view (FR-17)', () => {
     view('grouped');
     document.querySelector<HTMLButtonElement>('th[data-header="ID"] .sort-button')!.click();
     document.querySelector<HTMLButtonElement>('th[data-header="ID"] .sort-button')!.click();
-    expect(shown()).toEqual(['# North (2 items)', 'A-02', 'A-01', '# South (1 items)', 'A-03', '# No area (2 items)', 'A-05', 'A-04']);
+    expect(shown()).toEqual(['# North (2 items)', 'A-02', 'A-01', '# South (1 item)', 'A-03', '# No area (2 items)', 'A-05', 'A-04']);
   });
 
   test('select all takes only the rows of expanded sections', () => {
@@ -101,7 +101,7 @@ describe('group-by-area view (FR-17)', () => {
     cell.value = 'South';
     cell.dispatchEvent(new Event('change'));
     // The typed value joined the area list (FR-32), whose order comes first.
-    expect(shown()).toEqual(['# South (2 items)', 'A-03', 'A-05', '# North (2 items)', 'A-01', 'A-02', '# No area (1 items)', 'A-04']);
+    expect(shown()).toEqual(['# South (2 items)', 'A-03', 'A-05', '# North (2 items)', 'A-01', 'A-02', '# No area (1 item)', 'A-04']);
     view('flat');
     expect(shown()).toEqual(['A-01', 'A-02', 'A-03', 'A-04', 'A-05']);
   });

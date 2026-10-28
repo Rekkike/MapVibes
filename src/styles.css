@@ -1017,10 +1017,20 @@ input[type='text'] {
     top var(--motion-view) var(--ease-out);
 }
 
+/* Annotation labels live in screen space at a constant size (FR-47 as
+   amended in v1.3.0); during an eased view change they move with the
+   markers, so that they stay with their shapes. */
+.stage.easing .annotation-label {
+  transition:
+    left var(--motion-view) var(--ease-out),
+    top var(--motion-view) var(--ease-out);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .stage.easing #map-content,
   .stage.easing #presentation-content,
   .stage.easing .marker,
+  .stage.easing .annotation-label,
   .presentation-card,
   .presentation-card[data-state='closed'] {
     transition: none;
@@ -1204,6 +1214,7 @@ input[type='text'] {
 #vocab-panels {
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-start;
   gap: var(--space-2);
   margin-bottom: var(--space-2);
 }
@@ -1378,7 +1389,7 @@ input[type='text'] {
 
 .details-comment {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   column-gap: var(--space-2);
   padding: var(--space-2);
   border: 1px solid var(--border);
@@ -1386,9 +1397,53 @@ input[type='text'] {
 }
 
 .details-comment-remove {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  align-self: start;
+}
+
+/* Comment editing (FR-15 as amended in v1.3.0): the edit action beside the
+   remove action; the edit date under the creation date; the editor in place
+   of the text. */
+.details-comment-edit {
   grid-column: 2;
   grid-row: 1 / span 2;
   align-self: start;
+  padding: 0 var(--space-1);
+  font-size: 0.8125rem;
+}
+
+.details-comment-date,
+.details-comment-edited,
+.details-comment-edit-form {
+  grid-column: 1;
+}
+
+.details-comment-edited {
+  display: block;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-style: italic;
+  font-variant-numeric: tabular-nums;
+}
+
+.details-comment-edit-form {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+
+.details-comment-editor {
+  flex: 1 1 100%;
+  resize: vertical;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--input-bg);
+  color: var(--fg);
+  font: inherit;
 }
 
 .details-comment-form {
@@ -2136,4 +2191,85 @@ input[type='text'] {
 .glance-text .glance-name {
   flex: 0 1 auto;
   min-width: 55%;
+}
+
+/* Export prominence (FR-11 as amended in v1.3.0): the interactive export is
+   the primary sharing action; the documents sit beside it as secondary. */
+button.primary-action {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 650;
+}
+
+button.primary-action:hover:not(:disabled) {
+  border-color: var(--fg);
+}
+
+button.secondary-action {
+  color: var(--muted);
+}
+
+/* Export content selection (FR-53): the areas with their items, and the
+   columns, in compact scrolling lists. */
+#export-panel #export-selection,
+#export-panel #export-columns {
+  max-height: 14rem;
+  overflow: auto;
+  margin: 0 0 var(--dense-2);
+  padding: var(--dense-2) var(--dense-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  list-style: none;
+}
+
+#export-panel #export-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: var(--dense-1) var(--dense-3);
+  max-height: 8rem;
+}
+
+.export-area > label {
+  font-weight: 650;
+}
+
+#export-panel .export-items {
+  margin: 0 0 var(--dense-2);
+  padding: 0 0 0 var(--dense-3);
+  list-style: none;
+}
+
+#export-selection label,
+#export-columns label {
+  display: flex;
+  align-items: center;
+  gap: var(--dense-2);
+}
+
+/* The role explanation (FR-55): one line per role; a role not assigned is
+   marked, so that it explains itself. */
+#role-help {
+  margin-bottom: var(--dense-2);
+  font-size: var(--dense-font);
+}
+
+#role-help-list {
+  margin: 0;
+  padding-left: calc(1.25 * var(--dense-3));
+}
+
+.role-help-status {
+  color: var(--muted);
+}
+
+.role-help-status.is-missing {
+  font-style: italic;
+}
+
+/* Reset demo (FR-56): a small action beside the demo label. */
+#demo-reset {
+  padding: 0 var(--space-2);
+  font-size: 0.8rem;
+  white-space: nowrap;
 }

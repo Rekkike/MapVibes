@@ -64,7 +64,7 @@ describe('PowerPoint export (FR-12, FR-51, FR-52)', () => {
       'the presentation stage as shown: 2 markers and 0 annotations in view',
       'the visible part of the background (1200 × 800 pixels)',
       'the legend',
-      'a table of the 5 shown items with 5 columns, on 1 slides',
+      'a table of the 5 shown items with 5 columns, on 1 slide',
     ]);
     // Nothing is replaced in a PowerPoint document: no line about it.
     expect(lines('document-omitted').some((l) => l.includes('characters'))).toBe(false);

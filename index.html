@@ -11,6 +11,7 @@
       <span id="app-title"><span id="app-name">MapVibes</span> <span id="app-version"></span></span>
       <span id="viewer-badge" class="hidden"></span>
       <span id="demo-badge" class="hidden"></span>
+      <button type="button" id="demo-reset" class="hidden">Reset demo</button>
       <nav id="segment-nav" role="tablist" aria-label="Segments">
         <button type="button" class="segment-tab" role="tab" id="tab-information" data-segment="information" aria-controls="segment-information" aria-selected="true">Information</button>
         <button type="button" class="segment-tab" role="tab" id="tab-map" data-segment="map" aria-controls="segment-map" aria-selected="false">Map</button>
@@ -83,6 +84,11 @@
             <button type="button" id="preset-save">Save preset</button>
             <span id="preset-status" class="notice" aria-live="polite"></span>
           </div>
+          <details id="role-help" class="vocab-panel">
+            <summary id="role-help-summary">What do these do?</summary>
+            <p id="role-help-intro" class="notice"></p>
+            <ul id="role-help-list"></ul>
+          </details>
           <div id="vocab-panels">
             <details id="area-panel" class="vocab-panel">
               <summary id="area-panel-summary">Area values</summary>
@@ -99,6 +105,11 @@
               <summary id="colour-panel-summary">Colour labels</summary>
               <p id="colour-panel-hint" class="notice"></p>
               <ul id="colour-label-list" class="vocab-list"></ul>
+            </details>
+            <details id="symbol-panel" class="vocab-panel">
+              <summary id="symbol-panel-summary">Symbol labels</summary>
+              <p id="symbol-panel-hint" class="notice"></p>
+              <ul id="symbol-label-list" class="vocab-list"></ul>
             </details>
             <details id="program-panel" class="vocab-panel">
               <summary id="program-panel-summary">Programmes</summary>
@@ -322,13 +333,19 @@
             <button type="button" id="pres-fit">Fit view</button>
             <button type="button" id="pres-reset">Reset</button>
             <span id="export-separator" class="toolbar-separator" aria-hidden="true"></span>
-            <button type="button" id="export-open">Export presentation</button>
-            <button type="button" id="pdf-open">Export PDF</button>
-            <button type="button" id="pptx-open">Export PowerPoint</button>
+            <button type="button" id="export-open" class="primary-action">Export presentation</button>
+            <button type="button" id="pdf-open" class="secondary-action">Export PDF</button>
+            <button type="button" id="pptx-open" class="secondary-action">Export PowerPoint</button>
           </div>
           <div id="export-panel" class="hidden" role="dialog" aria-labelledby="export-heading">
             <h3 id="export-heading">Export presentation</h3>
             <p id="export-intro"></p>
+            <h4 id="export-select-heading"></h4>
+            <p id="export-select-hint" class="hint"></p>
+            <ul id="export-selection"></ul>
+            <h4 id="export-columns-heading"></h4>
+            <p id="export-columns-hint" class="hint"></p>
+            <ul id="export-columns"></ul>
             <h4 id="export-contains-heading"></h4>
             <ul id="export-contains"></ul>
             <h4 id="export-omitted-heading"></h4>

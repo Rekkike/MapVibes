@@ -56,6 +56,14 @@ export interface LegendGroup {
 // The colour labels shown (FR-45): the user's name for each colour.
 export type ColourLabels = Record<RowColour, string>;
 
+// The symbol labels shown (FR-54): the user's name for each symbol, or its
+// name in the interface language.
+export type SymbolLabels = Record<MarkerSymbol, string>;
+
+export function defaultSymbolLabels(t: Strings): SymbolLabels {
+  return Object.fromEntries(SYMBOLS.map((s) => [s, shapeName(t, s)])) as SymbolLabels;
+}
+
 // One section of the legend and its entries, as a model shared by the
 // on-screen legends and the documents (FR-50, FR-51), so that they cannot
 // drift apart.
@@ -77,10 +85,16 @@ export function defaultColourLabels(t: Strings): ColourLabels {
   return { green: colourName(t, 'green'), blue: colourName(t, 'blue'), yellow: colourName(t, 'yellow'), red: colourName(t, 'red') };
 }
 
-export function legendModel(t: Strings, statuses: StatusEntry[] = [], numberGroups: LegendGroup[] = [], colourLabels: ColourLabels = defaultColourLabels(t)): LegendSection[] {
+export function legendModel(
+  t: Strings,
+  statuses: StatusEntry[] = [],
+  numberGroups: LegendGroup[] = [],
+  colourLabels: ColourLabels = defaultColourLabels(t),
+  symbolLabels: SymbolLabels = defaultSymbolLabels(t),
+): LegendSection[] {
   const sections: LegendSection[] = [
     { kind: 'colours', label: t.legendColours, items: COLOURS.map((c) => ({ label: colourLabels[c], colour: c })) },
-    { kind: 'shapes', label: t.legendShapes, items: SYMBOLS.map((s) => ({ label: shapeName(t, s), symbol: s })) },
+    { kind: 'shapes', label: t.legendShapes, items: SYMBOLS.map((s) => ({ label: symbolLabels[s], symbol: s })) },
   ];
   if (statuses.length > 0) {
     sections.push({ kind: 'statuses', label: t.legendStatuses, items: statuses.map((s) => ({ label: s.name, status: s.name, symbol: s.symbol as MarkerSymbol })) });
@@ -116,6 +130,7 @@ export function renderLegend(
   statuses: StatusEntry[] = [],
   numberGroups: LegendGroup[] = [],
   colourLabels: ColourLabels = defaultColourLabels(t),
+  symbolLabels: SymbolLabels = defaultSymbolLabels(t),
 ): void {
   container.innerHTML = '';
   const heading = document.createElement('span');
@@ -125,7 +140,7 @@ export function renderLegend(
   container.setAttribute('role', 'group');
   container.setAttribute('aria-labelledby', heading.id);
   container.append(heading);
-  for (const section of legendModel(t, statuses, numberGroups, colourLabels)) {
+  for (const section of legendModel(t, statuses, numberGroups, colourLabels, symbolLabels)) {
     const group = document.createElement('div');
     group.className = 'legend-group';
     group.dataset.kind = section.kind;

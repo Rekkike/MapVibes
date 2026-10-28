@@ -178,6 +178,38 @@ export class MapView {
     this.setViewport(fitView(this.background, size));
   }
 
+  // The stage changed size (the details panel opened or closed, FR-16): the
+  // region that was in view stays in view. A fitted view stays fitted; any
+  // other view keeps its centre and scales by how much the stage narrowed
+  // (never up), so that it keeps showing what it showed.
+  refit(before: Size): void {
+    if (!this.background || before.width <= 0 || before.height <= 0) return;
+    const after = this.stageSize();
+    if (after.width <= 0 || after.height <= 0) return;
+    if (after.width === before.width && after.height === before.height) return;
+    const v = this.viewport;
+    // A fitted view becomes the fitted view of the new size.
+    const fitted = fitView(this.background, before);
+    const near = (a: number, b: number) => Math.abs(a - b) <= 1e-6 * Math.max(1, Math.abs(a), Math.abs(b));
+    if (near(v.scale, fitted.scale) && near(v.x, fitted.x) && near(v.y, fitted.y)) {
+      this.ease();
+      this.setViewport(fitView(this.background, after));
+      return;
+    }
+    const factor = Math.min(after.width / before.width, after.height / before.height);
+    const centre = { x: (before.width / 2 - v.x) / v.scale, y: (before.height / 2 - v.y) / v.scale };
+    const scale = v.scale * factor;
+    this.ease();
+    this.setViewport({ scale, x: after.width / 2 - centre.x * scale, y: after.height / 2 - centre.y * scale });
+  }
+
+  // Sets a saved view (the exported viewer's, FR-38).
+  restoreView(v: Viewport): void {
+    if (!this.background) return;
+    this.pendingFit = false;
+    this.setViewport({ ...v });
+  }
+
   reset(): void {
     if (!this.background) return;
     this.ease();

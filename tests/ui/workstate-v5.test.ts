@@ -83,7 +83,7 @@ describe('work-state schema version 5 (FR-13, FR-10, FR-15)', () => {
     addComment(2, 'Second entry.');
     const text = await save();
     const file = JSON.parse(text);
-    expect(file.schemaVersion).toBe(6);
+    expect(file.schemaVersion).toBe(7);
     expect(file.rows[2].edited).toEqual({ Group: 'South' });
     expect(file.rows[2].values.Group).toBe('East');
     expect(file.rows[2].comments).toEqual([
@@ -144,6 +144,6 @@ describe('work-state schema version 5 (FR-13, FR-10, FR-15)', () => {
     expect(document.querySelectorAll('#row-table-body .cell-input.edited')).toHaveLength(0);
     rows()[0].querySelector<HTMLElement>('.row-details')!.click();
     expect(byId('details-panel').querySelector('.details-no-comments')).not.toBeNull();
-    expect(JSON.parse(await save()).schemaVersion).toBe(6);
+    expect(JSON.parse(await save()).schemaVersion).toBe(7);
   });
 });
