@@ -28,7 +28,9 @@ function cellToString(value: unknown): string {
 export function parseWorkbook(data: ArrayBuffer): ParseResult {
   let workbook: XLSX.WorkBook;
   try {
-    workbook = XLSX.read(data, { type: 'array' });
+    // As bytes, so that the reader recognises a text file's byte order mark
+    // whatever the realm of the buffer.
+    workbook = XLSX.read(new Uint8Array(data), { type: 'array' });
   } catch (e) {
     throw new ParseError(e instanceof Error ? e.message : String(e));
   }

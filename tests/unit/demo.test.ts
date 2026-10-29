@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { DEMO_MAP_TEXT, demoScenario, demoWorkbook, parseDemoScenario } from '../../src/demo';
+import { DEMO_MAP_TEXT, demoCounterparts, demoScenario, demoWorkbook, parseDemoScenarios } from '../../src/demo';
 import { importColumns, parseWorkbook } from '../../src/ingest';
 import { parseOsm } from '../../src/osm';
 import scenarioJson from '../../example-data/demo-scenario.json';
@@ -56,12 +56,21 @@ describe('full-test demo fixtures (FR-41)', () => {
     const bad = (mutate: (o: any) => void) => {
       const o = JSON.parse(JSON.stringify(scenarioJson));
       mutate(o);
-      return () => parseDemoScenario(o);
+      return () => parseDemoScenarios(o);
     };
-    expect(bad((o) => (o.version = 1))).toThrow();
-    expect(bad((o) => (o.colourLabels.purple = 'Odd'))).toThrow();
-    expect(bad((o) => (o.colourLabels.green = ' '))).toThrow();
-    expect(bad((o) => (o.glanceColumns = ['Nowhere']))).toThrow();
+    expect(bad(() => undefined)).not.toThrow();
+    expect(bad((o) => (o.version = 2))).toThrow();
+    expect(bad((o) => (o.colourLabels.en.purple = 'Odd'))).toThrow();
+    expect(bad((o) => (o.colourLabels.sv.green = ' '))).toThrow();
+    expect(bad((o) => delete o.colourLabels.sv.red)).toThrow();
+    expect(bad((o) => (o.glanceColumns.en = ['Nowhere']))).toThrow();
+    expect(bad((o) => (o.glanceColumns.sv = ['Programme']))).toThrow();
+    expect(bad((o) => delete o.preset.sv)).toThrow();
+    expect(bad((o) => o.preset.sv.areas.pop())).toThrow();
+    expect(bad((o) => (o.preset.sv.statuses[0].symbol = 'gear'))).toThrow();
+    expect(bad((o) => (o.preset.sv.roles.start = 'Slutår'))).toThrow();
+    expect(bad((o) => (o.items[0].comments[0].text = 'One language only'))).toThrow();
+    expect(bad((o) => (o.annotations[0].label = { en: 'Footprint' }))).toThrow();
     expect(bad((o) => (o.annotations[0].kind = 'star'))).toThrow();
     expect(bad((o) => (o.annotations[0].points = [[0.1, 0.1], [0.2, 0.2]]))).toThrow();
     expect(bad((o) => (o.annotations[1].points[0] = [1.2, 0]))).toThrow();
@@ -70,9 +79,9 @@ describe('full-test demo fixtures (FR-41)', () => {
     expect(bad((o) => (o.items[0].colour = 'purple'))).toThrow();
     expect(bad((o) => (o.items[0].position = [1.5, 0]))).toThrow();
     expect(bad((o) => (o.items[0].symbol = 'star'))).toThrow();
-    expect(bad((o) => (o.items[0].comments = [{ date: 'later', text: 'x' }]))).toThrow();
+    expect(bad((o) => (o.items[0].comments = [{ date: 'later', text: { en: 'x', sv: 'x' } }]))).toThrow();
     expect(bad((o) => (o.items[1].item = 'D-01'))).toThrow();
-    expect(bad((o) => delete o.preset.roles.identifier)).toThrow();
+    expect(bad((o) => delete o.preset.en.roles.identifier)).toThrow();
   });
 });
 
@@ -104,5 +113,55 @@ describe('the demo extension (FR-41 as amended in v1.1.0)', () => {
     expect(item[0]).toBeLessThan(Math.max(...xs));
     expect(item[1]).toBeGreaterThan(Math.min(...ys));
     expect(item[1]).toBeLessThan(Math.max(...ys));
+  });
+});
+
+describe('the demo in both interface languages (FR-41 as amended in v1.3.1)', () => {
+  const sv = demoScenario('sv');
+  const svList = importColumns(parseWorkbook(demoWorkbook('sv')));
+
+  test('the Swedish list is the same items under the Swedish preset headers', () => {
+    expect(svList.headers).toEqual(sv.preset.headers);
+    expect(svList.rows.map((r) => r.Objekt)).toEqual(list.rows.map((r) => r.Item));
+    expect(svList.rows[0]).toMatchObject({ Objekt: 'D-01', Startår: '2019', Slutår: '2021', Status: 'Klar' });
+    // The years and the empty cells are the same in both lists.
+    list.rows.forEach((row, i) => {
+      const other = svList.rows[i];
+      expect([other.Startår, other.Slutår]).toEqual([row['Start year'], row['End year']]);
+      expect(other.Område === '').toBe(row.Area === '');
+      expect(other.Program === '').toBe(row.Programme === '');
+    });
+  });
+
+  test('the Swedish list uses the Swedish vocabularies, entry for entry with the English ones', () => {
+    const statuses = new Set(sv.preset.statuses!.map((s) => s.name));
+    for (const row of svList.rows) {
+      expect(row.Område === '' || sv.preset.areas!.includes(row.Område), row.Objekt).toBe(true);
+      expect(statuses.has(row.Status), row.Objekt).toBe(true);
+    }
+    const c = demoCounterparts('en', 'sv');
+    list.rows.forEach((row, i) => {
+      expect(c.statuses.find(([from]) => from === row.Status)![1]).toBe(svList.rows[i].Status);
+      if (row.Area !== '') expect(c.areas.find(([from]) => from === row.Area)![1]).toBe(svList.rows[i].Område);
+      if (row.Programme !== '') expect(c.programs.find(([from]) => from === row.Programme)![1]).toBe(svList.rows[i].Program);
+    });
+  });
+
+  test('every provided label has its own Swedish text', () => {
+    const c = demoCounterparts('en', 'sv');
+    const labels = [...c.colourLabels.map((l) => [l.from, l.to]), ...c.areas, ...c.programs, ...c.statuses, ...c.annotationLabels, [scenario.preset.name, sv.preset.name]];
+    expect(labels.length).toBe(4 + 5 + 2 + 6 + 3 + 1);
+    for (const [en, svText] of labels) expect(svText, en).not.toBe(en);
+    expect(sv.glanceColumns).toEqual(['Program', 'Status', 'Slutår']);
+    expect(sv.items.flatMap((i) => i.comments.map((c) => c.text))).not.toContain(scenario.items[0].comments[0].text);
+    // The language-free parts are the same.
+    expect(sv.items.map((i) => [i.item, i.colour, i.position, i.symbol])).toEqual(scenario.items.map((i) => [i.item, i.colour, i.position, i.symbol]));
+    expect(sv.annotations.map((a) => a.points)).toEqual(scenario.annotations.map((a) => a.points));
+  });
+
+  test('the counterparts run both ways', () => {
+    const there = demoCounterparts('en', 'sv');
+    const back = demoCounterparts('sv', 'en');
+    expect(back.statuses).toEqual(there.statuses.map(([a, b]) => [b, a]));
   });
 });

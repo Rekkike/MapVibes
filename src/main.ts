@@ -29,7 +29,7 @@ import { ExportError, parseExport, serialiseExport, SUGGESTED_EXPORT_NAME, type 
 import { embedDataIsland, readDataIsland } from './singlefile';
 import { compareItems, type CompareItem, type Comparison } from './reconcile';
 import { areaGroups, programLabels } from './grouping';
-import { DEMO_MAP_TEXT, demoScenario, demoWorkbook } from './demo';
+import { DEMO_MAP_TEXT, demoCounterparts, demoScenario, demoWorkbook } from './demo';
 import { DEFAULT_STYLE, formatArea, newAnnotationId, LINE_STYLES, OUTLINES, trueArea, type Annotation, type AnnotationKind, type AnnotationStyle, type LineStyle, type Outline } from './annotations';
 import { AnnotationLayer, DrawingTools, type DrawingTool } from './annotationlayer';
 
@@ -332,6 +332,7 @@ function currentCounters() {
 
 function setLanguage(lang: Lang): void {
   state.prefs.lang = lang;
+  followDemoLanguage(lang);
   // Choices made in the exported viewer are not remembered (FR-20).
   if (!state.viewOnly) savePreferences(state.prefs);
   el<HTMLSelectElement>('select-language').value = lang;
@@ -398,10 +399,22 @@ let demoLoaded = false;
 let changeCount = 0;
 let demoBaseline = -1;
 
+// The language the demo's provided labels are in, and the demo's own
+// annotations by their place in the scenario, so that the provided labels
+// not renamed follow a change of language (FR-41 as amended).
+let demoLang: Lang | null = null;
+let demoAnnotationIds: string[] = [];
+
+function samePreset(a: ColumnPreset, b: ColumnPreset): boolean {
+  return JSON.stringify(clonePreset(a)) === JSON.stringify(clonePreset(b));
+}
+
 export async function loadDemo(options: { confirmed?: boolean } = {}): Promise<boolean> {
   const t = strings(state.prefs.lang);
   if (!options.confirmed && state.dirty && !window.confirm(t.demoConfirmReplace)) return false;
-  const scenario = demoScenario();
+  // The demo loads in the interface language (FR-41 as amended).
+  const lang = state.prefs.lang;
+  const scenario = demoScenario(lang);
   // The session's own settings start afresh, so that the demo is pristine.
   state.excluded = new Set();
   state.positions = new Map();
@@ -412,10 +425,16 @@ export async function loadDemo(options: { confirmed?: boolean } = {}): Promise<b
   state.detailsId = null;
   state.selectedMarker = null;
   state.presentationSelected = null;
+  // The demo's preset of another language, if unchanged, gives way to this
+  // language's.
+  for (const other of (['en', 'sv'] as const).filter((l) => l !== lang)) {
+    const provided = demoScenario(other).preset;
+    state.presets = state.presets.filter((p) => !(p.name === provided.name && samePreset(p, provided)));
+  }
   state.presets = upsertPreset(state.presets, scenario.preset);
   storePresets(state.presets);
   el('ingest-error').classList.add('hidden');
-  applyImport(parseWorkbook(demoWorkbook()));
+  applyImport(parseWorkbook(demoWorkbook(lang)));
   state.symbolsFromStatus = scenario.symbolsFromStatus;
   const idKey = state.roles.identifier;
   const rowOf = (item: string) => (idKey === undefined ? undefined : state.rows.find((r) => r.values[idKey] === item));
@@ -443,6 +462,7 @@ export async function loadDemo(options: { confirmed?: boolean } = {}): Promise<b
   state.annotationLinks = new Map();
   state.hiddenAnnotations = new Set();
   state.selectedAnnotation = null;
+  demoAnnotationIds = [];
   if (outcome === 'ok' && bg) {
     for (const a of scenario.annotations) {
       const annotation: Annotation = {
@@ -456,17 +476,73 @@ export async function loadDemo(options: { confirmed?: boolean } = {}): Promise<b
         label: a.label,
       };
       state.annotations.push(annotation);
+      demoAnnotationIds.push(annotation.id);
       const row = a.link === null ? undefined : rowOf(a.link);
       if (row) state.annotationLinks.set(annotation.id, row);
     }
   }
   demoLoaded = true;
+  demoLang = lang;
   markDirty();
   demoBaseline = changeCount;
   workMessage = 'demo-loaded';
   renderList();
   setSegment('map');
   return outcome === 'ok';
+}
+
+// A change of language while the demo is loaded (FR-41 as amended): each
+// provided label the user has not renamed takes its counterpart in the new
+// language: the colour labels, the area, program, and status values with the
+// cells that hold them, and the annotation labels. What the user typed is kept as typed; the list's own headers and
+// texts stay as loaded, and so does the preset, which matches the headers.
+function followDemoLanguage(to: Lang): void {
+  if (!demoLoaded || demoLang === null || demoLang === to) return;
+  const c = demoCounterparts(demoLang, to);
+  demoLang = to;
+  let changed = false;
+  for (const { colour, from, to: next } of c.colourLabels) {
+    if (state.colourLabels[colour] !== from) continue;
+    state.colourLabels[colour] = next;
+    changed = true;
+  }
+  // A value follows unless its counterpart is already taken.
+  const follow = (values: string[], pairs: Array<[string, string]>, key: string | undefined): Map<string, string> => {
+    const renamed = new Map<string, string>();
+    for (const [from, next] of pairs) if (values.includes(from) && !values.includes(next)) renamed.set(from, next);
+    if (key !== undefined) {
+      for (const row of state.ingested) {
+        const next = renamed.get((row.values[key] ?? '').trim());
+        if (next !== undefined) row.values[key] = next;
+      }
+    }
+    if (renamed.size > 0) changed = true;
+    return renamed;
+  };
+  const areas = follow(state.areaValues, c.areas, state.roles.area);
+  state.areaValues = state.areaValues.map((v) => areas.get(v) ?? v);
+  const programs = follow(state.programValues, c.programs, state.roles.program);
+  state.programValues = state.programValues.map((v) => programs.get(v) ?? v);
+  const statuses = follow(statusNames(state.statuses), c.statuses, state.roles.status);
+  state.statuses = state.statuses.map((s) => ({ ...s, name: statuses.get(s.name) ?? s.name }));
+  demoAnnotationIds.forEach((id, i) => {
+    const annotation = state.annotations.find((a) => a.id === id);
+    const [from, next] = c.annotationLabels[i];
+    if (annotation && annotation.label === from) {
+      annotation.label = next;
+      changed = true;
+    }
+  });
+  if (!changed) return;
+  // The demo is as untouched as before: following the language is not a
+  // change of the user's.
+  const pristine = changeCount === demoBaseline;
+  const message = workMessage;
+  markDirty();
+  if (pristine) {
+    demoBaseline = changeCount;
+    if (message === 'demo-loaded') workMessage = message;
+  }
 }
 
 // Reset demo (FR-56): after the unsaved-changes confirmation (asked only when
@@ -506,7 +582,14 @@ function startEmptyList(): void {
 }
 
 function resetList(headers: string[], rows: Record<string, string>[]): void {
+  // A new list discards the demo's provided colour labels along with the demo
+  // (FR-41 as amended), and starts with no at-a-glance choice: a
+  // choice belongs to the list it was made on (FR-46 as amended).
+  if (demoLoaded) state.colourLabels = {};
+  state.glanceColumns = null;
   demoLoaded = false;
+  demoLang = null;
+  demoAnnotationIds = [];
   state.headers = headers;
   state.roles = {};
   state.manualColumns = new Map();
@@ -1025,7 +1108,7 @@ export function captureWorkState(): WorkState {
     programValues: [...state.programValues],
     colourLabels: { ...state.colourLabels },
     symbolLabels: { ...state.symbolLabels },
-    glanceColumns: state.glanceColumns ? [...state.glanceColumns] : null,
+    glanceColumns: state.glanceColumns ? state.glanceColumns.filter((k) => state.headers.includes(k)) : null,
     annotations: state.annotations.map((a) => {
       const linked = state.annotationLinks.get(a.id);
       return {
@@ -3331,16 +3414,15 @@ function setExcluded(row: RowData, excluded: boolean): void {
   renderMapItems();
 }
 
-// The list beside the presentation stage, in two modes: in the application,
-// a visibility toggle per placed item (FR-27); in the exported viewer
-// (FR-38), the exported items, each opening its data card.
+// The list beside the presentation stage: a visibility toggle per placed
+// item (FR-27). The exported viewer renders no item list (FR-38 as
+// amended).
 function renderVisibilityList(): void {
   const t = strings(state.prefs.lang);
   const list = el('visibility-list');
   list.innerHTML = '';
-  const entries = state.viewOnly
-    ? numbered().map(({ row, number, label }) => ({ row, number, label, colour: row.colour, shape: symbolOf(row) }))
-    : placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered());
+  if (state.viewOnly) return;
+  const entries = placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered());
   for (const entry of entries) {
     const id = rowId(entry.row);
     const shown = !state.excluded.has(entry.row);
@@ -3356,37 +3438,21 @@ function renderVisibilityList(): void {
     const text = document.createElement('span');
     text.className = 'placement-label';
     text.textContent = name;
-    if (state.viewOnly) {
-      const open = document.createElement('button');
-      open.type = 'button';
-      open.className = 'visibility-control item-open';
-      open.dataset.rowId = id;
-      open.append(badge, text);
-      if (!state.positions.has(entry.row)) {
-        const note = document.createElement('span');
-        note.className = 'placement-status';
-        note.textContent = t.viewerNotPlaced;
-        open.appendChild(note);
-      }
-      open.addEventListener('click', () => openCard(id));
-      li.appendChild(open);
-    } else {
-      const label = document.createElement('label');
-      label.className = 'visibility-control';
-      const toggle = document.createElement('input');
-      toggle.type = 'checkbox';
-      toggle.className = 'visibility-toggle';
-      toggle.dataset.rowId = id;
-      toggle.checked = shown;
-      toggle.setAttribute('aria-label', `${t.visibilityShown}: ${name}`);
-      toggle.addEventListener('change', () => setExcluded(entry.row, !toggle.checked));
-      label.append(toggle, badge, text);
-      li.appendChild(label);
-    }
+    const label = document.createElement('label');
+    label.className = 'visibility-control';
+    const toggle = document.createElement('input');
+    toggle.type = 'checkbox';
+    toggle.className = 'visibility-toggle';
+    toggle.dataset.rowId = id;
+    toggle.checked = shown;
+    toggle.setAttribute('aria-label', `${t.visibilityShown}: ${name}`);
+    toggle.addEventListener('change', () => setExcluded(entry.row, !toggle.checked));
+    label.append(toggle, badge, text);
+    li.appendChild(label);
     list.appendChild(li);
   }
-  el('visibility-heading').textContent = state.viewOnly ? t.viewerItems : t.visibilityHeading;
-  el('visibility-hint').textContent = state.viewOnly ? t.viewerItemsHint : t.visibilityHint;
+  el('visibility-heading').textContent = t.visibilityHeading;
+  el('visibility-hint').textContent = t.visibilityHint;
   el('visibility-empty').classList.toggle('hidden', entries.length > 0);
   renderAnnotationVisibility();
   el('visibility-hint').classList.toggle('hidden', entries.length === 0);
@@ -4339,7 +4405,7 @@ function wireEvents(): void {
 // island of an exported file, in view-only mode. Only the Presentation
 // segment is offered; the controls that edit, toggle visibility, open,
 // save, or export are not shown and cannot be reached.
-const VIEWER_HIDDEN = ['compare-panel', 'segment-nav', 'work-controls', 'export-separator', 'export-open', 'export-panel', 'export-status', 'pdf-open', 'pptx-open', 'document-panel', 'document-status', 'segment-information', 'segment-map', 'details-panel'];
+const VIEWER_HIDDEN = ['compare-panel', 'segment-nav', 'work-controls', 'export-separator', 'export-open', 'export-panel', 'export-status', 'pdf-open', 'pptx-open', 'document-panel', 'document-status', 'segment-information', 'segment-map', 'details-panel', 'visibility-area'];
 
 async function startViewer(text: string): Promise<void> {
   document.documentElement.dataset.mode = 'viewer';

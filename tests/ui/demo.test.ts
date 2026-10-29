@@ -139,27 +139,32 @@ describe('the demo extension (FR-41 as amended in v1.1.0)', () => {
       themeSelect.dispatchEvent(new Event('change'));
       expect(document.documentElement.dataset.theme).toBe(theme);
       await load();
+      // The demo is in the interface language (FR-41 as amended in v1.3.1).
+      const texts = {
+        en: { colours: ['On track', 'Under way', 'Needs attention', 'Stopped'], zone: 'Survey zone', groups: ['Heritage route', 'Green links'], jetty: 'Lake jetty', note: 'On the lake shore.', footprint: 'Jetty footprint' },
+        sv: { colours: ['Enligt plan', 'På gång', 'Kräver uppmärksamhet', 'Stoppad'], zone: 'Inventeringszon', groups: ['Kulturarvsleden', 'Gröna stråk'], jetty: 'Sjöbryggan', note: 'På sjöstranden.', footprint: 'Bryggans fotavtryck' },
+      }[lang];
       // The user-named colour labels in the legend; the data never colours.
-      expect([...byId('map-legend').querySelectorAll('.legend-entry[data-colour]')].map((e) => e.textContent)).toEqual(['On track', 'Under way', 'Needs attention', 'Stopped']);
+      expect([...byId('map-legend').querySelectorAll('.legend-entry[data-colour]')].map((e) => e.textContent)).toEqual(texts.colours);
       // The annotations: the footprint, the free rectangle, the dashed line.
       const shapes = [...byId('map-annotations').querySelectorAll('g.annotation')];
       expect(shapes.map((g) => g.getAttribute('class')!.split(' ')[1])).toEqual(['annotation-polygon', 'annotation-rectangle', 'annotation-line']);
       expect(shapes[2].getAttribute('class')).toContain('style-dashed');
-      expect(byId('map-annotation-labels').textContent).toContain('Survey zone');
+      expect(byId('map-annotation-labels').textContent).toContain(texts.zone);
       // The at-a-glance panel: programme groups, each where its first member
       // stands in the list, and the configured columns.
-      expect([...document.querySelectorAll('#map-glance-list .glance-group-name')].map((n) => n.textContent)).toEqual(['Heritage route', 'Green links']);
+      expect([...document.querySelectorAll('#map-glance-list .glance-group-name')].map((n) => n.textContent)).toEqual(texts.groups);
       expect(document.querySelector('#map-glance-list .glance-value')!.textContent).not.toBe('');
       byId('tab-presentation').click();
       await flush();
       expect(byId('presentation-annotations').querySelectorAll('g.annotation')).toHaveLength(3);
       // The card of the lake jetty: the note first, and its footprint.
-      const jetty = presentationMarkers().find((m) => m.getAttribute('aria-label')!.includes('Lake jetty'))!;
+      const jetty = presentationMarkers().find((m) => m.getAttribute('aria-label')!.includes(texts.jetty))!;
       jetty.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }));
       jetty.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0 }));
       const card = byId('presentation-card');
-      expect(card.querySelector('.card-note')!.textContent).toBe('On the lake shore.');
-      expect(card.querySelector('.footprint-name')!.textContent).toBe('Jetty footprint');
+      expect(card.querySelector('.card-note')!.textContent).toBe(texts.note);
+      expect(card.querySelector('.footprint-name')!.textContent).toBe(texts.footprint);
       // The rendered map has a known scale: the footprint's area is given.
       expect(card.querySelector('.footprint-area')!.textContent).toMatch(/^[\d,.\s]+ (m²|ha|km²)$/);
     });

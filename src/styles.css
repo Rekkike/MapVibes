@@ -2273,3 +2273,9 @@ button.secondary-action {
   font-size: 0.8rem;
   white-space: nowrap;
 }
+
+/* The exported viewer renders no item list (FR-38 as amended in v1.3.1):
+   the stage takes the list's column. */
+html[data-mode='viewer'] #segment-presentation {
+  grid-template-columns: minmax(0, 1fr) minmax(11rem, 15rem);
+}

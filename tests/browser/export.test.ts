@@ -94,7 +94,7 @@ describe('the exported file in a browser, offline (FR-11, FR-38)', () => {
     await page.close();
   });
 
-  test('the map, markers, legend, list, at-a-glance panel, and cards hold the exported content', async () => {
+  test('the map, markers, legend, at-a-glance panel, and cards hold the exported content; no item list is rendered', async () => {
     const { page } = await newPage();
     await page.goto(`file://${exported}`);
     await page.waitForFunction(() => document.getElementById('presentation-stage')!.dataset.hasBackground === 'true');
@@ -102,7 +102,12 @@ describe('the exported file in a browser, offline (FR-11, FR-38)', () => {
     expect(await page.evaluate(() => (document.getElementById('presentation-image') as HTMLImageElement).naturalWidth)).toBe(1200);
     expect(await page.locator('#presentation-marker-layer .marker').allTextContents()).toEqual(['1', '3']);
     expect(await page.locator('#presentation-legend .legend-entry[data-colour]').count()).toBe(4);
-    expect(await page.locator('#visibility-list .placement-label').allTextContents()).toEqual(['A-01', 'A-02', 'A-03', 'A-04']);
+    // No item list is rendered (FR-38 as amended in v1.3.1); the data island
+    // still carries every shared item, the ones without a marker included.
+    expect(await page.isVisible('#visibility-area')).toBe(false);
+    expect(await page.locator('#visibility-list li').count()).toBe(0);
+    const island = await page.evaluate(() => document.getElementById('mapvibes-export-data')!.textContent!);
+    for (const id of ['A-01', 'A-02', 'A-03', 'A-04']) expect(island).toContain(`"${id}"`);
     expect(await page.locator('#presentation-glance-list .glance-name').allTextContents()).toEqual(['A-01', 'A-03']);
     expect(await page.locator('#presentation-glance-list .glance-area').allTextContents()).toEqual(['North', 'South']);
     await page.locator('#presentation-marker-layer .marker').nth(1).click();

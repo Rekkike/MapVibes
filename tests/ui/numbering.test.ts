@@ -227,7 +227,9 @@ describe('grouped numbers in the exported viewer (FR-17, FR-38)', () => {
     });
     await flush();
     expect(presentationMarkers().map((m) => m.textContent)).toEqual(['1.1', '2.1']);
-    expect([...document.querySelectorAll('#visibility-list .marker-badge')].map((b) => b.textContent)).toEqual(['1.1', '1', '2.1', '1.2', '2']);
+    // The viewer renders no item list (FR-38 as amended in v1.3.1); its
+    // at-a-glance panel carries the grouped numbers.
+    expect([...document.querySelectorAll('#presentation-glance-list .marker-badge')].map((b) => b.textContent)).toEqual(['1.1', '2.1']);
     expect([...byId('presentation-legend').querySelectorAll('.legend-group[data-kind="programs"] .legend-entry')].map((e) => e.textContent)).toEqual([
       '1.P-East',
       '2.P-West',

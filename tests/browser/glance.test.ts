@@ -7,7 +7,10 @@ import { chromium, type Browser, type Page } from 'playwright';
 // The at-a-glance end column (FR-46 as amended in v1.3.0) in a real layout:
 // fresh work shows the end values by default, and a version 6 work whose
 // saved choice lacks the end column shows them after migration, in both
-// segments. Run after the build (npm run build).
+// segments. Since v1.3.1 (FR-46 as amended), work with no deliberate choice
+// shows the full defaults, the area, start, and end, in both segments: a
+// version 5 work from before the choice, and a list imported after the demo,
+// which before kept the demo's choice. Run after the build (npm run build).
 const BUILT = join(process.cwd(), 'dist', 'build', 'index.html');
 const EXAMPLE = join(process.cwd(), 'example-data');
 
@@ -77,6 +80,42 @@ describe('the at-a-glance end column in a browser (FR-46)', () => {
     await page.click('#tab-presentation');
     await page.waitForTimeout(300);
     expect((await glanceValues(page, 'presentation')).join(' ')).not.toContain('2024-02-01');
+    await page.context().close();
+  }, 60_000);
+
+  // The example's first item shows its area, start, and end; the second its
+  // area and start (its end is empty).
+  async function expectFullDefaults(page: Page): Promise<void> {
+    for (const prefix of ['map', 'presentation'] as const) {
+      await page.click(`#tab-${prefix}`);
+      await page.click(prefix === 'map' ? '#map-fit' : '#pres-fit');
+      await page.waitForTimeout(300);
+      const headers = await page.locator(`#${prefix}-glance-list .glance-entry`).first().locator('.glance-value').evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.header));
+      expect(headers, prefix).toEqual(['Group', 'Start', 'End']);
+    }
+  }
+
+  test('a version 5 work from before the choice shows the full defaults, in both segments', async () => {
+    const page = await open();
+    await page.setInputFiles('#work-file-input', join(EXAMPLE, 'example-work-state-v5.json'));
+    await page.waitForFunction(() => document.querySelectorAll('#marker-layer .marker').length > 0);
+    await expectFullDefaults(page);
+    await page.context().close();
+  }, 60_000);
+
+  test('a list imported after the demo shows the full defaults, in both segments', async () => {
+    const page = await open();
+    await page.click('#load-demo');
+    await page.waitForFunction(() => document.querySelectorAll('#marker-layer .marker').length === 11);
+    page.on('dialog', (d) => d.accept());
+    await page.click('#tab-information');
+    await page.setInputFiles('#file-input', join(EXAMPLE, 'example.xlsx'));
+    await page.waitForFunction(() => document.querySelector('.role-select[data-header="Group"]') !== null);
+    for (const [header, role] of [['ID', 'identifier'], ['Group', 'area'], ['Start', 'start'], ['End', 'end']]) await page.selectOption(`.role-select[data-header="${header}"]`, role);
+    await page.click('#tab-map');
+    const box = (await page.locator('#map-stage').boundingBox())!;
+    await page.locator('.placement-item').nth(0).dragTo(page.locator('#map-stage'), { targetPosition: { x: Math.round(box.width * 0.3), y: Math.round(box.height / 2) } });
+    await expectFullDefaults(page);
     await page.context().close();
   }, 60_000);
 });

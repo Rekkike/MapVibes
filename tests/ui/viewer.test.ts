@@ -47,12 +47,13 @@ async function mountViewer(page: string, options: { keepStorage?: boolean } = {}
   return app;
 }
 
-function listEntries(): string[][] {
-  return [...document.querySelectorAll('#visibility-list .visibility-item')].map((li) => [
-    li.querySelector('.marker-badge')!.textContent ?? '',
-    li.querySelector('.placement-label')!.textContent ?? '',
-    li.querySelector('.placement-status')?.textContent ?? '',
-  ]);
+// The visible text of the page: every text node outside the data island
+// and other scripts.
+function visibleText(): string {
+  const out: string[] = [];
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) if (!n.parentElement?.closest('script, .hidden')) out.push(n.textContent ?? '');
+  return out.join(' ');
 }
 
 function tap(marker: HTMLElement): void {
@@ -74,7 +75,7 @@ describe('exported viewer (FR-38, FR-20)', () => {
     expect(document.getElementById(DATA_ISLAND_ID)).not.toBeNull();
     expect(document.documentElement.dataset.mode).toBe('viewer');
     expect(byId('segment-presentation').classList.contains('hidden')).toBe(false);
-    for (const id of ['segment-nav', 'work-controls', 'export-open', 'export-panel', 'segment-information', 'segment-map', 'details-panel']) {
+    for (const id of ['segment-nav', 'work-controls', 'export-open', 'export-panel', 'segment-information', 'segment-map', 'details-panel', 'visibility-area']) {
       expect(byId(id).classList.contains('hidden'), id).toBe(true);
       expect(byId(id).hasAttribute('inert'), id).toBe(true);
     }
@@ -85,7 +86,7 @@ describe('exported viewer (FR-38, FR-20)', () => {
     expect(document.documentElement.lang).toBe('sv');
     expect(document.documentElement.dataset.theme).toBe('dark');
     expect(byId<HTMLSelectElement>('select-language').value).toBe('sv');
-    expect(byId('visibility-heading').textContent).toBe('Objekt');
+    expect(byId('presentation-glance-heading').textContent).toBe('I vyn2');
   });
 
   test('choices made in the viewer are not remembered', () => {
@@ -96,7 +97,7 @@ describe('exported viewer (FR-38, FR-20)', () => {
     const theme = byId<HTMLSelectElement>('select-theme');
     theme.value = 'light';
     theme.dispatchEvent(new Event('change'));
-    expect(byId('visibility-heading').textContent).toBe('Items');
+    expect(byId('presentation-glance-heading').textContent).toBe('In view2');
     expect(document.documentElement.dataset.theme).toBe('light');
     expect(localStorage.getItem('mapvibes.preferences')).toBe(before);
   });
@@ -109,14 +110,16 @@ describe('exported viewer (FR-38, FR-20)', () => {
     expect(legend).toEqual(['green', 'blue', 'yellow', 'red']);
   });
 
-  test('the item list holds every exported item with its number; no visibility toggles exist', () => {
-    expect(listEntries()).toEqual([
-      ['2', 'A-02', 'inte på kartan'],
-      ['3', 'A-03', ''],
-      ['4', 'A-04', 'inte på kartan'],
-      ['5', 'A-05', ''],
-    ]);
-    expect(document.querySelectorAll('.visibility-toggle')).toHaveLength(0);
+  test('no item list is rendered, while the data island still carries every shared item (FR-38 as amended in v1.3.1)', () => {
+    expect(byId('visibility-area').classList.contains('hidden')).toBe(true);
+    expect(byId('visibility-list').children).toHaveLength(0);
+    expect(document.querySelectorAll('.visibility-toggle, .visibility-item')).toHaveLength(0);
+    // The recipient sees the placed items on the stage and at a glance; the
+    // items without a marker are in the data only.
+    expect(visibleText()).toContain('A-03');
+    expect(visibleText()).not.toContain('A-02');
+    const island = byId(DATA_ISLAND_ID).textContent!;
+    for (const id of ['A-02', 'A-03', 'A-04', 'A-05']) expect(island).toContain(`"${id}"`);
     expect(document.body.textContent).not.toContain('A-01');
   });
 
@@ -139,17 +142,6 @@ describe('exported viewer (FR-38, FR-20)', () => {
     expect(card.querySelector('.details-title')!.textContent).toBe('A-03');
     expect([...card.querySelectorAll('.details-comment-text')].map((n) => n.textContent)).toEqual(['Seen in the viewer.']);
     expect(card.querySelectorAll('input, select, textarea')).toHaveLength(0);
-  });
-
-  test('the list opens the card, also for an item without a marker, in the corner of the stage', () => {
-    document.querySelectorAll<HTMLButtonElement>('#visibility-list .item-open')[0].click();
-    const card = byId('presentation-card');
-    expect(card.dataset.state).toBe('open');
-    expect(card.querySelector('.details-title')!.textContent).toBe('A-02');
-    expect(card.querySelector('.details-badge')).toBeNull();
-    expect(card.style.left).toBe('16px');
-    card.querySelector<HTMLButtonElement>('.details-close')!.click();
-    expect(card.dataset.state).toBe('closed');
   });
 
   test('zoom, pan, and fit work', () => {

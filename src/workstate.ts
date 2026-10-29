@@ -43,7 +43,9 @@
 // (FR-17), the symbol labels (FR-54), and the comments' edit dates (FR-15).
 // On migration, a saved at-a-glance choice that lacks the end-role column
 // gains it (FR-46). Files of versions 1 to 6 have the global numbering, the
-// flat list, no symbol labels, and no edited comments.
+// flat list, no symbol labels, and no edited comments. A saved choice that
+// names a column the work does not have opens as no choice (FR-46 as amended
+// in v1.3.1).
 
 import { COLOURS, type RowColour, type SortDirection, type ValueFilter } from './dataset';
 import { isRole, ROLES, type Role, type RoleAssignments } from './roles';
@@ -473,11 +475,12 @@ export function parseWorkState(text: string): WorkState {
     }
     const glance = obj(file.glance, 'glance');
     if (glance.columns !== null) {
-      glanceColumns = arr(glance.columns, 'glance.columns').map((h, i) => {
-        const header = str(h, `glance.columns[${i}]`);
-        if (!headers.includes(header)) invalid('notAColumn', `glance.columns[${i}]`);
-        return header;
-      });
+      glanceColumns = arr(glance.columns, 'glance.columns').map((h, i) => str(h, `glance.columns[${i}]`));
+      // A choice that names a column the work does not have was not made on
+      // this work (as the demo's choice kept by a new list before v1.3.1):
+      // it opens as no choice, with the full defaults (FR-46 as amended in
+      // v1.3.1).
+      if (glanceColumns.some((h) => !headers.includes(h))) glanceColumns = null;
     }
     annotations = arr(file.annotations, 'annotations').map((a, i) => parseAnnotation(a, `annotations[${i}]`, rows.length));
     if (annotations.length > 0 && !background) invalid('markersWithoutBackground', 'annotations');

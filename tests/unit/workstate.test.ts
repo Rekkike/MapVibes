@@ -517,9 +517,11 @@ describe('schema version 6: programs, colour labels, at-a-glance columns, annota
     expectError(JSON.stringify(file), 'invalid');
   });
 
-  test('at-a-glance columns must be columns of the file', () => {
+  test('a saved choice that names a column the file does not have opens as no choice (FR-46 as amended in v1.3.1)', () => {
     const file = fileOf(sample()) as Record<string, any>;
-    file.glance.columns = ['Nowhere'];
+    file.glance.columns = ['Group', 'Nowhere'];
+    expect(parseWorkState(JSON.stringify(file)).glanceColumns).toBeNull();
+    file.glance.columns = ['Group', 7];
     expectError(JSON.stringify(file), 'invalid');
   });
 
@@ -576,6 +578,23 @@ describe('schema version 7: the at-a-glance end column (FR-46 as amended in v1.3
     const defaults = JSON.parse(v6Text);
     defaults.glance.columns = null;
     expect(parseWorkState(JSON.stringify(defaults)).glanceColumns).toBeNull();
+  });
+});
+
+describe('work from before the at-a-glance choice (FR-46 as amended in v1.3.1)', () => {
+  const v5Text = readFileSync(join(process.cwd(), 'example-data', 'example-work-state-v5.json'), 'utf8');
+
+  test('the version 5 fixture predates the choice and assigns the area, start, and end roles', () => {
+    const file = JSON.parse(v5Text);
+    expect(file.schemaVersion).toBe(5);
+    expect(file.glance).toBeUndefined();
+    expect([file.columns.roles.area, file.columns.roles.start, file.columns.roles.end]).toEqual(['Group', 'Start', 'End']);
+  });
+
+  test('it opens with no choice, so with the full defaults, and saves so', () => {
+    const state = parseWorkState(v5Text);
+    expect(state.glanceColumns).toBeNull();
+    expect(JSON.parse(serialiseWorkState(state, SAVED_AT)).glance).toEqual({ columns: null });
   });
 });
 

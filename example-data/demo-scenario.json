@@ -1,79 +1,157 @@
 {
   "format": "mapvibes-demo",
-  "version": 2,
+  "version": 3,
   "preset": {
-    "name": "Demo columns",
-    "headers": [
-      "Item",
-      "Name",
-      "Area",
-      "Programme",
-      "Status",
-      "Start year",
-      "End year",
-      "Note"
-    ],
-    "hidden": [],
-    "roles": {
-      "identifier": "Item",
-      "name": "Name",
-      "area": "Area",
-      "program": "Programme",
-      "status": "Status",
-      "start": "Start year",
-      "end": "End year",
-      "note": "Note"
+    "en": {
+      "name": "Demo columns",
+      "headers": [
+        "Item",
+        "Name",
+        "Area",
+        "Programme",
+        "Status",
+        "Start year",
+        "End year",
+        "Note"
+      ],
+      "hidden": [],
+      "roles": {
+        "identifier": "Item",
+        "name": "Name",
+        "area": "Area",
+        "program": "Programme",
+        "status": "Status",
+        "start": "Start year",
+        "end": "End year",
+        "note": "Note"
+      },
+      "areas": [
+        "Park district",
+        "Riverside",
+        "Lakeside",
+        "Old quarter",
+        "Station district"
+      ],
+      "programs": [
+        "Green links",
+        "Heritage route"
+      ],
+      "statuses": [
+        {
+          "name": "Planned",
+          "symbol": "bulb"
+        },
+        {
+          "name": "Under review",
+          "symbol": "magnifier"
+        },
+        {
+          "name": "In progress",
+          "symbol": "hammer-shovel"
+        },
+        {
+          "name": "Paused",
+          "symbol": "pause"
+        },
+        {
+          "name": "Cancelled",
+          "symbol": "cross"
+        },
+        {
+          "name": "Completed",
+          "symbol": "check"
+        }
+      ]
     },
-    "areas": [
-      "Park district",
-      "Riverside",
-      "Lakeside",
-      "Old quarter",
-      "Station district"
-    ],
-    "programs": [
-      "Green links",
-      "Heritage route"
-    ],
-    "statuses": [
-      {
-        "name": "Planned",
-        "symbol": "bulb"
+    "sv": {
+      "name": "Demokolumner",
+      "headers": [
+        "Objekt",
+        "Namn",
+        "Område",
+        "Program",
+        "Status",
+        "Startår",
+        "Slutår",
+        "Anteckning"
+      ],
+      "hidden": [],
+      "roles": {
+        "identifier": "Objekt",
+        "name": "Namn",
+        "area": "Område",
+        "program": "Program",
+        "status": "Status",
+        "start": "Startår",
+        "end": "Slutår",
+        "note": "Anteckning"
       },
-      {
-        "name": "Under review",
-        "symbol": "magnifier"
-      },
-      {
-        "name": "In progress",
-        "symbol": "hammer-shovel"
-      },
-      {
-        "name": "Paused",
-        "symbol": "pause"
-      },
-      {
-        "name": "Cancelled",
-        "symbol": "cross"
-      },
-      {
-        "name": "Completed",
-        "symbol": "check"
-      }
-    ]
+      "areas": [
+        "Parkkvarteren",
+        "Älvstranden",
+        "Sjöstranden",
+        "Gamla staden",
+        "Stationsområdet"
+      ],
+      "programs": [
+        "Gröna stråk",
+        "Kulturarvsleden"
+      ],
+      "statuses": [
+        {
+          "name": "Planerad",
+          "symbol": "bulb"
+        },
+        {
+          "name": "Under granskning",
+          "symbol": "magnifier"
+        },
+        {
+          "name": "Pågår",
+          "symbol": "hammer-shovel"
+        },
+        {
+          "name": "Pausad",
+          "symbol": "pause"
+        },
+        {
+          "name": "Avbruten",
+          "symbol": "cross"
+        },
+        {
+          "name": "Klar",
+          "symbol": "check"
+        }
+      ]
+    }
   },
   "symbolsFromStatus": true,
   "colourLabels": {
-    "green": "On track",
-    "blue": "Under way",
-    "yellow": "Needs attention",
-    "red": "Stopped"
+    "en": {
+      "green": "On track",
+      "blue": "Under way",
+      "yellow": "Needs attention",
+      "red": "Stopped"
+    },
+    "sv": {
+      "green": "Enligt plan",
+      "blue": "På gång",
+      "yellow": "Kräver uppmärksamhet",
+      "red": "Stoppad"
+    }
   },
-  "glanceColumns": [
-    "Programme",
-    "Status",
-    "End year"
-  ],
+  "glanceColumns": {
+    "en": [
+      "Programme",
+      "Status",
+      "End year"
+    ],
+    "sv": [
+      "Program",
+      "Status",
+      "Slutår"
+    ]
+  },
   "items": [
     {
       "item": "D-01",
@@ -86,11 +164,17 @@
       "comments": [
         {
           "date": "2021-05-12T09:30:00.000Z",
-          "text": "Finished as planned."
+          "text": {
+            "en": "Finished as planned.",
+            "sv": "Avslutad enligt plan."
+          }
         },
         {
           "date": "2021-06-02T14:00:00.000Z",
-          "text": "Final check done."
+          "text": {
+            "en": "Final check done.",
+            "sv": "Slutkontroll gjord."
+          }
         }
       ]
     },
@@ -105,7 +189,10 @@
       "comments": [
         {
           "date": "2024-03-04T08:15:00.000Z",
-          "text": "Halfway along the path."
+          "text": {
+            "en": "Halfway along the path.",
+            "sv": "Halvvägs längs gången."
+          }
         }
       ]
     },
@@ -130,7 +217,10 @@
       "comments": [
         {
           "date": "2024-09-18T10:45:00.000Z",
-          "text": "Two options are being compared."
+          "text": {
+            "en": "Two options are being compared.",
+            "sv": "Två alternativ jämförs."
+          }
         }
       ]
     },
@@ -155,7 +245,10 @@
       "comments": [
         {
           "date": "2023-11-30T16:20:00.000Z",
-          "text": "Paused until the spring."
+          "text": {
+            "en": "Paused until the spring.",
+            "sv": "Pausad till våren."
+          }
         }
       ]
     },
@@ -180,7 +273,10 @@
       "comments": [
         {
           "date": "2022-02-14T11:00:00.000Z",
-          "text": "Cancelled; see the lake jetty instead."
+          "text": {
+            "en": "Cancelled; see the lake jetty instead.",
+            "sv": "Avbruten; se sjöbryggan i stället."
+          }
         }
       ]
     },
@@ -215,7 +311,10 @@
       "comments": [
         {
           "date": "2025-01-08T09:00:00.000Z",
-          "text": "Waiting for the second opinion."
+          "text": {
+            "en": "Waiting for the second opinion.",
+            "sv": "Väntar på ett andra utlåtande."
+          }
         }
       ]
     },
@@ -252,7 +351,10 @@
       "fillOpacity": 0.3,
       "outline": "black",
       "lineStyle": "solid",
-      "label": "Jetty footprint",
+      "label": {
+        "en": "Jetty footprint",
+        "sv": "Bryggans fotavtryck"
+      },
       "link": "D-07"
     },
     {
@@ -271,7 +373,10 @@
       "fillOpacity": 0.2,
       "outline": "white",
       "lineStyle": "solid",
-      "label": "Survey zone",
+      "label": {
+        "en": "Survey zone",
+        "sv": "Inventeringszon"
+      },
       "link": null
     },
     {
@@ -294,7 +399,10 @@
       "fillOpacity": 0,
       "outline": "black",
       "lineStyle": "dashed",
-      "label": "Planned footpath",
+      "label": {
+        "en": "Planned footpath",
+        "sv": "Planerad gångväg"
+      },
       "link": null
     }
   ]
