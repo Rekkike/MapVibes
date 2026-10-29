@@ -89,6 +89,17 @@ function annotationElement(a: Annotation, classes: string[]): SVGGElement {
   return g;
 }
 
+// The printed size of an annotation label (FR-47 as amended in v1.4.0): a
+// fixed fraction of the background, its longer side divided by 64, in the
+// background's own pixels. Labels are lettering on the map: inside the scaled
+// map content, they scale with the zoom together with their shapes, and the
+// same annotation has the same size relative to the sheet on every surface.
+export const LABEL_FRACTION = 1 / 64;
+
+export function labelSize(size: { width: number; height: number }): number {
+  return Math.max(size.width, size.height) * LABEL_FRACTION;
+}
+
 export class AnnotationLayer {
   constructor(
     private readonly layer: SVGSVGElement,
@@ -110,6 +121,7 @@ export class AnnotationLayer {
     this.layer.setAttribute('width', String(size.width));
     this.layer.setAttribute('height', String(size.height));
     this.layer.setAttribute('viewBox', `0 0 ${size.width} ${size.height}`);
+    this.labels.style.setProperty('--label-size', `${labelSize(size)}px`);
     const v = this.viewport();
     for (const a of annotations) {
       const classes: string[] = [];
@@ -122,7 +134,8 @@ export class AnnotationLayer {
         label.className = `annotation-label outline-${a.outline}${a.kind === 'line' ? '' : ' below'}${options.faded?.has(a.id) ? ' faded' : ''}`;
         label.dataset.annotationId = a.id;
         label.textContent = a.label.trim();
-        const at = imageToScreen(v, labelAnchor(a));
+        // In the map's own coordinates, inside the scaled content.
+        const at = labelAnchor(a);
         label.style.left = `${at.x}px`;
         label.style.top = `${at.y}px`;
         this.labels.appendChild(label);

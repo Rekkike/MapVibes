@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, test, vi } from 'vitest';
-import { byId, flush, mountApp, openWorkFile, pointer, presentationMarkers, STAGE, stubImageDecoding, stubStageLayout, textFile } from './harness';
+import { byId, flush, mountApp, openWorkFile, placeExampleMarkers, pointer, presentationMarkers, STAGE, stubImageDecoding, stubStageLayout, textFile } from './harness';
+import { NARROW_QUERY } from '../../src/narrowviewer';
 import { en, sv } from '../../src/i18n';
 
 vi.mock('../../src/osmrender', () => ({
@@ -193,4 +194,37 @@ describe('translation parity: the rendered interface in Swedish (FR-19)', () => 
       expect([...new Set(found)]).toEqual([]);
     }, 30_000);
   }
+});
+
+// The narrow viewer's toggle bar and overlays (FR-58), hidden on the
+// desktop and so outside the audit above: in Swedish, with the narrow
+// layout in force.
+describe('translation parity: the narrow viewer in Swedish (FR-19, FR-58)', () => {
+  test('the toggle bar and its overlays show no English text', async () => {
+    const author = await mountApp({ singleFile: true });
+    await placeExampleMarkers([[0, 60, 100]]);
+    const lang = byId<HTMLSelectElement>('select-language');
+    lang.value = 'sv';
+    lang.dispatchEvent(new Event('change'));
+    const page = author.exportPage(new Date(2024, 7, 9, 10, 30))!;
+    const doc = new DOMParser().parseFromString(page, 'text/html');
+    await mountApp({
+      body: doc.body.innerHTML,
+      beforeMain: () => {
+        stubStageLayout();
+        stubImageDecoding(1200, 800);
+        const plain = window.matchMedia;
+        window.matchMedia = ((q: string) => (q === NARROW_QUERY ? { ...plain(q), matches: true } : plain(q))) as typeof window.matchMedia;
+      },
+    });
+    await flush();
+    const english = englishTexts();
+    const bar = byId('viewer-toggles');
+    const texts = [bar.getAttribute('aria-label')!, ...[...bar.querySelectorAll('button')].map((b) => b.textContent!.trim())];
+    expect(texts).toEqual(['Paneler', 'I vyn', 'Teckenförklaring']);
+    byId('toggle-legend').click();
+    expect(byId('presentation-legend').dataset.state).toBe('open');
+    const shown = [...texts, byId('presentation-legend').textContent!, byId('presentation-glance').textContent!];
+    expect(shown.filter((t) => [...english].some((e) => t === e || (e.length >= 12 && t.includes(e))))).toEqual([]);
+  });
 });

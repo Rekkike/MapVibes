@@ -7,8 +7,9 @@ import { chromium, type Browser, type BrowserContext, type Page } from 'playwrig
 
 // The polish pass (v1.3.0) in a real layout, headless Chromium, offline, with
 // the full-test demo: the export absence of what is not chosen (FR-53), the
-// straight-line constraint with the modifier keys held (FR-47), the labels'
-// and markers' constant size across zoom while shapes scale (FR-47, FR-57),
+// straight-line constraint with the modifier keys held (FR-47), the markers'
+// constant size across zoom while shapes and their labels scale (FR-47 and
+// FR-57 as amended in v1.4.0),
 // the details-panel refit (FR-16), and the viewer's restored view (FR-38).
 // Run after the build (npm run build).
 const BUILT = join(process.cwd(), 'dist', 'build', 'index.html');
@@ -118,7 +119,7 @@ describe('the polish pass in a browser (v1.3.0)', () => {
     await page.close();
   }, 60_000);
 
-  test('across zoom, labels and markers keep their size on screen while shapes scale (FR-47, FR-57)', async () => {
+  test('across zoom, markers keep their size on screen while shapes and labels scale (FR-47, FR-57)', async () => {
     const { page } = await demo();
     const measure = async () => ({
       label: await box(page, '#map-annotation-labels .annotation-label'),
@@ -130,14 +131,12 @@ describe('the polish pass in a browser (v1.3.0)', () => {
     await page.click('#map-zoom-in');
     await page.waitForTimeout(500);
     const zoomed = await measure();
-    expect(zoomed.label.height).toBeCloseTo(fitted.label.height, 0);
-    expect(zoomed.label.width).toBeCloseTo(fitted.label.width, 0);
+    // The label is lettering on the map: it grows with the shape.
+    expect(zoomed.label.width / fitted.label.width).toBeCloseTo(zoomed.shape.width / fitted.shape.width, 1);
     expect(zoomed.marker.height).toBeCloseTo(fitted.marker.height, 0);
     expect(zoomed.marker.width).toBeCloseTo(fitted.marker.width, 0);
     // The shape grows with the map.
     expect(zoomed.shape.width / fitted.shape.width).toBeGreaterThan(1.3);
-    // A readable size: at least 12 pixels of text height.
-    expect(fitted.label.height).toBeGreaterThanOrEqual(16);
     expect(fitted.marker.height).toBeGreaterThanOrEqual(24);
     await page.close();
   }, 60_000);

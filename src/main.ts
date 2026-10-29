@@ -30,6 +30,7 @@ import { embedDataIsland, readDataIsland } from './singlefile';
 import { compareItems, type CompareItem, type Comparison } from './reconcile';
 import { areaGroups, programLabels } from './grouping';
 import { DEMO_MAP_TEXT, demoCounterparts, demoScenario, demoWorkbook } from './demo';
+import { NARROW_QUERY, NarrowViewer } from './narrowviewer';
 import { DEFAULT_STYLE, formatArea, newAnnotationId, LINE_STYLES, OUTLINES, trueArea, type Annotation, type AnnotationKind, type AnnotationStyle, type LineStyle, type Outline } from './annotations';
 import { AnnotationLayer, DrawingTools, type DrawingTool } from './annotationlayer';
 
@@ -274,6 +275,10 @@ function renderStaticText(): void {
   el('visibility-empty').textContent = t.visibilityEmpty;
   el('presentation-empty-hint').textContent = t.presentationEmptyHint;
   el('pres-fit').textContent = t.mapFit;
+  // The narrow viewer's toggle bar (FR-58).
+  el('viewer-toggles').setAttribute('aria-label', t.viewerPanels);
+  el('toggle-glance').textContent = t.viewerToggleGlance;
+  el('toggle-legend').textContent = t.viewerToggleLegend;
   el('details-panel').setAttribute('aria-label', t.detailsPanel);
   el('export-open').textContent = t.exportOpen;
   el('pdf-open').textContent = t.pdfOpen;
@@ -3710,6 +3715,20 @@ function renderCard(): void {
     renderCardContent(card, model, { comments: t.detailsComments, close: t.close, fields: t.cardFields, footprints: t.detailsFootprints }, closeCard);
     if (refocus) card.querySelector<HTMLElement>('.details-close')?.focus({ preventScroll: true });
   }
+  // In the narrow viewer, the card docks at the bottom of the stage, in the
+  // stylesheet's place (FR-58).
+  if (narrowViewer()) {
+    card.dataset.dock = 'bottom';
+    card.style.left = '';
+    card.style.right = '';
+    card.style.top = '';
+    card.dataset.state = 'open';
+    card.setAttribute('aria-hidden', 'false');
+    card.inert = false;
+    card.removeAttribute('inert');
+    return;
+  }
+  delete card.dataset.dock;
   // Beside the marker, on the side with more room, and within the stage; an
   // item without a marker opens in the stage's corner.
   const size = presentationView.stageSize();
@@ -3740,7 +3759,12 @@ function renderPresentation(): void {
   }
   presentationLayer?.render(shown, state.presentationSelected);
   renderVisibilityList();
-  renderGlance('presentation', presentationView, state.presentationSelected, (id) => openCard(id));
+  renderGlance('presentation', presentationView, state.presentationSelected, (id) => {
+    // In the narrow viewer, choosing an entry closes the overlay and opens
+    // the card (FR-58).
+    if (narrowViewer()) narrow?.close({ returnFocus: false });
+    openCard(id);
+  });
   renderCard();
   const has = presentationView?.background != null;
   for (const id of ['pres-zoom-in', 'pres-zoom-out', 'pres-fit', 'pres-reset']) {
@@ -4442,6 +4466,41 @@ async function startViewer(text: string): Promise<void> {
   renderViewerBadge();
   renderList();
   setSegment('presentation');
+  startNarrowViewer();
+}
+
+// The narrow viewer layout (FR-58), in the viewer only: active while its
+// query matches. The stage's size at the last refit, so that a resize refits
+// the view from it.
+let narrow: NarrowViewer | null = null;
+let narrowStage: { width: number; height: number } | null = null;
+
+function narrowViewer(): boolean {
+  return narrow?.active() ?? false;
+}
+
+function startNarrowViewer(): void {
+  narrowStage = presentationView?.stageSize() ?? null;
+  narrow = new NarrowViewer(
+    window.matchMedia(NARROW_QUERY),
+    [
+      { toggle: el<HTMLButtonElement>('toggle-glance'), panel: el('presentation-glance') },
+      { toggle: el<HTMLButtonElement>('toggle-legend'), panel: el('presentation-legend') },
+    ],
+    {
+      closeCard: () => {
+        if (cardId !== null) closeCard();
+      },
+      render: () => renderPresentation(),
+      refit: () => {
+        if (!presentationView) return;
+        const before = narrowStage;
+        narrowStage = presentationView.stageSize();
+        if (before) presentationView.refit(before);
+        renderPresentation();
+      },
+    },
+  );
 }
 
 function renderViewerBadge(): void {

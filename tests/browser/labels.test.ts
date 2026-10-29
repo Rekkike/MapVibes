@@ -5,13 +5,17 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
 
-// One label rule for both stages and the exported viewer (FR-47 and FR-57 as
-// amended in v1.3.1): shapes are geographic and scale with the map; labels
-// are language and keep their size on screen at every zoom. Measured in a
-// real layout, headless Chromium, offline, with the full-test demo, across
-// zoom by the buttons, the wheel, and a two-finger pinch. Run after the
-// build (npm run build).
+// The label rule on both stages and in the exported viewer (FR-47 and FR-57
+// as amended in v1.4.0, superseding the v1.3.1 constant-size ruling for
+// labels): markers are pins through the map and keep their size on screen;
+// annotation labels are lettering drawn on the map, printed at a fraction of
+// the background (its longer side divided by 64), and scale with the zoom
+// together with their shapes. Measured in a real layout, headless Chromium,
+// offline, with the full-test demo, across zoom by the buttons, the wheel,
+// and a two-finger pinch. Run after the build (npm run build).
 const BUILT = join(process.cwd(), 'dist', 'build', 'index.html');
+// The printed size of a label, as a fraction of the background's longer side.
+const FRACTION = 1 / 64;
 
 let browser: Browser;
 let context: BrowserContext;
@@ -57,8 +61,11 @@ async function measure(page: Page, s: Stage) {
       return { width: r.width, height: r.height };
     };
     const content = document.querySelector(s.stage)!.firstElementChild as HTMLElement;
+    const image = content.querySelector('img')!;
     return {
       scale: Number(/scale\(([\d.]+)\)/.exec(content.style.transform)![1]),
+      sheet: Math.max(image.naturalWidth, image.naturalHeight),
+      lineHeight: parseFloat(getComputedStyle(document.querySelector(`${s.labels} .annotation-label`)!).lineHeight),
       labels: [...document.querySelectorAll(`${s.labels} .annotation-label`)].map((l) => ({ text: l.textContent, ...size(l), font: getComputedStyle(l).fontSize })),
       marker: size(document.querySelector(`${s.markers} .marker`)),
       shape: size(document.querySelector(`${s.shapes} g.annotation-rectangle rect`)),
@@ -68,25 +75,39 @@ async function measure(page: Page, s: Stage) {
 
 type Measured = Awaited<ReturnType<typeof measure>>;
 
-function expectSameLabels(a: Measured, b: Measured, where: string): void {
-  expect(b.labels.map((l) => l.text), where).toEqual(a.labels.map((l) => l.text));
-  b.labels.forEach((l, i) => {
-    expect(l.height, `${where}: ${l.text}`).toBeCloseTo(a.labels[i].height, 0);
-    expect(l.width, `${where}: ${l.text}`).toBeCloseTo(a.labels[i].width, 0);
-    expect(l.font, `${where}: ${l.text}`).toBe(a.labels[i].font);
-  });
-  expect(b.marker.height, where).toBeCloseTo(a.marker.height, 0);
+// The labels are printed at the fraction of the sheet, and drawn at that
+// size times the map's scale: their height on screen is the line height of
+// the printed size, scaled.
+function expectPrinted(m: Measured, where: string): void {
+  for (const l of m.labels) {
+    expect(parseFloat(l.font), `${where}: ${l.text}`).toBeCloseTo(m.sheet * FRACTION, 3);
+    expect(l.height / m.scale, `${where}: ${l.text}`).toBeCloseTo(m.lineHeight, 0);
+  }
 }
 
-// Zooms in three ways in turn, each time checking that the map scaled, its
-// shapes with it, and that the labels and markers kept their size.
-async function expectConstantAcrossZoom(page: Page, s: Stage, where: string): Promise<void> {
+// From one view to another, the labels scale by the ratio of the scales,
+// while the markers keep their size.
+function expectProportional(a: Measured, b: Measured, where: string): void {
+  expect(b.labels.map((l) => l.text), where).toEqual(a.labels.map((l) => l.text));
+  const ratio = b.scale / a.scale;
+  b.labels.forEach((l, i) => {
+    expect(l.height / a.labels[i].height, `${where}: ${l.text}`).toBeCloseTo(ratio, 1);
+    expect(l.width / a.labels[i].width, `${where}: ${l.text}`).toBeCloseTo(ratio, 1);
+  });
+  expect(b.marker.height, where).toBeCloseTo(a.marker.height, 0);
+  expect(b.marker.width, where).toBeCloseTo(a.marker.width, 0);
+}
+
+// Zooms in three ways in turn, each time checking that the map scaled, and
+// its shapes and labels with it, while the markers kept their size.
+async function expectScalingAcrossZoom(page: Page, s: Stage, where: string): Promise<void> {
   await page.click(s.fit);
   await page.waitForTimeout(400);
   const fitted = await measure(page, s);
   expect(fitted.labels.length, where).toBe(3);
-  // A readable size: at least 12 pixels of text.
-  for (const l of fitted.labels) expect(l.height, where).toBeGreaterThanOrEqual(16);
+  expectPrinted(fitted, `${where}, fitted`);
+  // The type size on screen at the fitted view, for the record.
+  console.log(`${where}: fitted scale ${fitted.scale.toFixed(3)}, type ${(parseFloat(fitted.labels[0].font) * fitted.scale).toFixed(1)} px`);
   let previous = fitted;
   const steps: Array<[string, () => Promise<void>]> = [
     [
@@ -128,35 +149,38 @@ async function expectConstantAcrossZoom(page: Page, s: Stage, where: string): Pr
     expect(zoomed.scale, `${where}, ${how}`).toBeGreaterThan(previous.scale * 1.1);
     // The shapes are geographic: they grow with the map.
     expect(zoomed.shape.width / fitted.shape.width, `${where}, ${how}`).toBeCloseTo(zoomed.scale / fitted.scale, 1);
-    // The labels are language: they keep their size on screen.
-    expectSameLabels(fitted, zoomed, `${where}, ${how}`);
+    // The labels are lettering on the map: they scale with it.
+    expectPrinted(zoomed, `${where}, ${how}`);
+    expectProportional(fitted, zoomed, `${where}, ${how}`);
     previous = zoomed;
   }
 }
 
-describe('labels keep their size on screen across zoom, shapes scale (FR-47, FR-57)', () => {
+describe('labels scale with the map, printed relative to the sheet; markers keep their size (FR-47, FR-57)', () => {
   test('on the Map stage', async () => {
     const page = await demo();
     await page.click('#tab-map');
-    await expectConstantAcrossZoom(page, MAP, 'Map stage');
+    await expectScalingAcrossZoom(page, MAP, 'Map stage');
     await page.close();
   }, 60_000);
 
-  test('on the Presentation stage, and at the same size as on the Map stage', async () => {
+  test('on the Presentation stage, at the same printed size as on the Map stage', async () => {
     const page = await demo();
     await page.click('#tab-map');
     await page.click(MAP.fit);
     await page.waitForTimeout(400);
     const map = await measure(page, MAP);
     await page.click('#tab-presentation');
-    await expectConstantAcrossZoom(page, PRESENTATION, 'Presentation stage');
+    await expectScalingAcrossZoom(page, PRESENTATION, 'Presentation stage');
     await page.click(PRESENTATION.fit);
     await page.waitForTimeout(400);
-    expectSameLabels(map, await measure(page, PRESENTATION), 'Map and Presentation stages');
+    // The same printed size relative to the sheet; on screen, in proportion
+    // to each stage's scale.
+    expectProportional(map, await measure(page, PRESENTATION), 'Map and Presentation stages');
     await page.close();
   }, 60_000);
 
-  test('in the exported viewer, and at the same size as in the application', async () => {
+  test('in the exported viewer, at the same printed size as in the application', async () => {
     const page = await demo();
     await page.click('#tab-presentation');
     await page.click(PRESENTATION.fit);
@@ -170,10 +194,10 @@ describe('labels keep their size on screen across zoom, shapes scale (FR-47, FR-
     await viewer.goto(`file://${file}`);
     await viewer.waitForFunction(() => document.documentElement.dataset.mode === 'viewer');
     await viewer.waitForTimeout(800);
-    await expectConstantAcrossZoom(viewer, PRESENTATION, 'exported viewer');
+    await expectScalingAcrossZoom(viewer, PRESENTATION, 'exported viewer');
     await viewer.click(PRESENTATION.fit);
     await viewer.waitForTimeout(400);
-    expectSameLabels(app, await measure(viewer, PRESENTATION), 'application and viewer');
+    expectProportional(app, await measure(viewer, PRESENTATION), 'application and viewer');
     await viewer.close();
     await page.close();
   }, 60_000);

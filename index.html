@@ -294,8 +294,8 @@
             <div id="map-content" class="hidden">
               <img id="map-image" alt="" draggable="false" />
               <svg id="map-annotations" class="annotation-layer" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
+              <div id="map-annotation-labels" class="annotation-labels" aria-hidden="true"></div>
             </div>
-            <div id="map-annotation-labels" class="annotation-labels" aria-hidden="true"></div>
             <div id="map-annotation-handles" class="annotation-handles"></div>
             <div id="marker-layer" class="marker-layer"></div>
             <div id="map-empty">
@@ -336,6 +336,10 @@
             <button type="button" id="export-open" class="primary-action">Export presentation</button>
             <button type="button" id="pdf-open" class="secondary-action">Export PDF</button>
             <button type="button" id="pptx-open" class="secondary-action">Export PowerPoint</button>
+            <span id="viewer-toggles" role="group" aria-label="Panels" hidden>
+              <button type="button" id="toggle-glance" class="viewer-toggle" aria-controls="presentation-glance">In view</button>
+              <button type="button" id="toggle-legend" class="viewer-toggle" aria-controls="presentation-legend">Legend</button>
+            </span>
           </div>
           <div id="export-panel" class="hidden" role="dialog" aria-labelledby="export-heading">
             <h3 id="export-heading">Export presentation</h3>
@@ -375,8 +379,8 @@
             <div id="presentation-content" class="hidden">
               <img id="presentation-image" alt="" draggable="false" />
               <svg id="presentation-annotations" class="annotation-layer" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
+              <div id="presentation-annotation-labels" class="annotation-labels" aria-hidden="true"></div>
             </div>
-            <div id="presentation-annotation-labels" class="annotation-labels" aria-hidden="true"></div>
             <div id="presentation-marker-layer" class="marker-layer"></div>
             <div id="presentation-card" class="presentation-card" role="dialog" data-state="closed" aria-hidden="true" tabindex="-1" inert></div>
             <div id="presentation-empty" class="stage-empty">

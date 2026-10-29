@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { beforeEach, describe, expect, test } from 'vitest';
 import { byId, importExampleWorkbook, loadExampleBackground, mountApp, pointer, STAGE } from './harness';
+import { labelSize } from '../../src/annotationlayer';
 
 // The straight-line constraint and the screen-space labels (FR-47 as amended
 // in v1.3.0), through pointer events carrying the modifier keys.
@@ -142,22 +143,28 @@ describe('the straight-line constraint (FR-47)', () => {
   });
 });
 
-describe('screen-space annotation labels (FR-47)', () => {
+describe('annotation labels on the map (FR-47 as amended in v1.4.0)', () => {
   const css = readFileSync(join(process.cwd(), 'src', 'styles.css'), 'utf8');
 
-  test('the labels are outside the scaled map content, at a fixed type size, moving with the markers', () => {
+  test('the labels are inside the scaled map content, printed relative to the sheet, with no motion of their own', () => {
     const html = readFileSync(join(process.cwd(), 'index.html'), 'utf8');
     const doc = new DOMParser().parseFromString(html, 'text/html');
     for (const [labels, content] of [
       ['map-annotation-labels', 'map-content'],
       ['presentation-annotation-labels', 'presentation-content'],
     ]) {
-      expect(doc.getElementById(content)!.contains(doc.getElementById(labels))).toBe(false);
+      expect(doc.getElementById(content)!.contains(doc.getElementById(labels))).toBe(true);
     }
     const rule = /^\.annotation-label \{([^}]*)\}/m.exec(css)![1];
-    expect(rule).toMatch(/font-size: var\(--dense-font\);/);
-    expect(css).toMatch(/\.stage\.easing \.annotation-label \{\s*transition:\s*left var\(--motion-view\) var\(--ease-out\),\s*top var\(--motion-view\) var\(--ease-out\);/);
-    const reduced = /@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\}/.exec(css)![1];
-    expect(reduced).toContain('.stage.easing .annotation-label');
+    expect(rule).toMatch(/font-size: var\(--label-size, var\(--dense-font\)\);/);
+    // The labels move with the scaled map; the glide of their own is gone,
+    // while the markers keep theirs.
+    expect(css).not.toMatch(/\.annotation-label[^{]*\{[^}]*transition/);
+    expect(css).toMatch(/\.stage\.easing \.marker \{/);
+  });
+
+  test('the printed size is the longer side of the background divided by 64', () => {
+    expect(labelSize({ width: 3000, height: 2000 })).toBe(3000 / 64);
+    expect(labelSize({ width: 800, height: 1200 })).toBe(1200 / 64);
   });
 });

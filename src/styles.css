@@ -1017,20 +1017,10 @@ input[type='text'] {
     top var(--motion-view) var(--ease-out);
 }
 
-/* Annotation labels live in screen space at a constant size (FR-47 as
-   amended in v1.3.0); during an eased view change they move with the
-   markers, so that they stay with their shapes. */
-.stage.easing .annotation-label {
-  transition:
-    left var(--motion-view) var(--ease-out),
-    top var(--motion-view) var(--ease-out);
-}
-
 @media (prefers-reduced-motion: reduce) {
   .stage.easing #map-content,
   .stage.easing #presentation-content,
   .stage.easing .marker,
-  .stage.easing .annotation-label,
   .presentation-card,
   .presentation-card[data-state='closed'] {
     transition: none;
@@ -2045,16 +2035,19 @@ input[type='text'] {
 .annotation-labels {
   position: absolute;
   inset: 0;
-  overflow: hidden;
   pointer-events: none;
 }
 
+/* Annotation labels are lettering on the map (FR-47 as amended in v1.4.0):
+   inside the scaled map content, at a printed size relative to the sheet
+   (--label-size, set from the background), so that they scale with the zoom
+   together with their shapes; their padding and corners scale with them. */
 .annotation-label {
   position: absolute;
   transform: translate(-50%, -50%);
-  padding: 0 var(--dense-2);
-  border-radius: var(--radius);
-  font-size: var(--dense-font);
+  padding: 0 0.3em;
+  border-radius: 0.4em;
+  font-size: var(--label-size, var(--dense-font));
   font-weight: 650;
   line-height: 1.35;
   white-space: nowrap;
@@ -2062,7 +2055,7 @@ input[type='text'] {
 
 /* A shape's label hangs just below the shape (FR-47). */
 .annotation-label.below {
-  transform: translate(-50%, var(--dense-2));
+  transform: translate(-50%, 0.3em);
 }
 
 /* The label reads on its outline colour's opposite: dark text on white,
@@ -2278,4 +2271,162 @@ button.secondary-action {
    the stage takes the list's column. */
 html[data-mode='viewer'] #segment-presentation {
   grid-template-columns: minmax(0, 1fr) minmax(11rem, 15rem);
+}
+
+/* ==== Narrow viewer layout (FR-58) ====
+   Every rule after this marker lies inside the one media block below, on the
+   query of src/narrowviewer.ts, and applies to the exported viewer only; a
+   test holds both. Above the threshold nothing here applies. */
+@media (max-width: 56rem), (orientation: landscape) and (max-height: 30rem) and (pointer: coarse) {
+  /* The viewer fills the viewport height, the stage taking what the header
+     and the toolbar leave. */
+  html[data-mode='viewer'] body {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+  }
+
+  html[data-mode='viewer'] #app-header {
+    flex: none;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-2);
+    padding: var(--space-1) var(--space-2);
+  }
+
+  html[data-mode='viewer'] #app-header .controls {
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-2);
+    font-size: 0.875rem;
+  }
+
+  html[data-mode='viewer'] #viewer-badge {
+    min-width: 0;
+    font-size: 0.8rem;
+  }
+
+  /* The selects keep their names for assistive technology only. */
+  html[data-mode='viewer'] #label-language,
+  html[data-mode='viewer'] #label-theme {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  html[data-mode='viewer'] #app-main {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: var(--space-1);
+  }
+
+  html[data-mode='viewer'] #segment-presentation {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+    gap: 0;
+    font-size: 1rem;
+  }
+
+  html[data-mode='viewer'] #presentation-area {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: var(--space-1);
+  }
+
+  html[data-mode='viewer'] #presentation-heading {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  html[data-mode='viewer'] #presentation-toolbar {
+    gap: var(--space-1);
+    margin-bottom: var(--space-1);
+  }
+
+  /* The compact toggle bar of the two overlays. */
+  html[data-mode='viewer'] #viewer-toggles {
+    display: flex;
+    gap: var(--space-1);
+    margin-left: auto;
+  }
+
+  html[data-mode='viewer'] .viewer-toggle[aria-expanded='true'] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
+  }
+
+  html[data-mode='viewer'] #presentation-stage {
+    flex: 1 1 auto;
+    min-height: 0;
+    overscroll-behavior: none;
+  }
+
+  /* "In view" and the legend as overlay panels, hidden until opened. */
+  html[data-mode='viewer'] #presentation-glance,
+  html[data-mode='viewer'] #presentation-legend {
+    position: fixed;
+    z-index: 30;
+    left: var(--space-2);
+    right: var(--space-2);
+    bottom: var(--space-2);
+    max-height: 60dvh;
+    margin: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding: var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: calc(2 * var(--radius));
+    background: var(--panel);
+    box-shadow: var(--card-shadow);
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity var(--motion-quick) var(--ease-out),
+      transform var(--motion-quick) var(--ease-out),
+      visibility 0s linear 0s;
+  }
+
+  html[data-mode='viewer'] #presentation-glance:not([data-state='open']),
+  html[data-mode='viewer'] #presentation-legend:not([data-state='open']) {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(0.5rem);
+    transition:
+      opacity var(--motion-quick) var(--ease-out),
+      transform var(--motion-quick) var(--ease-out),
+      visibility 0s linear var(--motion-quick);
+  }
+
+  /* The card docks at the bottom of the stage, with its own scrolling. */
+  html[data-mode='viewer'] .presentation-card {
+    left: var(--space-2);
+    right: var(--space-2);
+    top: auto;
+    bottom: var(--space-2);
+    width: auto;
+    max-height: min(60%, 26rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html[data-mode='viewer'] #presentation-glance,
+    html[data-mode='viewer'] #presentation-legend,
+    html[data-mode='viewer'] #presentation-glance:not([data-state='open']),
+    html[data-mode='viewer'] #presentation-legend:not([data-state='open']) {
+      transition: none;
+    }
+  }
 }
