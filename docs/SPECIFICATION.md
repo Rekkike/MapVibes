@@ -1,6 +1,6 @@
 # MapVibes — Functional Specification
 
-Status: v1.4.0 — annotation labels on the map and the phone viewer delivered (labels printed relative to the sheet and scaling with the map, and the narrow layout of the exported viewer, with the desktop proven unchanged). See the changelog below.
+Status: v1.5.0 — the recipient pass delivered (the exported file's static viewer state and its no-scripts notice, Open presentation read-only, and the minimum platform lowered to iOS 14). See the changelog below.
 
 MapVibes is a static, client-side web application: a spreadsheet-to-map visualisation tool. It has no backend, no database, and no server-side processing. Everything runs locally in the browser.
 
@@ -95,11 +95,22 @@ Settled diagnosis: the owner's iPhone runs iOS 27, which rules out the missing-f
 
 Specification amendments (recorded before implementation, in a separate commit):
 
-- Hard constraint 2 (note): the hosted address as text in the notice.
-- FR-38 (amended): the exported file's static state.
-- FR-59 (new): the no-scripts notice.
-- FR-60 (new): Open presentation, read-only.
-- FR-61 (new): the minimum platform.
+- Hard constraint 2 (note): the hosted address as text in the notice. Implemented.
+- FR-38 (amended): the exported file's static state. Implemented.
+- FR-59 (new): the no-scripts notice. Implemented.
+- FR-60 (new): Open presentation, read-only. Implemented.
+- FR-61 (new): the minimum platform. Implemented.
+
+Delivered units:
+
+1. The exported file's static state and the no-scripts notice (FR-38, FR-59). The export writes its copy of the page with the html element in the viewer mode and the export's language, a notice of four paragraphs in the export's language opening the body, and a small inline script before the application's script. A rule set that applies only until the application marks itself started (it does so at the end of its start) hides the editor's segments, the editing controls, and the empty-stage hint, and shows the presentation's frame, in the narrow layout on a narrow viewport. The small script marks that scripts run, which hides the notice at once, and reveals it after fifteen seconds if the application has not started. The hosted address, verified from the Pages deployment (https://rekkike.github.io/MapVibes/), is written as plain text from one module (src/hosted.ts); the network test exempts exactly that literal and holds that it is used only in the notice's text, never fetched and never a link.
+2. Open presentation, read-only (FR-60): an action beside "Load demo" chooses an exported page; a file over 50 MB is refused before it is read; otherwise its HTML is parsed without running anything, only its data island is read, and the comparison's strict validation decides, with its messages; unsaved work is asked about first; the viewer then shows the presentation, with the narrow layout on a phone, and a "Close presentation" action reloads the application afresh. A presentation shown in the viewer writes nothing to the device: presets carried by a tampered file are not merged into the saved presets (a gap found while building this route, closed here).
+3. The minimum platform (FR-61): the array method at is defined, where missing and as the standard describes it, for arrays, strings, and typed arrays, by a module imported first, before the PDF library is evaluated. Measured: without the method, the application and an exported presentation now start; the next floor is the element method replaceChildren, from Safari 14.
+4. Tests and delivery: unit tests of the static state and the notice, the polyfill, and the network exemption; UI tests of the notice's wording in both languages, the started mark, and Open presentation (a valid file; a script and an image handler added to the file never run; four tampered islands, an unknown format version, and a page without data refused strictly with nothing changed; smuggled presets not stored; the cap before reading; the unsaved-work guard); parity of the new strings and of the Swedish notice; the browser suite extended with the notice's three behaviours (never shown while scripts run, watched on every frame from the first, at full speed and with the processor six times slower; shown at once with scripts disabled, above the presentation's frame, the editor nowhere; shown after fifteen seconds, not before, when the program cannot start), the start without the array method at, and Open presentation on a phone (a valid file in the narrow viewer and closing it afresh, a tampered file refused, the cap). The desktop safety test admits exactly the new action and the sideways shift of its row's three other items, and nothing else.
+
+Verification: type checking; the unit, UI, build regression, and browser suites in chunked invocations; headless-Chromium runs of exported files with scripts disabled, with a slowed processor, and with platform functions removed; a check that the frame watcher sees the notice when the small script is broken. The iPhone's static preview itself rests on documented and widely reported platform behaviour; it was stood in for by Chromium with scripts disabled, and the owner's phone remains part of the acceptance test.
+
+Notices: the exported file grows by about 7 kB (the notice, the small script, the pre-start rules, and the polyfill), about 0.25 per cent of a demo export of 2.9 MB; opening an exported file for comparison (FR-14) still has no size limit, as the cap was asked for Open presentation only.
 
 ### v1.4.0
 
