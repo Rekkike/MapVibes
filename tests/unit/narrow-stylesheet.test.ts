@@ -69,7 +69,8 @@ describe('the narrow media block (FR-58)', () => {
     const body = after.slice(open + 1, blockEnd(after, open) - 1);
     const found = selectors(body);
     expect(found.length).toBeGreaterThan(10);
-    for (const selector of found) expect(selector, selector).toMatch(/^html\[data-mode='viewer'\] /);
+    // The viewer, before or after it has started (FR-38 as amended in v1.5.0).
+    for (const selector of found) expect(selector, selector).toMatch(/^html\[data-mode='viewer'\](:not\(\[data-started\]\))? /);
     expect(found.some((s) => /\.marker\b/.test(s))).toBe(false);
   });
 
