@@ -276,6 +276,8 @@ function renderStaticText(): void {
   el('visibility-empty').textContent = t.visibilityEmpty;
   el('presentation-empty-hint').textContent = t.presentationEmptyHint;
   el('pres-fit').textContent = t.mapFit;
+  el('open-presentation').textContent = t.openPresentation;
+  el('presentation-close').textContent = t.closePresentation;
   // The narrow viewer's toggle bar (FR-58).
   el('viewer-toggles').setAttribute('aria-label', t.viewerPanels);
   el('toggle-glance').textContent = t.viewerToggleGlance;
@@ -1855,8 +1857,9 @@ async function applyWorkState(ws: WorkState): Promise<boolean> {
   state.statuses = ws.statuses.map((x) => ({ ...x }));
   state.symbolsFromStatus = ws.symbolsFromStatus;
   // Presets in the file are merged into the saved presets; a preset in the
-  // file replaces a saved preset of the same name (FR-23).
-  if (ws.presets.length > 0) {
+  // file replaces a saved preset of the same name (FR-23). A presentation
+  // shown in the viewer writes nothing to the device (FR-38, FR-60).
+  if (ws.presets.length > 0 && !state.viewOnly) {
     for (const preset of ws.presets) state.presets = upsertPreset(state.presets, preset);
     storePresets(state.presets);
   }
@@ -1945,6 +1948,55 @@ function openExportForComparison(text: string): boolean {
   renderWorkStatus();
   renderComparison();
   el('compare-heading').scrollIntoView?.({ block: 'nearest' });
+  return true;
+}
+
+// Open presentation, read-only (FR-60): an exported presentation chosen by
+// the user is shown in the viewer. The file is read locally; its HTML is
+// parsed without running anything in it and only its data island is read,
+// through the comparison's strict validation; its own program never runs.
+// It replaces what is on screen, so unsaved work is asked about first;
+// leaving starts the application afresh. Nothing is imported as work.
+export const MAX_PRESENTATION_BYTES = 50 * 1024 * 1024;
+
+export async function openPresentationFile(file: File): Promise<boolean> {
+  if (state.viewOnly) return false;
+  const t = strings(state.prefs.lang);
+  if (file.size > MAX_PRESENTATION_BYTES) {
+    reportOpenFailure(t.presentationTooLarge);
+    return false;
+  }
+  let text: string;
+  try {
+    text = await readText(file);
+  } catch {
+    reportOpenFailure(t.workOpenUnreadable);
+    return false;
+  }
+  const island = readDataIsland(new DOMParser().parseFromString(text, 'text/html'));
+  if (island === null) {
+    reportOpenFailure(t.compareNoData);
+    return false;
+  }
+  try {
+    parseExport(island);
+  } catch (e) {
+    if (!(e instanceof ExportError)) throw e;
+    if (e.code === 'unknown-version') reportOpenFailure(fill(t.compareUnknownVersion, { version: e.detail }));
+    else if (e.code === 'not-export') reportOpenFailure(t.compareNoData);
+    else reportOpenFailure(t.compareDamaged);
+    return false;
+  }
+  if (state.dirty && !window.confirm(t.presentationConfirmReplace)) return false;
+  // What was on screen is given up: nothing is left to guard.
+  state.dirty = false;
+  state.viewOnly = true;
+  state.segment = 'presentation';
+  comparison = null;
+  openDetails(null);
+  await startViewer(island);
+  renderWorkStatus();
+  el('presentation-close').classList.remove('hidden');
   return true;
 }
 
@@ -4332,6 +4384,16 @@ function wireEvents(): void {
   });
   el('start-empty').addEventListener('click', startEmptyList);
   el('load-demo').addEventListener('click', () => void loadDemo());
+  const presentationInput = el<HTMLInputElement>('presentation-file-input');
+  el('open-presentation').addEventListener('click', () => presentationInput.click());
+  presentationInput.addEventListener('change', () => {
+    const file = presentationInput.files?.[0];
+    presentationInput.value = '';
+    if (file) void openPresentationFile(file);
+  });
+  // Leaving a presentation opened in the application starts it afresh: the
+  // work it replaced was given up when it opened (FR-60).
+  el('presentation-close').addEventListener('click', () => window.location.reload());
   el('demo-reset').addEventListener('click', () => void resetDemo());
   el('add-row').addEventListener('click', addManualRow);
   el('add-column').addEventListener('click', addManualColumn);
