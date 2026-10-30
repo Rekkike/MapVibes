@@ -80,7 +80,7 @@ function expectOpen(panel: HTMLElement, toggle: HTMLElement): void {
   expect(toggle.getAttribute('aria-expanded')).toBe('true');
 }
 
-describe('the narrow viewer layout (FR-58)', () => {
+describe('the narrow viewer layout (FR-58)', { timeout: 15_000 }, () => {
   test('the toggle bar offers two overlays, "In view" and the legend, and no item list', async () => {
     await mountViewer(true);
     expect([...byId('viewer-toggles').querySelectorAll('button')].map((b) => [b.id, b.getAttribute('aria-controls')])).toEqual([

@@ -228,3 +228,22 @@ describe('translation parity: the narrow viewer in Swedish (FR-19, FR-58)', () =
     expect(shown.filter((t) => [...english].some((e) => t === e || (e.length >= 12 && t.includes(e))))).toEqual([]);
   });
 });
+
+// The no-scripts notice of an exported file (FR-59), written at export time
+// in the export's language and never shown by a running application: in a
+// Swedish export it holds no English text.
+describe('translation parity: the no-scripts notice in Swedish (FR-19, FR-59)', () => {
+  test('a Swedish export carries its notice in Swedish only', async () => {
+    const author = await mountApp({ singleFile: true });
+    await placeExampleMarkers([[0, 60, 100]]);
+    const lang = byId<HTMLSelectElement>('select-language');
+    lang.value = 'sv';
+    lang.dispatchEvent(new Event('change'));
+    const doc = new DOMParser().parseFromString(author.exportPage(new Date(2024, 7, 9, 10, 30))!, 'text/html');
+    const paragraphs = [...doc.getElementById('boot-notice')!.querySelectorAll('p')].map((p) => p.textContent!.trim());
+    expect(paragraphs).toHaveLength(4);
+    const english = englishTexts();
+    expect(paragraphs.filter((t) => [...english].some((e) => t === e || (e.length >= 12 && t.includes(e))))).toEqual([]);
+    expect(paragraphs[0]).toBe('Presentationen har inte startat.');
+  });
+});

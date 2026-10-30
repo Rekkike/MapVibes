@@ -10,6 +10,7 @@
     <header id="app-header">
       <span id="app-title"><span id="app-name">MapVibes</span> <span id="app-version"></span></span>
       <span id="viewer-badge" class="hidden"></span>
+      <button type="button" id="presentation-close" class="hidden">Close presentation</button>
       <span id="demo-badge" class="hidden"></span>
       <button type="button" id="demo-reset" class="hidden">Reset demo</button>
       <nav id="segment-nav" role="tablist" aria-label="Segments">
@@ -71,6 +72,8 @@
             <span id="manual-start-hint" class="notice">No file to import?</span>
             <button type="button" id="start-empty">Start an empty list</button>
             <button type="button" id="load-demo">Load demo</button>
+            <button type="button" id="open-presentation">Open presentation</button>
+            <input type="file" id="presentation-file-input" accept=".html,.htm,text/html" hidden />
           </p>
           <p id="demo-hint" class="notice">The demo loads a fictional example scenario: a town map, a list of invented items, and everything needed to try every part of the application.</p>
         </div>

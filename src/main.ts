@@ -1,3 +1,4 @@
+import './polyfills';
 import { selfPage } from './selfsource';
 import { applyFilter, counters, COLOURS, makeRow, numberRows, NO_FILTER, sortRows, type NumberedRow, type RowColour, type RowData, type SortDirection, type ValueFilter } from './dataset';
 import { importColumns, parseWorkbook, ParseError, type ParseResult } from './ingest';
@@ -26,7 +27,8 @@ import { BUTTON_ZOOM_FACTOR, imageToScreen, screenToImage, type Point, type View
 import { isSegment, SEGMENTS, showSegment, type Segment } from './segments';
 import { type Problem, parseWorkState, rowNumbers, serialiseWorkState, SUGGESTED_FILE_NAME, WorkStateError, type WorkState } from './workstate';
 import { ExportError, parseExport, serialiseExport, SUGGESTED_EXPORT_NAME, type ExportData } from './exportfile';
-import { embedDataIsland, readDataIsland } from './singlefile';
+import { embedDataIsland, readDataIsland, writeStaticViewerState } from './singlefile';
+import { HOSTED_ADDRESS } from './hosted';
 import { compareItems, type CompareItem, type Comparison } from './reconcile';
 import { areaGroups, programLabels } from './grouping';
 import { DEMO_MAP_TEXT, demoCounterparts, demoScenario, demoWorkbook } from './demo';
@@ -275,6 +277,8 @@ function renderStaticText(): void {
   el('visibility-empty').textContent = t.visibilityEmpty;
   el('presentation-empty-hint').textContent = t.presentationEmptyHint;
   el('pres-fit').textContent = t.mapFit;
+  el('open-presentation').textContent = t.openPresentation;
+  el('presentation-close').textContent = t.closePresentation;
   // The narrow viewer's toggle bar (FR-58).
   el('viewer-toggles').setAttribute('aria-label', t.viewerPanels);
   el('toggle-glance').textContent = t.viewerToggleGlance;
@@ -1252,7 +1256,11 @@ export function captureExport(choice: ExportChoice = exportChoice ?? defaultExpo
 export function exportPage(now: Date = new Date()): string | null {
   const page = selfPage();
   if (page === null) return null;
-  return embedDataIsland(page, serialiseExport(captureExport().data, now));
+  // The static state and the notice in the export's language (FR-38 as
+  // amended, FR-59).
+  const t = strings(state.prefs.lang);
+  const notice = [t.noticeTitle, t.noticeReason, fill(t.noticeRoutes, { address: HOSTED_ADDRESS, action: t.openPresentation }), t.noticeData];
+  return embedDataIsland(writeStaticViewerState(page, state.prefs.lang, notice), serialiseExport(captureExport().data, now));
 }
 
 let exportMessage: 'done' | 'cancelled' | 'failed' | 'unavailable' | null = null;
@@ -1850,8 +1858,9 @@ async function applyWorkState(ws: WorkState): Promise<boolean> {
   state.statuses = ws.statuses.map((x) => ({ ...x }));
   state.symbolsFromStatus = ws.symbolsFromStatus;
   // Presets in the file are merged into the saved presets; a preset in the
-  // file replaces a saved preset of the same name (FR-23).
-  if (ws.presets.length > 0) {
+  // file replaces a saved preset of the same name (FR-23). A presentation
+  // shown in the viewer writes nothing to the device (FR-38, FR-60).
+  if (ws.presets.length > 0 && !state.viewOnly) {
     for (const preset of ws.presets) state.presets = upsertPreset(state.presets, preset);
     storePresets(state.presets);
   }
@@ -1940,6 +1949,55 @@ function openExportForComparison(text: string): boolean {
   renderWorkStatus();
   renderComparison();
   el('compare-heading').scrollIntoView?.({ block: 'nearest' });
+  return true;
+}
+
+// Open presentation, read-only (FR-60): an exported presentation chosen by
+// the user is shown in the viewer. The file is read locally; its HTML is
+// parsed without running anything in it and only its data island is read,
+// through the comparison's strict validation; its own program never runs.
+// It replaces what is on screen, so unsaved work is asked about first;
+// leaving starts the application afresh. Nothing is imported as work.
+export const MAX_PRESENTATION_BYTES = 50 * 1024 * 1024;
+
+export async function openPresentationFile(file: File): Promise<boolean> {
+  if (state.viewOnly) return false;
+  const t = strings(state.prefs.lang);
+  if (file.size > MAX_PRESENTATION_BYTES) {
+    reportOpenFailure(t.presentationTooLarge);
+    return false;
+  }
+  let text: string;
+  try {
+    text = await readText(file);
+  } catch {
+    reportOpenFailure(t.workOpenUnreadable);
+    return false;
+  }
+  const island = readDataIsland(new DOMParser().parseFromString(text, 'text/html'));
+  if (island === null) {
+    reportOpenFailure(t.compareNoData);
+    return false;
+  }
+  try {
+    parseExport(island);
+  } catch (e) {
+    if (!(e instanceof ExportError)) throw e;
+    if (e.code === 'unknown-version') reportOpenFailure(fill(t.compareUnknownVersion, { version: e.detail }));
+    else if (e.code === 'not-export') reportOpenFailure(t.compareNoData);
+    else reportOpenFailure(t.compareDamaged);
+    return false;
+  }
+  if (state.dirty && !window.confirm(t.presentationConfirmReplace)) return false;
+  // What was on screen is given up: nothing is left to guard.
+  state.dirty = false;
+  state.viewOnly = true;
+  state.segment = 'presentation';
+  comparison = null;
+  openDetails(null);
+  await startViewer(island);
+  renderWorkStatus();
+  el('presentation-close').classList.remove('hidden');
   return true;
 }
 
@@ -4327,6 +4385,16 @@ function wireEvents(): void {
   });
   el('start-empty').addEventListener('click', startEmptyList);
   el('load-demo').addEventListener('click', () => void loadDemo());
+  const presentationInput = el<HTMLInputElement>('presentation-file-input');
+  el('open-presentation').addEventListener('click', () => presentationInput.click());
+  presentationInput.addEventListener('change', () => {
+    const file = presentationInput.files?.[0];
+    presentationInput.value = '';
+    if (file) void openPresentationFile(file);
+  });
+  // Leaving a presentation opened in the application starts it afresh: the
+  // work it replaced was given up when it opened (FR-60).
+  el('presentation-close').addEventListener('click', () => window.location.reload());
   el('demo-reset').addEventListener('click', () => void resetDemo());
   el('add-row').addEventListener('click', addManualRow);
   el('add-column').addEventListener('click', addManualColumn);
@@ -4523,6 +4591,9 @@ export function main(): void {
   renderMapItems();
   setSegment(state.segment);
   if (island !== null) void startViewer(island);
+  // The application has started: an exported file's static state and its
+  // no-scripts notice give way (FR-38 as amended, FR-59).
+  document.documentElement.dataset.started = 'true';
 }
 
 document.addEventListener('DOMContentLoaded', main);

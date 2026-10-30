@@ -21,6 +21,7 @@ import {
   statusError,
 } from '../../src/openmap';
 import { XML_IDENTIFIERS } from '../../src/pptxwriter';
+import { HOSTED_ADDRESS } from '../../src/hosted';
 
 function failure(f: () => unknown): FetchError {
   try {
@@ -216,10 +217,24 @@ describe('the only network operation', () => {
         // are exempted, nothing else.
         let text = readFileSync(join(srcDir, f), 'utf8').replaceAll("'http://www.w3.org/2000/svg'", "''");
         if (f === 'pptxwriter.ts') for (const id of XML_IDENTIFIERS) text = text.replaceAll(`'${id}'`, "''");
+        // The hosted application's address, written as text into the
+        // no-scripts notice (FR-59), is exempted in its own module only.
+        if (f === 'hosted.ts') text = text.replaceAll(`'${HOSTED_ADDRESS}'`, "''");
         return NETWORK.test(text);
       });
     expect(offenders).toEqual([]);
     expect(NETWORK.test(readFileSync(join(srcDir, 'openmap.ts'), 'utf8'))).toBe(true);
+  });
+
+  test('the hosted address is shown as text only: written into the notice, never fetched or linked', () => {
+    expect(HOSTED_ADDRESS).toMatch(/^https:\/\/[a-z0-9.-]+\.github\.io\/[A-Za-z0-9-]+\/$/);
+    const users = readdirSync(srcDir).filter((f) => f.endsWith('.ts') && f !== 'hosted.ts' && readFileSync(join(srcDir, f), 'utf8').includes('HOSTED_ADDRESS'));
+    expect(users).toEqual(['main.ts']);
+    const main = readFileSync(join(srcDir, 'main.ts'), 'utf8');
+    const uses = main.split('\n').filter((l) => l.includes('HOSTED_ADDRESS') && !l.startsWith('import '));
+    expect(uses).toHaveLength(1);
+    expect(uses[0]).toMatch(/fill\(t\.noticeRoutes, \{ address: HOSTED_ADDRESS,/);
+    expect(main).not.toMatch(/href[^\n]*HOSTED_ADDRESS/);
   });
 
   test('the network module contacts only the two open services', () => {

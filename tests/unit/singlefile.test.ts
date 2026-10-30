@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { DATA_ISLAND_ID, embedDataIsland, readDataIsland, sanitiseForInlineScript, sanitiseJsonForInlineScript } from '../../src/singlefile';
+import { DATA_ISLAND_ID, embedDataIsland, NOTICE_DELAY_MS, NOTICE_ID, readDataIsland, sanitiseForInlineScript, sanitiseJsonForInlineScript, writeStaticViewerState } from '../../src/singlefile';
 
 const PAGE = '<!doctype html>\n<html><head><style>body{}</style></head><body><main id="app"></main><script type="module">\nconsole.log("app")\n</script></body></html>';
 
@@ -46,5 +46,48 @@ describe('single-file machinery (FR-11)', () => {
 
   test('a document without an island reads as null', () => {
     expect(readDataIsland(new DOMParser().parseFromString(PAGE, 'text/html'))).toBeNull();
+  });
+});
+
+describe('the exported static state and the no-scripts notice (FR-38 as amended in v1.5.0, FR-59)', () => {
+  const NOTICE = ['Not started.', 'Because <of> "this" & that.', 'Open it elsewhere.'];
+  // The built page: the application script in the head, the body after it.
+  const HEAD_PAGE = '<!doctype html>\n<html lang="en"><head><script type="module">\nconst s = "<body>";\n</script><style>body{}</style></head><body><main id="app"></main></body></html>';
+
+  for (const [where, page] of [
+    ['the script in the head', HEAD_PAGE],
+    ['the script at the end of the body', PAGE],
+  ] as const) {
+    test(`the html element carries the viewer mode and the language; the notice opens the body; the small script precedes the application (${where})`, () => {
+      const out = writeStaticViewerState(page, 'sv', NOTICE);
+      const doc = new DOMParser().parseFromString(out, 'text/html');
+      expect(doc.documentElement.getAttribute('data-mode')).toBe('viewer');
+      expect(doc.documentElement.getAttribute('lang')).toBe('sv');
+      const notice = doc.getElementById(NOTICE_ID)!;
+      expect(doc.body.firstElementChild).toBe(notice);
+      expect([...notice.querySelectorAll('p')].map((p) => p.textContent)).toEqual(NOTICE);
+      expect(notice.querySelector('strong')!.textContent).toBe(NOTICE[0]);
+      // Text, never markup: the notice holds no element but its paragraphs.
+      expect([...notice.querySelectorAll('*')].map((e) => e.tagName)).toEqual(['P', 'STRONG', 'P', 'P']);
+      const scripts = [...doc.querySelectorAll('script')];
+      const boot = scripts.findIndex((s) => !s.type);
+      expect(boot).toBeGreaterThanOrEqual(0);
+      expect(boot).toBeLessThan(scripts.findIndex((s) => s.type === 'module'));
+      expect(scripts[boot].textContent).toContain(`${NOTICE_DELAY_MS}`);
+      // The application script is untouched.
+      expect(out).toContain(page.slice(page.indexOf('<script type="module">'), page.indexOf('</script>') + 9));
+    });
+  }
+
+  test('the island goes in as before, after the static state', () => {
+    const out = embedDataIsland(writeStaticViewerState(HEAD_PAGE, 'en', NOTICE), '{"a": 1}');
+    const doc = new DOMParser().parseFromString(out, 'text/html');
+    expect(readDataIsland(doc)).toContain('"a": 1');
+    expect(doc.getElementById(NOTICE_ID)).not.toBeNull();
+  });
+
+  test('a page without an application script or a body is refused', () => {
+    expect(() => writeStaticViewerState('<html><body></body></html>', 'en', NOTICE)).toThrow();
+    expect(() => writeStaticViewerState('<html><head><script type="module">x</script></head></html>', 'en', NOTICE)).toThrow();
   });
 });

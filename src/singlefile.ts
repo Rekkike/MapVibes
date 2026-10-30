@@ -52,6 +52,51 @@ export function embedDataIsland(page: string, json: string): string {
   return page.slice(0, at) + island + page.slice(at);
 }
 
+// The no-scripts notice of an exported file (FR-59), and the small script
+// that governs it: placed before the application's script, it marks that
+// scripts run, which hides the notice at once, and reveals the notice after
+// fifteen seconds if the application has not marked itself started.
+export const NOTICE_ID = 'boot-notice';
+export const NOTICE_DELAY_MS = 15000;
+const BOOT_SCRIPT =
+  `<script>document.documentElement.setAttribute('data-scripting','on');` +
+  `setTimeout(function(){if(!document.documentElement.hasAttribute('data-started'))document.documentElement.setAttribute('data-boot','failed')},${NOTICE_DELAY_MS});</script>\n`;
+
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Writes the exported copy's static state (FR-38 as amended in v1.5.0): the
+// viewer frame in the export's language, so that a recipient whose device
+// does not run the program sees the presentation's frame and the notice
+// (its paragraphs, the first in bold), never the editor's start screen. Like
+// the data island, only markup outside the application script is touched.
+export function writeStaticViewerState(page: string, lang: string, notice: string[]): string {
+  const at = page.indexOf(MODULE_SCRIPT);
+  if (at === -1) throw new Error('the page has no inline application script');
+  const html = /<html\b([^>]*)>/i.exec(page.slice(0, at));
+  if (!html) throw new Error('the page has no html element before the application script');
+  const attributes = html[1].replace(/\s(lang|data-mode)="[^"]*"/g, '');
+  const htmlTag = `<html${attributes} lang="${escapeHtml(lang)}" data-mode="viewer">`;
+  const before = page.slice(0, html.index) + htmlTag + page.slice(html.index + html[0].length, at);
+  const after = page.slice(at);
+  const paragraphs = notice.map((text, i) => (i === 0 ? `<p><strong>${escapeHtml(text)}</strong></p>` : `<p>${escapeHtml(text)}</p>`)).join('');
+  const element = `\n<div id="${NOTICE_ID}" role="note">${paragraphs}</div>`;
+  // The notice opens the body, which precedes the application script (a
+  // script at the end of the body) or follows it (a script in the head,
+  // whose text cannot hold a closing script tag).
+  const bodyBefore = /<body\b[^>]*>/i.exec(before);
+  if (bodyBefore) {
+    const open = bodyBefore.index + bodyBefore[0].length;
+    return before.slice(0, open) + element + before.slice(open) + BOOT_SCRIPT + after;
+  }
+  const scriptEnd = after.indexOf('</script>');
+  const bodyAfter = scriptEnd === -1 ? null : /<body\b[^>]*>/i.exec(after.slice(scriptEnd));
+  if (!bodyAfter) throw new Error('the page has no body');
+  const open = scriptEnd + bodyAfter.index + bodyAfter[0].length;
+  return before + BOOT_SCRIPT + after.slice(0, open) + element + after.slice(open);
+}
+
 // The JSON text of the data island of a document, or null when it has none.
 export function readDataIsland(doc: Document): string | null {
   const node = doc.getElementById(DATA_ISLAND_ID);
