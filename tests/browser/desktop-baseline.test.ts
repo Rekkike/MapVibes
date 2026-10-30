@@ -22,6 +22,19 @@ const REFERENCE = join(process.cwd(), 'dist', 'reference', 'v1.3.1', 'index.html
 const REFERENCE_SHA256 = '077554412e3b6f3cddf1b6b559b29c8450fdbaa5a4231b9bf812c45716d1f75c';
 const RECORD = JSON.parse(readFileSync(join(process.cwd(), 'example-data', 'desktop-baseline-v1.3.1.json'), 'utf8')) as { fingerprint: string; snapshot: Snapshot };
 
+// The intended desktop changes since v1.3.1, and nothing else: Pass 14 adds
+// "Open presentation" at the end of the row of "Load demo" (FR-60), which
+// moves the row's other items sideways, and only sideways.
+const MOVED_IN_ROW = ['#manual-start-hint', '#start-empty', '#load-demo'];
+
+function intended(line: string): boolean {
+  if (/ all #open-presentation: new$/.test(line)) return true;
+  const moved = /^\S+ all (#[\w-]+): (.+) → (.+)$/.exec(line);
+  if (!moved || !MOVED_IN_ROW.includes(moved[1])) return false;
+  // The same entry but for its horizontal position.
+  return moved[2].split('|').slice(1).join('|') === moved[3].split('|').slice(1).join('|');
+}
+
 let browser: Browser;
 
 beforeAll(async () => {
@@ -54,6 +67,9 @@ describe('the desktop layout is that of v1.3.1 (Pass 13, unit 4)', () => {
   test('the current build at 1500 × 950 equals the reference in every state', async () => {
     const current = await snapshotBuild(browser, BUILT);
     expect(current.fingerprint).toBe(reference.fingerprint);
-    expect(differences(reference.snapshot, current.snapshot)).toEqual([]);
+    const found = differences(reference.snapshot, current.snapshot);
+    // The intended changes are there, in the states with the start row.
+    expect(found.filter(intended).filter((l) => l.endsWith(': new')).map((l) => l.split(' ')[0])).toEqual(['start', 'demo-information']);
+    expect(found.filter((l) => !intended(l))).toEqual([]);
   }, 120_000);
 });
