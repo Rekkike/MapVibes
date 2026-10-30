@@ -2273,6 +2273,58 @@ html[data-mode='viewer'] #segment-presentation {
   grid-template-columns: minmax(0, 1fr) minmax(11rem, 15rem);
 }
 
+/* The exported file's static state (FR-38 as amended in v1.5.0): until the
+   application has started, an exported page shows the viewer's frame, never
+   the editor. */
+html[data-mode='viewer']:not([data-started]) #compare-panel,
+html[data-mode='viewer']:not([data-started]) #segment-nav,
+html[data-mode='viewer']:not([data-started]) #work-controls,
+html[data-mode='viewer']:not([data-started]) #export-separator,
+html[data-mode='viewer']:not([data-started]) #export-open,
+html[data-mode='viewer']:not([data-started]) #export-panel,
+html[data-mode='viewer']:not([data-started]) #export-status,
+html[data-mode='viewer']:not([data-started]) #pdf-open,
+html[data-mode='viewer']:not([data-started]) #pptx-open,
+html[data-mode='viewer']:not([data-started]) #document-panel,
+html[data-mode='viewer']:not([data-started]) #document-status,
+html[data-mode='viewer']:not([data-started]) #segment-information,
+html[data-mode='viewer']:not([data-started]) #segment-map,
+html[data-mode='viewer']:not([data-started]) #details-panel,
+html[data-mode='viewer']:not([data-started]) #visibility-area {
+  display: none !important;
+}
+
+html[data-mode='viewer']:not([data-started]) #segment-presentation {
+  display: grid !important;
+}
+
+/* The no-scripts notice (FR-59): shown where the page's program does not
+   run, hidden at once where it does, and shown again if the application has
+   not started after its timer. */
+#boot-notice {
+  margin: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 2px solid var(--warning);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--fg);
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+#boot-notice p {
+  margin: var(--space-1) 0;
+  overflow-wrap: anywhere;
+}
+
+html[data-scripting='on'] #boot-notice {
+  display: none;
+}
+
+html[data-boot='failed'] #boot-notice {
+  display: block;
+}
+
 /* ==== Narrow viewer layout (FR-58) ====
    Every rule after this marker lies inside the one media block below, on the
    query of src/narrowviewer.ts, and applies to the exported viewer only; a

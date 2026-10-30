@@ -26,7 +26,8 @@ import { BUTTON_ZOOM_FACTOR, imageToScreen, screenToImage, type Point, type View
 import { isSegment, SEGMENTS, showSegment, type Segment } from './segments';
 import { type Problem, parseWorkState, rowNumbers, serialiseWorkState, SUGGESTED_FILE_NAME, WorkStateError, type WorkState } from './workstate';
 import { ExportError, parseExport, serialiseExport, SUGGESTED_EXPORT_NAME, type ExportData } from './exportfile';
-import { embedDataIsland, readDataIsland } from './singlefile';
+import { embedDataIsland, readDataIsland, writeStaticViewerState } from './singlefile';
+import { HOSTED_ADDRESS } from './hosted';
 import { compareItems, type CompareItem, type Comparison } from './reconcile';
 import { areaGroups, programLabels } from './grouping';
 import { DEMO_MAP_TEXT, demoCounterparts, demoScenario, demoWorkbook } from './demo';
@@ -1252,7 +1253,11 @@ export function captureExport(choice: ExportChoice = exportChoice ?? defaultExpo
 export function exportPage(now: Date = new Date()): string | null {
   const page = selfPage();
   if (page === null) return null;
-  return embedDataIsland(page, serialiseExport(captureExport().data, now));
+  // The static state and the notice in the export's language (FR-38 as
+  // amended, FR-59).
+  const t = strings(state.prefs.lang);
+  const notice = [t.noticeTitle, t.noticeReason, fill(t.noticeRoutes, { address: HOSTED_ADDRESS, action: t.openPresentation }), t.noticeData];
+  return embedDataIsland(writeStaticViewerState(page, state.prefs.lang, notice), serialiseExport(captureExport().data, now));
 }
 
 let exportMessage: 'done' | 'cancelled' | 'failed' | 'unavailable' | null = null;
@@ -4523,6 +4528,9 @@ export function main(): void {
   renderMapItems();
   setSegment(state.segment);
   if (island !== null) void startViewer(island);
+  // The application has started: an exported file's static state and its
+  // no-scripts notice give way (FR-38 as amended, FR-59).
+  document.documentElement.dataset.started = 'true';
 }
 
 document.addEventListener('DOMContentLoaded', main);
