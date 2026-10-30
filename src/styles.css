@@ -2290,7 +2290,8 @@ html[data-mode='viewer']:not([data-started]) #document-status,
 html[data-mode='viewer']:not([data-started]) #segment-information,
 html[data-mode='viewer']:not([data-started]) #segment-map,
 html[data-mode='viewer']:not([data-started]) #details-panel,
-html[data-mode='viewer']:not([data-started]) #visibility-area {
+html[data-mode='viewer']:not([data-started]) #visibility-area,
+html[data-mode='viewer']:not([data-started]) #presentation-empty {
   display: none !important;
 }
 
@@ -2383,6 +2384,12 @@ html[data-boot='failed'] #boot-notice {
     min-height: 0;
     gap: 0;
     font-size: 1rem;
+  }
+
+  /* Before the application starts (FR-38 as amended in v1.5.0), the static
+     frame takes the narrow layout too. */
+  html[data-mode='viewer']:not([data-started]) #segment-presentation {
+    display: flex !important;
   }
 
   html[data-mode='viewer'] #presentation-area {
