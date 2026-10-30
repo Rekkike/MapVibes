@@ -1,3 +1,4 @@
+import './polyfills';
 import { selfPage } from './selfsource';
 import { applyFilter, counters, COLOURS, makeRow, numberRows, NO_FILTER, sortRows, type NumberedRow, type RowColour, type RowData, type SortDirection, type ValueFilter } from './dataset';
 import { importColumns, parseWorkbook, ParseError, type ParseResult } from './ingest';
