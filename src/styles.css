@@ -2620,6 +2620,15 @@ html[data-boot='failed'] #boot-notice {
   color: var(--on-accent);
 }
 
+/* The order (FR-70): as tall as the toolbar's buttons, so that the select's
+   own taller box does not make the toolbar's row taller, whatever the
+   font. */
+#pres-order {
+  box-sizing: border-box;
+  height: calc(1lh + 2 * var(--space-1) + 2px);
+  padding-block: 0;
+}
+
 /* The timeline (FR-67): a layer over the stage, the map underneath hidden.
    A desktop line is 28 pixels with the name in a column beside the bar. */
 #presentation-stage[data-view='timeline'] > #presentation-content,
