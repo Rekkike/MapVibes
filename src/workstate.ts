@@ -69,8 +69,27 @@ export const WORK_STATE_FORMAT = 'mapvibes-work-state';
 // to 7 have the role fields on the card, no series, and the default unit. A
 // card choice or a series that names a column the work does not have was
 // not made on this work and is dropped, like the at-a-glance choice.
-export const WORK_STATE_SCHEMA_VERSION = 8;
-export const READABLE_SCHEMA_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8];
+//
+// Schema version 9 adds to version 8 the presentation's view, the map or the
+// timeline (FR-66), the timeline's saved view, a time window in days and the
+// first visible line (FR-67), and the presentation's order (FR-70). Files of
+// versions 1 to 8 open on the map, with the timeline fitted, in number
+// order.
+export const WORK_STATE_SCHEMA_VERSION = 9;
+export const READABLE_SCHEMA_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+export type PresentationMode = 'map' | 'timeline';
+export const PRESENTATION_MODES: readonly PresentationMode[] = ['map', 'timeline'];
+export type PresentationOrder = 'number' | 'area' | 'start';
+export const PRESENTATION_ORDERS: readonly PresentationOrder[] = ['number', 'area', 'start'];
+
+// The timeline's saved view (FR-67): the time window, in days from
+// 1970-01-01, and the first visible line.
+export interface TimelineWindow {
+  from: number;
+  to: number;
+  firstLine: number;
+}
 export const SUGGESTED_FILE_NAME = 'mapvibes-work-state.json';
 
 export interface WorkStateRow {
@@ -161,6 +180,11 @@ export interface WorkState {
   cardColumns: string[] | null;
   series: SeriesAssignments;
   currencyUnit: string;
+  // Version 9: the presentation's view (FR-66), the timeline's saved view or
+  // null for the fitted view (FR-67), and the presentation's order (FR-70).
+  presentationMode: PresentationMode;
+  timelineView: TimelineWindow | null;
+  presentationOrder: PresentationOrder;
 }
 
 export type WorkStateErrorCode = 'not-json' | 'not-work-state' | 'unknown-version' | 'invalid';
@@ -291,6 +315,11 @@ export function serialiseWorkState(state: WorkState, savedAt: Date): string {
         filter: { kind: state.filter.kind, header: state.filter.header, text: state.filter.text },
         numbering: state.numbering,
         grouping: state.listView,
+      },
+      presentation: {
+        mode: state.presentationMode,
+        order: state.presentationOrder,
+        timeline: state.timelineView ? { from: state.timelineView.from, to: state.timelineView.to, firstLine: state.timelineView.firstLine } : null,
       },
     },
   };
@@ -543,6 +572,28 @@ export function parseWorkState(text: string): WorkState {
     numbering: version >= 7 ? oneOf(list.numbering, ['global', 'grouped'] as const, 'view.list.numbering') : 'global',
     listView: version >= 7 ? oneOf(list.grouping, ['flat', 'grouped'] as const, 'view.list.grouping') : 'flat',
     ...parseVersion8(file, version, headers),
+    ...parseVersion9(view, version),
+  };
+}
+
+// Version 9 (FR-66, FR-67, FR-70).
+function parseVersion9(view: Json, version: number): Pick<WorkState, 'presentationMode' | 'timelineView' | 'presentationOrder'> {
+  if (version < 9) return { presentationMode: 'map', timelineView: null, presentationOrder: 'number' };
+  const p = obj(view.presentation, 'view.presentation');
+  let timelineView: TimelineWindow | null = null;
+  if (p.timeline !== null) {
+    const t = obj(p.timeline, 'view.presentation.timeline');
+    const from = num(t.from, 'view.presentation.timeline.from');
+    const to = num(t.to, 'view.presentation.timeline.to');
+    const firstLine = num(t.firstLine, 'view.presentation.timeline.firstLine');
+    if (!(to > from)) invalid('notPositive', 'view.presentation.timeline.to');
+    if (!Number.isInteger(firstLine) || firstLine < 0) invalid('notPositive', 'view.presentation.timeline.firstLine');
+    timelineView = { from, to, firstLine };
+  }
+  return {
+    presentationMode: oneOf(p.mode, PRESENTATION_MODES, 'view.presentation.mode'),
+    timelineView,
+    presentationOrder: oneOf(p.order, PRESENTATION_ORDERS, 'view.presentation.order'),
   };
 }
 

@@ -4,6 +4,8 @@
 // when the user assigns its series to a role (hard constraint 5). Amounts
 // are read from the values as text, and an ambiguous value is never guessed.
 
+import { dateOfDay, readDate } from './dates';
+
 export type SeriesRole = 'budget' | 'forecast' | 'outcome';
 
 // The work's currency unit until the user changes it (FR-64): a documented,
@@ -134,11 +136,10 @@ export function readAmount(text: string, unit: string): Reading {
 }
 
 // The year of a start or end value: a year alone, or the year of a date.
+// The year of a start or end value, read as a date (FR-68).
 export function yearOfValue(text: string): number | null {
-  const m = /^\s*(\d{4})(?:$|[-/.\s])/.exec(text);
-  if (!m) return null;
-  const year = Number(m[1]);
-  return year >= FIRST_YEAR && year <= LAST_YEAR ? year : null;
+  const reading = readDate(text);
+  return reading.kind === 'date' ? dateOfDay(reading.start).year : null;
 }
 
 export interface EconomicsYear {
@@ -258,4 +259,30 @@ export function yearRanges(years: number[]): Array<[number, number]> {
     else out.push([y, y]);
   }
   return out;
+}
+
+// The Information totals (FR-69): over the given items, the budget total and
+// the outcome-and-forecast total, each item's total following the economics
+// view (the file's figure where it is a number, else the sum of its years),
+// summed exactly to the decimals given; and how many values are not numbers.
+export interface InformationTotals {
+  budget: { sum: number; decimals: number } | null;
+  track: { sum: number; decimals: number } | null;
+  texts: number;
+}
+
+export function informationTotals(items: Array<Economics | null>, assigned: { budget: boolean; track: boolean }): InformationTotals {
+  const add = (parts: Array<{ value: number; decimals: number }>) => {
+    const decimals = Math.max(0, ...parts.map((p) => p.decimals));
+    const scale = 10 ** decimals;
+    const sum = parts.reduce((acc, p) => acc + Math.round(p.value * scale), 0) / scale;
+    return { sum, decimals };
+  };
+  const itemTotal = (t: EconomicsTotal | null) => (t === null ? [] : t.file?.kind === 'number' ? [{ value: t.file.value, decimals: t.file.decimals }] : [{ value: t.sum, decimals: t.decimals }]);
+  const present = items.filter((e): e is Economics => e !== null);
+  return {
+    budget: assigned.budget ? add(present.flatMap((e) => itemTotal(e.budget))) : null,
+    track: assigned.track ? add(present.flatMap((e) => itemTotal(e.track))) : null,
+    texts: present.reduce((n, e) => n + e.texts.length, 0),
+  };
 }

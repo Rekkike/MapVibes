@@ -25,7 +25,9 @@ import { markersInView } from './glance';
 import { DEFAULT_SHAPE, placedMarkers, placeMarker, pruneMarkers, removeMarker, type MarkerPositions, type MarkerShapes, type PlacedMarker } from './markers';
 import { BUTTON_ZOOM_FACTOR, imageToScreen, screenToImage, type Point, type Viewport } from './viewport';
 import { isSegment, SEGMENTS, showSegment, type Segment } from './segments';
-import { type Problem, parseWorkState, rowNumbers, serialiseWorkState, SUGGESTED_FILE_NAME, WorkStateError, type WorkState } from './workstate';
+import { type Problem, parseWorkState, rowNumbers, serialiseWorkState, SUGGESTED_FILE_NAME, WorkStateError, type PresentationMode, type PresentationOrder, type TimelineWindow, type WorkState } from './workstate';
+import { buildTimeline, orderEntries, startDay, type TimelineItem, type TimelineLine } from './timeline';
+import { TimelineView } from './timelineview';
 import { ExportError, parseExport, serialiseExport, SUGGESTED_EXPORT_NAME, type ExportData } from './exportfile';
 import { embedDataIsland, readDataIsland, writeStaticViewerState } from './singlefile';
 import { HOSTED_ADDRESS } from './hosted';
@@ -33,8 +35,8 @@ import { compareItems, type CompareItem, type Comparison } from './reconcile';
 import { areaGroups, programLabels } from './grouping';
 import { DEMO_MAP_TEXT, demoCounterparts, demoScenario, demoWorkbook } from './demo';
 import { NARROW_QUERY, NarrowViewer } from './narrowviewer';
-import { renderEconomics } from './economicsview';
-import { DEFAULT_CURRENCY_UNIT, economicsOf, proposeSeries, SERIES_ROLES, seriesKey, yearOfValue, type Economics, type SeriesAssignment, type SeriesAssignments, type SeriesProposal, type SeriesRole } from './economics';
+import { formatAmount, renderEconomics } from './economicsview';
+import { DEFAULT_CURRENCY_UNIT, economicsOf, informationTotals, proposeSeries, SERIES_ROLES, seriesKey, yearOfValue, type Economics, type SeriesAssignment, type SeriesAssignments, type SeriesProposal, type SeriesRole } from './economics';
 import { DEFAULT_STYLE, formatArea, newAnnotationId, LINE_STYLES, OUTLINES, trueArea, type Annotation, type AnnotationKind, type AnnotationStyle, type LineStyle, type Outline } from './annotations';
 import { AnnotationLayer, DrawingTools, type DrawingTool } from './annotationlayer';
 
@@ -124,6 +126,11 @@ interface AppState {
   // the area values whose sections are collapsed.
   listView: 'flat' | 'grouped';
   collapsedAreas: Set<string>;
+  // The presentation's view (FR-66) and order (FR-70); the timeline's view
+  // to restore when it is next drawn (FR-67), or null for the fitted view.
+  presentationMode: PresentationMode;
+  presentationOrder: PresentationOrder;
+  timelineRestore: TimelineWindow | null;
 }
 
 const state: AppState = {
@@ -175,6 +182,9 @@ const state: AppState = {
   numbering: 'global',
   listView: 'flat',
   collapsedAreas: new Set(),
+  presentationMode: 'map',
+  presentationOrder: 'number',
+  timelineRestore: null,
 };
 
 // Drag-and-drop data type identifying a list row dragged onto the map.
@@ -288,6 +298,13 @@ function renderStaticText(): void {
   el('visibility-empty').textContent = t.visibilityEmpty;
   el('presentation-empty-hint').textContent = t.presentationEmptyHint;
   el('pres-fit').textContent = t.mapFit;
+  el('pres-mode').setAttribute('aria-label', t.presentationViewGroup);
+  el('pres-mode-map').textContent = t.presentationViewMap;
+  el('pres-mode-timeline').textContent = t.presentationViewTimeline;
+  el('pres-order-text').textContent = t.presentationOrder;
+  const orderOptions = el<HTMLSelectElement>('pres-order').options;
+  const orderLabels: Record<string, string> = { number: t.presentationOrderNumber, area: t.presentationOrderArea, start: t.presentationOrderStart };
+  for (const option of orderOptions) option.textContent = orderLabels[option.value] ?? option.textContent;
   el('open-presentation').textContent = t.openPresentation;
   el('presentation-close').textContent = t.closePresentation;
   // The narrow viewer's toggle bar (FR-58).
@@ -335,6 +352,7 @@ function renderStaticText(): void {
   el('counter-selected').textContent = `${t.selected}: ${state.selected.size}`;
   el('counter-retained').textContent = `${t.retained}: ${currentCounters().retained}`;
   el('counter-removed').textContent = `${t.removed}: ${currentCounters().removed}`;
+  renderInformationTotals();
   const themeOptions = el<HTMLSelectElement>('select-theme').options;
   const themeLabels: Record<string, string> = { system: t.themeSystem, light: t.themeLight, dark: t.themeDark };
   for (const option of themeOptions) option.textContent = themeLabels[option.value] ?? option.textContent;
@@ -445,6 +463,7 @@ export async function loadDemo(options: { confirmed?: boolean } = {}): Promise<b
   state.detailsId = null;
   state.selectedMarker = null;
   state.presentationSelected = null;
+  restoreTimelineView(null);
   // The demo's preset of another language, if unchanged, gives way to this
   // language's.
   for (const other of (['en', 'sv'] as const).filter((l) => l !== lang)) {
@@ -607,6 +626,8 @@ function resetList(headers: string[], rows: Record<string, string>[]): void {
   // choice belongs to the list it was made on (FR-46 as amended).
   if (demoLoaded) state.colourLabels = {};
   state.glanceColumns = null;
+  // A new list opens the timeline at its fitted view (FR-67).
+  restoreTimelineView(null);
   // The card fields and the series name columns of the list they were made
   // on, and the unit belongs to that work (FR-62 to FR-64).
   state.cardColumns = null;
@@ -1143,6 +1164,7 @@ function renderList(): void {
   el('counter-selected').textContent = `${t.selected}: ${state.selected.size}`;
   el('counter-retained').textContent = `${t.retained}: ${currentCounters().retained}`;
   el('counter-removed').textContent = `${t.removed}: ${currentCounters().removed}`;
+  renderInformationTotals();
 
   renderFilterColumnSelect();
   renderColumnVisibility();
@@ -1276,6 +1298,9 @@ export function captureWorkState(): WorkState {
     filter: { ...state.filter },
     numbering: state.numbering,
     listView: state.listView,
+    presentationMode: state.presentationMode,
+    timelineView: currentTimelineView(),
+    presentationOrder: state.presentationOrder,
   };
 }
 
@@ -2032,6 +2057,9 @@ async function applyWorkState(ws: WorkState): Promise<boolean> {
   state.filter = { ...ws.filter };
   state.numbering = ws.numbering;
   state.listView = ws.listView;
+  state.presentationMode = ws.presentationMode;
+  state.presentationOrder = ws.presentationOrder;
+  restoreTimelineView(ws.timelineView);
 
   el('ingest-error').classList.add('hidden');
   const hasRows = state.ingested.length > 0;
@@ -3733,7 +3761,7 @@ function setHover(id: string | null): void {
 }
 
 function applyHighlight(): void {
-  document.querySelectorAll<HTMLElement>('.marker[data-row-id], .glance-entry[data-row-id]').forEach((node) => {
+  document.querySelectorAll<HTMLElement>('.marker[data-row-id], .glance-entry[data-row-id], .timeline-entry[data-row-id]').forEach((node) => {
     node.classList.toggle('highlighted', hoverId !== null && node.dataset.rowId === hoverId);
   });
   // A program group shows the highlight of any of its items (FR-44), so that
@@ -3950,11 +3978,30 @@ function programGroupItem(
 }
 
 function renderGlance(prefix: 'map' | 'presentation', view: MapView | null, selectedId: string | null, onSelect: (id: string) => void): void {
+  const candidates = placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered()).filter((m) => !state.excluded.has(m.row));
+  const inView = view?.background ? markersInView(candidates, view.viewport, view.stageSize()) : [];
+  // The presentation's "In view" list follows the presentation's order
+  // (FR-70); the Map segment's keeps the numbers' order.
+  renderGlanceEntries(prefix, prefix === 'presentation' ? inPresentationOrder(inView) : inView, selectedId, onSelect);
+}
+
+// The presentation's order (FR-70) applied to entries of the "In view"
+// list; a program group then stands at its first member in that order.
+function inPresentationOrder(entries: PlacedMarker[]): PlacedMarker[] {
+  const { area, start } = state.roles;
+  return orderEntries(
+    entries,
+    state.presentationOrder,
+    (m) => ({ area: area === undefined ? '' : (m.row.values[area] ?? '').trim(), start: start === undefined ? null : startDay(m.row.values[start] ?? '') }),
+    state.areaValues,
+    areaLocale(),
+  );
+}
+
+function renderGlanceEntries(prefix: 'map' | 'presentation', inView: PlacedMarker[], selectedId: string | null, onSelect: (id: string) => void): void {
   const t = strings(state.prefs.lang);
   const list = el(`${prefix}-glance-list`);
   list.innerHTML = '';
-  const candidates = placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered()).filter((m) => !state.excluded.has(m.row));
-  const inView = view?.background ? markersInView(candidates, view.viewport, view.stageSize()) : [];
   const programKey = state.roles.program;
   const programOf = (m: PlacedMarker) => (programKey === undefined ? '' : (m.row.values[programKey] ?? '').trim());
   const placedGroups = new Set<string>();
@@ -4007,6 +4054,39 @@ function closeEconomics(): void {
   renderEconomicsOverlay();
   if (hadFocus && economicsOpener?.isConnected) economicsOpener.focus({ preventScroll: true });
   economicsOpener = null;
+}
+
+// The Information totals (FR-69): beside the row counters, over all retained
+// rows (the filter does not change them, as it does not change the
+// counters), shown only while a series is assigned.
+function renderInformationTotals(): void {
+  const line = el('list-totals');
+  const series = effectiveSeries();
+  const assigned = { budget: series.budget !== undefined, track: series.forecast !== undefined || series.outcome !== undefined };
+  if (!assigned.budget && !assigned.track) {
+    line.classList.add('hidden');
+    line.replaceChildren();
+    return;
+  }
+  const t = strings(state.prefs.lang);
+  const totals = informationTotals(state.rows.map(economicsFor), assigned);
+  const amount = (v: { sum: number; decimals: number }) => formatAmount(v.sum, v.decimals, { locale: areaLocale(), unit: state.currencyUnit });
+  const part = (className: string, text: string, role?: string) => {
+    const span = document.createElement('span');
+    span.className = className;
+    span.textContent = text;
+    if (role) span.dataset.role = role;
+    return span;
+  };
+  const parts: HTMLElement[] = [part('list-totals-label', t.informationTotals)];
+  if (totals.budget) parts.push(part('list-total', `${series.budget!.name}: ${amount(totals.budget)}`, 'budget'));
+  if (totals.track) {
+    const [outcome, forecast] = [series.outcome?.name ?? '', series.forecast?.name ?? ''];
+    parts.push(part('list-total', `${outcome && forecast ? `${outcome} / ${forecast}` : outcome || forecast}: ${amount(totals.track)}`, 'track'));
+  }
+  if (totals.texts > 0) parts.push(part('list-totals-note', format(t.informationTotalsTexts, { count: totals.texts })));
+  line.replaceChildren(...parts);
+  line.classList.remove('hidden');
 }
 
 function renderEconomicsOverlay(): void {
@@ -4071,7 +4151,8 @@ function openCard(id: string | null): void {
   if (id !== null) el('presentation-card').querySelector<HTMLElement>('.details-close')?.focus({ preventScroll: true });
   else if (previous !== null && hadFocus) {
     // Focus returns to the marker the card belonged to.
-    document.querySelector<HTMLElement>(`#presentation-marker-layer .marker[data-row-id="${previous}"]`)?.focus({ preventScroll: true });
+    const opener = timelineMode() ? `#presentation-timeline .timeline-entry[data-row-id="${previous}"]` : `#presentation-marker-layer .marker[data-row-id="${previous}"]`;
+    document.querySelector<HTMLElement>(opener)?.focus({ preventScroll: true });
   }
 }
 
@@ -4086,10 +4167,18 @@ const CARD_GAP = 28;
 function renderCard(): void {
   const card = el('presentation-card');
   const row = cardId ? rowById(cardId) : undefined;
-  const placed = row && presentationView?.background ? state.positions.get(row) : undefined;
-  // In the exported viewer, an item without a marker opens from the list.
-  const position = placed ?? (row && state.viewOnly ? null : undefined);
-  if (!row || position === undefined || state.excluded.has(row) || !presentationView) {
+  // Where the card opens beside: on the map, the item's marker (in the
+  // exported viewer, an item without a marker opens from the list, in the
+  // stage's corner); on the timeline, the item's line (FR-67).
+  let anchor: Point | null | undefined;
+  if (timelineMode()) {
+    anchor = row && timeline ? (timeline.anchorOf(rowId(row), el('presentation-stage')) ?? undefined) : undefined;
+  } else {
+    const placed = row && presentationView?.background ? state.positions.get(row) : undefined;
+    const position = placed ?? (row && state.viewOnly ? null : undefined);
+    anchor = position && presentationView ? imageToScreen(presentationView.viewport, position) : position;
+  }
+  if (!row || anchor === undefined || state.excluded.has(row) || !presentationView) {
     cardId = null;
     // The content stays during the exit transition; it is replaced on the
     // next opening.
@@ -4132,7 +4221,7 @@ function renderCard(): void {
   // Beside the marker, on the side with more room, and within the stage; an
   // item without a marker opens in the stage's corner.
   const size = presentationView.stageSize();
-  const screen = position ? imageToScreen(presentationView.viewport, position) : { x: 16 - CARD_GAP, y: 0 };
+  const screen = anchor ?? { x: 16 - CARD_GAP, y: 0 };
   const side = screen.x <= size.width / 2 ? 'right' : 'left';
   card.dataset.side = side;
   if (side === 'right') {
@@ -4153,25 +4242,168 @@ function renderCard(): void {
 }
 
 function renderPresentation(): void {
+  const onTimeline = timelineMode();
   const shown = placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered()).filter((m) => !state.excluded.has(m.row));
-  if (state.presentationSelected && !shown.some((m) => rowId(m.row) === state.presentationSelected)) {
+  const selectable = onTimeline ? state.rows.filter((r) => !state.excluded.has(r)) : shown.map((m) => m.row);
+  if (state.presentationSelected && !selectable.some((r) => rowId(r) === state.presentationSelected)) {
     state.presentationSelected = null;
   }
   presentationLayer?.render(shown, state.presentationSelected);
   renderVisibilityList();
-  renderGlance('presentation', presentationView, state.presentationSelected, (id) => {
-    // In the narrow viewer, choosing an entry closes the overlay and opens
-    // the card (FR-58).
-    if (narrowViewer()) narrow?.close({ returnFocus: false });
-    openCard(id);
-  });
+  // The view shown (FR-66): the switch, the stage's layers, and the toolbar.
+  el('presentation-stage').dataset.view = state.presentationMode;
+  el('presentation-toolbar').dataset.view = state.presentationMode;
+  el<HTMLSelectElement>('pres-order').value = state.presentationOrder;
+  el('presentation-timeline').classList.toggle('hidden', !onTimeline);
+  for (const button of document.querySelectorAll<HTMLButtonElement>('.pres-mode-button')) {
+    button.setAttribute('aria-pressed', button.dataset.mode === state.presentationMode ? 'true' : 'false');
+  }
+  if (onTimeline) renderTimeline();
+  renderPresentationGlance();
   renderCard();
-  const has = presentationView?.background != null;
+  const has = onTimeline ? (timeline?.hasLines() ?? false) : presentationView?.background != null;
   for (const id of ['pres-zoom-in', 'pres-zoom-out', 'pres-fit', 'pres-reset']) {
     el<HTMLButtonElement>(id).disabled = !has;
   }
-  el('pres-zoom-level').textContent = `${Math.round((presentationView?.viewport.scale ?? 1) * 100)}%`;
-  el('presentation-empty').classList.toggle('hidden', has);
+  renderZoomLevel();
+  // The timeline needs no background.
+  el('presentation-empty').classList.toggle('hidden', has || onTimeline);
+}
+
+function renderZoomLevel(): void {
+  const percent = timelineMode() ? (timeline?.zoomPercent() ?? 100) : Math.round((presentationView?.viewport.scale ?? 1) * 100);
+  el('pres-zoom-level').textContent = `${percent}%`;
+}
+
+// Choosing an entry of the "In view" list opens the item's card; in the
+// narrow viewer, it first closes the overlay (FR-58).
+function choosePresentationEntry(id: string): void {
+  if (narrowViewer()) narrow?.close({ returnFocus: false });
+  if (timelineMode()) timeline?.reveal(id);
+  openCard(id);
+}
+
+// The "In view" list (FR-28): on the map, the markers in view; on the
+// timeline, the visible lines (FR-67).
+function renderPresentationGlance(): void {
+  if (!timelineMode()) {
+    renderGlance('presentation', presentationView, state.presentationSelected, choosePresentationEntry);
+    return;
+  }
+  const lines = timeline?.visibleLines() ?? [];
+  const symbols = effectiveSymbols();
+  const entries: PlacedMarker[] = lines.flatMap((line) => {
+    const row = rowById(line.item.id);
+    if (!row) return [];
+    return [{ row, number: state.rows.indexOf(row) + 1, label: line.item.label, colour: row.colour, shape: symbols.get(row) ?? DEFAULT_SHAPE, position: { x: 0, y: 0 } }];
+  });
+  renderGlanceEntries('presentation', entries, state.presentationSelected, choosePresentationEntry);
+}
+
+// The timeline (FR-67): its view is created on first use.
+let timeline: TimelineView | null = null;
+// A saved view waits until the timeline is next drawn.
+let timelinePending = true;
+
+function timelineMode(): boolean {
+  return state.presentationMode === 'timeline';
+}
+
+function setPresentationOrder(order: PresentationOrder): void {
+  if (state.presentationOrder === order) return;
+  state.presentationOrder = order;
+  markDirty();
+  renderPresentation();
+}
+
+function setPresentationMode(mode: PresentationMode): void {
+  if (state.presentationMode === mode) return;
+  state.presentationMode = mode;
+  if (cardId !== null) closeCard();
+  markDirty();
+  renderPresentation();
+}
+
+function restoreTimelineView(view: TimelineWindow | null): void {
+  state.timelineRestore = view ? { ...view } : null;
+  timelinePending = true;
+}
+
+// The timeline's view to save: the time window and the first visible line,
+// or null while it is the fitted view at the top.
+function currentTimelineView(): TimelineWindow | null {
+  if (timelinePending || !timeline) return state.timelineRestore ? { ...state.timelineRestore } : null;
+  const firstLine = timeline.firstLine();
+  if (!timeline.isChosen() && firstLine === 0) return null;
+  return { ...timeline.window, firstLine };
+}
+
+function timelineItems(): TimelineItem[] {
+  const { start, end, area } = state.roles;
+  const value = (row: RowData, key: string | undefined) => (key === undefined ? '' : (row.values[key] ?? ''));
+  // Every item of the presentation, with or without a marker; items switched
+  // off are absent (FR-67).
+  return numbered()
+    .filter((n) => !state.excluded.has(n.row))
+    .map((n) => ({
+      id: rowId(n.row),
+      label: n.label,
+      name: itemLabel(n.row, n.label),
+      colour: n.row.colour,
+      area: value(n.row, area).trim(),
+      start: value(n.row, start),
+      end: value(n.row, end),
+    }));
+}
+
+function renderTimeline(): void {
+  if (!timeline) {
+    timeline = new TimelineView(el('presentation-timeline'), {
+      onSelect: (id) => openCard(id),
+      onHover: setHover,
+      onViewChanged: () => {
+        renderZoomLevel();
+        renderPresentationGlance();
+        renderCard();
+      },
+      badge: (line: TimelineLine) => {
+        const row = rowById(line.item.id);
+        const shape = (row && effectiveSymbols().get(row)) ?? DEFAULT_SHAPE;
+        const badge = document.createElement('span');
+        badge.className = `marker-badge marker-${line.item.colour} ${symbolClasses(shape)}`;
+        drawSymbol(badge, shape, line.item.label);
+        return badge;
+      },
+    });
+    // A click on the timeline outside a line closes the card.
+    el('presentation-timeline').addEventListener('click', (e) => {
+      if (!(e.target as HTMLElement).closest('.timeline-entry') && cardId !== null) closeCard();
+    });
+  }
+  const t = strings(state.prefs.lang);
+  const { start, end } = state.roles;
+  const model = buildTimeline(timelineItems(), state.presentationOrder, state.areaValues, areaLocale());
+  timeline.render(
+    model,
+    {
+      noDates: t.timelineNoDates,
+      noArea: t.numberingNoArea,
+      empty: t.timelineEmpty,
+      noRoles: start === undefined && end === undefined && model.lines.length > 0 ? t.timelineNoRoles : null,
+      startOnly: t.timelineStartOnly,
+      endOnly: t.timelineEndOnly,
+      startHeader: start === undefined ? '' : labelOf(start),
+      endHeader: end === undefined ? '' : labelOf(end),
+      locale: areaLocale(),
+    },
+    state.presentationSelected,
+  );
+  if (timelinePending) {
+    timelinePending = false;
+    const saved = state.timelineRestore;
+    state.timelineRestore = null;
+    timeline.setWindow(saved ? { from: saved.from, to: saved.to } : null, saved?.firstLine ?? 0);
+  }
 }
 
 function initialisePresentation(): void {
@@ -4210,10 +4442,16 @@ function initialisePresentation(): void {
   el('presentation-stage').addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && cardId !== null) closeCard();
   });
-  el('pres-zoom-in').addEventListener('click', () => presentationView?.zoomBy(BUTTON_ZOOM_FACTOR));
-  el('pres-zoom-out').addEventListener('click', () => presentationView?.zoomBy(1 / BUTTON_ZOOM_FACTOR));
-  el('pres-fit').addEventListener('click', () => presentationView?.fit());
-  el('pres-reset').addEventListener('click', () => presentationView?.reset());
+  // The toolbar acts on the view shown (FR-66); on the timeline, Reset is
+  // Fit (FR-67).
+  el('pres-zoom-in').addEventListener('click', () => (timelineMode() ? timeline?.zoomBy(BUTTON_ZOOM_FACTOR) : presentationView?.zoomBy(BUTTON_ZOOM_FACTOR)));
+  el('pres-zoom-out').addEventListener('click', () => (timelineMode() ? timeline?.zoomBy(1 / BUTTON_ZOOM_FACTOR) : presentationView?.zoomBy(1 / BUTTON_ZOOM_FACTOR)));
+  el('pres-fit').addEventListener('click', () => (timelineMode() ? timeline?.fit() : presentationView?.fit()));
+  el('pres-reset').addEventListener('click', () => (timelineMode() ? timeline?.fit() : presentationView?.reset()));
+  for (const button of document.querySelectorAll<HTMLButtonElement>('.pres-mode-button')) {
+    button.addEventListener('click', () => setPresentationMode(button.dataset.mode as PresentationMode));
+  }
+  el<HTMLSelectElement>('pres-order').addEventListener('change', (e) => setPresentationOrder((e.target as HTMLSelectElement).value as PresentationOrder));
   el('export-open').addEventListener('click', openExportDialog);
   el('pdf-open').addEventListener('click', () => void openDocumentDialog('pdf'));
   el('pptx-open').addEventListener('click', () => void openDocumentDialog('pptx'));

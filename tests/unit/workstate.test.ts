@@ -62,6 +62,9 @@ function sample(): WorkState {
     cardColumns: ['Group', MK],
     series: {},
     currencyUnit: 'kr',
+    presentationMode: 'timeline',
+    timelineView: { from: 19000, to: 20100.5, firstLine: 3 },
+    presentationOrder: 'area',
   };
 }
 
@@ -110,8 +113,8 @@ describe('work-state file (FR-13)', () => {
   test('the file carries the format name, schema version, and save time', () => {
     const file = fileOf(sample());
     expect(file.format).toBe(WORK_STATE_FORMAT);
-    expect(file.schemaVersion).toBe(8);
-    expect(WORK_STATE_SCHEMA_VERSION).toBe(8);
+    expect(file.schemaVersion).toBe(9);
+    expect(WORK_STATE_SCHEMA_VERSION).toBe(9);
     expect(file.savedAt).toBe('2026-01-02T03:04:05.000Z');
   });
 
@@ -128,7 +131,7 @@ describe('work-state file (FR-13)', () => {
   });
 
   test('an unknown schema version is rejected and named, never loaded silently', () => {
-    for (const version of [9, 0, '8', null]) {
+    for (const version of [10, 0, '9', null]) {
       const file = { ...fileOf(sample()), schemaVersion: version };
       expect(expectError(JSON.stringify(file), 'unknown-version').detail).toBe(String(version));
     }
@@ -246,7 +249,7 @@ describe('schema version 1 migration (FR-13)', () => {
     expect(migrated.manualColumns).toEqual([]);
     expect(migrated.rows.every((r) => !r.manual)).toBe(true);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(8);
+    expect(JSON.parse(text).schemaVersion).toBe(9);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 
@@ -313,7 +316,7 @@ describe('schema version 2 migration (FR-13)', () => {
   test('a migrated version 2 file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v2Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(8);
+    expect(JSON.parse(text).schemaVersion).toBe(9);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 
@@ -385,7 +388,7 @@ describe('schema version 3 migration (FR-13)', () => {
   test('a migrated version 3 file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v3Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(8);
+    expect(JSON.parse(text).schemaVersion).toBe(9);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 });
@@ -471,7 +474,7 @@ describe('schema version 4 migration (FR-13)', () => {
   test('a migrated version 4 file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v4Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(8);
+    expect(JSON.parse(text).schemaVersion).toBe(9);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 });
@@ -538,7 +541,7 @@ describe('schema version 6: programs, colour labels, at-a-glance columns, annota
     const state = parseWorkState(JSON.stringify(file));
     expect([state.programValues, state.colourLabels, state.glanceColumns, state.annotations]).toEqual([[], {}, null, []]);
     expect(state.background!.projection).toBeUndefined();
-    expect(JSON.parse(serialiseWorkState(state, SAVED_AT)).schemaVersion).toBe(8);
+    expect(JSON.parse(serialiseWorkState(state, SAVED_AT)).schemaVersion).toBe(9);
   });
 
   test('version 6 fields in an older file are ignored, as that version never wrote them', () => {
@@ -693,5 +696,37 @@ describe('schema version 8: card fields, year series, and the currency unit (FR-
     expectError(bad((f) => (f.economics.series.profit = f.economics.series.budget)), 'invalid');
     expectError(bad((f) => (f.economics.series.budget.columns = { '24': 'Budget 2024' })), 'invalid');
     expectError(bad((f) => (f.economics.unit = 5)), 'invalid');
+  });
+});
+
+describe('schema version 9: the presentation view, the timeline view, and the order (FR-66, FR-67, FR-70)', () => {
+  test('they round-trip', () => {
+    const back = parseWorkState(serialiseWorkState(sample(), SAVED_AT));
+    expect([back.presentationMode, back.timelineView, back.presentationOrder]).toEqual(['timeline', { from: 19000, to: 20100.5, firstLine: 3 }, 'area']);
+    const file = JSON.parse(serialiseWorkState(sample(), SAVED_AT));
+    expect(file.view.presentation).toEqual({ mode: 'timeline', order: 'area', timeline: { from: 19000, to: 20100.5, firstLine: 3 } });
+    const fitted = parseWorkState(serialiseWorkState({ ...sample(), timelineView: null }, SAVED_AT));
+    expect(fitted.timelineView).toBeNull();
+  });
+
+  test('a file of version 8 opens on the map, with the timeline fitted, in number order', () => {
+    const file = JSON.parse(serialiseWorkState(sample(), SAVED_AT));
+    file.schemaVersion = 8;
+    delete file.view.presentation;
+    const state = parseWorkState(JSON.stringify(file));
+    expect([state.presentationMode, state.timelineView, state.presentationOrder]).toEqual(['map', null, 'number']);
+  });
+
+  test('a damaged presentation view is refused with its field', () => {
+    const bad = (change: (f: any) => void) => {
+      const file = JSON.parse(serialiseWorkState(sample(), SAVED_AT));
+      change(file);
+      return JSON.stringify(file);
+    };
+    expectError(bad((f) => (f.view.presentation.mode = 'gallery')), 'invalid');
+    expectError(bad((f) => (f.view.presentation.order = 'size')), 'invalid');
+    expectError(bad((f) => (f.view.presentation.timeline.to = f.view.presentation.timeline.from)), 'invalid');
+    expectError(bad((f) => (f.view.presentation.timeline.firstLine = -1)), 'invalid');
+    expectError(bad((f) => delete f.view.presentation), 'invalid');
   });
 });

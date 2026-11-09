@@ -14,13 +14,18 @@ export class ParseError extends Error {
   }
 }
 
-function cellToString(value: unknown): string {
+// A date cell (FR-68) is the calendar date it shows in the spreadsheet, as
+// an ISO date, with the time of day when it has one. The reader gives the
+// cell's wall-clock date and time in local time, so the local getters return
+// exactly what the spreadsheet shows, whatever the time zone.
+export function cellToString(value: unknown): string {
   if (value === null || value === undefined) return '';
   if (value instanceof Date) {
-    const y = String(value.getUTCFullYear());
-    const m = String(value.getUTCMonth() + 1).padStart(2, '0');
-    const d = String(value.getUTCDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
+    if (Number.isNaN(value.getTime())) return '';
+    const two = (n: number) => String(n).padStart(2, '0');
+    const date = `${String(value.getFullYear()).padStart(4, '0')}-${two(value.getMonth() + 1)}-${two(value.getDate())}`;
+    const [h, m] = [value.getHours(), value.getMinutes()];
+    return h === 0 && m === 0 ? date : `${date} ${two(h)}:${two(m)}`;
   }
   return String(value);
 }
@@ -30,7 +35,10 @@ export function parseWorkbook(data: ArrayBuffer): ParseResult {
   try {
     // As bytes, so that the reader recognises a text file's byte order mark
     // whatever the realm of the buffer.
-    workbook = XLSX.read(new Uint8Array(data), { type: 'array' });
+    // Date cells as dates, not as their serial numbers (FR-68); a text
+    // file's values exactly as typed, never converted into numbers or dates
+    // by guessing (FR-1, FR-68).
+    workbook = XLSX.read(new Uint8Array(data), { type: 'array', cellDates: true, raw: true });
   } catch (e) {
     throw new ParseError(e instanceof Error ? e.message : String(e));
   }

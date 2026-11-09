@@ -70,6 +70,41 @@ const GROWING = ['html', 'body', '#app-main', '#segment-information', '#list-are
 // scrolled export dialog, up), and nothing else about it changes.
 const SHIFTING_STATES = ['demo-information', 'export-dialog'];
 
+// Pass 16 (FR-66, FR-69, FR-70): the view switch and the order at the head
+// of the presentation toolbar, and the Information totals' line. At 1500 ×
+// 950 the toolbar's items no longer fit one row: the toolbar grows in height
+// only, its existing items move without changing size or style, the stage
+// below moves down and is shorter by as much, and the map in it is fitted
+// again to the shorter stage (its boxes and its fitting transform change,
+// nothing else about it).
+const NEW_PASS_16 = ['#pres-mode', '#pres-mode-map', '#pres-mode-timeline', '#pres-order-label', '#pres-order-text', '#pres-order', '#list-totals'];
+const PRESENTATION_STATES = ['demo-presentation', 'demo-presentation-card', 'demo-presentation-dark', 'export-dialog', 'viewer', 'viewer-card'];
+const MOVED_IN_PRESENTATION_TOOLBAR = ['#pres-zoom-out', '#pres-zoom-level', '#pres-zoom-in', '#pres-fit', '#pres-reset', '#export-separator', '#export-open', '#pdf-open', '#pptx-open'];
+const REFITTED = ['#presentation-content', '#presentation-image', '#presentation-annotations', '#presentation-marker-layer'];
+
+function pass16(d: NonNullable<ReturnType<typeof parse>>): boolean {
+  if (!PRESENTATION_STATES.includes(d.state)) return false;
+  if (d.all) {
+    const [a, b] = [d.before.split('|'), d.after.split('|')];
+    const sameStyle = a.slice(4).join('|') === b.slice(4).join('|');
+    // The toolbar: taller, nothing else.
+    if (d.target === '#presentation-toolbar') return sameStyle && a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
+    // Its items: moved, the same size (the separator stretches to the row).
+    if (MOVED_IN_PRESENTATION_TOOLBAR.includes(d.target)) return sameStyle && a[2] === b[2] && (a[3] === b[3] || d.target === '#export-separator');
+    // The stage: lower and shorter, as wide.
+    if (d.target === '#presentation-stage') return sameStyle && a[0] === b[0] && a[2] === b[2];
+    // The map fitted again: boxes only; the markers keep their size.
+    if (d.target.startsWith('#presentation-marker-layer>')) return sameStyle && a[2] === b[2] && a[3] === b[3];
+    if (inside(d.target, REFITTED)) return sameStyle;
+    return false;
+  }
+  if (d.target === '#presentation-toolbar') return ['box.height', 'height'].includes(d.what);
+  if (d.target === '#presentation-stage') return ['box.y', 'box.height', 'height'].includes(d.what);
+  if (d.target.startsWith('#presentation-marker-layer ')) return ['box.x', 'box.y'].includes(d.what);
+  if (inside(d.target, REFITTED)) return ['box.x', 'box.y', 'box.width', 'box.height', 'transform'].includes(d.what);
+  return false;
+}
+
 // A line of the differences: "<state> <selector> <what>: <before> → <after>".
 function parse(line: string): { state: string; target: string; all: boolean; what: string; before: string; after: string } | null {
   const m = /^(\S+) (all )?(.+?)(?: (box\.\w+|[a-z-]+))?: (.+) → (.+)$/.exec(line);
@@ -85,9 +120,10 @@ function intended(line: string): boolean {
   if (/ all #open-presentation: new$/.test(line)) return true;
   if (/ all #economics-overlay(>\S+)?: new$/.test(line)) return true;
   const newEntry = /^(\S+) all (\S+): new$/.exec(line);
-  if (newEntry) return inside(newEntry[2], CHANGED_INSIDE);
+  if (newEntry) return inside(newEntry[2], CHANGED_INSIDE) || inside(newEntry[2], NEW_PASS_16);
   const d = parse(line);
   if (!d) return false;
+  if (pass16(d)) return true;
   // Pass 14's row.
   if (d.all && MOVED_IN_ROW.includes(d.target) && d.before.split('|').slice(1).join('|') === d.after.split('|').slice(1).join('|')) return true;
   if (inside(d.target, CHANGED_INSIDE)) return true;
@@ -144,6 +180,11 @@ describe('the desktop layout is that of v1.3.1 (Pass 13, unit 4)', () => {
     // start row, the economics overlay in every state.
     expect(found.filter((l) => / all #open-presentation: new$/.test(l)).map((l) => l.split(' ')[0])).toEqual(['start', 'demo-information']);
     expect(found.some((l) => / all #economics-overlay: new$/.test(l))).toBe(true);
+    // Pass 16: the switch and the order in every state that shows the
+    // presentation toolbar, the totals' line in the demo's Information.
+    expect(found.filter((l) => / all #pres-mode: new$/.test(l)).map((l) => l.split(' ')[0])).toEqual(PRESENTATION_STATES);
+    expect(found.filter((l) => / all #pres-order-label: new$/.test(l)).map((l) => l.split(' ')[0])).toEqual(PRESENTATION_STATES);
+    expect(found.filter((l) => / all #list-totals: new$/.test(l)).map((l) => l.split(' ')[0])).toEqual(['demo-information']);
     expect(found.filter((l) => !intended(l))).toEqual([]);
   }, 120_000);
 });

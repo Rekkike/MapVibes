@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { economicsOf, proposeSeries, readAmount, yearOfHeader, yearOfValue, yearRanges, type SeriesAssignments } from '../../src/economics';
+import { economicsOf, informationTotals, proposeSeries, readAmount, yearOfHeader, yearOfValue, yearRanges, type SeriesAssignments } from '../../src/economics';
 
 // Year series and the economics of an item (FR-63 to FR-65).
 
@@ -171,5 +171,26 @@ describe('the economics of an item (FR-64)', () => {
       [2025, 2025],
       [2027, 2027],
     ]);
+  });
+});
+
+describe('the Information totals (FR-69)', () => {
+  const series: SeriesAssignments = {
+    budget: { name: 'Budget', columns: { 2024: 'b24', 2025: 'b25' }, total: 'bt' },
+    forecast: { name: 'Prognos', columns: { 2024: 'p24', 2025: 'p25' }, total: null },
+  };
+  const span = { start: 2024, end: 2025 };
+  const of = (values: Record<string, string>) => economicsOf(values, series, span, 'kr');
+
+  test("each item's total is the file's figure where it is a number, else the sum of its years; summed exactly", () => {
+    const t = informationTotals([of({ b24: '100', b25: '100', bt: '250' }), of({ b24: '0,10', b25: '0,20', bt: 'see note' }), of({}), null], { budget: true, track: true });
+    expect(t.budget).toEqual({ sum: 250.3, decimals: 2 });
+    expect(t.track).toEqual({ sum: 0, decimals: 0 });
+    expect(t.texts).toBe(1);
+  });
+
+  test('a total is given only for an assigned role', () => {
+    const t = informationTotals([of({ p24: '5' })], { budget: false, track: true });
+    expect([t.budget, t.track]).toEqual([null, { sum: 5, decimals: 0 }]);
   });
 });

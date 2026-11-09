@@ -204,6 +204,7 @@
             <span id="counter-retained">Retained rows: 0</span>
             <span id="counter-removed">Removed rows: 0</span>
           </div>
+          <p id="list-totals" class="hidden"></p>
           <div id="list-scroll">
             <table id="row-table">
               <thead>
@@ -346,6 +347,17 @@
         <section id="presentation-area" aria-labelledby="presentation-heading">
           <h2 id="presentation-heading">Presentation</h2>
           <div id="presentation-toolbar" role="toolbar" aria-labelledby="presentation-heading">
+            <span id="pres-mode" role="group" aria-label="Presentation view">
+              <button type="button" id="pres-mode-map" class="pres-mode-button" data-mode="map" aria-pressed="true">Map</button>
+              <button type="button" id="pres-mode-timeline" class="pres-mode-button" data-mode="timeline" aria-pressed="false">Timeline</button>
+            </span>
+            <label id="pres-order-label"><span id="pres-order-text">Order</span>
+              <select id="pres-order">
+                <option value="number">By number</option>
+                <option value="area">By area</option>
+                <option value="start">By start date</option>
+              </select>
+            </label>
             <button type="button" id="pres-zoom-out" class="icon-button" aria-label="Zoom out" title="Zoom out">−</button>
             <span id="pres-zoom-level" aria-live="polite">100%</span>
             <button type="button" id="pres-zoom-in" class="icon-button" aria-label="Zoom in" title="Zoom in">+</button>
@@ -401,6 +413,7 @@
               <div id="presentation-annotation-labels" class="annotation-labels" aria-hidden="true"></div>
             </div>
             <div id="presentation-marker-layer" class="marker-layer"></div>
+            <div id="presentation-timeline" class="hidden"></div>
             <div id="presentation-card" class="presentation-card" role="dialog" data-state="closed" aria-hidden="true" tabindex="-1" inert></div>
             <div id="presentation-empty" class="stage-empty">
               <span id="presentation-empty-hint">No background loaded. Load one in the Map segment.</span>
