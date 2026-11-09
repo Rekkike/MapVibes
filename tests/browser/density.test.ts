@@ -50,13 +50,19 @@ describe('dense operator surfaces in a real layout (FR-42)', () => {
       await expect.poll(() => page.isVisible('#details-panel')).toBe(true);
       const layout = await page.evaluate(() => {
         const panel = document.getElementById('details-panel')!;
-        const fields = [...panel.querySelectorAll('.details-fields > .details-field')].map((f) => f.getBoundingClientRect());
+        // The plain fields; the year series are one line each across the
+        // panel (FR-7 as amended in v1.6.0), then the Economics action.
+        const fields = [...panel.querySelectorAll('.details-fields > .details-field:not(.details-series):not(.details-economics-row)')].map((f) => f.getBoundingClientRect());
+        const series = panel.querySelectorAll('.details-fields > .details-series').length;
+        const action = panel.querySelectorAll('.details-fields > .details-economics-row').length;
         const lefts = [...new Set(fields.map((r) => Math.round(r.left)))];
         const rows = [...new Set(fields.map((r) => Math.round(r.top)))].sort((a, b) => a - b);
         const gaps = rows.slice(1).map((top, i) => top - Math.max(...fields.filter((r) => Math.round(r.top) === rows[i]).map((r) => r.bottom)));
         const label = getComputedStyle(panel.querySelector('.details-label')!);
         return {
           fields: fields.length,
+          series,
+          action,
           lefts: lefts.length,
           gaps,
           scrolls: panel.scrollHeight > panel.clientHeight,
@@ -65,7 +71,9 @@ describe('dense operator surfaces in a real layout (FR-42)', () => {
           background: getComputedStyle(panel).backgroundColor,
         };
       });
-      expect(layout.fields).toBe(8);
+      // The demo's eight columns of v1.5.0 and its two people columns.
+      expect(layout.fields).toBe(10);
+      expect([layout.series, layout.action]).toEqual([3, 1]);
       expect(layout.lefts).toBe(2);
       expect(Math.max(...layout.gaps)).toBeLessThanOrEqual(8);
       expect(layout.scrolls).toBe(false);

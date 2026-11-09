@@ -33,6 +33,8 @@ import { compareItems, type CompareItem, type Comparison } from './reconcile';
 import { areaGroups, programLabels } from './grouping';
 import { DEMO_MAP_TEXT, demoCounterparts, demoScenario, demoWorkbook } from './demo';
 import { NARROW_QUERY, NarrowViewer } from './narrowviewer';
+import { renderEconomics } from './economicsview';
+import { DEFAULT_CURRENCY_UNIT, economicsOf, proposeSeries, SERIES_ROLES, seriesKey, yearOfValue, type Economics, type SeriesAssignment, type SeriesAssignments, type SeriesProposal, type SeriesRole } from './economics';
 import { DEFAULT_STYLE, formatArea, newAnnotationId, LINE_STYLES, OUTLINES, trueArea, type Annotation, type AnnotationKind, type AnnotationStyle, type LineStyle, type Outline } from './annotations';
 import { AnnotationLayer, DrawingTools, type DrawingTool } from './annotationlayer';
 
@@ -56,6 +58,12 @@ interface AppState {
   // The columns the at-a-glance entries show (FR-46), or null for the
   // defaults: the area, start, and end columns.
   glanceColumns: string[] | null;
+  // The card fields (FR-62), or null for the role fields; the year series
+  // assigned to the budget, forecast, and outcome roles (FR-63); and the
+  // currency unit (FR-64).
+  cardColumns: string[] | null;
+  series: SeriesAssignments;
+  currencyUnit: string;
   // The annotation layer (FR-47): the annotations in drawing order, and the
   // style given to new ones.
   annotations: Annotation[];
@@ -128,6 +136,9 @@ const state: AppState = {
   colourLabels: {},
   symbolLabels: {},
   glanceColumns: null,
+  cardColumns: null,
+  series: {},
+  currencyUnit: DEFAULT_CURRENCY_UNIT,
   annotations: [],
   annotationStyle: { ...DEFAULT_STYLE },
   selectedAnnotation: null,
@@ -596,6 +607,11 @@ function resetList(headers: string[], rows: Record<string, string>[]): void {
   // choice belongs to the list it was made on (FR-46 as amended).
   if (demoLoaded) state.colourLabels = {};
   state.glanceColumns = null;
+  // The card fields and the series name columns of the list they were made
+  // on, and the unit belongs to that work (FR-62 to FR-64).
+  state.cardColumns = null;
+  state.series = {};
+  state.currencyUnit = DEFAULT_CURRENCY_UNIT;
   demoLoaded = false;
   demoLang = null;
   demoAnnotationIds = [];
@@ -827,6 +843,120 @@ function renderRoleHelp(): void {
   );
 }
 
+// Year series and series roles (FR-63): the proposals, from the headers'
+// year tokens, and the user's assignments. An assigned series follows its
+// proposal's current columns, so that a year column added later belongs to
+// it; a column that merely holds a year is never used unless assigned.
+function seriesProposals(): SeriesProposal[] {
+  return proposeSeries(state.headers.map((key) => ({ key, label: labelOf(key) })));
+}
+
+function effectiveSeries(): SeriesAssignments {
+  const proposals = seriesProposals();
+  const out: SeriesAssignments = {};
+  for (const role of SERIES_ROLES) {
+    const a = state.series[role];
+    if (!a) continue;
+    const proposal = proposals.find((p) => p.key === seriesKey(a.name));
+    const columns = proposal ? { ...proposal.columns } : Object.fromEntries(Object.entries(a.columns).filter(([, k]) => state.headers.includes(k)));
+    const total = a.total !== null && state.headers.includes(a.total) ? a.total : null;
+    if (Object.keys(columns).length > 0 || total !== null) out[role] = { name: proposal?.name ?? a.name, columns, total };
+  }
+  return out;
+}
+
+function seriesRoleOf(proposalKey: string): SeriesRole | null {
+  return SERIES_ROLES.find((r) => state.series[r] && seriesKey(state.series[r]!.name) === proposalKey) ?? null;
+}
+
+// One series per role: assigning a role moves it from any other series.
+function setSeriesRole(proposal: SeriesProposal, role: SeriesRole | null): void {
+  const next: SeriesAssignments = {};
+  for (const r of SERIES_ROLES) {
+    const a = state.series[r];
+    if (a && seriesKey(a.name) !== proposal.key && r !== role) next[r] = a;
+  }
+  if (role) next[role] = { name: proposal.name, columns: { ...proposal.columns }, total: null };
+  state.series = next;
+  markDirty();
+  renderList();
+}
+
+function setSeriesTotal(role: SeriesRole, key: string | null): void {
+  const a = state.series[role];
+  if (!a) return;
+  state.series = { ...state.series, [role]: { ...a, total: key } };
+  markDirty();
+  renderList();
+}
+
+function seriesRoleLabel(t: Strings, role: SeriesRole): string {
+  return { budget: t.seriesRoleBudget, forecast: t.seriesRoleForecast, outcome: t.seriesRoleOutcome }[role];
+}
+
+function renderSeriesPanel(): void {
+  const t = strings(state.prefs.lang);
+  el('series-panel-summary').textContent = t.seriesPanel;
+  el('series-panel-hint').textContent = t.seriesPanelHint;
+  el('currency-unit-label').textContent = t.currencyUnit;
+  el('currency-unit-hint').textContent = t.currencyUnitHint;
+  const unit = el<HTMLInputElement>('currency-unit');
+  if (document.activeElement !== unit) unit.value = state.currencyUnit;
+  const proposals = seriesProposals();
+  el('series-none').textContent = t.seriesNone;
+  el('series-none').classList.toggle('hidden', proposals.length > 0);
+  const inSeries = new Set(proposals.flatMap((p) => Object.values(p.columns)));
+  el('series-list').replaceChildren(
+    ...proposals.map((proposal) => {
+      const li = document.createElement('li');
+      li.className = 'vocab-item series-item';
+      li.dataset.series = proposal.key;
+      const name = document.createElement('strong');
+      name.className = 'series-name';
+      name.textContent = proposal.name;
+      const years = Object.keys(proposal.columns).map(Number).sort((a, b) => a - b);
+      const span = document.createElement('span');
+      span.className = 'series-years';
+      span.textContent = fill(t.seriesYears, { first: years[0], last: years[years.length - 1], count: years.length });
+      const role = document.createElement('select');
+      role.className = 'series-role';
+      role.dataset.series = proposal.key;
+      role.setAttribute('aria-label', fill(t.seriesRoleFor, { series: proposal.name }));
+      for (const value of ['', ...SERIES_ROLES] as const) {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = value === '' ? t.seriesRoleNone : seriesRoleLabel(t, value);
+        role.appendChild(option);
+      }
+      const assigned = seriesRoleOf(proposal.key);
+      role.value = assigned ?? '';
+      role.addEventListener('change', () => setSeriesRole(proposal, (role.value || null) as SeriesRole | null));
+      li.append(name, span, role);
+      if (assigned) {
+        // The optional total column: any column outside the year series.
+        const total = document.createElement('select');
+        total.className = 'series-total';
+        total.dataset.series = proposal.key;
+        total.setAttribute('aria-label', fill(t.seriesTotalFor, { series: proposal.name }));
+        const none = document.createElement('option');
+        none.value = '';
+        none.textContent = t.seriesTotalNone;
+        total.appendChild(none);
+        for (const key of listColumnOrder(state.headers, state.roles).filter((k) => !inSeries.has(k))) {
+          const option = document.createElement('option');
+          option.value = key;
+          option.textContent = labelOf(key);
+          total.appendChild(option);
+        }
+        total.value = state.series[assigned]!.total ?? '';
+        total.addEventListener('change', () => setSeriesTotal(assigned, total.value || null));
+        li.appendChild(total);
+      }
+      return li;
+    }),
+  );
+}
+
 function renderList(): void {
   const t = strings(state.prefs.lang);
   const head = el('row-table-head');
@@ -850,6 +980,7 @@ function renderList(): void {
   const columns = listColumnOrder(state.headers, state.roles);
   const roleLabels = Object.fromEntries(ROLES.map((r) => [r, roleLabel(t, r)])) as Record<Role, string>;
   renderRoleHelp();
+  renderSeriesPanel();
   columns.forEach((header) => {
     const th = document.createElement('th');
     const labelText = labelOf(header);
@@ -1020,6 +1151,8 @@ function renderList(): void {
   renderColourPanel();
   renderSymbolPanel();
   renderGlanceColumnPicker();
+  renderCardFieldPicker();
+  renderEconomicsOverlay();
   renderAnnotationToolbar();
   renderAnnotationInspector();
   renderStatusPanel();
@@ -1118,6 +1251,9 @@ export function captureWorkState(): WorkState {
     colourLabels: { ...state.colourLabels },
     symbolLabels: { ...state.symbolLabels },
     glanceColumns: state.glanceColumns ? state.glanceColumns.filter((k) => state.headers.includes(k)) : null,
+    cardColumns: state.cardColumns ? state.cardColumns.filter((k) => state.headers.includes(k)) : null,
+    series: effectiveSeries(),
+    currencyUnit: state.currencyUnit,
     annotations: state.annotations.map((a) => {
       const linked = state.annotationLinks.get(a.id);
       return {
@@ -1209,6 +1345,9 @@ export function captureExport(choice: ExportChoice = exportChoice ?? defaultExpo
     areaValues: ws.areaValues.filter((v) => areasUsed.has(v)),
     programValues: ws.programValues.filter((v) => programsUsed.has(v)),
     glanceColumns: ws.glanceColumns ? ws.glanceColumns.filter(keep) : null,
+    // The card fields and the series travel with the columns that travel.
+    cardColumns: ws.cardColumns ? ws.cardColumns.filter(keep) : null,
+    series: keptSeries(ws.series, keep),
     markers: ws.markers.filter((m) => newIndex.has(m.row)).map((m) => ({ ...m, row: newIndex.get(m.row)! })),
     excluded: [],
     presets: [],
@@ -1253,6 +1392,24 @@ export function captureExport(choice: ExportChoice = exportChoice ?? defaultExpo
 
 // The exported page: the application's own single-file page with the data
 // island embedded (one pipeline, FR-11).
+function cloneSeries(series: SeriesAssignments): SeriesAssignments {
+  return Object.fromEntries(SERIES_ROLES.filter((r) => series[r]).map((r) => [r, { ...series[r]!, columns: { ...series[r]!.columns } }]));
+}
+
+// The series as they travel in an exported file: only their kept columns;
+// a series with none left does not travel (FR-53, FR-63).
+function keptSeries(series: SeriesAssignments, keep: (key: string) => boolean): SeriesAssignments {
+  const out: SeriesAssignments = {};
+  for (const role of SERIES_ROLES) {
+    const a = series[role];
+    if (!a) continue;
+    const columns = Object.fromEntries(Object.entries(a.columns).filter(([, key]) => keep(key)));
+    const total = a.total !== null && keep(a.total) ? a.total : null;
+    if (Object.keys(columns).length > 0 || total !== null) out[role] = { name: a.name, columns, total } satisfies SeriesAssignment;
+  }
+  return out;
+}
+
 export function exportPage(now: Date = new Date()): string | null {
   const page = selfPage();
   if (page === null) return null;
@@ -1486,7 +1643,11 @@ function documentLocale(): string {
 // number.
 export function documentTable(): DocumentTable {
   const t = strings(state.prefs.lang);
-  const columns = listColumnOrder(state.headers, state.roles).filter((h) => !state.hiddenHeaders.has(h));
+  // The documents leave the year series out for now (FR-64, the owner's
+  // ruling D9): their economics are a later pass.
+  const series = effectiveSeries();
+  const inSeries = new Set(SERIES_ROLES.flatMap((r) => (series[r] ? [...Object.values(series[r]!.columns), ...(series[r]!.total ? [series[r]!.total!] : [])] : [])));
+  const columns = listColumnOrder(state.headers, state.roles).filter((h) => !state.hiddenHeaders.has(h) && !inSeries.has(h));
   const rows = numbered()
     .filter((n) => !state.excluded.has(n.row))
     .map((n) => [n.label, ...columns.map((key) => (n.row.values[key] ?? '').trim())]);
@@ -1845,6 +2006,9 @@ async function applyWorkState(ws: WorkState): Promise<boolean> {
   state.colourLabels = { ...ws.colourLabels };
   state.symbolLabels = { ...ws.symbolLabels };
   state.glanceColumns = ws.glanceColumns ? [...ws.glanceColumns] : null;
+  state.cardColumns = ws.cardColumns ? [...ws.cardColumns] : null;
+  state.series = cloneSeries(ws.series);
+  state.currencyUnit = ws.currencyUnit;
   state.annotations = [];
   state.annotationLinks = new Map();
   state.hiddenAnnotations = new Set();
@@ -2256,6 +2420,9 @@ function applyPreset(preset: ColumnPreset, kind: 'auto' | 'applied'): void {
   if (preset.areas) state.areaValues = [...preset.areas];
   if (preset.programs) state.programValues = [...preset.programs];
   if (preset.statuses) state.statuses = preset.statuses.map((s) => ({ ...s }));
+  if (preset.cardColumns) state.cardColumns = preset.cardColumns.filter((k) => state.headers.includes(k));
+  if (preset.series) state.series = keptSeries(preset.series, (k) => state.headers.includes(k));
+  if (preset.currencyUnit !== undefined) state.currencyUnit = preset.currencyUnit;
   state.activePreset = preset.name;
   presetMessage = { kind, name: preset.name };
 }
@@ -2282,6 +2449,9 @@ function saveCurrentPreset(): void {
     areas: [...state.areaValues],
     programs: [...state.programValues],
     statuses: state.statuses.map((s) => ({ ...s })),
+    ...(state.cardColumns ? { cardColumns: [...state.cardColumns] } : {}),
+    series: effectiveSeries(),
+    currencyUnit: state.currencyUnit,
   });
   storePresets(state.presets);
   state.activePreset = name;
@@ -2855,19 +3025,43 @@ function detailModel(row: RowData, t: Strings): DetailModel {
       ...(c.edited ? { edited: c.edited, editedText: fill(t.commentEdited, { date: formatCommentDate(c.edited) }) } : {}),
     })),
     note: state.roles.note === undefined ? '' : (row.values[state.roles.note] ?? ''),
-    cardFields: CARD_ROLES.map((role) => state.roles[role])
-      .filter((key): key is string => key !== undefined)
-      .map((key) => ({ key, label: labelOf(key), value: (row.values[key] ?? '').trim() }))
-      // Nothing repeats the header: a field holding the name shown there
-      // (for example the identifier, when no name is given) is left out.
-      .filter((field) => field.value !== '' && field.value !== name),
+    cardFields:
+      state.cardColumns === null
+        ? CARD_ROLES.map((role) => state.roles[role])
+            .filter((key): key is string => key !== undefined)
+            .map((key) => ({ key, label: labelOf(key), value: (row.values[key] ?? '').trim() }))
+            // Nothing repeats the header: a field holding the name shown
+            // there (for example the identifier, when no name is given) is
+            // left out.
+            .filter((field) => field.value !== '' && field.value !== name)
+        : // The work's card fields (FR-62), each shown, a field without a
+          // value saying so.
+          shownCardColumns().map((key) => ({ key, label: labelOf(key), value: (row.values[key] ?? '').trim() })),
     footprints: state.annotations
       .filter((a) => linkedRow(a) === row)
       .map((a) => {
         const squareMetres = trueArea(a, mapView?.background?.projection);
         return { id: a.id, name: annotationName(a, t), area: squareMetres === null ? null : formatArea(squareMetres, areaLocale()) };
       }),
+    seriesGroups: seriesGroups(),
+    economics: economicsFor(row) !== null ? t.economicsAction : null,
   };
+}
+
+// The assigned year series as groups of the details panel (FR-7 as
+// amended): one line each, its years in order, its total column last.
+const openSeriesGroups = new Set<string>();
+
+function seriesGroups(): DetailModel['seriesGroups'] {
+  const series = effectiveSeries();
+  return SERIES_ROLES.filter((r) => series[r]).map((role) => {
+    const a = series[role]!;
+    const years = Object.keys(a.columns).map(Number).sort((x, y) => x - y);
+    const keys = years.map((y) => a.columns[y]);
+    if (a.total !== null) keys.push(a.total);
+    const span = years.length === 0 ? '' : years.length === 1 ? ` · ${years[0]}` : ` · ${years[0]}–${years[years.length - 1]}`;
+    return { role, label: `${a.name}${span}`, keys, open: openSeriesGroups.has(role) };
+  });
 }
 
 // The structured fields of the presentation card (FR-37), in this order.
@@ -2899,11 +3093,18 @@ function renderDetailsPanel(): void {
     model.comments.map((c) => c.id),
     state.statuses,
     model.footprints,
+    model.seriesGroups.map((g) => [g.role, g.label, g.keys]),
+    model.economics,
   ]);
   const target = sameRow && panel.dataset.structure === structure ? document.createElement('div') : panel;
   if (target !== panel) target.id = panel.id;
   renderDetails(target, model, detailLabels(t), {
     close: () => openDetails(null),
+    toggleSeries: (role, open) => {
+      if (open) openSeriesGroups.add(role);
+      else openSeriesGroups.delete(role);
+    },
+    openEconomics: (opener) => openEconomics(rowId(row), opener),
     edit: {
       renderField: (field) => (field.kind === 'status' ? statusCell(row, field.key, model.number) : valueInput(row, field.key, model.number)),
       removeComment: (id) => {
@@ -3612,6 +3813,61 @@ function setGlanceColumn(key: string, shown: boolean): void {
   renderList();
 }
 
+// Card fields (FR-62): the user's choice of columns for the card, or by
+// default the columns of the card's roles. The name column is the card's
+// header already.
+function defaultCardColumns(): string[] {
+  return CARD_ROLES.map((r) => state.roles[r]).filter((k): k is string => k !== undefined);
+}
+
+function shownCardColumns(): string[] {
+  const chosen = state.cardColumns ?? defaultCardColumns();
+  return chosen.filter((key) => state.headers.includes(key) && key !== state.roles.name);
+}
+
+function setCardColumn(key: string, shown: boolean): void {
+  const current = shownCardColumns();
+  const next = shown ? [...current, key] : current.filter((k) => k !== key);
+  // The chosen columns keep the list's column order.
+  const order = listColumnOrder(state.headers, state.roles);
+  state.cardColumns = order.filter((k) => next.includes(k));
+  markDirty();
+  renderList();
+}
+
+function renderCardFieldPicker(): void {
+  const t = strings(state.prefs.lang);
+  el('card-fields-summary').textContent = t.cardFieldsSummary;
+  el('card-fields-hint').textContent = t.cardFieldsHint;
+  el('card-fields-reset').textContent = t.cardFieldsReset;
+  el<HTMLButtonElement>('card-fields-reset').disabled = state.cardColumns === null;
+  const list = el('card-fields-list');
+  list.innerHTML = '';
+  const shown = shownCardColumns();
+  const candidates = listColumnOrder(state.headers, state.roles).filter((k) => k !== state.roles.name);
+  for (const key of candidates) {
+    const li = document.createElement('li');
+    const label = document.createElement('label');
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.className = 'card-field-toggle';
+    box.dataset.header = key;
+    box.checked = shown.includes(key);
+    box.addEventListener('change', () => setCardColumn(key, box.checked));
+    const text = document.createElement('span');
+    text.textContent = labelOf(key);
+    label.append(box, text);
+    li.appendChild(label);
+    list.appendChild(li);
+  }
+  if (candidates.length === 0) {
+    const none = document.createElement('li');
+    none.className = 'notice';
+    none.textContent = t.glanceColumnsNone;
+    list.appendChild(none);
+  }
+}
+
 function renderGlanceColumnPicker(): void {
   const t = strings(state.prefs.lang);
   el('glance-columns-summary').textContent = t.glanceColumns;
@@ -3721,6 +3977,85 @@ function renderGlance(prefix: 'map' | 'presentation', view: MapView | null, sele
   el(`${prefix}-glance-empty`).classList.toggle('hidden', inView.length > 0);
 }
 
+// The economics view (FR-64): an overlay over the page, opened from the card
+// or the details panel for an item with economics, with the card's pattern:
+// a data-state, inert while closed, focus moved in and returned to what
+// opened it, closed by its button or Escape.
+let economicsRow: string | null = null;
+let economicsOpener: HTMLElement | null = null;
+
+function itemSpan(row: RowData): { start: number | null; end: number | null } {
+  const year = (key: string | undefined) => (key === undefined ? null : yearOfValue(row.values[key] ?? ''));
+  return { start: year(state.roles.start), end: year(state.roles.end) };
+}
+
+function economicsFor(row: RowData): Economics | null {
+  return economicsOf(row.values, effectiveSeries(), itemSpan(row), state.currencyUnit);
+}
+
+function openEconomics(id: string, opener: HTMLElement | null): void {
+  economicsRow = id;
+  economicsOpener = opener;
+  renderEconomicsOverlay();
+  el('economics-overlay').querySelector<HTMLElement>('.economics-close')?.focus({ preventScroll: true });
+}
+
+function closeEconomics(): void {
+  const overlay = el('economics-overlay');
+  const hadFocus = overlay.contains(document.activeElement);
+  economicsRow = null;
+  renderEconomicsOverlay();
+  if (hadFocus && economicsOpener?.isConnected) economicsOpener.focus({ preventScroll: true });
+  economicsOpener = null;
+}
+
+function renderEconomicsOverlay(): void {
+  const overlay = el('economics-overlay');
+  const row = economicsRow ? rowById(economicsRow) : undefined;
+  const economics = row ? economicsFor(row) : null;
+  if (!row || !economics) {
+    economicsRow = null;
+    overlay.dataset.state = 'closed';
+    overlay.setAttribute('aria-hidden', 'true');
+    overlay.inert = true;
+    overlay.setAttribute('inert', '');
+    return;
+  }
+  const t = strings(state.prefs.lang);
+  const series = effectiveSeries();
+  const outcome = series.outcome?.name ?? '';
+  const forecast = series.forecast?.name ?? '';
+  const track = outcome && forecast ? `${outcome} / ${forecast}` : outcome || forecast;
+  renderEconomics(
+    overlay,
+    economics,
+    {
+      name: itemLabel(row, numberLabel(row)),
+      heading: t.economicsHeading,
+      close: t.close,
+      year: t.economicsYear,
+      budget: series.budget?.name ?? '',
+      outcome,
+      forecast,
+      track,
+      outside: t.economicsOutside,
+      noValue: t.economicsNoValue,
+      sumBeside: t.economicsSumBeside,
+      composition: t.economicsComposition,
+      compositionOnly: t.economicsCompositionOnly,
+      texts: t.economicsTexts,
+      span: t.economicsSpan,
+    },
+    { locale: areaLocale(), unit: state.currencyUnit },
+    closeEconomics,
+  );
+  overlay.dataset.rowId = rowId(row);
+  overlay.dataset.state = 'open';
+  overlay.setAttribute('aria-hidden', 'false');
+  overlay.inert = false;
+  overlay.removeAttribute('inert');
+}
+
 // The presentation data card (FR-35): a view-only floating card with the
 // same details as the details panel, opened by clicking a marker on the
 // stage. Opening and closing it change nothing in the work.
@@ -3766,11 +4101,18 @@ function renderCard(): void {
   }
   const t = strings(state.prefs.lang);
   const model = detailModel(row, t);
-  const signature = JSON.stringify([state.prefs.lang, model]);
+  const hasEconomics = economicsFor(row) !== null;
+  const signature = JSON.stringify([state.prefs.lang, model, hasEconomics]);
   if (signature !== cardSignature || card.dataset.rowId !== model.rowId || card.childElementCount === 0) {
     const refocus = card.contains(document.activeElement);
     cardSignature = signature;
-    renderCardContent(card, model, { comments: t.detailsComments, close: t.close, fields: t.cardFields, footprints: t.detailsFootprints }, closeCard);
+    renderCardContent(
+      card,
+      model,
+      { comments: t.detailsComments, close: t.close, fields: t.cardFields, footprints: t.detailsFootprints, noData: t.cardNoData },
+      closeCard,
+      hasEconomics ? { label: t.economicsAction, open: (opener) => openEconomics(rowId(row), opener) } : null,
+    );
     if (refocus) card.querySelector<HTMLElement>('.details-close')?.focus({ preventScroll: true });
   }
   // In the narrow viewer, the card docks at the bottom of the stage, in the
@@ -4476,6 +4818,23 @@ function wireEvents(): void {
     renderList();
   });
 
+  el('economics-overlay').addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    // The overlay closes alone: what is beneath it stays as it was.
+    e.preventDefault();
+    e.stopPropagation();
+    closeEconomics();
+  });
+  el('card-fields-reset').addEventListener('click', () => {
+    state.cardColumns = null;
+    markDirty();
+    renderList();
+  });
+  el<HTMLInputElement>('currency-unit').addEventListener('change', (e) => {
+    state.currencyUnit = (e.target as HTMLInputElement).value.trim();
+    markDirty();
+    renderList();
+  });
   el('glance-columns-reset').addEventListener('click', () => {
     state.glanceColumns = null;
     markDirty();

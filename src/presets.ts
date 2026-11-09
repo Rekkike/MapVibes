@@ -5,6 +5,7 @@
 import { isRole, ROLES, type RoleAssignments } from './roles';
 import { parseStatuses, parseValueList, type StatusEntry } from './vocab';
 import { isSymbol } from './symbols';
+import { SERIES_ROLES, type SeriesAssignments } from './economics';
 
 export interface ColumnPreset {
   name: string;
@@ -17,6 +18,11 @@ export interface ColumnPreset {
   programs?: string[];
   // The user's status vocabulary (FR-33), when saved with the preset.
   statuses?: StatusEntry[];
+  // The card fields (FR-62), the year series' roles (FR-63), and the
+  // currency unit (FR-64), when saved with the preset.
+  cardColumns?: string[];
+  series?: SeriesAssignments;
+  currencyUnit?: string;
 }
 
 function sortedCopy(values: string[]): string[] {
@@ -67,11 +73,32 @@ export function clonePreset(p: ColumnPreset): ColumnPreset {
   if (p.areas) out.areas = [...p.areas];
   if (p.programs) out.programs = [...p.programs];
   if (p.statuses) out.statuses = p.statuses.map((s) => ({ ...s }));
+  if (p.cardColumns) out.cardColumns = [...p.cardColumns];
+  if (p.series) out.series = Object.fromEntries(Object.entries(p.series).map(([r, a]) => [r, { ...a, columns: { ...a.columns } }]));
+  if (p.currencyUnit !== undefined) out.currencyUnit = p.currencyUnit;
   return out;
 }
 
 // Validates untrusted preset data (local storage or a work-state file).
 // Returns null if the data is not a valid preset list.
+function parseSeries(raw: unknown, headers: string[]): SeriesAssignments | null {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return null;
+  const out: SeriesAssignments = {};
+  for (const [role, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!(SERIES_ROLES as string[]).includes(role) || typeof value !== 'object' || value === null) return null;
+    const a = value as Record<string, unknown>;
+    if (typeof a.name !== 'string' || typeof a.columns !== 'object' || a.columns === null) return null;
+    const columns: Record<string, string> = {};
+    for (const [year, key] of Object.entries(a.columns as Record<string, unknown>)) {
+      if (!/^\d{4}$/.test(year) || typeof key !== 'string' || !headers.includes(key)) return null;
+      columns[year] = key;
+    }
+    if (a.total !== null && (typeof a.total !== 'string' || !headers.includes(a.total))) return null;
+    out[role as keyof SeriesAssignments] = { name: a.name, columns, total: a.total as string | null };
+  }
+  return out;
+}
+
 export function parsePresets(raw: unknown): ColumnPreset[] | null {
   if (!Array.isArray(raw)) return null;
   const out: ColumnPreset[] = [];
@@ -105,6 +132,20 @@ export function parsePresets(raw: unknown): ColumnPreset[] | null {
       const statuses = parseStatuses(o.statuses, isSymbol);
       if (statuses === null) return null;
       preset.statuses = statuses;
+    }
+    const headers = o.headers as string[];
+    if (o.cardColumns !== undefined) {
+      if (!Array.isArray(o.cardColumns) || !o.cardColumns.every((h) => typeof h === 'string' && headers.includes(h))) return null;
+      preset.cardColumns = [...(o.cardColumns as string[])];
+    }
+    if (o.series !== undefined) {
+      const series = parseSeries(o.series, headers);
+      if (series === null) return null;
+      preset.series = series;
+    }
+    if (o.currencyUnit !== undefined) {
+      if (typeof o.currencyUnit !== 'string') return null;
+      preset.currencyUnit = o.currencyUnit;
     }
     out.push(preset);
   }

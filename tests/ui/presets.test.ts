@@ -51,7 +51,9 @@ describe('saved column presets (FR-23)', () => {
     expect([...byId<HTMLSelectElement>('preset-select').options].map((o) => o.value)).toEqual(['', 'Standard']);
     const stored = JSON.parse(localStorage.getItem('mapvibes.presets')!);
     expect(stored).toEqual([
-      { name: 'Standard', headers: ['ID', 'Start', 'End', 'Group', 'Note'], hidden: ['End'], roles: { identifier: 'ID', name: 'Note' }, areas: [], programs: [], statuses: [] },
+      // The series and the unit are saved too (FR-63, FR-64): none assigned,
+      // the default unit.
+      { name: 'Standard', headers: ['ID', 'Start', 'End', 'Group', 'Note'], hidden: ['End'], roles: { identifier: 'ID', name: 'Note' }, areas: [], programs: [], statuses: [], series: {}, currencyUnit: 'SEK' },
     ]);
   });
 

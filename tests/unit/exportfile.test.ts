@@ -39,7 +39,7 @@ describe('export format (FR-40)', () => {
     expect(f.application).toBe('0.9.0');
     expect(f.preferences).toEqual({ language: 'sv', theme: 'dark' });
     expect(f.workState.format).toBe('mapvibes-work-state');
-    expect(f.workState.schemaVersion).toBe(7);
+    expect(f.workState.schemaVersion).toBe(8);
   });
 
   test('a round trip restores the same data', () => {
@@ -61,7 +61,7 @@ describe('export format (FR-40)', () => {
     expect(data.workState.rows.every((r) => r.comments.length === 0)).toBe(true);
     expect(data.workState.statuses.map((s) => s.name)).toEqual(['Open', 'Done']);
     // It is written back at the current schema version.
-    expect(JSON.parse(serialiseExport(data, AT)).workState.schemaVersion).toBe(7);
+    expect(JSON.parse(serialiseExport(data, AT)).workState.schemaVersion).toBe(8);
   });
 
   test('an unknown export version is rejected and named, never read silently', () => {

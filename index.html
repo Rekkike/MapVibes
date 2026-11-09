@@ -92,6 +92,22 @@
             <p id="role-help-intro" class="notice"></p>
             <ul id="role-help-list"></ul>
           </details>
+          <details id="series-panel" class="vocab-panel">
+            <summary id="series-panel-summary">Year series and economics</summary>
+            <p id="series-panel-hint" class="notice"></p>
+            <p id="series-none" class="notice hidden"></p>
+            <ul id="series-list" class="vocab-list"></ul>
+            <p id="currency-unit-row">
+              <label><span id="currency-unit-label">Currency unit</span> <input type="text" id="currency-unit" maxlength="12" /></label>
+              <span id="currency-unit-hint" class="hint"></span>
+            </p>
+          </details>
+          <details id="card-fields" class="vocab-panel">
+            <summary id="card-fields-summary">Card fields</summary>
+            <p id="card-fields-hint" class="notice"></p>
+            <ul id="card-fields-list"></ul>
+            <button type="button" id="card-fields-reset">Use the role fields</button>
+          </details>
           <div id="vocab-panels">
             <details id="area-panel" class="vocab-panel">
               <summary id="area-panel-summary">Area values</summary>
@@ -399,6 +415,7 @@
         </aside>
       </div>
       <aside id="details-panel" class="details-panel hidden" aria-label="Item details" tabindex="-1"></aside>
+      <div id="economics-overlay" class="economics-overlay" role="dialog" aria-modal="true" data-state="closed" aria-hidden="true" tabindex="-1" inert></div>
     </main>
     <script type="module" src="./src/main.ts"></script>
   </body>

@@ -22,17 +22,89 @@ const REFERENCE = join(process.cwd(), 'dist', 'reference', 'v1.3.1', 'index.html
 const REFERENCE_SHA256 = '077554412e3b6f3cddf1b6b559b29c8450fdbaa5a4231b9bf812c45716d1f75c';
 const RECORD = JSON.parse(readFileSync(join(process.cwd(), 'example-data', 'desktop-baseline-v1.3.1.json'), 'utf8')) as { fingerprint: string; snapshot: Snapshot };
 
-// The intended desktop changes since v1.3.1, and nothing else: Pass 14 adds
-// "Open presentation" at the end of the row of "Load demo" (FR-60), which
-// moves the row's other items sideways, and only sideways.
+// The intended desktop changes since v1.3.1, and nothing else.
+//
+// Pass 14 adds "Open presentation" at the end of the row of "Load demo"
+// (FR-60), which moves the row's other items sideways, and only sideways.
 const MOVED_IN_ROW = ['#manual-start-hint', '#start-empty', '#load-demo'];
+
+// Pass 15 (FR-62 to FR-65, FR-41 as amended): the demo's new columns and the
+// new controls change what is inside these elements; any change inside them
+// is intended.
+const CHANGED_INSIDE = [
+  '#row-table',
+  '#row-table-head',
+  '#row-table-body',
+  '#column-visibility',
+  '#select-filter-column',
+  '#card-fields',
+  '#card-fields-summary',
+  '#card-fields-hint',
+  '#card-fields-list',
+  '#card-fields-reset',
+  '#series-panel',
+  '#series-panel-summary',
+  '#series-panel-hint',
+  '#series-none',
+  '#series-list',
+  '#currency-unit-row',
+  '#currency-unit-label',
+  '#currency-unit',
+  '#currency-unit-hint',
+  '#glance-columns',
+  '#glance-columns-list',
+  '#glance-columns-reset',
+  '#details-panel',
+  '#export-columns',
+  '#export-columns-hint',
+  '#presentation-card',
+  '#presentation-card-title',
+  '#economics-overlay',
+];
+// The filter's column list holds the demo's longer new headers, so the list
+// toolbar's items after it move sideways (and down with the rest).
+const MOVED_IN_TOOLBAR = ['#filter-column-label', '#columns-details', '#columns-summary', '#counter-selected', '#select-all', '#delete-selected'];
+// The containers that hold them grow, in height only.
+const GROWING = ['html', 'body', '#app-main', '#segment-information', '#list-area', '#list-panel', '#list-scroll', '#export-panel'];
+// In these states, what follows the grown content moves down (or, in the
+// scrolled export dialog, up), and nothing else about it changes.
+const SHIFTING_STATES = ['demo-information', 'export-dialog'];
+
+// A line of the differences: "<state> <selector> <what>: <before> → <after>".
+function parse(line: string): { state: string; target: string; all: boolean; what: string; before: string; after: string } | null {
+  const m = /^(\S+) (all )?(.+?)(?: (box\.\w+|[a-z-]+))?: (.+) → (.+)$/.exec(line);
+  if (!m) return null;
+  return { state: m[1], all: m[2] !== undefined, target: m[3], what: m[4] ?? '', before: m[5], after: m[6] };
+}
+
+function inside(target: string, ids: string[]): boolean {
+  return ids.some((id) => target === id || target.startsWith(`${id}>`) || target.startsWith(`${id} `));
+}
 
 function intended(line: string): boolean {
   if (/ all #open-presentation: new$/.test(line)) return true;
-  const moved = /^\S+ all (#[\w-]+): (.+) → (.+)$/.exec(line);
-  if (!moved || !MOVED_IN_ROW.includes(moved[1])) return false;
-  // The same entry but for its horizontal position.
-  return moved[2].split('|').slice(1).join('|') === moved[3].split('|').slice(1).join('|');
+  if (/ all #economics-overlay(>\S+)?: new$/.test(line)) return true;
+  const newEntry = /^(\S+) all (\S+): new$/.exec(line);
+  if (newEntry) return inside(newEntry[2], CHANGED_INSIDE);
+  const d = parse(line);
+  if (!d) return false;
+  // Pass 14's row.
+  if (d.all && MOVED_IN_ROW.includes(d.target) && d.before.split('|').slice(1).join('|') === d.after.split('|').slice(1).join('|')) return true;
+  if (inside(d.target, CHANGED_INSIDE)) return true;
+  if (d.all) {
+    const [a, b] = [d.before.split('|'), d.after.split('|')];
+    // A vertical shift: only the top changed.
+    if (SHIFTING_STATES.includes(d.state) && a[0] === b[0] && a.slice(2).join('|') === b.slice(2).join('|')) return true;
+    // A growing container: the same left and width, the rest unchanged; it
+    // may also have moved down.
+    if (GROWING.includes(d.target) && a[0] === b[0] && a[2] === b[2] && a.slice(4).join('|') === b.slice(4).join('|')) return true;
+    // The toolbar's items: moved, the same but for the filter label's width.
+    if (d.state === 'demo-information' && MOVED_IN_TOOLBAR.includes(d.target) && a[3] === b[3] && a.slice(4).join('|') === b.slice(4).join('|')) return true;
+    return false;
+  }
+  if (GROWING.includes(d.target) && ['box.height', 'height', 'box.y', 'grid-template-rows'].includes(d.what)) return true;
+  if (SHIFTING_STATES.includes(d.state) && d.what === 'box.y') return true;
+  return false;
 }
 
 let browser: Browser;
@@ -68,8 +140,10 @@ describe('the desktop layout is that of v1.3.1 (Pass 13, unit 4)', () => {
     const current = await snapshotBuild(browser, BUILT);
     expect(current.fingerprint).toBe(reference.fingerprint);
     const found = differences(reference.snapshot, current.snapshot);
-    // The intended changes are there, in the states with the start row.
-    expect(found.filter(intended).filter((l) => l.endsWith(': new')).map((l) => l.split(' ')[0])).toEqual(['start', 'demo-information']);
+    // The intended changes are there: the new action in the states with the
+    // start row, the economics overlay in every state.
+    expect(found.filter((l) => / all #open-presentation: new$/.test(l)).map((l) => l.split(' ')[0])).toEqual(['start', 'demo-information']);
+    expect(found.some((l) => / all #economics-overlay: new$/.test(l))).toBe(true);
     expect(found.filter((l) => !intended(l))).toEqual([]);
   }, 120_000);
 });

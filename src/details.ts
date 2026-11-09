@@ -46,6 +46,18 @@ export interface DetailModel {
   // The annotations linked to the item as its footprints (FR-48), each by
   // name, with its area where it can be measured honestly (FR-49), else null.
   footprints: DetailFootprint[];
+  // For the panel (FR-7 as amended in v1.6.0): each assigned year series as
+  // one group of its columns, and the Economics action's label when the item
+  // has economics (FR-64).
+  seriesGroups: DetailSeriesGroup[];
+  economics: string | null;
+}
+
+export interface DetailSeriesGroup {
+  role: string;
+  label: string;
+  keys: string[];
+  open: boolean;
 }
 
 export interface DetailFootprint {
@@ -74,6 +86,9 @@ export interface DetailLabels {
 
 export interface DetailHandlers {
   close(): void;
+  // The series groups' opening and closing, and the Economics action.
+  toggleSeries?(role: string, open: boolean): void;
+  openEconomics?(opener: HTMLElement): void;
   // Present only when the details are editable.
   edit?: {
     renderField(field: DetailField): HTMLElement;
@@ -143,7 +158,31 @@ export function renderDetails(container: HTMLElement, model: DetailModel, labels
   fact(labels.symbol, model.symbolName, 'details-symbol');
 
   const fields = el('dl', 'details-fields');
+  // A series' columns go into its group, placed where its first column
+  // would be; the year values stay editable inside it.
+  const groupOf = new Map<string, DetailSeriesGroup>();
+  for (const group of model.seriesGroups) for (const key of group.keys) groupOf.set(key, group);
+  const groupLists = new Map<DetailSeriesGroup, HTMLElement>();
   for (const field of model.fields) {
+    const group = groupOf.get(field.key);
+    let target: HTMLElement = fields;
+    if (group) {
+      let inner = groupLists.get(group);
+      if (!inner) {
+        const wrapper = el('div', 'details-field details-series');
+        wrapper.dataset.role = group.role;
+        const box = el('details', 'details-series-group');
+        box.open = group.open;
+        box.addEventListener('toggle', () => handlers.toggleSeries?.(group.role, box.open));
+        box.appendChild(el('summary', 'details-series-summary', group.label));
+        inner = el('dl', 'details-series-fields');
+        box.appendChild(inner);
+        wrapper.appendChild(box);
+        fields.appendChild(wrapper);
+        groupLists.set(group, inner);
+      }
+      target = inner;
+    }
     const dt = el('dt', 'details-label', field.label);
     const dd = el('dd', 'details-value');
     dd.dataset.header = field.key;
@@ -158,6 +197,15 @@ export function renderDetails(container: HTMLElement, model: DetailModel, labels
     // in the layout.
     const wrapper = el('div', 'details-field');
     wrapper.append(dt, dd);
+    target.appendChild(wrapper);
+  }
+  if (model.economics !== null && handlers.openEconomics) {
+    const open = handlers.openEconomics;
+    const action = el('button', 'details-economics', model.economics);
+    action.type = 'button';
+    action.addEventListener('click', () => open(action));
+    const wrapper = el('div', 'details-field details-economics-row');
+    wrapper.appendChild(action);
     fields.appendChild(wrapper);
   }
 
@@ -235,7 +283,14 @@ export function renderDetails(container: HTMLElement, model: DetailModel, labels
 // structured fields in a compact aligned grid. No number, colour, or symbol
 // lines (the marker shows them) and no line repeating the name; the item's
 // footprints last (FR-48); sections without content are left out.
-export function renderCard(container: HTMLElement, model: DetailModel, labels: { comments: string; close: string; fields: string; footprints: string }, close: () => void): void {
+export function renderCard(
+  container: HTMLElement,
+  model: DetailModel,
+  labels: { comments: string; close: string; fields: string; footprints: string; noData: string },
+  close: () => void,
+  // The Economics action (FR-64), for an item that has economics.
+  economics: { label: string; open: (opener: HTMLElement) => void } | null = null,
+): void {
   container.replaceChildren();
   container.dataset.rowId = model.rowId;
   const header = el('div', 'details-header card-header');
@@ -276,7 +331,9 @@ export function renderCard(container: HTMLElement, model: DetailModel, labels: {
     grid.setAttribute('aria-label', labels.fields);
     for (const field of model.cardFields) {
       const wrapper = el('div', 'card-field');
-      const dd = el('dd', 'card-value', field.value);
+      // A chosen field without a value says so (FR-62).
+      const dd = field.value === '' ? el('dd', 'card-value is-empty', '–') : el('dd', 'card-value', field.value);
+      if (field.value === '') dd.setAttribute('aria-label', labels.noData);
       dd.dataset.header = field.key;
       wrapper.append(el('dt', 'card-label', field.label), dd);
       grid.appendChild(wrapper);
@@ -285,4 +342,10 @@ export function renderCard(container: HTMLElement, model: DetailModel, labels: {
   }
   const footprints = footprintList(model, labels.footprints, 'card-footprints');
   if (footprints) container.appendChild(footprints);
+  if (economics) {
+    const action = el('button', 'card-economics', economics.label);
+    action.type = 'button';
+    action.addEventListener('click', () => economics.open(action));
+    container.appendChild(action);
+  }
 }

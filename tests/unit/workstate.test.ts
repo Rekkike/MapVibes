@@ -59,6 +59,9 @@ function sample(): WorkState {
     filter: { kind: 'contains', header: 'Note', text: 'item' },
     numbering: 'grouped',
     listView: 'grouped',
+    cardColumns: ['Group', MK],
+    series: {},
+    currencyUnit: 'kr',
   };
 }
 
@@ -107,8 +110,8 @@ describe('work-state file (FR-13)', () => {
   test('the file carries the format name, schema version, and save time', () => {
     const file = fileOf(sample());
     expect(file.format).toBe(WORK_STATE_FORMAT);
-    expect(file.schemaVersion).toBe(7);
-    expect(WORK_STATE_SCHEMA_VERSION).toBe(7);
+    expect(file.schemaVersion).toBe(8);
+    expect(WORK_STATE_SCHEMA_VERSION).toBe(8);
     expect(file.savedAt).toBe('2026-01-02T03:04:05.000Z');
   });
 
@@ -125,7 +128,7 @@ describe('work-state file (FR-13)', () => {
   });
 
   test('an unknown schema version is rejected and named, never loaded silently', () => {
-    for (const version of [8, 0, '7', null]) {
+    for (const version of [9, 0, '8', null]) {
       const file = { ...fileOf(sample()), schemaVersion: version };
       expect(expectError(JSON.stringify(file), 'unknown-version').detail).toBe(String(version));
     }
@@ -243,7 +246,7 @@ describe('schema version 1 migration (FR-13)', () => {
     expect(migrated.manualColumns).toEqual([]);
     expect(migrated.rows.every((r) => !r.manual)).toBe(true);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(7);
+    expect(JSON.parse(text).schemaVersion).toBe(8);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 
@@ -310,7 +313,7 @@ describe('schema version 2 migration (FR-13)', () => {
   test('a migrated version 2 file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v2Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(7);
+    expect(JSON.parse(text).schemaVersion).toBe(8);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 
@@ -382,7 +385,7 @@ describe('schema version 3 migration (FR-13)', () => {
   test('a migrated version 3 file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v3Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(7);
+    expect(JSON.parse(text).schemaVersion).toBe(8);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 });
@@ -468,7 +471,7 @@ describe('schema version 4 migration (FR-13)', () => {
   test('a migrated version 4 file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v4Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(7);
+    expect(JSON.parse(text).schemaVersion).toBe(8);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 });
@@ -535,7 +538,7 @@ describe('schema version 6: programs, colour labels, at-a-glance columns, annota
     const state = parseWorkState(JSON.stringify(file));
     expect([state.programValues, state.colourLabels, state.glanceColumns, state.annotations]).toEqual([[], {}, null, []]);
     expect(state.background!.projection).toBeUndefined();
-    expect(JSON.parse(serialiseWorkState(state, SAVED_AT)).schemaVersion).toBe(7);
+    expect(JSON.parse(serialiseWorkState(state, SAVED_AT)).schemaVersion).toBe(8);
   });
 
   test('version 6 fields in an older file are ignored, as that version never wrote them', () => {
@@ -635,5 +638,60 @@ describe('schema version 7: the numbering mode and the list view (FR-17)', () =>
     expectError(JSON.stringify(file), 'invalid');
     const v6 = parseWorkState(readFileSync(join(process.cwd(), 'example-data', 'example-work-state-v6.json'), 'utf8'));
     expect([v6.numbering, v6.listView]).toEqual(['global', 'flat']);
+  });
+});
+
+describe('schema version 8: card fields, year series, and the currency unit (FR-62 to FR-64, FR-13)', () => {
+  // The sample with year columns, assigned to the budget and outcome roles.
+  function withSeries(): WorkState {
+    const state = sample();
+    state.headers = [...state.headers, 'Budget 2024', 'Budget 2025', 'Budget total', 'Utfall 2024'];
+    state.rows = state.rows.map((r) => ({ ...r, values: { ...r.values, 'Budget 2024': '100', 'Budget 2025': '', 'Budget total': '', 'Utfall 2024': '' } }));
+    state.series = {
+      budget: { name: 'Budget', columns: { 2024: 'Budget 2024', 2025: 'Budget 2025' }, total: 'Budget total' },
+      outcome: { name: 'Utfall', columns: { 2024: 'Utfall 2024' }, total: null },
+    };
+    return state;
+  }
+
+  test('the card fields, the series, and the unit round-trip', () => {
+    const back = parseWorkState(serialiseWorkState(withSeries(), SAVED_AT));
+    expect(back.cardColumns).toEqual(['Group', MK]);
+    expect(back.series).toEqual(withSeries().series);
+    expect(back.currencyUnit).toBe('kr');
+    const file = JSON.parse(serialiseWorkState(withSeries(), SAVED_AT));
+    expect(file.card).toEqual({ columns: ['Group', MK] });
+    expect(file.economics.series.budget).toEqual({ name: 'Budget', columns: { 2024: 'Budget 2024', 2025: 'Budget 2025' }, total: 'Budget total' });
+  });
+
+  test('a file of version 7 opens with the role fields, no series, and the default unit', () => {
+    const v6 = readFileSync(join(process.cwd(), 'example-data', 'example-work-state-v6.json'), 'utf8');
+    const state = parseWorkState(v6);
+    expect([state.cardColumns, state.series, state.currencyUnit]).toEqual([null, {}, 'SEK']);
+    const file = JSON.parse(serialiseWorkState(withSeries(), SAVED_AT));
+    file.schemaVersion = 7;
+    delete file.card;
+    delete file.economics;
+    expect([parseWorkState(JSON.stringify(file)).cardColumns, parseWorkState(JSON.stringify(file)).series]).toEqual([null, {}]);
+  });
+
+  test('a card choice or a series naming a column the work does not have is dropped', () => {
+    const file = JSON.parse(serialiseWorkState(withSeries(), SAVED_AT));
+    file.card.columns = ['Group', 'Nowhere'];
+    file.economics.series.outcome.columns['2025'] = 'Nowhere';
+    const back = parseWorkState(JSON.stringify(file));
+    expect(back.cardColumns).toBeNull();
+    expect(Object.keys(back.series)).toEqual(['budget']);
+  });
+
+  test('an unknown role or a year that is not a year is refused', () => {
+    const bad = (mutate: (f: any) => void) => {
+      const file = JSON.parse(serialiseWorkState(withSeries(), SAVED_AT));
+      mutate(file);
+      return JSON.stringify(file);
+    };
+    expectError(bad((f) => (f.economics.series.profit = f.economics.series.budget)), 'invalid');
+    expectError(bad((f) => (f.economics.series.budget.columns = { '24': 'Budget 2024' })), 'invalid');
+    expectError(bad((f) => (f.economics.unit = 5)), 'invalid');
   });
 });

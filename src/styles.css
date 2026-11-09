@@ -2260,6 +2260,260 @@ button.secondary-action {
   font-style: italic;
 }
 
+/* A year series in the details panel (FR-7 as amended in v1.6.0): one line
+   across the panel, its year fields in the panel's grid inside, and the
+   Economics action after the fields. */
+.details-panel .details-field.details-series,
+.details-panel .details-field.details-economics-row {
+  grid-column: 1 / -1;
+}
+
+.details-series-summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.details-panel .details-series-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+  gap: var(--dense-2) var(--dense-3);
+  margin: var(--dense-2) 0 0;
+}
+
+.details-economics {
+  justify-self: start;
+}
+
+/* Card fields (FR-62), chosen like the at-a-glance columns. */
+#card-fields {
+  margin-bottom: var(--dense-2);
+  font-size: var(--dense-font);
+}
+
+#card-fields ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: var(--dense-1) var(--dense-3);
+  margin: var(--dense-2) 0;
+  padding: 0;
+  list-style: none;
+}
+
+#card-fields label {
+  display: flex;
+  align-items: center;
+  gap: var(--dense-2);
+}
+
+.presentation-card .card-value.is-empty {
+  color: var(--muted);
+}
+
+/* The economics view (FR-64): an overlay centred over the page, with the
+   card's look and motion; the years as rows, the amounts aligned, the bar
+   inside the row (solid for an outcome, an outline for a forecast). */
+.economics-overlay {
+  position: fixed;
+  z-index: 40;
+  left: 50%;
+  top: 50%;
+  width: min(40rem, calc(100vw - 2 * var(--space-3)));
+  max-height: calc(100vh - 4rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-3) calc(1.25 * var(--space-3));
+  border: 1px solid var(--border);
+  border-radius: calc(2 * var(--radius));
+  background: var(--panel);
+  color: var(--fg);
+  box-shadow: var(--card-shadow);
+  font-size: 1rem;
+  line-height: 1.45;
+  opacity: 1;
+  transform: translate(-50%, -50%);
+  transition:
+    opacity var(--motion-quick) var(--ease-out),
+    visibility 0s linear 0s;
+}
+
+.economics-overlay[data-state='closed'] {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--motion-quick) var(--ease-out),
+    visibility 0s linear var(--motion-quick);
+}
+
+.economics-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.economics-kicker {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.economics-title {
+  margin: 0;
+  font-size: 1.25rem;
+  line-height: 1.25;
+}
+
+.economics-close {
+  margin-left: auto;
+}
+
+.economics-totals {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-1) var(--space-3);
+  margin: 0 0 var(--space-2);
+}
+
+.economics-total {
+  display: contents;
+}
+
+.economics-total-label {
+  font-weight: 600;
+}
+
+.economics-total-value {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.economics-total-sum,
+.economics-total-detail,
+.economics-span,
+.economics-texts,
+.economics-kind,
+.economics-amount.is-empty,
+.economics-amount.is-text {
+  color: var(--muted);
+}
+
+.economics-total-detail {
+  display: block;
+  font-size: 0.875rem;
+}
+
+.economics-span,
+.economics-texts {
+  margin: 0 0 var(--space-2);
+  font-size: 0.875rem;
+}
+
+.economics-amount.is-text {
+  font-style: italic;
+}
+
+.economics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.economics-table th,
+.economics-table td {
+  padding: var(--space-1) var(--space-2);
+  border-top: 1px solid var(--border);
+  text-align: right;
+  vertical-align: top;
+}
+
+.economics-table thead th {
+  border-top: none;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.economics-table .economics-year {
+  text-align: left;
+  white-space: nowrap;
+}
+
+.economics-table tr.is-outside {
+  background: var(--bg);
+}
+
+.economics-outside {
+  display: block;
+  color: var(--warning);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.economics-track-line {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0 var(--space-2);
+}
+
+.economics-kind {
+  font-size: 0.8125rem;
+}
+
+.economics-bar {
+  display: block;
+  box-sizing: border-box;
+  height: 0.4rem;
+  margin: 0.2rem 0 0 auto;
+  border-radius: 0.2rem;
+  background: var(--accent);
+}
+
+.economics-bar[data-kind='forecast'] {
+  border: 1.5px solid var(--accent);
+  background: transparent;
+}
+
+.card-economics {
+  margin-top: var(--space-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .economics-overlay,
+  .economics-overlay[data-state='closed'] {
+    transition: none;
+  }
+}
+
+/* Year series and economics (FR-63): one line per proposed series, with its
+   use and, once used, its total column; the currency unit below. */
+#series-panel {
+  margin-bottom: var(--dense-2);
+  font-size: var(--dense-font);
+}
+
+.series-item {
+  flex-wrap: wrap;
+  gap: var(--dense-1) var(--dense-2);
+}
+
+.series-years {
+  color: var(--muted);
+}
+
+#currency-unit-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dense-1) var(--dense-2);
+  margin: var(--dense-2) 0 0;
+}
+
+#currency-unit {
+  width: 7em;
+}
+
 /* Reset demo (FR-56): a small action beside the demo label. */
 #demo-reset {
   padding: 0 var(--space-2);
@@ -2478,6 +2732,18 @@ html[data-boot='failed'] #boot-notice {
     max-height: min(60%, 26rem);
     overflow-y: auto;
     overscroll-behavior: contain;
+  }
+
+  /* The economics view as a bottom sheet (FR-64). */
+  html[data-mode='viewer'] .economics-overlay {
+    left: var(--space-2);
+    right: var(--space-2);
+    top: auto;
+    bottom: var(--space-2);
+    width: auto;
+    max-height: 85dvh;
+    padding: var(--space-3);
+    transform: none;
   }
 
   @media (prefers-reduced-motion: reduce) {

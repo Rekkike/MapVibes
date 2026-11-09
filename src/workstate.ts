@@ -60,10 +60,17 @@ import type { MercatorProjection } from './osm';
 import type { Background } from './mapview';
 import { SEGMENTS, type Segment } from './segments';
 import type { Point, Viewport } from './viewport';
+import { DEFAULT_CURRENCY_UNIT, SERIES_ROLES, type SeriesAssignments } from './economics';
 
 export const WORK_STATE_FORMAT = 'mapvibes-work-state';
-export const WORK_STATE_SCHEMA_VERSION = 7;
-export const READABLE_SCHEMA_VERSIONS = [1, 2, 3, 4, 5, 6, 7];
+// Schema version 8 adds to version 7 the card fields (FR-62), the year
+// series assigned to the budget, forecast, and outcome roles with their
+// total columns (FR-63), and the currency unit (FR-64). Files of versions 1
+// to 7 have the role fields on the card, no series, and the default unit. A
+// card choice or a series that names a column the work does not have was
+// not made on this work and is dropped, like the at-a-glance choice.
+export const WORK_STATE_SCHEMA_VERSION = 8;
+export const READABLE_SCHEMA_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8];
 export const SUGGESTED_FILE_NAME = 'mapvibes-work-state.json';
 
 export interface WorkStateRow {
@@ -149,6 +156,11 @@ export interface WorkState {
   // Version 7: the numbering mode and the list view (FR-17).
   numbering: 'global' | 'grouped';
   listView: 'flat' | 'grouped';
+  // Version 8: the card fields or null for the role fields (FR-62), the
+  // series assignments (FR-63), and the currency unit (FR-64).
+  cardColumns: string[] | null;
+  series: SeriesAssignments;
+  currencyUnit: string;
 }
 
 export type WorkStateErrorCode = 'not-json' | 'not-work-state' | 'unknown-version' | 'invalid';
@@ -250,6 +262,16 @@ export function serialiseWorkState(state: WorkState, savedAt: Date): string {
     colourLabels: Object.fromEntries(COLOURS.filter((c) => state.colourLabels[c] !== undefined).map((c) => [c, state.colourLabels[c]])),
     symbolLabels: Object.fromEntries(SYMBOLS.filter((s) => state.symbolLabels[s] !== undefined).map((s) => [s, state.symbolLabels[s]])),
     glance: { columns: state.glanceColumns === null ? null : [...state.glanceColumns] },
+    card: { columns: state.cardColumns === null ? null : [...state.cardColumns] },
+    economics: {
+      unit: state.currencyUnit,
+      series: Object.fromEntries(
+        SERIES_ROLES.filter((r) => state.series[r] !== undefined).map((r) => {
+          const a = state.series[r]!;
+          return [r, { name: a.name, columns: { ...a.columns }, total: a.total }];
+        }),
+      ),
+    },
     annotations: state.annotations.map((a) => ({
       kind: a.kind,
       points: a.points.map((p) => ({ x: p.x, y: p.y })),
@@ -520,7 +542,39 @@ export function parseWorkState(text: string): WorkState {
     },
     numbering: version >= 7 ? oneOf(list.numbering, ['global', 'grouped'] as const, 'view.list.numbering') : 'global',
     listView: version >= 7 ? oneOf(list.grouping, ['flat', 'grouped'] as const, 'view.list.grouping') : 'flat',
+    ...parseVersion8(file, version, headers),
   };
+}
+
+// Version 8 (FR-62 to FR-64).
+function parseVersion8(file: Json, version: number, headers: string[]): Pick<WorkState, 'cardColumns' | 'series' | 'currencyUnit'> {
+  if (version < 8) return { cardColumns: null, series: {}, currencyUnit: DEFAULT_CURRENCY_UNIT };
+  const card = obj(file.card, 'card');
+  let cardColumns: string[] | null = null;
+  if (card.columns !== null) {
+    cardColumns = arr(card.columns, 'card.columns').map((h, i) => str(h, `card.columns[${i}]`));
+    if (cardColumns.some((h) => !headers.includes(h))) cardColumns = null;
+  }
+  const economics = obj(file.economics, 'economics');
+  const currencyUnit = str(economics.unit, 'economics.unit');
+  const seriesIn = obj(economics.series, 'economics.series');
+  const series: SeriesAssignments = {};
+  for (const [role, value] of Object.entries(seriesIn)) {
+    const r = oneOf(role, SERIES_ROLES, `economics.series.${role}`);
+    const where = `economics.series.${r}`;
+    const a = obj(value, where);
+    const name = str(a.name, `${where}.name`);
+    const columns: Record<string, string> = {};
+    for (const [year, key] of Object.entries(obj(a.columns, `${where}.columns`))) {
+      if (!/^\d{4}$/.test(year)) invalid('invalidVocabulary', `${where}.columns`);
+      columns[year] = str(key, `${where}.columns.${year}`);
+    }
+    const total = a.total === null ? null : str(a.total, `${where}.total`);
+    // A series naming a column the work does not have is dropped.
+    if (Object.values(columns).some((k) => !headers.includes(k)) || (total !== null && !headers.includes(total))) continue;
+    series[r] = { name, columns, total };
+  }
+  return { cardColumns, series, currencyUnit };
 }
 
 // Version 1 records a column mapping (header, kept flag, role) that includes

@@ -1,13 +1,13 @@
-Objekt,Namn,Område,Program,Status,Startår,Slutår,Anteckning
-D-01,Norra porten,Parkkvarteren,Kulturarvsleden,Klar,2019,2021,Entré vid kartans övre kant.
-D-02,Trädgårdsgången,Parkkvarteren,Gröna stråk,Pågår,2022,2025,Ett av tre objekt nära varandra.
-D-03,Parkfontänen,Parkkvarteren,,Planerad,2025,2027,Ett av tre objekt nära varandra.
-D-04,Utsiktsterrassen,Parkkvarteren,,Under granskning,2024,2026,Symbolen är vald för hand och går före statusen.
-D-05,Älvtrappan,Älvstranden,Gröna stråk,Pågår,2023,2026,Vid älven.
-D-06,Östra bron,Älvstranden,,Pausad,2021,2027,Vid kartans högra kant.
-D-07,Sjöbryggan,Sjöstranden,Gröna stråk,Klar,2018,2020,På sjöstranden.
-D-08,Båthuset,Sjöstranden,,Avbruten,2020,2022,Genomfördes inte.
-D-09,Saluhallen,Gamla staden,Kulturarvsleden,Pågår,2022,2026,Symbolen är vald för hand och går före statusen.
-D-10,Klocktornet,Gamla staden,Gröna stråk,Planerad,2026,2028,Vid huvudvägen.
-D-11,Stationstorget,Stationsområdet,Kulturarvsleden,Under granskning,2024,2027,Nära kartans nedre kant.
-D-12,Gamla kvarnen,,,Planerad,2027,2029,Ännu inte placerad på kartan och utan områdesvärde.
+Objekt,Namn,Område,Program,Status,Startår,Slutår,Anteckning,Projektägare,Projektledare,Budget 2018,Budget 2019,Budget 2020,Budget 2021,Budget 2022,Budget 2023,Budget 2024,Budget 2025,Budget 2026,Budget 2027,Budget 2028,Budget 2029,Prognos 2018,Prognos 2019,Prognos 2020,Prognos 2021,Prognos 2022,Prognos 2023,Prognos 2024,Prognos 2025,Prognos 2026,Prognos 2027,Prognos 2028,Prognos 2029,Utfall 2018,Utfall 2019,Utfall 2020,Utfall 2021,Utfall 2022,Utfall 2023,Utfall 2024,Utfall 2025
+D-01,Norra porten,Parkkvarteren,Kulturarvsleden,Klar,2019,2021,Entré vid kartans övre kant.,Alva Lind,Bo Ek,,237000,262000,287000,,,,,,,,,,267000,242000,307000,,,,,,,,,,257000,247000,292000,,,,
+D-02,Trädgårdsgången,Parkkvarteren,Gröna stråk,Pågår,2022,2025,Ett av tre objekt nära varandra.,Cia Holm,Dan Strand,,,,,274000,299000,324000,349000,,,,,,,,,284000,259000,324000,389000,,,,,,,,,279000,269000,314000,394000
+D-03,Parkfontänen,Parkkvarteren,,Planerad,2025,2027,Ett av tre objekt nära varandra.,Alva Lind,,,,,,,,,311000,336000,361000,,,,,,,,,,,,,,,,,,,,,,
+D-04,Utsiktsterrassen,Parkkvarteren,,Under granskning,2024,2026,Symbolen är vald för hand och går före statusen.,Ebba Vik,Bo Ek,,,,,,,348000,,398000,,,,,,,,,,318000,,358000,,,,,,,,,,323000,
+D-05,Älvtrappan,Älvstranden,Gröna stråk,Pågår,2023,2026,Vid älven.,Cia Holm,Fred Ås,,,,,,385000,410000,435000,460000,,,,,,,,,425000,400000,465000,440000,,,,,,,,,435000,390000,
+D-06,Östra bron,Älvstranden,,Pausad,2021,2027,Vid kartans högra kant.,Ebba Vik,,,,,422000,447000,472000,497000,522000,547000,572000,,,,,,442000,417000,482000,457000,522000,587000,562000,,,,,,457000,412000,492000,447000,
+D-07,Sjöbryggan,Sjöstranden,Gröna stråk,Klar,2018,2020,På sjöstranden.,Alva Lind,Dan Strand,459000,484000,509000,,,,,,,,,,459000,524000,499000,,,,,,,,,,444000,524000,514000,,,,,
+D-08,Båthuset,Sjöstranden,,Avbruten,2020,2022,Genomfördes inte.,Gun Berg,Fred Ås,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+D-09,Saluhallen,Gamla staden,Kulturarvsleden,Pågår,2022,2026,Symbolen är vald för hand och går före statusen.,Cia Holm,Hugo Sand,,,,,533000,558000,583000,608000,633000,,,,,,,,493000,558000,623000,598000,663000,,,,,,,,488000,568000,613000,
+D-10,Klocktornet,Gamla staden,Gröna stråk,Planerad,2026,2028,Vid huvudvägen.,Gun Berg,,,,,,,,,60000,570000,595000,620000,,,,,,,,,,600000,575000,640000,,,,,,,,,
+D-11,Stationstorget,Stationsområdet,Kulturarvsleden,Under granskning,2024,2027,Nära kartans nedre kant.,Ebba Vik,Hugo Sand,,,,,,,207000,232000,257000,282000,,,,,,,,,217000,192000,257000,322000,,,,,,,,,222000,
+D-12,Gamla kvarnen,,,Planerad,2027,2029,Ännu inte placerad på kartan och utan områdesvärde.,,,,,,,,,,,,244000,269000,294000,,,,,,,,,,234000,299000,274000,,,,,,,,

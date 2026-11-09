@@ -34,6 +34,9 @@ const SAME_IN_BOTH: Record<string, string> = {
   toolPolygon: 'Swedish "polygon"',
   kindPolygon: 'Swedish "polygon"',
   annotationArea: 'Swedish "area"',
+  seriesRoleBudget: 'Swedish "budget"',
+  economicsComposition: 'placeholders only: the series names and their years',
+  economicsCompositionOnly: 'placeholders only: a series name and its years',
 };
 
 describe('translation parity: the string tables (FR-19)', () => {
@@ -177,6 +180,13 @@ describe('translation parity: the rendered interface in Swedish (FR-19)', () => 
       pointer('pointerdown', m, STAGE.left + parseFloat(m.style.left), STAGE.top + parseFloat(m.style.top));
       pointer('pointerup', m, STAGE.left + parseFloat(m.style.left), STAGE.top + parseFloat(m.style.top));
       found.push(...leaks(english));
+      // The economics view of the item (FR-64), opened from its card.
+      const economics = byId('presentation-card').querySelector<HTMLButtonElement>('.card-economics');
+      expect(economics).not.toBeNull();
+      economics!.click();
+      expect(byId('economics-overlay').dataset.state).toBe('open');
+      found.push(...leaks(english));
+      byId('economics-overlay').querySelector<HTMLButtonElement>('.economics-close')!.click();
       byId('export-open').click();
       found.push(...leaks(english));
       byId('export-cancel').click();

@@ -81,9 +81,9 @@ export function byId<T extends HTMLElement = HTMLElement>(id: string): T {
 
 // Imports the example workbook through the real file-picker path (direct
 // import: the list is populated without any further step).
-export async function importExampleWorkbook(): Promise<void> {
+export async function importExampleWorkbook(name = 'example.xlsx'): Promise<void> {
   const input = byId<HTMLInputElement>('file-input');
-  const file = exampleFile('example.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  const file = exampleFile(name, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   Object.defineProperty(input, 'files', { value: [file], configurable: true });
   input.dispatchEvent(new Event('change'));
   await flush();
@@ -228,8 +228,8 @@ export function presentationMarkers(): HTMLElement[] {
 
 // Imports the example, assigns the identifier role, loads the background, and
 // places markers for the given list positions at the given stage points.
-export async function placeExampleMarkers(points: Array<[number, number, number]>): Promise<void> {
-  await importExampleWorkbook();
+export async function placeExampleMarkers(points: Array<[number, number, number]>, workbook = 'example.xlsx'): Promise<void> {
+  await importExampleWorkbook(workbook);
   setRole('ID', 'identifier');
   byId('tab-map').click();
   await loadExampleBackground();
