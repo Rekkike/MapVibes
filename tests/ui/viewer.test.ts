@@ -106,8 +106,12 @@ describe('exported viewer (FR-38, FR-20)', () => {
     expect(byId('presentation-stage').dataset.hasBackground).toBe('true');
     expect(byId<HTMLImageElement>('presentation-image').getAttribute('src')!.startsWith('data:image/png;base64,')).toBe(true);
     expect(presentationMarkers().map((m) => m.textContent)).toEqual(['3', '5']);
+    // The viewer's legend is used-only (FR-75): every example row is green and
+    // carries the default circle, so only those appear.
     const legend = [...byId('presentation-legend').querySelectorAll<HTMLElement>('.legend-entry[data-colour]')].map((e) => e.dataset.colour);
-    expect(legend).toEqual(['green', 'blue', 'yellow', 'red']);
+    expect(legend).toEqual(['green']);
+    const shapes = [...byId('presentation-legend').querySelectorAll<HTMLElement>('.legend-entry[data-shape]')].map((e) => e.dataset.shape);
+    expect(shapes).toEqual(['circle']);
   });
 
   test('no item list is rendered, while the data island still carries every shared item (FR-38 as amended in v1.3.1)', () => {

@@ -191,7 +191,12 @@ describe('the timeline in the application (FR-66, FR-67, FR-70)', () => {
         // The plain wheel scrolls the lines, and leaves the zoom alone.
         const scroller = page.locator('#presentation-timeline .timeline-scroll');
         const overflows = await scroller.evaluate((x) => x.scrollHeight > x.clientHeight);
-        if (name === 'phone portrait') expect(overflows).toBe(true);
+        // Measured on the built v1.9.0 viewer (iPhone 13, 390 x 664): the
+        // stage grew to 517 pixels (header 71, toolbar 54), so the twelve
+        // 40-pixel lines (scroller 487 x 487) no longer overflow in portrait;
+        // in landscape (844 x 390, stage 314) they still do.
+        if (name === 'phone portrait') expect(overflows).toBe(false);
+        if (name === 'phone landscape') expect(overflows).toBe(true);
         if (overflows) {
           const body = (await page.locator('#presentation-timeline .timeline-body').boundingBox())!;
           await page.mouse.move(body.x + body.width / 2, body.y + body.height / 2);

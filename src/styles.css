@@ -12,6 +12,7 @@
   --space-2: 0.5rem;
   --space-3: 1rem;
   --radius: 6px;
+  --radius-sm: 4px;
   --radius-pill: 999px;
   --stage-bg: #e9ecf0;
   --input-bg: #f3f6fa;
@@ -1005,7 +1006,8 @@ input[type='text'] {
 }
 
 /* Projection typography (FR-37): the Presentation segment reads from a
-   distance. */
+   distance. (The quiet chrome of v1.9.0 overrides this while the segment is
+   shown; see the quiet presentation chrome section below.) */
 #segment-presentation {
   font-size: 1.125rem;
 }
@@ -2830,6 +2832,229 @@ html[data-boot='failed'] #boot-notice {
   margin: var(--space-3);
 }
 
+/* ==== The quiet presentation chrome (v1.9.0, FR-37 and FR-38 as amended) ====
+   The Presentation segment and the exported viewer — the same implementation
+   — carry the understated chrome: a compact header, ghost toolbar controls
+   with a single accent fill on the active view switch, tighter paddings and
+   radii, a compact used-only legend (FR-75), and on a wide viewport a
+   narrowed but persistent "In view" column. The data card is unchanged
+   (FR-37). Every rule applies while the presentation segment is shown, in
+   the application and in the viewer alike. */
+/* The quiet scale (FR-37 as amended in v1.9.0): 12 to 13 pixels while the
+   presentation segment is shown; the card keeps its 16 pixel floor and the
+   timeline's lines their own sizes. */
+html[data-segment='presentation'] #segment-presentation {
+  font-size: 0.8125rem;
+}
+
+html[data-segment='presentation'] #segment-presentation .glance-entry,
+html[data-segment='presentation'] #segment-presentation .legend {
+  font-size: 0.8125rem;
+}
+
+html[data-segment='presentation'] #segment-presentation .glance-area {
+  font-size: 0.75rem;
+}
+
+html[data-segment='presentation'] #app-header {
+  padding: 4px 12px;
+}
+
+html[data-segment='presentation'] #app-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+html[data-segment='presentation'] #app-version {
+  font-size: 0.75rem;
+}
+
+html[data-segment='presentation'] #viewer-badge {
+  font-size: 0.75rem;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 1px 8px;
+}
+
+html[data-segment='presentation'] #app-header .controls {
+  gap: 10px;
+  font-size: 0.8125rem;
+}
+
+html[data-segment='presentation'] #app-header .controls label {
+  gap: 4px;
+}
+
+html[data-segment='presentation'] #app-header select {
+  font-size: 0.8125rem;
+  padding: 2px 4px;
+}
+
+html[data-segment='presentation'] .segment-tab {
+  padding: 2px 8px;
+  font-size: 0.8125rem;
+}
+
+html[data-segment='presentation'] #work-controls {
+  gap: 6px;
+}
+
+html[data-segment='presentation'] #work-controls button {
+  padding: 2px 8px;
+  font-size: 0.8125rem;
+}
+
+html[data-segment='presentation'] #app-main {
+  padding: 10px;
+}
+
+html[data-segment='presentation'] #segment-presentation {
+  gap: 10px;
+  height: calc(100vh - 3.5rem);
+}
+
+/* The viewer takes the list's former column; the application keeps its
+   visibility column and narrows the persistent "In view" column to 200
+   pixels (FR-38 as amended in v1.9.0). */
+html[data-mode='viewer'] #segment-presentation {
+  grid-template-columns: minmax(0, 1fr) 200px;
+}
+
+html:not([data-mode='viewer'])[data-segment='presentation'] #segment-presentation {
+  grid-template-columns: minmax(11rem, 16rem) minmax(0, 1fr) 200px;
+}
+
+html[data-segment='presentation'] #presentation-area {
+  padding: 10px;
+  border-radius: var(--radius-sm);
+}
+
+/* The heading stays in the accessibility tree, out of the sight. */
+html[data-segment='presentation'] #presentation-heading {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+html[data-segment='presentation'] #presentation-toolbar {
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+/* Ghost controls: transparent until hovered or focused; the active view
+   switch keeps the one accent fill. */
+html[data-segment='presentation'] #presentation-toolbar button {
+  padding: 2px 8px;
+  background: transparent;
+  border-color: transparent;
+  border-radius: var(--radius-sm);
+}
+
+html[data-segment='presentation'] #presentation-toolbar button:hover:not(:disabled) {
+  border-color: var(--border);
+  background: var(--panel);
+}
+
+html[data-segment='presentation'] #presentation-toolbar .pres-mode-button[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+/* The application's primary sharing action keeps its fill (FR-11); in the
+   viewer the export buttons are hidden anyway. */
+html[data-segment='presentation'] #presentation-toolbar button.primary-action {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+html[data-segment='presentation'] #pres-order-label {
+  gap: 4px;
+}
+
+html[data-segment='presentation'] #pres-order {
+  font-size: 0.8125rem;
+}
+
+html[data-segment='presentation'] #presentation-toolbar #pres-zoom-level {
+  font-size: 0.75rem;
+  min-width: 3rem;
+}
+
+html[data-segment='presentation'] #presentation-toolbar .icon-button {
+  min-width: 1.75rem;
+}
+
+html[data-segment='presentation'] #presentation-stage {
+  border-radius: var(--radius-sm);
+}
+
+/* The export dialogs are operator surfaces (FR-42), not presentation chrome. */
+html[data-segment='presentation'] :is(#export-panel, #document-panel) {
+  font-size: 1rem;
+}
+
+/* The compact legend (FR-75's used-only entries, quieter type and swatches). */
+html[data-segment='presentation'] #presentation-legend {
+  gap: 10px;
+  margin-top: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+}
+
+html[data-segment='presentation'] #presentation-legend .legend-heading,
+html[data-segment='presentation'] #presentation-legend .legend-group-label,
+html[data-segment='presentation'] #presentation-legend .legend-label {
+  font-size: 0.75rem;
+}
+
+html[data-segment='presentation'] #presentation-legend .legend-group {
+  gap: 10px;
+}
+
+html[data-segment='presentation'] #presentation-legend .legend-list {
+  gap: 8px;
+}
+
+html[data-segment='presentation'] #presentation-legend .legend-entry {
+  gap: 4px;
+}
+
+html[data-segment='presentation'] #presentation-legend .legend-swatch {
+  width: 0.8rem;
+  height: 0.8rem;
+}
+
+html[data-segment='presentation'] #presentation-legend .legend-swatch.marker-icon {
+  width: 1rem;
+  height: 1rem;
+  font-size: 0.6rem;
+}
+
+/* The persistent "In view" column, narrowed and quieter. */
+html[data-segment='presentation'] #presentation-glance {
+  padding: 10px;
+  border-radius: var(--radius-sm);
+}
+
+html[data-segment='presentation'] #presentation-glance .glance-heading {
+  font-size: 0.8125rem;
+}
+
+html[data-segment='presentation'] #presentation-glance .glance-list {
+  gap: 3px;
+}
+
+html[data-segment='presentation'] #presentation-glance .glance-entry {
+  padding: 3px 6px;
+  gap: 6px;
+}
+
 /* ==== Narrow viewer layout (FR-58) ====
    Every rule after this marker lies inside the one media block below, on the
    query of src/narrowviewer.ts, and applies to the exported viewer only; a
@@ -3064,6 +3289,105 @@ html[data-boot='failed'] #boot-notice {
     width: 10px;
     height: 10px;
     margin-left: -5px;
+  }
+
+  /* The quiet chrome (v1.9.0, FR-58 as amended): compact header, ghost
+     toolbar controls, compact legend overlay; the stage takes the rest. */
+  html[data-mode='viewer'] #app-header {
+    padding: 3px 8px;
+    gap: 3px 8px;
+  }
+
+  html[data-mode='viewer'] #app-name {
+    font-size: 0.8125rem;
+  }
+
+  html[data-mode='viewer'] #app-version {
+    font-size: 0.6875rem;
+  }
+
+  html[data-mode='viewer'] #viewer-badge {
+    font-size: 0.6875rem;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    padding: 1px 6px;
+  }
+
+  html[data-mode='viewer'] #app-header .controls {
+    font-size: 0.75rem;
+    gap: 3px 8px;
+  }
+
+  html[data-mode='viewer'] #app-header select {
+    font-size: 0.75rem;
+    padding: 2px 2px;
+  }
+
+  html[data-mode='viewer'] #app-main {
+    padding: 4px;
+  }
+
+  html[data-mode='viewer'] #presentation-area {
+    padding: 4px;
+  }
+
+  html[data-mode='viewer'] #presentation-toolbar {
+    gap: 4px;
+    margin-bottom: 4px;
+  }
+
+  html[data-mode='viewer'] #presentation-toolbar button {
+    padding: 2px 7px;
+  }
+
+  html[data-mode='viewer'] #presentation-toolbar .icon-button {
+    min-width: 1.75rem;
+  }
+
+  html[data-mode='viewer'] #viewer-toggles {
+    gap: 4px;
+  }
+
+  html[data-mode='viewer'] #presentation-legend {
+    padding: 10px;
+    gap: 8px;
+    max-height: 50dvh;
+  }
+
+  html[data-mode='viewer'] #presentation-legend .legend-heading,
+  html[data-mode='viewer'] #presentation-legend .legend-group-label,
+  html[data-mode='viewer'] #presentation-legend .legend-label {
+    font-size: 0.75rem;
+  }
+
+  html[data-mode='viewer'] #presentation-legend .legend-group {
+    gap: 8px;
+  }
+
+  html[data-mode='viewer'] #presentation-legend .legend-list {
+    gap: 6px;
+  }
+
+  html[data-mode='viewer'] #presentation-legend .legend-entry {
+    gap: 4px;
+  }
+
+  html[data-mode='viewer'] #presentation-legend .legend-swatch {
+    width: 0.8rem;
+    height: 0.8rem;
+  }
+
+  html[data-mode='viewer'] #presentation-glance {
+    padding: 10px;
+  }
+
+  html[data-mode='viewer'] #presentation-glance .glance-heading {
+    font-size: 0.8125rem;
+  }
+
+  html[data-mode='viewer'] #presentation-glance .glance-entry {
+    padding: 3px 6px;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -3531,6 +3855,42 @@ html[data-boot='failed'] #boot-notice {
       opacity var(--motion-quick) var(--ease-out),
       transform var(--motion-quick) var(--ease-out),
       visibility 0s linear var(--motion-quick);
+  }
+
+  /* The quiet chrome of the Presentation segment (v1.9.0, FR-71, FR-38 as
+     amended): the toolbar's controls and gaps quiet down; the 44-pixel
+     editing minimum above still binds every control. */
+  html:not([data-mode='viewer'])[data-segment='presentation'] #presentation-toolbar {
+    gap: 4px;
+    margin-bottom: 4px;
+  }
+
+  html:not([data-mode='viewer'])[data-segment='presentation'] #presentation-toolbar button {
+    padding: 2px 7px;
+  }
+
+  html:not([data-mode='viewer'])[data-segment='presentation'] #presentation-legend {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  html:not([data-mode='viewer'])[data-segment='presentation'] #presentation-legend .legend-heading,
+  html:not([data-mode='viewer'])[data-segment='presentation'] #presentation-legend .legend-group-label,
+  html:not([data-mode='viewer'])[data-segment='presentation'] #presentation-legend .legend-label {
+    font-size: 0.75rem;
+  }
+
+  html:not([data-mode='viewer'])[data-segment='presentation'] #presentation-legend .legend-swatch {
+    width: 0.8rem;
+    height: 0.8rem;
+  }
+
+  html:not([data-mode='viewer'])[data-segment='presentation'] #presentation-glance {
+    padding: 10px;
+  }
+
+  html:not([data-mode='viewer'])[data-segment='presentation'] #presentation-glance .glance-entry {
+    padding: 3px 6px;
   }
 
   @media (prefers-reduced-motion: reduce) {

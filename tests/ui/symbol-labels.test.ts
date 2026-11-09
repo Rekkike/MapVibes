@@ -42,6 +42,15 @@ describe('editable symbol labels (FR-54)', () => {
   });
 
   test("the user's label is carried by the legends, the pickers, and the details panel", () => {
+    // A visible marker carries the labelled symbol, so the used-only
+    // presentation legend shows it (FR-75).
+    byId('tab-map').click();
+    pointer('pointerdown', markers()[0], STAGE.left + 100, STAGE.top + 100);
+    pointer('pointerup', markers()[0], STAGE.left + 100, STAGE.top + 100);
+    const shape = byId<HTMLSelectElement>('marker-shape');
+    shape.value = 'bolt';
+    shape.dispatchEvent(new Event('change'));
+    byId('tab-information').click();
     label('bolt', 'Urgent');
     expect(legendShape('map-legend', 'bolt')).toBe('Urgent');
     expect(legendShape('presentation-legend', 'bolt')).toBe('Urgent');
@@ -51,14 +60,12 @@ describe('editable symbol labels (FR-54)', () => {
     byId('status-add').click();
     const statusPicker = document.querySelector<HTMLSelectElement>('#status-list .status-symbol')!;
     expect([...statusPicker.options].find((o) => o.value === 'bolt')!.textContent).toBe('Urgent');
-    // The marker picker and the details panel.
+    // The marker picker and the details panel (the marker already carries bolt).
     byId('tab-map').click();
     pointer('pointerdown', markers()[0], STAGE.left + 100, STAGE.top + 100);
     pointer('pointerup', markers()[0], STAGE.left + 100, STAGE.top + 100);
-    const shape = byId<HTMLSelectElement>('marker-shape');
     expect([...shape.options].find((o) => o.value === 'bolt')!.textContent).toBe('Urgent');
-    shape.value = 'bolt';
-    shape.dispatchEvent(new Event('change'));
+    expect(shape.value).toBe('bolt');
     expect(byId('details-panel').querySelector('.details-symbol')!.textContent).toBe('Urgent');
   });
 
@@ -79,6 +86,15 @@ describe('editable symbol labels (FR-54)', () => {
   });
 
   test('the labels are saved, exported, shown by the viewer, and used in the documents’ legend', async () => {
+    // A placed marker carries bolt, so the exported viewer's used-only legend
+    // shows the label (FR-75).
+    byId('tab-map').click();
+    pointer('pointerdown', markers()[0], STAGE.left + 100, STAGE.top + 100);
+    pointer('pointerup', markers()[0], STAGE.left + 100, STAGE.top + 100);
+    const shape = byId<HTMLSelectElement>('marker-shape');
+    shape.value = 'bolt';
+    shape.dispatchEvent(new Event('change'));
+    byId('tab-information').click();
     label('bolt', 'Urgent');
     expect(app.captureWorkState().symbolLabels).toEqual({ bolt: 'Urgent' });
     byId('tab-presentation').click();

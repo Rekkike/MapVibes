@@ -144,10 +144,18 @@ function expectProvided(lang: Lang, loadedIn: Lang = lang): void {
   const colours = ['green', 'blue', 'yellow', 'red'].map((c) => scenario.colourLabels[c as 'green']!);
   const statuses = scenario.preset.statuses!.map((s) => s.name);
   const symbols = SYMBOLS.map((s) => shapeName(t, s));
-  for (const legend of ['map-legend', 'presentation-legend']) {
-    expect(legendLabels(legend, 'colour')).toEqual(colours);
-    expect(legendLabels(legend, 'shape')).toEqual(symbols);
-    expect(legendLabels(legend, 'status')).toEqual(statuses);
+  // The Map segment's legend keeps the whole working palette (FR-6 as
+  // amended in v1.9.0); the presentation's is used-only (FR-75), so every
+  // entry it shows is one of the full lists in the same language, and the
+  // demo's visible items carry all four colours.
+  expect(legendLabels('map-legend', 'colour')).toEqual(colours);
+  expect(legendLabels('map-legend', 'shape')).toEqual(symbols);
+  expect(legendLabels('map-legend', 'status')).toEqual(statuses);
+  expect(legendLabels('presentation-legend', 'colour')).toEqual(colours);
+  for (const kind of ['shape', 'status'] as const) {
+    const shown = legendLabels('presentation-legend', kind);
+    expect(shown.length).toBeGreaterThan(0);
+    for (const label of shown) expect(kind === 'shape' ? symbols : statuses).toContain(label);
   }
   expect(options('#annotation-colour')).toEqual(colours);
   expect(options('#marker-shape')).toEqual(symbols);

@@ -59,6 +59,13 @@ describe('the lightning-bolt icon (FR-26 as amended)', () => {
   });
 
   test('the legend explains it in both views, in both themes and languages', () => {
+    // A visible marker carries the icon, so the used-only presentation legend
+    // shows it (FR-75); the Map segment's legend keeps the whole library.
+    pointer('pointerdown', markers()[0], STAGE.left + 100, STAGE.top + 100);
+    pointer('pointerup', markers()[0], STAGE.left + 100, STAGE.top + 100);
+    const shape = byId<HTMLSelectElement>('marker-shape');
+    shape.value = 'bolt';
+    shape.dispatchEvent(new Event('change'));
     for (const mode of ['light', 'dark'] as const) {
       theme(mode);
       for (const id of ['map-legend', 'presentation-legend']) {

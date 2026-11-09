@@ -119,10 +119,18 @@ describe('projection typography (FR-37) and details typography (FR-7)', () => {
     }
   });
 
-  test('the Presentation segment text is larger than the editing segments', () => {
-    expect(rem(declarations('#segment-presentation')['font-size'])).toBeGreaterThanOrEqual(1.125);
-    expect(rem(declarations('#segment-presentation .glance-entry')['font-size'])).toBeGreaterThan(rem(declarations('.glance-entry')['font-size']));
-    expect(rem(declarations('#segment-presentation .legend')['font-size'])).toBeGreaterThanOrEqual(1);
+  test('the presentation chrome is quiet while the card keeps its floor (FR-37 as amended in v1.9.0)', () => {
+    // The Presentation segment's and the viewer's chrome sits at 12 to 13
+    // pixels while the segment is shown.
+    const segment = rem(declarations("html[data-segment='presentation'] #segment-presentation")['font-size']);
+    expect(segment).toBeGreaterThanOrEqual(0.75);
+    expect(segment).toBeLessThanOrEqual(0.8125);
+    expect(rem(declarations("html[data-segment='presentation'] #segment-presentation .glance-entry")['font-size'])).toBeLessThanOrEqual(0.8125);
+    expect(rem(declarations("html[data-segment='presentation'] #segment-presentation .legend")['font-size'])).toBeLessThanOrEqual(0.8125);
+    // The card is unchanged: its own scale with the 16 pixel floor, now larger
+    // than the chrome around it.
+    expect(rem(declarations('.presentation-card')['font-size'])).toBe(1);
+    expect(rem(declarations('.presentation-card')['font-size'])).toBeGreaterThan(segment);
   });
 
   test('the details panel has a clear hierarchy: title, values, labels', () => {

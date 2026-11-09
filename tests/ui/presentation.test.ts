@@ -28,8 +28,9 @@ describe('presentation mode (FR-27)', () => {
     ]);
     expect(presentationMarkers()[1].style.left).toBe('400px');
     expect(byId('presentation-empty').classList.contains('hidden')).toBe(true);
+    // The presentation legend is used-only (FR-75): every marker here is green.
     const legend = [...byId('presentation-legend').querySelectorAll<HTMLElement>('.legend-entry[data-colour]')].map((e) => e.dataset.colour);
-    expect(legend).toEqual(['green', 'blue', 'yellow', 'red']);
+    expect(legend).toEqual(['green']);
   });
 
   test('zoom and pan work on the stage, independently of the Map segment view', () => {

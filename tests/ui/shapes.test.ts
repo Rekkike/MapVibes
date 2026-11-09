@@ -87,7 +87,11 @@ describe('marker symbol library (FR-26)', () => {
         'Symbols',
       ]);
       const shapes = [...legend.querySelectorAll<HTMLElement>('.legend-entry[data-shape]')];
-      expect(shapes.map((e) => e.dataset.shape)).toEqual(['circle', 'square', 'diamond', 'triangle', 'hexagon', 'bulb', 'magnifier', 'gear', 'pause', 'cross', 'check', 'hammer-shovel', 'bolt']);
+      // The Map segment's legend keeps the working palette; the presentation's
+      // is used-only (FR-75): both placed markers and the unplaced rows carry
+      // the default circle here, so only it is shown.
+      const all = ['circle', 'square', 'diamond', 'triangle', 'hexagon', 'bulb', 'magnifier', 'gear', 'pause', 'cross', 'check', 'hammer-shovel', 'bolt'];
+      expect(shapes.map((e) => e.dataset.shape)).toEqual(id === 'map-legend' ? all : ['circle']);
       shapes.slice(0, 5).forEach((e) => expect(e.querySelector('.legend-swatch')!.classList.contains(`marker-shape-${e.dataset.shape}`)).toBe(true));
       shapes.slice(5).forEach((e) => {
         expect(e.querySelector('.legend-swatch')!.classList.contains(`marker-icon-${e.dataset.shape}`)).toBe(true);
@@ -146,13 +150,16 @@ describe('marker symbol library (FR-26)', () => {
     const symbol = document.querySelector<HTMLSelectElement>('#status-list .status-symbol')!;
     symbol.value = 'check';
     symbol.dispatchEvent(new Event('change'));
-    for (const id of ['map-legend', 'presentation-legend']) {
-      const group = byId(id).querySelector('.legend-group[data-kind="statuses"]')!;
-      expect(group.querySelector('.legend-group-label')!.textContent).toBe('Statuses');
-      const entry = group.querySelector<HTMLElement>('.legend-entry')!;
-      expect([entry.dataset.status, entry.dataset.shape]).toEqual(['Ready', 'check']);
-      expect(entry.querySelector('.legend-label')!.textContent).toBe('Ready');
-      expect(entry.querySelector('.legend-swatch svg.marker-glyph')).not.toBeNull();
-    }
+    // The Map segment's legend keeps the working palette (FR-6 as amended in
+    // v1.9.0): the whole status vocabulary with its symbols.
+    const group = byId('map-legend').querySelector('.legend-group[data-kind="statuses"]')!;
+    expect(group.querySelector('.legend-group-label')!.textContent).toBe('Statuses');
+    const entry = group.querySelector<HTMLElement>('.legend-entry')!;
+    expect([entry.dataset.status, entry.dataset.shape]).toEqual(['Ready', 'check']);
+    expect(entry.querySelector('.legend-label')!.textContent).toBe('Ready');
+    expect(entry.querySelector('.legend-swatch svg.marker-glyph')).not.toBeNull();
+    // The presentation's legend is used-only (FR-75): no visible item carries
+    // 'Ready' here, so the section does not appear.
+    expect(byId('presentation-legend').querySelector('.legend-group[data-kind="statuses"]')).toBeNull();
   });
 });

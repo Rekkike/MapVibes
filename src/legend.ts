@@ -60,6 +60,15 @@ export type ColourLabels = Record<RowColour, string>;
 // name in the interface language.
 export type SymbolLabels = Record<MarkerSymbol, string>;
 
+// What the visible items carry (FR-75): the used-only filter of the
+// presentation's legend. Without it, the legend holds the whole vocabulary.
+export interface LegendUse {
+  colours: Set<RowColour>;
+  symbols: Set<MarkerSymbol>;
+  statuses: Set<string>;
+  groups: Set<number>;
+}
+
 export function defaultSymbolLabels(t: Strings): SymbolLabels {
   return Object.fromEntries(SYMBOLS.map((s) => [s, shapeName(t, s)])) as SymbolLabels;
 }
@@ -91,18 +100,35 @@ export function legendModel(
   numberGroups: LegendGroup[] = [],
   colourLabels: ColourLabels = defaultColourLabels(t),
   symbolLabels: SymbolLabels = defaultSymbolLabels(t),
+  used?: LegendUse,
 ): LegendSection[] {
   const sections: LegendSection[] = [
-    { kind: 'colours', label: t.legendColours, items: COLOURS.map((c) => ({ label: colourLabels[c], colour: c })) },
-    { kind: 'shapes', label: t.legendShapes, items: SYMBOLS.map((s) => ({ label: symbolLabels[s], symbol: s })) },
+    {
+      kind: 'colours',
+      label: t.legendColours,
+      items: COLOURS.filter((c) => !used || used.colours.has(c)).map((c) => ({ label: colourLabels[c], colour: c })),
+    },
+    {
+      kind: 'shapes',
+      label: t.legendShapes,
+      items: SYMBOLS.filter((s) => !used || used.symbols.has(s)).map((s) => ({ label: symbolLabels[s], symbol: s })),
+    },
   ];
-  if (statuses.length > 0) {
-    sections.push({ kind: 'statuses', label: t.legendStatuses, items: statuses.map((s) => ({ label: s.name, status: s.name, symbol: s.symbol as MarkerSymbol })) });
+  const statusItems = statuses
+    .filter((s) => !used || used.statuses.has(s.name))
+    .map((s) => ({ label: s.name, status: s.name, symbol: s.symbol as MarkerSymbol }));
+  if (statusItems.length > 0) {
+    sections.push({ kind: 'statuses', label: t.legendStatuses, items: statusItems });
   }
-  if (numberGroups.length > 0) {
-    sections.push({ kind: 'programs', label: t.legendProgramGroups, items: numberGroups.map((g) => ({ label: g.name, group: g.index })) });
+  const groupItems = numberGroups
+    .filter((g) => !used || used.groups.has(g.index))
+    .map((g) => ({ label: g.name, group: g.index }));
+  if (groupItems.length > 0) {
+    sections.push({ kind: 'programs', label: t.legendProgramGroups, items: groupItems });
   }
-  return sections;
+  // With a used-only filter, a section whose entries are all unused does not
+  // appear (FR-75).
+  return used ? sections.filter((section) => section.items.length > 0) : sections;
 }
 
 function legendEntry(item: LegendItem): HTMLLIElement {
@@ -131,6 +157,7 @@ export function renderLegend(
   numberGroups: LegendGroup[] = [],
   colourLabels: ColourLabels = defaultColourLabels(t),
   symbolLabels: SymbolLabels = defaultSymbolLabels(t),
+  used?: LegendUse,
 ): void {
   container.innerHTML = '';
   const heading = document.createElement('span');
@@ -140,7 +167,7 @@ export function renderLegend(
   container.setAttribute('role', 'group');
   container.setAttribute('aria-labelledby', heading.id);
   container.append(heading);
-  for (const section of legendModel(t, statuses, numberGroups, colourLabels, symbolLabels)) {
+  for (const section of legendModel(t, statuses, numberGroups, colourLabels, symbolLabels, used)) {
     const group = document.createElement('div');
     group.className = 'legend-group';
     group.dataset.kind = section.kind;

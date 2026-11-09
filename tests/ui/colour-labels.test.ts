@@ -42,7 +42,8 @@ describe('editable colour labels (FR-45)', () => {
     label('green', 'Agreed');
     label('red', 'Needs attention');
     expect(legendColours('map-legend')).toEqual(['Agreed', 'Blue', 'Yellow', 'Needs attention']);
-    expect(legendColours('presentation-legend')).toEqual(['Agreed', 'Blue', 'Yellow', 'Needs attention']);
+    // The presentation's legend is used-only (FR-75): only green is carried.
+    expect(legendColours('presentation-legend')).toEqual(['Agreed']);
     const chip = document.querySelector<HTMLElement>('#row-table-body .colour-chip')!;
     expect(chip.title).toBe('Agreed');
     expect(chip.getAttribute('aria-label')).toBe('Colour: Agreed');

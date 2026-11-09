@@ -101,7 +101,10 @@ describe('the exported file in a browser, offline (FR-11, FR-38)', () => {
     // The background image is decoded from the embedded data.
     expect(await page.evaluate(() => (document.getElementById('presentation-image') as HTMLImageElement).naturalWidth)).toBe(1200);
     expect(await page.locator('#presentation-marker-layer .marker').allTextContents()).toEqual(['1', '3']);
-    expect(await page.locator('#presentation-legend .legend-entry[data-colour]').count()).toBe(4);
+    // The viewer's legend is used-only (FR-75): every shown row of the example
+    // is green and carries the default circle.
+    expect(await page.locator('#presentation-legend .legend-entry[data-colour]').allTextContents()).toEqual(['Green']);
+    expect(await page.locator('#presentation-legend .legend-entry[data-shape]:not([data-status])').evaluateAll((els) => els.map((e) => e.getAttribute('data-shape')))).toEqual(['circle']);
     // No item list is rendered (FR-38 as amended in v1.3.1); the data island
     // still carries every shared item, the ones without a marker included.
     expect(await page.isVisible('#visibility-area')).toBe(false);

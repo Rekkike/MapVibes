@@ -105,6 +105,62 @@ function pass16(d: NonNullable<ReturnType<typeof parse>>): boolean {
   return false;
 }
 
+// Pass 18 (v1.9.0, the quiet presentation chrome, FR-37/FR-38 as amended):
+// in every state that shows the Presentation segment or the exported viewer,
+// the chrome quiets down -- the compact header, the ghost toolbar controls
+// with the single accent on the active switch, the paddings and radii, the
+// compact used-only legend (whose entries are re-rendered, hence new lines
+// inside it), the narrowed persistent "In view" column -- and the stage grows
+// into the room. Every rendered element outside the stage's subtrees is
+// chrome and may change; inside the stage's subtrees (the map content, the
+// annotations, the markers, the card, the timeline) only the box may change,
+// never a style, and the markers keep their size. Nothing outside these
+// states changes.
+const STAGE_18_ROOTS = [
+  '#presentation-stage', '#presentation-content', '#presentation-image', '#presentation-annotations',
+  '#presentation-marker-layer', '#presentation-card', '#presentation-timeline', '#presentation-empty',
+];
+// The snapshotted selectors that lie in the chrome (non-"all" lines name them
+// directly, not as paths).
+const CHROME_18_SELECTORS = [
+  '#app-header', '#app-title', '#viewer-badge', '#demo-badge', '#segment-nav', '#work-controls',
+  '#app-main', '#segment-presentation', '#visibility-area', '#presentation-area',
+  '#presentation-toolbar', '#presentation-legend', '#presentation-glance', '#presentation-glance-list .glance-entry', '#export-panel',
+];
+const STAGE_18_SELECTORS = ['#presentation-stage', '#presentation-content', '#presentation-annotations', '#presentation-marker-layer .marker', '#presentation-card'];
+
+function pass18(d: NonNullable<ReturnType<typeof parse>>): boolean {
+  if (!PRESENTATION_STATES.includes(d.state)) return false;
+  if (d.all) {
+    if (d.target === 'html' || d.target === 'body') {
+      const [a, b] = [d.before.split('|'), d.after.split('|')];
+      return a[2] === b[2] && a.slice(4).join('|') === b.slice(4).join('|');
+    }
+    // "all" lines carry a path rooted at the nearest id'd ancestor.
+    const root = d.target.split('>')[0];
+    if (STAGE_18_ROOTS.includes(root)) {
+      const [a, b] = [d.before.split('|'), d.after.split('|')];
+      // Display, visibility, and colours keep; the inherited font size may
+      // quiet with the segment (the markers set their own and keep it).
+      const sameStyle = a[4] === b[4] && a[5] === b[5] && a[7] === b[7] && a[8] === b[8];
+      // The markers keep their size and their type; the rest of the stage's
+      // content only moves and grows with the stage.
+      // The markers themselves (below the layer) keep their size and type.
+      if (root === '#presentation-marker-layer' && d.target.includes('>')) return sameStyle && a[2] === b[2] && a[3] === b[3] && a[6] === b[6];
+      return sameStyle;
+    }
+    // Any other rendered element in a presentation state is chrome.
+    return true;
+  }
+  if (CHROME_18_SELECTORS.includes(d.target)) return true;
+  if (d.target === 'html' || d.target === 'body') return ['box.height', 'height'].includes(d.what);
+  if (STAGE_18_SELECTORS.includes(d.target)) {
+    if (d.target === '#presentation-marker-layer .marker') return ['box.x', 'box.y'].includes(d.what);
+    return ['box.x', 'box.y', 'box.width', 'box.height', 'width', 'height', 'transform', 'font-size'].includes(d.what);
+  }
+  return false;
+}
+
 // A line of the differences: "<state> <selector> <what>: <before> → <after>".
 function parse(line: string): { state: string; target: string; all: boolean; what: string; before: string; after: string } | null {
   const m = /^(\S+) (all )?(.+?)(?: (box\.\w+|[a-z-]+))?: (.+) → (.+)$/.exec(line);
@@ -120,10 +176,17 @@ function intended(line: string): boolean {
   if (/ all #open-presentation: new$/.test(line)) return true;
   if (/ all #economics-overlay(>\S+)?: new$/.test(line)) return true;
   const newEntry = /^(\S+) all (\S+): new$/.exec(line);
-  if (newEntry) return inside(newEntry[2], CHANGED_INSIDE) || inside(newEntry[2], NEW_PASS_16);
+  if (newEntry) {
+    if (inside(newEntry[2], CHANGED_INSIDE) || inside(newEntry[2], NEW_PASS_16)) return true;
+    // The used-only legend (FR-75) re-renders its entries in the presentation
+    // states.
+    if (PRESENTATION_STATES.includes(newEntry[1]) && inside(newEntry[2], ['#presentation-legend'])) return true;
+    return false;
+  }
   const d = parse(line);
   if (!d) return false;
   if (pass16(d)) return true;
+  if (pass18(d)) return true;
   // Pass 14's row.
   if (d.all && MOVED_IN_ROW.includes(d.target) && d.before.split('|').slice(1).join('|') === d.after.split('|').slice(1).join('|')) return true;
   if (inside(d.target, CHANGED_INSIDE)) return true;

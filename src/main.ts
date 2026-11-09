@@ -4,7 +4,7 @@ import { applyFilter, counters, COLOURS, makeRow, numberRows, NO_FILTER, sortRow
 import { importColumns, parseWorkbook, ParseError, type ParseResult } from './ingest';
 import { columnLabel } from './columns';
 import { emptyValues, newManualKey } from './manual';
-import { addStatus, statusSymbol, addValue, collectValues, hasValue, mergeValues, moveStatus, removeStatus, removeValue, renameStatus, renameValue, setStatusSymbol, statusNames, type StatusEntry } from './vocab';
+import { addStatus, normalise, statusSymbol, addValue, collectValues, hasValue, mergeValues, moveStatus, removeStatus, removeValue, renameStatus, renameValue, setStatusSymbol, statusNames, type StatusEntry } from './vocab';
 import { clonePreset, findMatchingPreset, loadStoredPresets, presetConfiguration, presetMatches, removePreset, storePresets, upsertPreset, type ColumnPreset } from './presets';
 import { assignRole, displayName, isRole, listColumnOrder, roleOfColumn, ROLES, type Role, type RoleAssignments } from './roles';
 import { format, strings, type Lang, type Strings } from './i18n';
@@ -15,7 +15,7 @@ import { isOsmFile, MAX_OSM_BYTES, OsmError, parseOsm, planRender, type Mercator
 import { renderPlanToDataUrl } from './osmrender';
 import { fetchableBounds, FetchError, fetchMapData, isOnline, parseBounds, searchPlace, type BoundsField, type FetchErrorCode, type PlaceResult } from './openmap';
 import { MarkerLayer } from './markerlayer';
-import { colourName, legendModel, renderLegend, shapeName, type ColourLabels, type LegendGroup, type SymbolLabels } from './legend';
+import { colourName, legendModel, renderLegend, shapeName, type ColourLabels, type LegendGroup, type LegendUse, type SymbolLabels } from './legend';
 import { buildPdf, buildPptxDocument, PPTX_PAGE, pptxTables, sceneFromStage, type DocumentTable, type StageScene } from './documents';
 import { backgroundJpeg, stagePagePng } from './raster';
 import { addComment, commentsOf, editComment, formatCommentDate, removeComment, restoreComments, type CommentStore } from './comments';
@@ -2697,13 +2697,38 @@ function setSymbolsFromStatus(on: boolean): void {
   renderList();
 }
 
+// What the visible items carry (FR-75): the used-only filter of the
+// Presentation segment's legend and of the exported viewer's. An item without
+// a marker counts too: the timeline includes it, wearing its colour and
+// symbol (FR-67).
+function presentationLegendUse(): LegendUse {
+  const shown = state.rows.filter((r) => !state.excluded.has(r));
+  const statusKey = state.roles.status;
+  const groups = new Set<number>();
+  if (groupedNumbering()) {
+    for (const { row, label } of numbered()) {
+      if (state.excluded.has(row)) continue;
+      const match = /^(\d+)\.\d+$/.exec(label);
+      if (match) groups.add(Number(match[1]));
+    }
+  }
+  return {
+    colours: new Set(shown.map((r) => r.colour)),
+    symbols: new Set(shown.map((r) => symbolOf(r))),
+    statuses: new Set(statusKey === undefined ? [] : shown.map((r) => normalise(r.values[statusKey] ?? ''))),
+    groups,
+  };
+}
+
 function renderLegends(): void {
   const t = strings(state.prefs.lang);
   const groups = shownProgramGroups();
   const labels = colourLabels();
   const names = symbolLabels();
+  // The Map segment's legend keeps the working palette (FR-6 as amended);
+  // the presentation's is used-only (FR-75).
   renderLegend(el('map-legend'), t, state.statuses, groups, labels, names);
-  renderLegend(el('presentation-legend'), t, state.statuses, groups, labels, names);
+  renderLegend(el('presentation-legend'), t, state.statuses, groups, labels, names, presentationLegendUse());
 }
 
 // Editable colour labels (FR-45): the user's name for a colour, or the
@@ -3457,6 +3482,9 @@ function renderMapItems(): void {
   }
   for (const opt of shapeSelect.options) opt.textContent = symbolLabel(opt.value as MarkerSymbol);
   shapeSelect.value = selected?.shape ?? 'circle';
+  // The presentation's legend follows the visibility (FR-75): recomputed on
+  // every change of the items, including every visibility toggle (FR-27).
+  renderLegends();
 }
 
 // The annotation layer (FR-47): drawn and edited on the Map stage, shown
