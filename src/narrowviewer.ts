@@ -1,9 +1,13 @@
-// The narrow viewer layout (FR-58): on a narrow viewport, the exported
-// viewer, and only the viewer, shows the stage over the whole viewport, with
-// the "In view" panel and the legend as overlay panels opened from a compact
-// toggle bar, one at a time. The layout itself is one media block at the end
-// of the stylesheet, on the same query as here; this module only runs while
-// the query matches, so that above it the viewer behaves as on the desktop.
+// The narrow layout's overlays (FR-58, FR-72): on a narrow viewport, the
+// exported viewer shows the stage over the whole viewport, with the "In
+// view" panel and the legend as overlay panels opened from a compact toggle
+// bar, one at a time; the application does the same with the panels of its
+// Map and Presentation segments, in an instance of its own. The layout
+// itself is in two media blocks at the end of the stylesheet, on the same
+// query as here, one for the viewer and one for the application; this module
+// only runs while the query matches (and, for an instance gated on a mode,
+// while that mode is in force), so that above it everything behaves as on
+// the desktop.
 //
 // The overlays follow the card's pattern: a data-state of open or closed,
 // inert while closed, the toggle's aria-expanded, focus moved into the
@@ -30,6 +34,10 @@ export interface NarrowViewerHooks {
   // Refits the view to the stage's new size, so that the view and "In view"
   // do not go stale.
   refit: () => void;
+  // Whether the instance's mode is in force (the application's instance
+  // gives way to the viewer when a presentation is opened); always, where
+  // absent.
+  enabled?: () => boolean;
 }
 
 export class NarrowViewer {
@@ -79,7 +87,12 @@ export class NarrowViewer {
 
   // Whether the narrow layout is in force.
   active(): boolean {
-    return this.query.matches;
+    return this.query.matches && (this.hooks.enabled?.() ?? true);
+  }
+
+  // Lays the overlays out again after a change of the gate.
+  refresh(): void {
+    this.apply(false);
   }
 
   isOpen(panel: HTMLElement): boolean {

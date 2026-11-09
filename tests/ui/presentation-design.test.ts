@@ -2,6 +2,26 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, test } from 'vitest';
 
+// The text without its media blocks, however deeply they nest, so that
+// only the desktop's own rules are read.
+function stripMedia(text: string): string {
+  let out = '';
+  let i = 0;
+  for (;;) {
+    const start = text.indexOf('@media', i);
+    if (start < 0) return out + text.slice(i);
+    out += text.slice(i, start);
+    let depth = 0;
+    let j = text.indexOf('{', start);
+    for (; j < text.length; j++) {
+      if (text[j] === '{') depth++;
+      else if (text[j] === '}' && --depth === 0) break;
+    }
+    i = j + 1;
+  }
+}
+
+
 // Presentation design bar (FR-37) and details typography (FR-7), pinned by
 // assertions over the stylesheet.
 const css = readFileSync(join(process.cwd(), 'src', 'styles.css'), 'utf8');
@@ -20,7 +40,7 @@ const dark = tokens("html[data-theme='dark']");
 // The declarations of every rule (outside media queries) whose selector list
 // names the selector, later rules winning.
 function declarations(selector: string): Record<string, string> {
-  const withoutMedia = css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\})*\s*\}/g, '');
+  const withoutMedia = stripMedia(css.replace(/\/\*[\s\S]*?\*\//g, ''));
   const out: Record<string, string> = {};
   for (const m of withoutMedia.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     const selectors = m[1].split(',').map((s) => s.trim());

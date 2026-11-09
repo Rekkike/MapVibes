@@ -2620,6 +2620,11 @@ html[data-boot='failed'] #boot-notice {
   color: var(--on-accent);
 }
 
+/* Tap-to-place (FR-73) is offered in the narrow layout only. */
+.placement-place {
+  display: none;
+}
+
 /* The order (FR-70): as tall as the toolbar's buttons, so that the select's
    own taller box does not make the toolbar's row taller, whatever the
    font. */
@@ -3066,6 +3071,471 @@ html[data-boot='failed'] #boot-notice {
     html[data-mode='viewer'] #presentation-legend,
     html[data-mode='viewer'] #presentation-glance:not([data-state='open']),
     html[data-mode='viewer'] #presentation-legend:not([data-state='open']) {
+      transition: none;
+    }
+  }
+}
+
+/* The narrow application layout (FR-71 to FR-74): the application itself,
+   below the same threshold and on the same query as the viewer's block
+   above, every rule scoped to the application (not the viewer). Above the
+   threshold nothing here applies. */
+@media (max-width: 56rem), (orientation: landscape) and (max-height: 30rem) and (pointer: coarse) {
+  /* No horizontal overflow: the page is the viewport's width. */
+  html:not([data-mode='viewer']) body {
+    overflow-x: hidden;
+  }
+
+  /* The header collapses into a menu (FR-71): the title and the Menu
+     button, then the segment tabs, on one row where the width allows. The
+     work controls, the settings, and the demo's badge are moved into the
+     Menu overlay while the narrow layout is in force. */
+  html:not([data-mode='viewer']) #app-header {
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-2);
+    padding: var(--space-1) var(--space-2);
+  }
+
+  html:not([data-mode='viewer']) #app-title {
+    flex: 1 1 auto;
+    white-space: nowrap;
+  }
+
+  html:not([data-mode='viewer']) #menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    order: 1;
+  }
+
+  html:not([data-mode='viewer']) #menu-toggle[data-dirty='true']::after {
+    content: '';
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--warning);
+  }
+
+  html:not([data-mode='viewer']) #segment-nav {
+    order: 2;
+    flex: 1 1 18rem;
+  }
+
+  html:not([data-mode='viewer']) .segment-tab {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-inline: 0;
+    overflow: hidden;
+    font-size: 0.8125rem;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  html:not([data-mode='viewer']) #app-version {
+    font-size: 0.75rem;
+  }
+
+  /* The Menu overlay's content: one control or group per row. */
+  html:not([data-mode='viewer']) #app-menu {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+  }
+
+  html:not([data-mode='viewer']) #app-menu > label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+
+  html:not([data-mode='viewer']) #app-menu #work-controls {
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-2);
+  }
+
+  html:not([data-mode='viewer']) #app-menu #demo-badge {
+    align-self: flex-start;
+  }
+
+  html:not([data-mode='viewer']) #work-status:empty {
+    display: none;
+  }
+
+  html:not([data-mode='viewer']) #app-main {
+    min-height: 0;
+    padding: var(--space-2);
+  }
+
+  html:not([data-mode='viewer']) .segment {
+    min-height: 0;
+  }
+
+  /* Every editing control reaches 44 pixels on its smallest side; a line
+     of the timeline, which only opens its card, keeps the viewer's 40
+     pixels (FR-58 as amended in v1.7.0). */
+  html:not([data-mode='viewer']) :is(#app-header, #app-main) :is(button:not(.timeline-entry), select, input[type='text'], input:not([type]), summary, textarea) {
+    min-height: 44px;
+  }
+
+  html:not([data-mode='viewer']) :is(#app-header, #app-main) button:not(.timeline-entry) {
+    min-width: 44px;
+  }
+
+  html:not([data-mode='viewer']) :is(#app-header, #app-main) :is(input[type='checkbox'], input[type='radio']) {
+    flex: none;
+    width: 44px;
+    height: 44px;
+    margin: 0;
+  }
+
+  html:not([data-mode='viewer']) :is(#app-header, #app-main) input[type='range'] {
+    height: 44px;
+  }
+
+  /* The Map and Presentation segments: one column, the stage first. */
+  html:not([data-mode='viewer']) #segment-map,
+  html:not([data-mode='viewer']) #segment-presentation {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
+    gap: var(--space-2);
+  }
+
+  html:not([data-mode='viewer']) #map-area,
+  html:not([data-mode='viewer']) #presentation-area {
+    order: -1;
+    padding: var(--space-1);
+  }
+
+  html:not([data-mode='viewer']) #map-heading,
+  html:not([data-mode='viewer']) #presentation-heading {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  /* The toolbars are single rows that scroll sideways inside themselves,
+     so that they do not stack over the stage. */
+  html:not([data-mode='viewer']) #map-toolbar,
+  html:not([data-mode='viewer']) #annotation-toolbar,
+  html:not([data-mode='viewer']) #presentation-toolbar {
+    flex-wrap: nowrap;
+    gap: var(--space-1);
+    margin-bottom: var(--space-1);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+
+  html:not([data-mode='viewer']) :is(#map-toolbar, #annotation-toolbar, #presentation-toolbar) > * {
+    flex: none;
+  }
+
+  html:not([data-mode='viewer']) #annotation-toolbar label,
+  html:not([data-mode='viewer']) #annotation-tools {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  html:not([data-mode='viewer']) .stage {
+    min-height: 10rem;
+    overscroll-behavior: none;
+  }
+
+  /* The Map and Presentation segments fill the viewport's height, the stage
+     taking what the header and the toolbars leave (FR-71). */
+  html:not([data-mode='viewer'])[data-segment='map'] body,
+  html:not([data-mode='viewer'])[data-segment='presentation'] body {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  html:not([data-mode='viewer'])[data-segment='map'] #app-header,
+  html:not([data-mode='viewer'])[data-segment='presentation'] #app-header {
+    flex: none;
+  }
+
+  html:not([data-mode='viewer'])[data-segment='map'] #app-main,
+  html:not([data-mode='viewer'])[data-segment='presentation'] #app-main {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  html:not([data-mode='viewer']) #segment-map:not(.hidden),
+  html:not([data-mode='viewer']) #segment-presentation:not(.hidden) {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  html:not([data-mode='viewer']) #map-area,
+  html:not([data-mode='viewer']) #presentation-area {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  html:not([data-mode='viewer']) #map-stage,
+  html:not([data-mode='viewer']) #presentation-stage {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  /* The offline notice stays the description of the fetch action for
+     assistive technology, without a row of its own above the stage; the
+     action is labelled as online and disabled while offline. */
+  html:not([data-mode='viewer']) #fetch-offline {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  /* Tap-to-place (FR-73): the action on an unplaced item, and the hint
+     above the stage while an item waits for a tap. */
+  html:not([data-mode='viewer']) .placement-place {
+    display: inline-flex;
+    align-items: center;
+    margin-left: auto;
+  }
+
+  html:not([data-mode='viewer']) #place-banner:not(.hidden) {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-1);
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    background: var(--input-bg);
+  }
+
+  html:not([data-mode='viewer']) #place-banner-text {
+    flex: 1 1 auto;
+    font-weight: 600;
+  }
+
+  html:not([data-mode='viewer']) #map-stage[data-placing='true'] {
+    cursor: crosshair;
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+
+  /* The details panel as a bottom sheet (FR-74), in the card's docked
+     pattern: the viewport's width less its margins, a maximum height, its
+     own scrolling; one field per row, so that every value has the sheet's
+     width and the name wraps. */
+  html:not([data-mode='viewer']) #details-panel {
+    top: auto;
+    left: var(--space-2);
+    right: var(--space-2);
+    bottom: var(--space-2);
+    z-index: 35;
+    width: auto;
+    max-height: min(75dvh, 44rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-radius: calc(2 * var(--radius));
+    box-shadow: var(--card-shadow);
+  }
+
+  html:not([data-mode='viewer']) #details-panel .details-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html:not([data-mode='viewer']) #details-panel .details-title {
+    overflow-wrap: anywhere;
+  }
+
+  html:not([data-mode='viewer']) #details-panel textarea.cell-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: var(--space-2);
+    resize: none;
+    overflow: hidden;
+    font: inherit;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+
+  /* The Presentation segment in the viewer's patterns (FR-71, FR-58): one
+     sideways-scrolling row, like the Map toolbars, led by the view switch,
+     the order, and the overlay toggles; the zoom controls and the exports
+     follow. */
+  html:not([data-mode='viewer']) #presentation-toolbar > * {
+    order: 2;
+  }
+
+  html:not([data-mode='viewer']) #presentation-toolbar > #pres-mode,
+  html:not([data-mode='viewer']) #presentation-toolbar > #pres-order-label {
+    order: 0;
+  }
+
+  html:not([data-mode='viewer']) #presentation-toolbar > #presentation-toggles,
+  html:not([data-mode='viewer']) #presentation-toolbar > #viewer-toggles {
+    order: 1;
+  }
+
+  html:not([data-mode='viewer']) #presentation-toolbar > #export-separator {
+    display: none;
+  }
+
+  html:not([data-mode='viewer']) #presentation-toolbar > :is(#export-open, #pdf-open, #pptx-open) {
+    order: 3;
+  }
+
+  /* On the timeline, Reset is Fit: shown once. The zoom level and the
+     order's name stay announced, not shown. */
+  html:not([data-mode='viewer']) #presentation-toolbar[data-view='timeline'] > #pres-reset {
+    display: none;
+  }
+
+  html:not([data-mode='viewer']) #pres-zoom-level,
+  html:not([data-mode='viewer']) #pres-order-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  /* The card docks at the bottom of the stage, with its own scrolling. */
+  html:not([data-mode='viewer']) .presentation-card {
+    left: var(--space-2);
+    right: var(--space-2);
+    top: auto;
+    bottom: var(--space-2);
+    width: auto;
+    max-height: min(60%, 26rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /* The economics view as a bottom sheet (FR-64). */
+  html:not([data-mode='viewer']) .economics-overlay {
+    left: var(--space-2);
+    right: var(--space-2);
+    top: auto;
+    bottom: var(--space-2);
+    width: auto;
+    max-height: 85dvh;
+    padding: var(--space-3);
+    transform: none;
+  }
+
+  /* The narrow timeline (FR-67): 40-pixel lines, the name above the bar. */
+  html:not([data-mode='viewer']) .timeline {
+    --timeline-name: 0px;
+    --timeline-line: 40px;
+    --timeline-badge: 1.125rem;
+    --timeline-badge-font: 0.6875rem;
+  }
+
+  html:not([data-mode='viewer']) .timeline-axis {
+    grid-template-columns: 1fr;
+  }
+
+  html:not([data-mode='viewer']) .timeline-axis-name {
+    display: none;
+  }
+
+  html:not([data-mode='viewer']) .timeline-entry {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1.25rem 1fr;
+    align-items: stretch;
+  }
+
+  html:not([data-mode='viewer']) .timeline-name {
+    font-size: 0.8125rem;
+    line-height: 1.25rem;
+  }
+
+  html:not([data-mode='viewer']) .timeline-bar {
+    top: calc(50% - 5px);
+    height: 10px;
+  }
+
+  html:not([data-mode='viewer']) .timeline-point {
+    top: calc(50% - 5px);
+    width: 10px;
+    height: 10px;
+    margin-left: -5px;
+  }
+
+  /* Inside an overlay a list does not scroll on its own: the overlay does. */
+  html:not([data-mode='viewer']) #placement-list,
+  html:not([data-mode='viewer']) #visibility-list {
+    flex: none;
+    overflow: visible;
+  }
+
+  /* The toggle bars of the overlays (FR-72). */
+  html:not([data-mode='viewer']) #map-toggles,
+  html:not([data-mode='viewer']) #presentation-toggles,
+  html:not([data-mode='viewer']) #viewer-toggles {
+    display: flex;
+    flex: none;
+    gap: var(--space-1);
+  }
+
+  html:not([data-mode='viewer']) :is(#menu-toggle, .narrow-toggle, .viewer-toggle)[aria-expanded='true'] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
+  }
+
+  /* The side panels as overlay panels, hidden until opened, in the viewer's
+     pattern (FR-58, FR-72). */
+  html:not([data-mode='viewer']) :is(#app-menu, #placement-area, #map-glance, #map-legend, #visibility-area, #presentation-glance, #presentation-legend) {
+    position: fixed;
+    z-index: 30;
+    left: var(--space-2);
+    right: var(--space-2);
+    bottom: var(--space-2);
+    max-height: 60dvh;
+    margin: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding: var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: calc(2 * var(--radius));
+    background: var(--panel);
+    box-shadow: var(--card-shadow);
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity var(--motion-quick) var(--ease-out),
+      transform var(--motion-quick) var(--ease-out),
+      visibility 0s linear 0s;
+  }
+
+  html:not([data-mode='viewer']) :is(#app-menu, #placement-area, #map-glance, #map-legend, #visibility-area, #presentation-glance, #presentation-legend):not([data-state='open']) {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(0.5rem);
+    transition:
+      opacity var(--motion-quick) var(--ease-out),
+      transform var(--motion-quick) var(--ease-out),
+      visibility 0s linear var(--motion-quick);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html:not([data-mode='viewer']) :is(#app-menu, #placement-area, #map-glance, #map-legend, #visibility-area, #presentation-glance, #presentation-legend),
+    html:not([data-mode='viewer']) :is(#app-menu, #placement-area, #map-glance, #map-legend, #visibility-area, #presentation-glance, #presentation-legend):not([data-state='open']) {
       transition: none;
     }
   }

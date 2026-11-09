@@ -131,8 +131,15 @@ describe('Open presentation in the application (FR-60)', () => {
     const page = await open(BUILT);
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(String(e)));
-    await page.evaluate(() => document.getElementById('select-language') && ((document.getElementById('select-language') as HTMLSelectElement).value = 'en'));
-    await page.selectOption('#select-language', 'en');
+    // On a phone the language is in the header's menu (FR-71 as amended in
+    // v1.8.0); on a wide viewport, in the header.
+    if (await page.isVisible('#menu-toggle')) {
+      await page.click('#menu-toggle');
+      await page.selectOption('#select-language', 'en');
+      await page.keyboard.press('Escape');
+    } else {
+      await page.selectOption('#select-language', 'en');
+    }
     return { page, errors };
   }
 

@@ -3,6 +3,26 @@ import { join } from 'node:path';
 import { beforeEach, describe, expect, test } from 'vitest';
 import { byId, flush, markers, mountApp, placeExampleMarkers, pointer, presentationMarkers, STAGE } from './harness';
 
+// The text without its media blocks, however deeply they nest, so that
+// only the desktop's own rules are read.
+function stripMedia(text: string): string {
+  let out = '';
+  let i = 0;
+  for (;;) {
+    const start = text.indexOf('@media', i);
+    if (start < 0) return out + text.slice(i);
+    out += text.slice(i, start);
+    let depth = 0;
+    let j = text.indexOf('{', start);
+    for (; j < text.length; j++) {
+      if (text[j] === '{') depth++;
+      else if (text[j] === '}' && --depth === 0) break;
+    }
+    i = j + 1;
+  }
+}
+
+
 // Information density (FR-42), pinned over the stylesheet and the DOM.
 const css = readFileSync(join(process.cwd(), 'src', 'styles.css'), 'utf8');
 
@@ -15,7 +35,7 @@ function tokens(selector: string): Record<string, string> {
 }
 const root = tokens(':root');
 
-const plain = css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\})*\s*\}/g, '');
+const plain = stripMedia(css.replace(/\/\*[\s\S]*?\*\//g, ''));
 const rules = [...plain.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({
   selectors: m[1].split(',').map((x) => x.trim()),
   body: m[2],

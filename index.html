@@ -13,6 +13,7 @@
       <button type="button" id="presentation-close" class="hidden">Close presentation</button>
       <span id="demo-badge" class="hidden"></span>
       <button type="button" id="demo-reset" class="hidden">Reset demo</button>
+      <button type="button" id="menu-toggle" aria-controls="app-menu" hidden>Menu</button>
       <nav id="segment-nav" role="tablist" aria-label="Segments">
         <button type="button" class="segment-tab" role="tab" id="tab-information" data-segment="information" aria-controls="segment-information" aria-selected="true">Information</button>
         <button type="button" class="segment-tab" role="tab" id="tab-map" data-segment="map" aria-controls="segment-map" aria-selected="false">Map</button>
@@ -42,6 +43,7 @@
           </select>
         </label>
       </div>
+      <div id="app-menu" role="group" aria-labelledby="menu-toggle" hidden></div>
     </header>
     <main id="app-main">
       <section id="compare-panel" class="hidden" aria-labelledby="compare-heading">
@@ -228,6 +230,11 @@
         <section id="map-area" aria-labelledby="map-heading">
           <h2 id="map-heading">Map</h2>
           <div id="map-toolbar" role="toolbar" aria-labelledby="map-heading">
+            <div id="map-toggles" class="narrow-toggles" role="group" aria-label="Panels" hidden>
+              <button type="button" id="toggle-items" class="narrow-toggle" aria-controls="placement-area">Items</button>
+              <button type="button" id="toggle-map-glance" class="narrow-toggle" aria-controls="map-glance">In view</button>
+              <button type="button" id="toggle-map-legend" class="narrow-toggle" aria-controls="map-legend">Legend</button>
+            </div>
             <button type="button" id="map-load">Load background</button>
             <input type="file" id="map-file-input" accept="image/*,application/pdf,.pdf,.osm" hidden />
             <button type="button" id="fetch-open" class="network-action" aria-describedby="fetch-offline">Fetch open map data (online)</button>
@@ -310,6 +317,10 @@
             <button type="button" id="pdf-cancel">Cancel</button>
             <span id="pdf-status" class="notice" aria-live="polite"></span>
           </div>
+          <div id="place-banner" class="hidden" role="status">
+            <span id="place-banner-text"></span>
+            <button type="button" id="place-cancel">Cancel</button>
+          </div>
           <div id="map-stage" class="stage" data-has-background="false">
             <div id="map-content" class="hidden">
               <img id="map-image" alt="" draggable="false" />
@@ -367,6 +378,9 @@
             <button type="button" id="export-open" class="primary-action">Export presentation</button>
             <button type="button" id="pdf-open" class="secondary-action">Export PDF</button>
             <button type="button" id="pptx-open" class="secondary-action">Export PowerPoint</button>
+            <div id="presentation-toggles" class="narrow-toggles" role="group" aria-label="Panels" hidden>
+              <button type="button" id="toggle-visibility" class="narrow-toggle" aria-controls="visibility-area">Visibility</button>
+            </div>
             <span id="viewer-toggles" role="group" aria-label="Panels" hidden>
               <button type="button" id="toggle-glance" class="viewer-toggle" aria-controls="presentation-glance">In view</button>
               <button type="button" id="toggle-legend" class="viewer-toggle" aria-controls="presentation-legend">Legend</button>

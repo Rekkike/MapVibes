@@ -180,20 +180,16 @@ describe('the narrow viewer layout (FR-58)', { timeout: 15_000 }, () => {
     expect(byId('presentation-card').dataset.dock).toBeUndefined();
   });
 
-  test('in the application, outside the viewer, the narrow layout never starts', async () => {
-    let asked = false;
-    await mountApp({
-      beforeMain: () => {
-        const plain = window.matchMedia;
-        window.matchMedia = ((q: string) => {
-          if (q === NARROW_QUERY) asked = true;
-          return plain(q);
-        }) as typeof window.matchMedia;
-      },
-    });
+  test('in the application above the threshold, the narrow layout leaves nothing on the panels (FR-58 as amended in v1.8.0)', async () => {
+    // The application has a narrow layout of its own since v1.8.0 (FR-71,
+    // FR-72); above the threshold it does nothing.
+    await mountApp();
     await flush();
-    expect(asked).toBe(false);
-    expect(glance().dataset.state).toBeUndefined();
+    for (const id of ['placement-area', 'map-glance', 'map-legend', 'visibility-area', 'presentation-glance', 'presentation-legend']) {
+      expect(byId(id).dataset.state, id).toBeUndefined();
+      expect(byId(id).inert, id).toBe(false);
+    }
+    for (const id of ['toggle-items', 'toggle-map-glance', 'toggle-map-legend', 'toggle-visibility', 'toggle-glance', 'toggle-legend']) expect(byId(id).hasAttribute('aria-expanded'), id).toBe(false);
   });
 
   // The stage takes a new size, as after a rotation, before the event.

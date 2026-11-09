@@ -311,6 +311,13 @@ function renderStaticText(): void {
   el('viewer-toggles').setAttribute('aria-label', t.viewerPanels);
   el('toggle-glance').textContent = t.viewerToggleGlance;
   el('toggle-legend').textContent = t.viewerToggleLegend;
+  // The narrow application's toggle bars (FR-72).
+  el('map-toggles').setAttribute('aria-label', t.viewerPanels);
+  el('toggle-items').textContent = t.placementHeading;
+  el('toggle-map-glance').textContent = t.viewerToggleGlance;
+  el('toggle-map-legend').textContent = t.viewerToggleLegend;
+  el('toggle-visibility').textContent = t.visibilityHeading;
+  el('presentation-toggles').setAttribute('aria-label', t.viewerPanels);
   el('details-panel').setAttribute('aria-label', t.detailsPanel);
   el('export-open').textContent = t.exportOpen;
   el('pdf-open').textContent = t.pdfOpen;
@@ -337,7 +344,9 @@ function renderStaticText(): void {
   el('tab-presentation').textContent = t.segmentPresentation;
   el('presentation-heading').textContent = t.segmentPresentation;
   el('placement-heading').textContent = t.placementHeading;
-  el('placement-hint').textContent = t.placementHint;
+  el('placement-hint').textContent = narrowApplication() ? t.placementHintNarrow : t.placementHint;
+  el('place-cancel').textContent = t.placingCancel;
+  renderPlacing();
   el('placement-empty').textContent = t.placementEmpty;
   el('label-language').textContent = t.language;
   el('label-theme').textContent = t.theme;
@@ -1926,6 +1935,12 @@ function markDirty(): void {
 
 function renderWorkStatus(): void {
   const t = strings(state.prefs.lang);
+  // The Menu button carries the unsaved state while the work controls are
+  // in the Menu overlay (FR-71).
+  const menu = el('menu-toggle');
+  menu.textContent = t.menu;
+  menu.dataset.dirty = state.dirty ? 'true' : 'false';
+  menu.setAttribute('aria-label', state.dirty ? t.menuUnsaved : t.menu);
   const status = el('work-status');
   const messages: Record<WorkMessage, string> = {
     saved: t.workSaved,
@@ -2391,9 +2406,15 @@ export function setSegment(segment: Segment): void {
   // Drawing happens in the Map segment only (FR-47).
   if (segment !== 'map' && drawingTools && drawingTools.tool !== 'select') setDrawingTool('select');
   state.segment = segment;
+  // An overlay of the narrow layout belongs to the segment it was opened in,
+  // and so does a placement waiting for a tap.
+  appNarrow?.close({ returnFocus: false });
+  if (segment !== 'map') stopPlacing();
   showSegment(document, segment);
   if (segment === 'map') mapView?.shown();
   if (segment === 'presentation') presentationView?.shown();
+  // A stage that changed size while hidden is refitted once shown (FR-71).
+  if (narrowApplication()) refitNarrowStages();
   // Panels depend on the stage size, which is known only while it is shown.
   renderMapItems();
   renderDetailsPanel();
@@ -2574,6 +2595,43 @@ function valueInput(row: RowData, key: string, number: string): HTMLInputElement
   }
   markEdited(input, row, key, t);
   return input;
+}
+
+// The editing control of one value in the details panel. In the narrow
+// layout (FR-74), a plain text value is edited in a field that wraps and
+// grows to its content, so that a value is shown in full, as touch has no
+// tooltips; it stays one line of text: Enter commits it, and line breaks
+// pasted into it become spaces. A value with a list of its own keeps the
+// list's field.
+function detailValueInput(row: RowData, key: string, number: string): HTMLElement {
+  if (!narrowApplication() || vocabularyOfColumn(key) !== null) return valueInput(row, key, number);
+  const t = strings(state.prefs.lang);
+  const area = document.createElement('textarea');
+  area.className = 'cell-input wraps';
+  area.rows = 1;
+  area.value = row.values[key] ?? '';
+  area.dataset.header = key;
+  area.setAttribute('aria-label', `${labelOf(key)}, ${t.numberColumn} ${number}`);
+  area.addEventListener('input', () => {
+    if (/[\r\n]/.test(area.value)) area.value = area.value.replace(/\s*[\r\n]+\s*/g, ' ');
+    fitToContent(area);
+  });
+  area.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      area.blur();
+    }
+  });
+  area.addEventListener('change', () => setCellValue(row, key, area.value));
+  markEdited(area, row, key, t);
+  return area;
+}
+
+// A wrapping field as tall as its content.
+function fitToContent(area: HTMLTextAreaElement): void {
+  area.style.height = 'auto';
+  // The content's height and the borders around it.
+  if (area.scrollHeight > 0) area.style.height = `${area.scrollHeight + area.offsetHeight - area.clientHeight}px`;
 }
 
 // A cell of the status column (FR-33): chosen from the status list. A value
@@ -3117,6 +3175,7 @@ function renderDetailsPanel(): void {
   // navigation are not disturbed by an edit.
   const structure = JSON.stringify([
     state.prefs.lang,
+    narrowApplication(),
     model.fields.map((f) => [f.key, f.kind]),
     model.comments.map((c) => c.id),
     state.statuses,
@@ -3134,7 +3193,7 @@ function renderDetailsPanel(): void {
     },
     openEconomics: (opener) => openEconomics(rowId(row), opener),
     edit: {
-      renderField: (field) => (field.kind === 'status' ? statusCell(row, field.key, model.number) : valueInput(row, field.key, model.number)),
+      renderField: (field) => (field.kind === 'status' ? statusCell(row, field.key, model.number) : detailValueInput(row, field.key, model.number)),
       removeComment: (id) => {
         if (!removeComment(state.comments, row, id)) return;
         markDirty();
@@ -3153,6 +3212,8 @@ function renderDetailsPanel(): void {
   panel.dataset.structure = structure;
   panel.classList.toggle('hidden', state.segment === 'presentation');
   setDetailsLayout(true);
+  // Sized once shown, as a hidden field has no height.
+  for (const area of panel.querySelectorAll<HTMLTextAreaElement>('textarea.cell-input')) fitToContent(area);
 }
 
 // Brings an open panel up to date from a fresh rendering of the same item
@@ -3173,8 +3234,8 @@ function patchDetails(panel: HTMLElement, fresh: HTMLElement): void {
   panel.querySelectorAll<HTMLElement>('.details-fields dd').forEach((dd, i) => {
     const next = nextValues[i];
     if (!next) return;
-    const control = dd.querySelector<HTMLInputElement | HTMLSelectElement>('.cell-input');
-    const replacement = next.querySelector<HTMLInputElement | HTMLSelectElement>('.cell-input');
+    const control = dd.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('.cell-input');
+    const replacement = next.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('.cell-input');
     if (control && replacement && control === document.activeElement) {
       control.className = replacement.className;
       control.title = replacement.title;
@@ -3247,6 +3308,40 @@ function deleteMarker(id: string): void {
   renderMapItems();
 }
 
+// Tap-to-place (FR-73): the item waiting for a tap on the stage, if any.
+let placingId: string | null = null;
+let placingDown: { id: number; x: number; y: number } | null = null;
+// The distance a tap may move and still be a tap, in pixels.
+const TAP_SLOP = 8;
+
+function startPlacing(id: string): void {
+  placingId = id;
+  closeNarrowOverlay();
+  renderPlacing();
+}
+
+function stopPlacing(): void {
+  if (placingId === null) return;
+  placingId = null;
+  placingDown = null;
+  renderPlacing();
+}
+
+function renderPlacing(): void {
+  const banner = el('place-banner');
+  const row = placingId ? rowById(placingId) : undefined;
+  if (!row || state.positions.has(row)) {
+    placingId = null;
+    banner.classList.add('hidden');
+    delete el('map-stage').dataset.placing;
+    return;
+  }
+  const t = strings(state.prefs.lang);
+  el('place-banner-text').textContent = fill(t.placingHint, { name: itemLabel(row, numberLabel(row)) });
+  banner.classList.remove('hidden');
+  el('map-stage').dataset.placing = 'true';
+}
+
 function dropRowOnMap(id: string, clientX: number, clientY: number): void {
   const row = rowById(id);
   if (!row || !mapView) return;
@@ -3286,17 +3381,35 @@ function renderPlacementList(): void {
     status.className = 'placement-status';
     status.textContent = placed ? t.placementPlaced : t.placementNotPlaced;
     li.append(badge, label, status);
+    // Tap-to-place (FR-73): in the narrow layout, an unplaced item offers
+    // the action; the stylesheet shows it there only.
+    if (!placed) {
+      const place = document.createElement('button');
+      place.type = 'button';
+      place.className = 'placement-place';
+      place.textContent = t.placeOnMap;
+      place.setAttribute('aria-label', fill(t.placeOnMapFor, { name: itemLabel(row, number) }));
+      place.addEventListener('click', (e) => {
+        e.stopPropagation();
+        startPlacing(id);
+      });
+      li.appendChild(place);
+    }
     li.addEventListener('dragstart', (e) => {
       e.dataTransfer?.setData(ROW_DRAG_TYPE, id);
       e.dataTransfer?.setData('text/plain', itemLabel(row, number));
       if (e.dataTransfer) e.dataTransfer.effectAllowed = 'copyMove';
     });
     li.addEventListener('click', () => {
+      // In the narrow layout, choosing an entry closes the overlay and opens
+      // the details (FR-72, FR-74).
+      if (narrowApplication()) closeNarrowOverlay();
       if (state.positions.has(row)) selectMarker(id);
       else openDetails(id);
     });
     list.appendChild(li);
   });
+  el('placement-hint').textContent = narrowApplication() ? t.placementHintNarrow : t.placementHint;
   el('placement-empty').classList.toggle('hidden', state.rows.length > 0);
   el('placement-hint').classList.toggle('hidden', state.rows.length === 0);
 }
@@ -3317,10 +3430,15 @@ function renderMapItems(): void {
   const markers = placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered());
   markerLayer?.render(markers, state.selectedMarker);
   renderAnnotations();
-  renderGlance('map', mapView, state.selectedMarker, (id) => selectMarker(id));
+  renderGlance('map', mapView, state.selectedMarker, (id) => {
+    // In the narrow layout, choosing an entry closes the overlay (FR-72).
+    if (narrowApplication()) closeNarrowOverlay();
+    selectMarker(id);
+  });
   renderPresentation();
   applyHighlight();
   renderPlacementList();
+  renderPlacing();
   const t = strings(state.prefs.lang);
   const selected = markers.find((m) => rowId(m.row) === state.selectedMarker);
   el('marker-selection').textContent = selected ? `${t.markerSelected}: ${selected.label}` : t.markerNoSelection;
@@ -4278,7 +4396,7 @@ function renderZoomLevel(): void {
 // Choosing an entry of the "In view" list opens the item's card; in the
 // narrow viewer, it first closes the overlay (FR-58).
 function choosePresentationEntry(id: string): void {
-  if (narrowViewer()) narrow?.close({ returnFocus: false });
+  if (narrowViewer()) closeNarrowOverlay();
   if (timelineMode()) timeline?.reveal(id);
   openCard(id);
 }
@@ -4917,6 +5035,35 @@ function initialiseMapView(): void {
     stage.classList.add('dragover');
   });
   stage.addEventListener('dragleave', () => stage.classList.remove('dragover'));
+  // Tap-to-place (FR-73): a tap on the stage, not a pan or a pinch, places
+  // the waiting item through the drop's own placement.
+  stage.addEventListener(
+    'pointerdown',
+    (e) => {
+      if (placingId === null) return;
+      placingDown = e.isPrimary ? { id: e.pointerId, x: e.clientX, y: e.clientY } : null;
+    },
+    true,
+  );
+  stage.addEventListener(
+    'pointerup',
+    (e) => {
+      const down = placingDown;
+      placingDown = null;
+      if (placingId === null || !down || down.id !== e.pointerId) return;
+      if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > TAP_SLOP) return;
+      const id = placingId;
+      placingId = null;
+      dropRowOnMap(id, e.clientX, e.clientY);
+      renderPlacing();
+    },
+    true,
+  );
+  stage.addEventListener('pointercancel', () => (placingDown = null), true);
+  el('place-cancel').addEventListener('click', () => stopPlacing());
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && placingId !== null) stopPlacing();
+  });
   stage.addEventListener('pointerdown', (e) => {
     if (!(e.target as HTMLElement).closest('.marker') && state.selectedMarker) selectMarker(null);
   });
@@ -5131,6 +5278,8 @@ async function startViewer(text: string): Promise<void> {
   renderViewerBadge();
   renderList();
   setSegment('presentation');
+  // The application's overlays give way to the viewer's.
+  appNarrow?.refresh();
   startNarrowViewer();
 }
 
@@ -5140,8 +5289,96 @@ async function startViewer(text: string): Promise<void> {
 let narrow: NarrowViewer | null = null;
 let narrowStage: { width: number; height: number } | null = null;
 
+// Whether the presentation is in a narrow layout: the viewer's, or the
+// application's (FR-71), which follows the viewer's patterns.
 function narrowViewer(): boolean {
-  return narrow?.active() ?? false;
+  return (narrow?.active() ?? false) || narrowApplication();
+}
+
+function closeNarrowOverlay(): void {
+  narrow?.close({ returnFocus: false });
+  appNarrow?.close({ returnFocus: false });
+}
+
+// The narrow application layout (FR-71, FR-72): the application's own
+// overlays, from the toggle bars of the Map and Presentation segments, one
+// open at a time, gated on the application's mode, so that the viewer, when
+// a presentation is opened in the application, has its own.
+let appNarrow: NarrowViewer | null = null;
+
+function narrowApplication(): boolean {
+  return appNarrow?.active() ?? false;
+}
+
+function startNarrowApplication(): void {
+  appNarrow = new NarrowViewer(
+    window.matchMedia(NARROW_QUERY),
+    [
+      { toggle: el<HTMLButtonElement>('menu-toggle'), panel: el('app-menu') },
+      { toggle: el<HTMLButtonElement>('toggle-items'), panel: el('placement-area') },
+      { toggle: el<HTMLButtonElement>('toggle-map-glance'), panel: el('map-glance') },
+      { toggle: el<HTMLButtonElement>('toggle-map-legend'), panel: el('map-legend') },
+      { toggle: el<HTMLButtonElement>('toggle-visibility'), panel: el('visibility-area') },
+      { toggle: el<HTMLButtonElement>('toggle-glance'), panel: el('presentation-glance') },
+      { toggle: el<HTMLButtonElement>('toggle-legend'), panel: el('presentation-legend') },
+    ],
+    {
+      enabled: () => document.documentElement.dataset.mode !== 'viewer',
+      // The card and the details sheet (FR-74) take the overlays' place.
+      closeCard: () => {
+        if (cardId !== null) closeCard();
+        if (state.detailsId !== null) openDetails(null);
+      },
+      render: () => {
+        layoutHeader();
+        renderMapItems();
+      },
+      refit: () => refitNarrowStages(),
+    },
+  );
+  layoutHeader();
+  refitNarrowStages();
+}
+
+// The resize and orientation refit (FR-71), in the narrow layout only (the
+// module calls it there only): each stage's size at its last refit, so that
+// a fitted view stays fitted and another keeps its centre. A stage hidden
+// in another segment has no size: it keeps its record, and is refitted when
+// it is shown again.
+const narrowStages = new Map<MapView, { width: number; height: number }>();
+
+function refitNarrowStages(): void {
+  for (const view of [mapView, presentationView]) {
+    if (!view) continue;
+    const now = view.stageSize();
+    if (now.width <= 0 || now.height <= 0) continue;
+    const before = narrowStages.get(view);
+    if (before) view.refit(before);
+    narrowStages.set(view, view.stageSize());
+  }
+  renderMapItems();
+}
+
+// The header's controls that the narrow layout moves into the Menu overlay
+// (FR-71), each with an anchor marking its place in the header, so that
+// leaving the narrow layout puts it back exactly where it was.
+let headerAnchors: Array<{ item: HTMLElement; anchor: Comment }> | null = null;
+
+function layoutHeader(): void {
+  if (headerAnchors === null) {
+    const items = [el('demo-badge'), el('demo-reset'), el('work-controls'), el('select-language').closest('label')!, el('select-theme').closest('label')!];
+    headerAnchors = items.map((item) => {
+      const anchor = document.createComment('menu');
+      item.before(anchor);
+      return { item, anchor };
+    });
+  }
+  const menu = el('app-menu');
+  if (narrowApplication()) {
+    for (const { item } of headerAnchors) if (item.parentElement !== menu) menu.appendChild(item);
+  } else {
+    for (const { item, anchor } of headerAnchors) if (item.previousSibling !== anchor) anchor.after(item);
+  }
 }
 
 function startNarrowViewer(): void {
@@ -5187,6 +5424,9 @@ export function main(): void {
   renderStaticText();
   renderMapItems();
   setSegment(state.segment);
+  // The application's narrow layout (FR-71, FR-72); the exported viewer
+  // starts its own.
+  if (island === null) startNarrowApplication();
   if (island !== null) void startViewer(island);
   // The application has started: an exported file's static state and its
   // no-scripts notice give way (FR-38 as amended, FR-59).
