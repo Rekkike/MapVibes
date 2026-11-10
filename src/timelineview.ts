@@ -7,7 +7,7 @@
 // neither pans nor zooms.
 
 import { dateOfDay, formatDate, readDate } from './dates';
-import { amountShare, clampWindow, fitWindow, layoutEvents, zoomWindow, type ScheduleEvent, type CostsAmount, type CostsLine, type TimelineLine, type TimelineModel, type TimelineSpan } from './timeline';
+import { amountShare, clampWindow, EVENT_ROWS, fitWindow, layoutEvents, zoomWindow, type ScheduleEvent, type CostsAmount, type CostsLine, type TimelineLine, type TimelineModel, type TimelineSpan } from './timeline';
 import type { SeriesRole } from './economics';
 
 // {placeholder} substitution, as in i18n.
@@ -33,9 +33,13 @@ export interface TimelineLabels {
   activities: string;
   // The costs view's own words (FR-79); absent in the timeline.
   costs?: CostsLabels;
-  // The events' heading and their "+n" chip (FR-80).
+  // The events' heading and their "+n" chip (FR-80), and the edge
+  // indicators' accessible names (the follow-up amendment): the events beyond the shown
+  // window, listed at each end of the strip.
   events: string;
   moreEvents: string;
+  eventsBefore: string;
+  eventsAfter: string;
 }
 
 export interface CostsLabels {
@@ -102,6 +106,14 @@ const EVENT_CHAR_PX = 6.5;
 const EVENT_PAD_PX = 14;
 const EVENT_MAX_PX = 160;
 const EVENT_MORE_PX = 30;
+// The edge indicators (the follow-up amendment): a small chip at each end of the events
+// strip counting the events beyond the shown window, in the "+n" chip's own
+// size and style. Its tap pans the window to the nearest of those events.
+const EVENT_EDGE_PX = 28;
+const EVENT_EDGE_RESERVE_PX = 30;
+// Where a tap on an edge chip brings the nearest event into the window: this
+// share of the window's length inside the edge it lies beyond.
+const EVENT_EDGE_MARGIN = 0.05;
 
 export function eventChipWidth(label: string): number {
   return Math.min(EVENT_MAX_PX, Math.ceil(label.length * EVENT_CHAR_PX) + EVENT_PAD_PX);
@@ -283,6 +295,16 @@ export class TimelineView {
     this.chosen = true;
     this.position();
     this.callbacks.onViewChanged();
+  }
+
+  // Pans the window to an event beyond one of its ends (the follow-up amendment, the edge
+  // indicators' tap): the event lands just inside that end, the window's
+  // length kept.
+  private panToEvent(day: number): void {
+    const length = this.current.to - this.current.from;
+    const margin = length * EVENT_EDGE_MARGIN;
+    const shift = day < this.current.from ? day - margin - this.current.from : day + margin - this.current.to;
+    this.panBy(shift);
   }
 
   // The index of the first row at least partly visible.
@@ -631,7 +653,10 @@ export class TimelineView {
 
   // The events (FR-80): a 1-pixel hairline crossing the whole body at each
   // event's date, and its label chip in the strip at the top; chips that
-  // would overlap stagger into two rows, then a "+n" chip.
+  // would overlap stagger into two rows, then a "+n" chip. (Amended in
+  // The follow-up amendment: an event beyond the shown window is counted in a small edge
+  // chip at that end of the strip, which on a tap pans the window to the
+  // nearest of those events, so that it is drawn.)
   private positionEvents(pct: (day: number) => number, plotW: number): void {
     const labels = this.labels;
     this.eventStrip.classList.toggle('hidden', this.events.length === 0);
@@ -641,14 +666,44 @@ export class TimelineView {
       return;
     }
     this.eventStrip.setAttribute('aria-label', labels.events);
+    // The events beyond the shown window (the follow-up amendment), counted at the ends of
+    // the strip. At the fitted view these are the events beyond the fitted
+    // window; once the window is panned to one, it is drawn and no longer
+    // counted.
+    const before = this.events.filter((e) => e.day < this.current.from);
+    const after = this.events.filter((e) => e.day > this.current.to);
     const chips = layoutEvents(
       this.events.map((event) => ({ event, x: (pct(event.day) / 100) * plotW, width: eventChipWidth(event.label) })),
       plotW,
       EVENT_MORE_PX,
+      EVENT_ROWS,
+      before.length > 0 ? EVENT_EDGE_RESERVE_PX : 0,
+      after.length > 0 ? EVENT_EDGE_RESERVE_PX : 0,
     );
     const said = (e: ScheduleEvent) => `${e.date}: ${e.label}`;
     const strip: HTMLElement[] = [];
     const hairlines: HTMLElement[] = [];
+    for (const [side, beyond, label] of [
+      ['before', before, labels.eventsBefore],
+      ['after', after, labels.eventsAfter],
+    ] as const) {
+      if (beyond.length === 0) continue;
+      const names = beyond.map(said).join('; ');
+      const edge = el('button', 'timeline-event-chip timeline-event-edge', fill(labels.moreEvents, { count: beyond.length }));
+      edge.type = 'button';
+      edge.dataset.side = side;
+      edge.style.width = `${EVENT_EDGE_PX}px`;
+      edge.style.left = side === 'before' ? '0px' : `${plotW - EVENT_EDGE_PX}px`;
+      edge.title = fill(label, { events: names });
+      edge.setAttribute('aria-label', fill(label, { events: names }));
+      // A tap pans the window to the nearest of the events beyond this end.
+      edge.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        const nearest = beyond.reduce((a, b) => (side === 'before' ? (b.day > a.day ? b : a) : b.day < a.day ? b : a));
+        this.panToEvent(nearest.day);
+      });
+      strip.push(edge);
+    }
     for (const chip of chips) {
       const at = `${pct(chip.event.day).toFixed(3)}%`;
       const line = el('span', 'timeline-event-line');

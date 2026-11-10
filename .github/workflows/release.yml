@@ -30,6 +30,25 @@ jobs:
       - name: UI tests
         run: npx vitest run tests/ui
 
+      # The PowerPoint round trip (FR-51): a presentation package built by
+      # the repository's own writer (src/pptxwriter.ts) is opened with
+      # python-pptx, an independent implementation, which reads its slides
+      # back and asserts success. The owner's own machine remains the
+      # acceptance test for the double-click behaviour itself.
+      - name: Set up Python for the python-pptx round trip
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install python-pptx
+        run: pip install python-pptx
+
+      - name: Build a presentation package with the repository's own writer
+        run: npx vite-node scripts/build-pptx-fixture.ts
+
+      - name: Open the package with python-pptx and read its slides
+        run: python3 scripts/check-pptx.py
+
       - name: Determine spec version
         id: spec
         run: |

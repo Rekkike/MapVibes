@@ -317,7 +317,9 @@ export function inThousands(value: number): number {
 // rows; an event that fits neither row is counted in a "+n" chip beside the
 // chip that blocks it. Pure: the chips' widths are given, so the layout
 // needs no measuring, and zooming, which spreads the positions, separates
-// them.
+// them. (Amended in the follow-up pass: the edge indicators, the chips at the plot's
+// ends that count the events beyond the window, reserve their room at the
+// ends, so that no in-window chip overlaps them.)
 export interface ScheduleEvent {
   id: string;
   label: string;
@@ -341,14 +343,24 @@ export interface EventChip {
 export const EVENT_ROWS = 2;
 const EVENT_GAP = 4;
 
-export function layoutEvents(events: Array<{ event: ScheduleEvent; x: number; width: number }>, plotWidth: number, moreWidth: number, rows = EVENT_ROWS): EventChip[] {
-  const ends: number[] = Array.from({ length: rows }, () => -Infinity);
+export function layoutEvents(
+  events: Array<{ event: ScheduleEvent; x: number; width: number }>,
+  plotWidth: number,
+  moreWidth: number,
+  rows = EVENT_ROWS,
+  // The room the edge indicators take at the plot's left and right ends
+  // (the follow-up amendment): in-window chips keep clear of it.
+  reservedLeft = 0,
+  reservedRight = 0,
+): EventChip[] {
+  const ends: number[] = Array.from({ length: rows }, (_, i) => (i === 0 && reservedLeft > 0 ? reservedLeft : -Infinity));
   const last: Array<EventChip | null> = Array.from({ length: rows }, () => null);
   const out: EventChip[] = [];
   const sorted = events.filter((e) => e.x >= 0 && e.x <= plotWidth).sort((a, b) => a.x - b.x || a.event.day - b.event.day);
+  const rightLimit = plotWidth - reservedRight;
   for (const e of sorted) {
     // A chip stands after its hairline, or before it where the plot ends.
-    const left = e.x + e.width > plotWidth && e.x - e.width >= 0 ? e.x - e.width : e.x;
+    const left = e.x + e.width > rightLimit && e.x - e.width >= reservedLeft ? e.x - e.width : e.x;
     const row = ends.findIndex((end) => end + EVENT_GAP <= left);
     if (row === -1) {
       // Neither row has room: the event joins the "+n" of the chip that

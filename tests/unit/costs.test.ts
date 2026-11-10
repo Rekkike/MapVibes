@@ -134,6 +134,17 @@ describe('the events layout (FR-80)', () => {
     expect(brief(layoutEvents([ev('a', 780), ev('out', 900), ev('before', -5)], 800, 30))).toEqual(['a@0:720']);
   });
 
+  test('the edge indicators reserve the plot ends, so no in-window chip overlaps them (v1.11.1)', () => {
+    // A left reservation: a chip at the very left staggers into the second row, one past it stays in the first.
+    expect(brief(layoutEvents([ev('a', 10)], 800, 30, 2, 30, 0))).toEqual(['a@1:10']);
+    expect(brief(layoutEvents([ev('a', 60)], 800, 30, 2, 30, 0))).toEqual(['a@0:60']);
+    // A right reservation: a chip that would end inside the reserved end flips to before its hairline.
+    expect(brief(layoutEvents([ev('a', 730)], 800, 30))).toEqual(['a@0:730']);
+    expect(brief(layoutEvents([ev('a', 730)], 800, 30, 2, 0, 30))).toEqual(['a@0:670']);
+    // Both reservations together keep both ends clear.
+    expect(brief(layoutEvents([ev('a', 10), ev('b', 730)], 800, 30, 2, 30, 30))).toEqual(['a@1:10', 'b@0:670']);
+  });
+
   test('a chip is as wide as its label needs, up to a longest chip', () => {
     expect(eventChipWidth('Review')).toBe(53);
     expect(eventChipWidth('x'.repeat(200))).toBe(160);

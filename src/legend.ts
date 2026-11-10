@@ -2,6 +2,7 @@
 // that shows markers (the Map segment and the Presentation stage).
 
 import { COLOURS, type RowColour } from './dataset';
+import { SERIES_ROLES, type SeriesRole } from './economics';
 import { drawSymbol, SYMBOLS, symbolClasses, type MarkerSymbol } from './symbols';
 import type { StatusEntry } from './vocab';
 import type { Strings } from './i18n';
@@ -69,6 +70,15 @@ export interface LegendUse {
   groups: Set<number>;
 }
 
+// The costs view's series key (FR-79 as amended): the series'
+// names (the user's own words, FR-63) and the series actually present among
+// the visible items, under the legend's used-only rule (FR-75). Given only
+// when the costs view is shown.
+export interface SeriesLegend {
+  names: Record<SeriesRole, string>;
+  used: Set<SeriesRole>;
+}
+
 export function defaultSymbolLabels(t: Strings): SymbolLabels {
   return Object.fromEntries(SYMBOLS.map((s) => [s, shapeName(t, s)])) as SymbolLabels;
 }
@@ -82,10 +92,11 @@ export interface LegendItem {
   symbol?: MarkerSymbol;
   status?: string;
   group?: number;
+  series?: SeriesRole;
 }
 
 export interface LegendSection {
-  kind: 'colours' | 'shapes' | 'statuses' | 'programs';
+  kind: 'colours' | 'shapes' | 'statuses' | 'programs' | 'series';
   label: string;
   items: LegendItem[];
 }
@@ -101,6 +112,7 @@ export function legendModel(
   colourLabels: ColourLabels = defaultColourLabels(t),
   symbolLabels: SymbolLabels = defaultSymbolLabels(t),
   used?: LegendUse,
+  series?: SeriesLegend,
 ): LegendSection[] {
   const sections: LegendSection[] = [
     {
@@ -126,12 +138,26 @@ export function legendModel(
   if (groupItems.length > 0) {
     sections.push({ kind: 'programs', label: t.legendProgramGroups, items: groupItems });
   }
+  // The costs view's series key (FR-79 as amended): the series
+  // present among the visible items, each with its meaning and its style.
+  if (series) {
+    const seriesItems = SERIES_ROLES.filter((role) => series.used.has(role)).map((role) => ({ label: series.names[role], series: role }));
+    if (seriesItems.length > 0) sections.push({ kind: 'series', label: t.legendSeries, items: seriesItems });
+  }
   // With a used-only filter, a section whose entries are all unused does not
   // appear (FR-75).
   return used ? sections.filter((section) => section.items.length > 0) : sections;
 }
 
 function legendEntry(item: LegendItem): HTMLLIElement {
+  if (item.series !== undefined) {
+    // A series of the costs view (FR-79): a swatch in the series' own style,
+    // so the bars can be told apart at a glance. The swatch carries the
+    // series itself, so its style follows from its own attribute.
+    const li = entry('legend-series-swatch', item.label, { series: item.series });
+    li.querySelector('.legend-swatch')!.setAttribute('data-series', item.series);
+    return li;
+  }
   if (item.group !== undefined) {
     const li = document.createElement('li');
     li.className = 'legend-entry';
@@ -158,6 +184,7 @@ export function renderLegend(
   colourLabels: ColourLabels = defaultColourLabels(t),
   symbolLabels: SymbolLabels = defaultSymbolLabels(t),
   used?: LegendUse,
+  series?: SeriesLegend,
 ): void {
   container.innerHTML = '';
   const heading = document.createElement('span');
@@ -167,7 +194,7 @@ export function renderLegend(
   container.setAttribute('role', 'group');
   container.setAttribute('aria-labelledby', heading.id);
   container.append(heading);
-  for (const section of legendModel(t, statuses, numberGroups, colourLabels, symbolLabels, used)) {
+  for (const section of legendModel(t, statuses, numberGroups, colourLabels, symbolLabels, used, series)) {
     const group = document.createElement('div');
     group.className = 'legend-group';
     group.dataset.kind = section.kind;

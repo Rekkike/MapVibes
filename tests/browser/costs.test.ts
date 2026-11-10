@@ -220,4 +220,58 @@ describe.each([
     expect(errors).toEqual([]);
     await page.context().close();
   }, 60_000);
+
+  test('the legend carries the costs view series key: the present series, each with its style and meaning, only while the costs view is shown', async () => {
+    const { page, errors } = await openViewer(options);
+    const readKey = () =>
+      page.evaluate(() => {
+        const group = document.querySelector<HTMLElement>('#presentation-legend .legend-group[data-kind="series"]');
+        if (!group) return null;
+        return {
+          label: group.querySelector('.legend-group-label')!.textContent,
+          entries: [...group.querySelectorAll<HTMLElement>('.legend-entry')].map((e) => {
+            const swatch = e.querySelector<HTMLElement>('.legend-swatch')!;
+            const cs = getComputedStyle(swatch);
+            const r = swatch.getBoundingClientRect();
+            return { series: e.dataset.series, text: e.textContent!.trim(), w: r.width, h: r.height, background: cs.backgroundColor, borderTop: `${cs.borderTopWidth} ${cs.borderTopStyle}`, opacity: cs.opacity };
+          }),
+          mapLegend: !!document.querySelector('#map-legend .legend-group[data-kind="series"]'),
+        };
+      });
+    const m = await readKey();
+    expect(m).not.toBeNull();
+    expect(m!.label).toBe('Series');
+    expect(m!.mapLegend).toBe(false);
+    expect(m!.entries.map((e) => [e.series, e.text])).toEqual([
+      ['budget', 'Budget'],
+      ['forecast', 'Forecast'],
+      ['outcome', 'Outcome'],
+    ]);
+    for (const e of m!.entries) {
+      // A small bar, not a round swatch.
+      expect(e.w).toBeCloseTo(17.6, 0);
+      expect(e.h).toBeCloseTo(8, 0);
+    }
+    const [budget, forecast, outcome] = m!.entries;
+    // The styles are the bars' own: the outcome solid, the forecast
+    // outlined, the budget a lighter base.
+    expect(outcome.background).not.toBe('rgba(0, 0, 0, 0)');
+    expect(outcome.borderTop).toBe('0px none');
+    expect(outcome.opacity).toBe('1');
+    expect(forecast.background).toBe('rgba(0, 0, 0, 0)');
+    // 1.5 pixels, which the browser may snap in the computed style.
+    expect(forecast.borderTop).toMatch(/^1(\.5)?px solid/);
+    expect(budget.background).not.toBe('rgba(0, 0, 0, 0)');
+    expect(budget.opacity).toBe('0.4');
+    measured.push(`${name}: series key in the legend while the costs view is shown: ${m!.entries.map((e) => `${e.series} ${e.text} (${e.w.toFixed(1)}x${e.h.toFixed(1)} px, ${e.borderTop}, opacity ${e.opacity})`).join(', ')}`);
+    // Another view: the key is gone; the costs view again: it is back.
+    await page.click('#pres-mode-map');
+    await page.waitForFunction(() => (document.querySelector('#presentation-stage') as HTMLElement).dataset.view === 'map');
+    expect(await readKey()).toBeNull();
+    await page.click('#pres-mode-costs');
+    await page.waitForFunction(() => (document.querySelector('#presentation-stage') as HTMLElement).dataset.view === 'costs');
+    expect((await readKey())!.entries).toHaveLength(3);
+    expect(errors).toEqual([]);
+    await page.context().close();
+  }, 60_000);
 });

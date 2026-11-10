@@ -231,3 +231,75 @@ describe('the costs view without series (FR-79)', () => {
     expect(root().querySelector('.timeline-message')!.textContent).toBe('Assign year series to budget, forecast, or outcome in the Information segment to show the costs by year.');
   });
 });
+
+describe("the costs view's series key (FR-79 as amended in v1.11.1)", () => {
+  const key = () => [...byId('presentation-legend').querySelectorAll<HTMLElement>('.legend-group[data-kind="series"] .legend-entry')];
+  const groupLabel = () => byId('presentation-legend').querySelector('.legend-group[data-kind="series"] .legend-group-label')?.textContent;
+
+  test('when the costs view is shown, the legend carries the present series with their styles and meanings; the other views carry none', async () => {
+    await setUp();
+    // The map view (the default): no series key.
+    expect(key()).toHaveLength(0);
+    byId('pres-mode-timeline').click();
+    expect(key()).toHaveLength(0);
+    byId('pres-mode-costs').click();
+    const entries = key();
+    expect(groupLabel()).toBe('Series');
+    expect(entries.map((e) => [e.dataset.series, e.textContent!.trim()])).toEqual([
+      ['budget', 'Budget'],
+      ['forecast', 'Prognos'],
+      ['outcome', 'Utfall'],
+    ]);
+    for (const e of entries) {
+      const swatch = e.querySelector('.legend-swatch')!;
+      expect(swatch.classList.contains('legend-series-swatch')).toBe(true);
+      expect(swatch.getAttribute('aria-hidden')).toBe('true');
+    }
+    // Switching away removes the key again.
+    byId('pres-mode-map').click();
+    expect(key()).toHaveLength(0);
+    // The Map segment's legend never carries it.
+    expect(byId('map-legend').querySelector('.legend-group[data-kind="series"]')).toBeNull();
+  });
+
+  test('used-only (FR-75): only the series present among the visible items appear, recomputed on a visibility toggle', async () => {
+    await setUp();
+    byId('pres-mode-costs').click();
+    expect(key().map((e) => e.dataset.series)).toEqual(['budget', 'forecast', 'outcome']);
+    // Switch off the first item (E-01), the only one with an outcome.
+    document.querySelectorAll<HTMLInputElement>('#visibility-list input[type="checkbox"]')[0].click();
+    expect(key().map((e) => e.dataset.series)).toEqual(['budget', 'forecast']);
+    document.querySelectorAll<HTMLInputElement>('#visibility-list input[type="checkbox"]')[0].click();
+    expect(key().map((e) => e.dataset.series)).toEqual(['budget', 'forecast', 'outcome']);
+  });
+
+  test('with no series assigned, the costs view shows no series key', async () => {
+    await setUp(false);
+    byId('pres-mode-costs').click();
+    expect(key()).toHaveLength(0);
+  });
+
+  test('the exported viewer opening in the costs view carries the series key, computed once from its embedded items', async () => {
+    const app = await setUp();
+    byId('pres-mode-costs').click();
+    const doc = new DOMParser().parseFromString(app.exportPage(new Date(2026, 10, 9, 10, 0))!, 'text/html');
+    await mountApp({
+      body: doc.body.innerHTML,
+      beforeMain: () => {
+        stubStageLayout();
+        stubImageDecoding(1200, 800);
+      },
+    });
+    await flush();
+    expect(document.documentElement.dataset.mode).toBe('viewer');
+    expect(byId('presentation-stage').dataset.view).toBe('costs');
+    expect(key().map((e) => [e.dataset.series, e.textContent!.trim()])).toEqual([
+      ['budget', 'Budget'],
+      ['forecast', 'Prognos'],
+      ['outcome', 'Utfall'],
+    ]);
+    // The viewer's switch to another view removes the key.
+    byId('pres-mode-map').click();
+    expect(key()).toHaveLength(0);
+  });
+});

@@ -15,7 +15,7 @@ import { isOsmFile, MAX_OSM_BYTES, OsmError, parseOsm, planRender, type Mercator
 import { renderPlanToDataUrl } from './osmrender';
 import { fetchableBounds, FetchError, fetchMapData, isOnline, parseBounds, searchPlace, type BoundsField, type FetchErrorCode, type PlaceResult } from './openmap';
 import { MarkerLayer } from './markerlayer';
-import { colourName, legendModel, renderLegend, shapeName, type ColourLabels, type LegendGroup, type LegendUse, type SymbolLabels } from './legend';
+import { colourName, legendModel, renderLegend, shapeName, type ColourLabels, type LegendGroup, type LegendUse, type SeriesLegend, type SymbolLabels } from './legend';
 import { buildPdf, buildPptxDocument, PPTX_PAGE, pptxTables, sceneFromStage, type DocumentTable, type StageScene } from './documents';
 import { backgroundJpeg, stagePagePng } from './raster';
 import { addComment, commentsOf, editComment, formatCommentDate, removeComment, restoreComments, type CommentStore } from './comments';
@@ -2974,15 +2974,42 @@ function presentationLegendUse(): LegendUse {
   };
 }
 
+// The costs view's series key (FR-79 as amended): the legend
+// carries the series entries with their styles when the costs view is shown,
+// under the used-only rule (FR-75) -- only the series actually present among
+// the visible items, each with its meaning (the series' name, the user's own
+// words per FR-63). Undefined in the other views.
+function costsSeriesLegend(): SeriesLegend | undefined {
+  if (state.presentationMode !== 'costs') return undefined;
+  const t = strings(state.prefs.lang);
+  const series = effectiveSeries();
+  const roleNames: Record<SeriesRole, string> = { budget: t.seriesRoleBudget, forecast: t.seriesRoleForecast, outcome: t.seriesRoleOutcome };
+  const names = Object.fromEntries(SERIES_ROLES.map((role) => [role, series[role]?.name ?? roleNames[role]])) as Record<SeriesRole, string>;
+  const shown = state.rows.filter((r) => !state.excluded.has(r));
+  const used = new Set<SeriesRole>();
+  for (const role of SERIES_ROLES) {
+    for (const key of Object.values(series[role]?.columns ?? {})) {
+      // A series is present when at least one visible item has a readable
+      // amount in it, so at least one of its bars is drawn.
+      if (shown.some((r) => readAmount(r.values[key] ?? '', state.currencyUnit).kind === 'number')) {
+        used.add(role);
+        break;
+      }
+    }
+  }
+  return { names, used };
+}
+
 function renderLegends(): void {
   const t = strings(state.prefs.lang);
   const groups = shownProgramGroups();
   const labels = colourLabels();
   const names = symbolLabels();
   // The Map segment's legend keeps the working palette (FR-6 as amended);
-  // the presentation's is used-only (FR-75).
+  // the presentation's is used-only (FR-75), with the costs view's series
+  // key when the costs view is shown (FR-79 as amended).
   renderLegend(el('map-legend'), t, state.statuses, groups, labels, names);
-  renderLegend(el('presentation-legend'), t, state.statuses, groups, labels, names, presentationLegendUse());
+  renderLegend(el('presentation-legend'), t, state.statuses, groups, labels, names, presentationLegendUse(), costsSeriesLegend());
 }
 
 // Editable colour labels (FR-45): the user's name for a colour, or the
@@ -4817,6 +4844,9 @@ function setPresentationMode(mode: PresentationMode): void {
   if (cardId !== null) closeCard();
   markDirty();
   renderPresentation();
+  // The legend follows the view: the costs view's series key appears only
+  // when the costs view is shown (FR-79 as amended).
+  renderLegends();
 }
 
 // The costs view's saved view (FR-79), beside the timeline's.
@@ -4919,6 +4949,8 @@ function scheduleLabels(): TimelineLabels {
     activities: t.timelineActivities,
     events: t.eventPanel,
     moreEvents: t.eventsMore,
+    eventsBefore: t.eventsBefore,
+    eventsAfter: t.eventsAfter,
   };
 }
 

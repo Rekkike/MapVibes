@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, test } from 'vitest';
 import { byId, flush, importExampleWorkbook, mountApp, openWorkFile, setRole, stubImageDecoding, stubStageLayout, textFile } from './harness';
 import { parseWorkState, serialiseWorkState } from '../../src/workstate';
 import { DATA_ISLAND_ID } from '../../src/singlefile';
+import { dayNumber } from '../../src/dates';
 
 // The events (FR-80): global dated markers, hand-authored in the Information
 // segment in the vocabulary pattern, saved in the work state (schema 11) and
@@ -248,5 +249,38 @@ describe('the events in the schedule views (FR-80)', () => {
     expect(hairlines('timeline')).toHaveLength(1);
     byId('pres-mode-costs').click();
     expect(chips('costs').map((c) => c.textContent)).toEqual(['Review']);
+  });
+
+  test('an event beyond the shown window is counted in an edge chip at that end of the strip; tapping it pans the window to it (v1.11.1)', () => {
+    add('2022-03-01', 'Review');
+    add('2015-01', 'Early');
+    add('2040-06', 'Far review');
+    byId('tab-presentation').click();
+    for (const view of ['timeline', 'costs'] as const) {
+      byId(`pres-mode-${view}`).click();
+      const edges = () => [...document.querySelectorAll<HTMLElement>(`#presentation-${view} .timeline-event-edge`)];
+      const labels = () => chips(view).filter((c) => !c.classList.contains('timeline-event-edge'));
+      // The edge chips count the events beyond the window, each end its own, with their names.
+      expect(edges().map((e) => [e.dataset.side, e.textContent, e.title])).toEqual([
+        ['before', '+1', 'Events before the shown window: 2015-01: Early'],
+        ['after', '+1', 'Events after the shown window: 2040-06: Far review'],
+      ]);
+      // They take no extra row: the strip stays at one row.
+      expect(strip(view).style.getPropertyValue('--timeline-event-rows')).toBe('1');
+      // The in-window event is drawn as before; the off-span ones have no hairline yet.
+      expect(labels().map((c) => c.textContent)).toEqual(['Review']);
+      expect(hairlines(view).map((l) => l.dataset.eventId)).toEqual(['e1']);
+      // Tapping the "after" edge chip pans the window to the nearest event beyond the right end.
+      edges().find((e) => e.dataset.side === 'after')!.click();
+      const saved = app.captureWorkState();
+      const window = view === 'timeline' ? saved.timelineView : saved.costsView;
+      expect(window).not.toBeNull();
+      // The window moved past the fitted one, so that it now covers the far event.
+      expect(window!.to).toBeGreaterThan(dayNumber(2040, 7, 1));
+      // The far event is now drawn with its chip; the right edge chip is gone, the left one stays.
+      expect(hairlines(view).map((l) => l.dataset.eventId)).toContain('e3');
+      expect(labels().map((c) => c.textContent)).toContain('Far review');
+      expect(edges().map((e) => e.dataset.side)).toEqual(['before']);
+    }
   });
 });
