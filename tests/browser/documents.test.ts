@@ -189,8 +189,13 @@ describe('document exports in a browser, offline (FR-50, FR-51)', () => {
     const errors: string[] = [];
     phone.on('pageerror', (e) => errors.push(String(e)));
     await phone.goto(`file://${BUILT}`);
-    await phone.evaluate(() => delete (window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker);
-    await phone.selectOption('#select-language', 'en');
+    await phone.evaluate(() => {
+      delete (window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker;
+      // The language select is not visible at phone width; set it directly.
+      const select = document.getElementById('select-language') as HTMLSelectElement;
+      select.value = 'en';
+      select.dispatchEvent(new Event('change'));
+    });
     await phone.click('#load-demo');
     await phone.waitForFunction(() => document.querySelectorAll('#marker-layer .marker').length === 11);
     await phone.click('#tab-presentation');
