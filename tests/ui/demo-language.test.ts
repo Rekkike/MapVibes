@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
-import { byId, flush, mountApp, pointer, presentationMarkers, STAGE, stubImageDecoding, stubStageLayout } from './harness';
+import { byId, flush, importExampleWorkbook, mountApp, pointer, presentationMarkers, STAGE, stubImageDecoding, stubStageLayout } from './harness';
 import { demoScenario, demoWorkbook } from '../../src/demo';
 import { importColumns, parseWorkbook } from '../../src/ingest';
 import { shapeName } from '../../src/legend';
@@ -254,5 +254,36 @@ describe('a change of language while the demo is loaded (FR-41)', () => {
       expect(ws.annotations[0].label).toBe(scenario.annotations[0].label);
       expect(legendLabels('map-legend', 'shape')[0]).toBe(shapeName(strings(lang), 'circle'));
     }
+  }, 30_000);
+
+  // FR-41 as amended in v1.11.0: the demo's two fictional events.
+  test('the demo loads its two events in the interface language; unrenamed, they follow a change of language', async () => {
+    const app = await mountDemo('sv');
+    expect(app.captureWorkState().events).toEqual([
+      { id: 'e1', date: '2024-06', label: 'Granskning' },
+      { id: 'e2', date: '2026-03-15', label: 'Beslut' },
+    ]);
+    setLanguage('en');
+    expect(app.captureWorkState().events.map((e) => e.label)).toEqual(['Review', 'Decision']);
+    // A label the user typed is kept as typed.
+    const label = document.querySelector<HTMLInputElement>('#event-list .event-label')!;
+    label.value = 'My own review';
+    label.dispatchEvent(new Event('change'));
+    setLanguage('sv');
+    expect(app.captureWorkState().events.map((e) => e.label)).toEqual(['My own review', 'Beslut']);
+  }, 30_000);
+
+  test('the demo\'s events are drawn in both schedule views, and discarded with the demo', async () => {
+    const app = await mountDemo('en');
+    byId('tab-presentation').click();
+    for (const view of ['timeline', 'costs']) {
+      byId(`pres-mode-${view}`).click();
+      expect([...document.querySelectorAll(`#presentation-${view} .timeline-event-chip`)].map((c) => c.textContent)).toEqual(['Review', 'Decision']);
+    }
+    byId('tab-information').click();
+    window.confirm = () => true;
+    await importExampleWorkbook();
+    await settle();
+    expect(app.captureWorkState().events).toEqual([]);
   }, 30_000);
 });

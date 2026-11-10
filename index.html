@@ -155,6 +155,17 @@
               <label id="symbols-from-status-row"><input type="checkbox" id="symbols-from-status" /> <span id="symbols-from-status-label">Assign marker symbols from status</span></label>
               <p id="symbols-from-status-hint" class="notice">Off: symbols change only per marker in the Map segment. On: a marker without a manually chosen symbol shows the symbol of its status; a manually chosen symbol is never overridden.</p>
             </details>
+            <details id="event-panel" class="vocab-panel">
+              <summary id="event-panel-summary">Events</summary>
+              <p id="event-panel-hint" class="notice"></p>
+              <ul id="event-list" class="vocab-list"></ul>
+              <div class="vocab-add">
+                <input type="text" id="event-date-new" aria-label="Date" />
+                <input type="text" id="event-label-new" aria-label="Label" />
+                <button type="button" id="event-add">Add</button>
+              </div>
+              <p id="event-status" class="notice" aria-live="polite"></p>
+            </details>
           </div>
           <datalist id="area-values"></datalist>
           <datalist id="program-values"></datalist>
@@ -361,6 +372,7 @@
             <span id="pres-mode" role="group" aria-label="Presentation view">
               <button type="button" id="pres-mode-map" class="pres-mode-button" data-mode="map" aria-pressed="true">Map</button>
               <button type="button" id="pres-mode-timeline" class="pres-mode-button" data-mode="timeline" aria-pressed="false">Timeline</button>
+              <button type="button" id="pres-mode-costs" class="pres-mode-button" data-mode="costs" aria-pressed="false">Costs</button>
             </span>
             <label id="pres-order-label"><span id="pres-order-text">Order</span>
               <select id="pres-order">
@@ -428,6 +440,7 @@
             </div>
             <div id="presentation-marker-layer" class="marker-layer"></div>
             <div id="presentation-timeline" class="hidden"></div>
+            <div id="presentation-costs" class="hidden"></div>
             <div id="presentation-card" class="presentation-card" role="dialog" data-state="closed" aria-hidden="true" tabindex="-1" inert></div>
             <div id="presentation-empty" class="stage-empty">
               <span id="presentation-empty-hint">No background loaded. Load one in the Map segment.</span>

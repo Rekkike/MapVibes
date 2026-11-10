@@ -35,13 +35,14 @@ describe('the presentation views (FR-66)', () => {
     app = await setUp();
   });
 
-  test('a Map | Timeline switch heads the toolbar; the map is the default and unchanged', () => {
+  test('a Map | Timeline | Costs switch heads the toolbar; the map is the default and unchanged', () => {
     const toolbar = byId('presentation-toolbar');
     expect(toolbar.firstElementChild!.id).toBe('pres-mode');
     expect(byId('pres-mode').getAttribute('aria-label')).toBe('Presentation view');
     expect([...byId('pres-mode').querySelectorAll('button')].map((b) => [b.textContent, b.getAttribute('aria-pressed')])).toEqual([
       ['Map', 'true'],
       ['Timeline', 'false'],
+      ['Costs', 'false'],
     ]);
     expect(byId('presentation-stage').dataset.view).toBe('map');
     expect(byId('presentation-timeline').classList.contains('hidden')).toBe(true);

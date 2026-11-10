@@ -64,6 +64,15 @@ describe('reading amounts (FR-65)', () => {
     for (const s of ['1,250', '1.250', '0,500', '12.345']) expect(readAmount(s, 'SEK'), s).toEqual({ kind: 'text', text: s });
   });
 
+  // Recorded as ruled in v1.11.0 (the note on FR-65): exactly three decimals
+  // after a single separator read as ambiguous text, by design, and are left
+  // out of sums; two or four decimals leave no doubt.
+  test('a number with exactly three decimals after a single separator is ambiguous text, never a number', () => {
+    for (const s of ['1234.567', '1234,567', '-1234.567']) expect(readAmount(s, 'SEK'), s).toEqual({ kind: 'text', text: s });
+    expect(readAmount('1234.56', 'SEK')).toEqual(n(1234.56, 2));
+    expect(readAmount('1234.5678', 'SEK')).toEqual(n(1234.5678, 4));
+  });
+
   test('anything else is shown as typed; nothing at all is empty, never zero', () => {
     expect(readAmount('ca 1 M', 'SEK')).toEqual({ kind: 'text', text: 'ca 1 M' });
     expect(readAmount('1 25 000', 'SEK')).toEqual({ kind: 'text', text: '1 25 000' });

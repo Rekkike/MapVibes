@@ -75,11 +75,16 @@ export const WORK_STATE_FORMAT = 'mapvibes-work-state';
 // first visible line (FR-67), and the presentation's order (FR-70). Files of
 // versions 1 to 8 open on the map, with the timeline fitted, in number
 // order.
-export const WORK_STATE_SCHEMA_VERSION = 10;
-export const READABLE_SCHEMA_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+//
+// Schema version 11 adds to version 10 the events list (FR-80: id, date as
+// typed, label), the costs view as a third presentation view, and the costs
+// view's saved view beside the timeline's (FR-79). Both are additive: files
+// of versions 1 to 10 open with no events and the costs view fitted.
+export const WORK_STATE_SCHEMA_VERSION = 11;
+export const READABLE_SCHEMA_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 
-export type PresentationMode = 'map' | 'timeline';
-export const PRESENTATION_MODES: readonly PresentationMode[] = ['map', 'timeline'];
+export type PresentationMode = 'map' | 'timeline' | 'costs';
+export const PRESENTATION_MODES: readonly PresentationMode[] = ['map', 'timeline', 'costs'];
 export type PresentationOrder = 'number' | 'area' | 'start';
 export const PRESENTATION_ORDERS: readonly PresentationOrder[] = ['number', 'area', 'start'];
 
@@ -89,6 +94,15 @@ export interface TimelineWindow {
   from: number;
   to: number;
   firstLine: number;
+}
+
+// An event (FR-80, schema 11): a global dated marker the user authored. The
+// date is kept as typed and read by the shared date reader (FR-68) where it
+// is drawn; the id is stable within the work.
+export interface StoredEvent {
+  id: string;
+  date: string;
+  label: string;
 }
 export const SUGGESTED_FILE_NAME = 'mapvibes-work-state.json';
 
@@ -209,6 +223,10 @@ export interface WorkState {
   presentationMode: PresentationMode;
   timelineView: TimelineWindow | null;
   presentationOrder: PresentationOrder;
+  // Version 11: the events (FR-80), and the costs view's saved view or null
+  // for the fitted view (FR-79).
+  events: StoredEvent[];
+  costsView: TimelineWindow | null;
 }
 
 export type WorkStateErrorCode = 'not-json' | 'not-work-state' | 'unknown-version' | 'invalid';
@@ -324,6 +342,7 @@ export function serialiseWorkState(state: WorkState, savedAt: Date): string {
         }),
       ),
     },
+    events: state.events.map((e) => ({ id: e.id, date: e.date, label: e.label })),
     annotations: state.annotations.map((a) => ({
       kind: a.kind,
       points: a.points.map((p) => ({ x: p.x, y: p.y })),
@@ -348,6 +367,7 @@ export function serialiseWorkState(state: WorkState, savedAt: Date): string {
         mode: state.presentationMode,
         order: state.presentationOrder,
         timeline: state.timelineView ? { from: state.timelineView.from, to: state.timelineView.to, firstLine: state.timelineView.firstLine } : null,
+        costs: state.costsView ? { from: state.costsView.from, to: state.costsView.to, firstLine: state.costsView.firstLine } : null,
       },
     },
   };
@@ -623,25 +643,44 @@ export function parseWorkState(text: string): WorkState {
     listView: version >= 7 ? oneOf(list.grouping, ['flat', 'grouped'] as const, 'view.list.grouping') : 'flat',
     ...parseVersion8(file, version, headers),
     ...parseVersion9(view, version),
+    ...parseVersion11(file, view, version),
   };
+}
+
+// Version 11 (FR-79, FR-80): the events and the costs view's saved view.
+function parseVersion11(file: Json, view: Json, version: number): Pick<WorkState, 'events' | 'costsView'> {
+  if (version < 11) return { events: [], costsView: null };
+  const ids = new Set<string>();
+  const events = arr(file.events, 'events').map((e, i) => {
+    const o = obj(e, `events[${i}]`);
+    const id = str(o.id, `events[${i}].id`);
+    if (id === '' || ids.has(id)) invalid('duplicateEntry', `events[${i}].id`);
+    ids.add(id);
+    return { id, date: str(o.date, `events[${i}].date`), label: str(o.label, `events[${i}].label`) };
+  });
+  const p = obj(view.presentation, 'view.presentation');
+  return { events, costsView: p.costs === null ? null : parseWindow(p.costs, 'view.presentation.costs') };
+}
+
+function parseWindow(value: unknown, where: string): TimelineWindow {
+  const t = obj(value, where);
+  const from = num(t.from, `${where}.from`);
+  const to = num(t.to, `${where}.to`);
+  const firstLine = num(t.firstLine, `${where}.firstLine`);
+  if (!(to > from)) invalid('notPositive', `${where}.to`);
+  if (!Number.isInteger(firstLine) || firstLine < 0) invalid('notPositive', `${where}.firstLine`);
+  return { from, to, firstLine };
 }
 
 // Version 9 (FR-66, FR-67, FR-70).
 function parseVersion9(view: Json, version: number): Pick<WorkState, 'presentationMode' | 'timelineView' | 'presentationOrder'> {
   if (version < 9) return { presentationMode: 'map', timelineView: null, presentationOrder: 'number' };
   const p = obj(view.presentation, 'view.presentation');
-  let timelineView: TimelineWindow | null = null;
-  if (p.timeline !== null) {
-    const t = obj(p.timeline, 'view.presentation.timeline');
-    const from = num(t.from, 'view.presentation.timeline.from');
-    const to = num(t.to, 'view.presentation.timeline.to');
-    const firstLine = num(t.firstLine, 'view.presentation.timeline.firstLine');
-    if (!(to > from)) invalid('notPositive', 'view.presentation.timeline.to');
-    if (!Number.isInteger(firstLine) || firstLine < 0) invalid('notPositive', 'view.presentation.timeline.firstLine');
-    timelineView = { from, to, firstLine };
-  }
+  const timelineView = p.timeline === null ? null : parseWindow(p.timeline, 'view.presentation.timeline');
+  // The costs view is a view of version 11; an earlier file cannot name it.
+  const modes = version >= 11 ? PRESENTATION_MODES : PRESENTATION_MODES.filter((m) => m !== 'costs');
   return {
-    presentationMode: oneOf(p.mode, PRESENTATION_MODES, 'view.presentation.mode'),
+    presentationMode: oneOf(p.mode, modes, 'view.presentation.mode'),
     timelineView,
     presentationOrder: oneOf(p.order, PRESENTATION_ORDERS, 'view.presentation.order'),
   };

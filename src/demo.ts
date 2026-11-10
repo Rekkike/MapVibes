@@ -29,6 +29,7 @@ import { isSymbol, type MarkerSymbol } from './symbols';
 import { isCommentDate } from './comments';
 import { ANNOTATION_KINDS, LINE_STYLES, OUTLINES, type AnnotationKind, type LineStyle, type Outline } from './annotations';
 import type { Lang } from './i18n';
+import { readDate } from './dates';
 
 const LANGS: Lang[] = ['en', 'sv'];
 
@@ -70,6 +71,8 @@ export interface DemoScenario {
   glanceColumns: string[];
   items: DemoItem[];
   annotations: DemoAnnotation[];
+  // The demo's fictional events (FR-41 as amended, FR-80).
+  events: Array<{ date: string; label: string }>;
 }
 
 type Json = Record<string, unknown>;
@@ -197,6 +200,15 @@ export function parseDemoScenarios(raw: unknown): DemoScenarios {
       link: (a.link as string | null) ?? null,
     };
   });
+  // The events, optional; the labels follow the interface language.
+  let events: Array<{ date: string; label: Record<Lang, string> }> = [];
+  if (o.events !== undefined) {
+    if (!Array.isArray(o.events)) return fail('events');
+    events = (o.events as Json[]).map((e, i) => {
+      if (typeof e.date !== 'string' || readDate(e.date).kind !== 'date') fail(`events[${i}].date`);
+      return { date: e.date as string, label: texts(e.label, `events[${i}].label`) };
+    });
+  }
   const inLang = (lang: Lang): DemoScenario => ({
     preset: presets[lang],
     symbolsFromStatus: o.symbolsFromStatus as boolean,
@@ -204,6 +216,7 @@ export function parseDemoScenarios(raw: unknown): DemoScenarios {
     glanceColumns: glanceColumns[lang],
     items: items.map((it) => ({ ...it, comments: it.comments.map((c) => ({ date: c.date, text: c.text[lang] })), activities: it.activities?.map((a) => ({ ...a, label: a.label[lang] })) })),
     annotations: annotations.map((a) => ({ ...a, label: a.label[lang] })),
+    events: events.map((e) => ({ date: e.date, label: e.label[lang] })),
   });
   return { en: inLang('en'), sv: inLang('sv') };
 }
@@ -222,6 +235,7 @@ export interface DemoCounterparts {
   programs: Array<[string, string]>;
   statuses: Array<[string, string]>;
   annotationLabels: Array<[string, string]>;
+  eventLabels: Array<[string, string]>;
 }
 
 export function demoCounterparts(from: Lang, to: Lang): DemoCounterparts {
@@ -234,6 +248,7 @@ export function demoCounterparts(from: Lang, to: Lang): DemoCounterparts {
     programs: pairs(a.preset.programs, b.preset.programs),
     statuses: pairs(a.preset.statuses?.map((s) => s.name), b.preset.statuses?.map((s) => s.name)),
     annotationLabels: pairs(a.annotations.map((x) => x.label), b.annotations.map((x) => x.label)),
+    eventLabels: pairs(a.events.map((x) => x.label), b.events.map((x) => x.label)),
   };
 }
 

@@ -195,7 +195,11 @@ describe('the timeline in the application (FR-66, FR-67, FR-70)', () => {
         // stage grew to 517 pixels (header 71, toolbar 54), so the twelve
         // 40-pixel lines (scroller 487 x 487) no longer overflow in portrait;
         // in landscape (844 x 390, stage 314) they still do.
-        if (name === 'phone portrait') expect(overflows).toBe(false);
+        // Measured on the built v1.11.0 viewer (iPhone 13, 390 x 664): the
+        // demo's two events stagger into two rows, so the events strip
+        // (FR-80) takes 42 pixels above the lines; the scroller is 440
+        // pixels and the twelve lines (480 pixels) scroll in portrait too.
+        if (name === 'phone portrait') expect(overflows).toBe(true);
         if (name === 'phone landscape') expect(overflows).toBe(true);
         if (overflows) {
           const body = (await page.locator('#presentation-timeline .timeline-body').boundingBox())!;

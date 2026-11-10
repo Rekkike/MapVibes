@@ -1266,6 +1266,23 @@ input[type='text'] {
   flex: 1 1 10rem;
 }
 
+/* The events panel (FR-80) takes a row of its own under the vocabulary
+   panels, so that none of them changes its place or its size. */
+#event-panel {
+  flex-basis: 100%;
+}
+
+/* An event's date beside its label (FR-80): the date is the short field. */
+.vocab-name.event-date,
+#event-date-new {
+  flex: 0 1 9rem;
+}
+
+#event-label-new {
+  flex: 1 1 10rem;
+}
+
+.vocab-name.not-in-vocabulary,
 .cell-input.not-in-vocabulary {
   font-style: italic;
   text-decoration: underline dotted var(--warning);
@@ -2629,8 +2646,11 @@ html[data-boot='failed'] #boot-notice {
   border-radius: var(--radius) 0 0 var(--radius);
 }
 
-.pres-mode-button:last-child {
+.pres-mode-button + .pres-mode-button {
   margin-left: -1px;
+}
+
+.pres-mode-button:last-child {
   border-radius: 0 var(--radius) var(--radius) 0;
 }
 
@@ -2657,8 +2677,8 @@ html[data-boot='failed'] #boot-notice {
 
 /* The timeline (FR-67): a layer over the stage, the map underneath hidden.
    A desktop line is 28 pixels with the name in a column beside the bar. */
-#presentation-stage[data-view='timeline'] > #presentation-content,
-#presentation-stage[data-view='timeline'] > #presentation-marker-layer {
+#presentation-stage:is([data-view='timeline'], [data-view='costs']) > #presentation-content,
+#presentation-stage:is([data-view='timeline'], [data-view='costs']) > #presentation-marker-layer {
   visibility: hidden;
 }
 
@@ -2887,6 +2907,168 @@ html[data-boot='failed'] #boot-notice {
   display: block;
 }
 
+/* The costs view (FR-79): the timeline's machinery with a taller line, so
+   that the three sub-lanes can carry the amounts in thousands -- 12-pixel
+   bars, 2-pixel gaps, 3-pixel padding in a 46-pixel line (tops 3, 17, 31,
+   bottom 43). */
+.timeline[data-kind='costs'] {
+  --timeline-line: 46px;
+  --timeline-seg-h: 12px;
+  --timeline-seg-gap: 2px;
+  --timeline-seg-pad: 3px;
+}
+
+/* An amount span: the year's cell, transparent, and the amount as a width
+   fill within it. The series are styled honestly: the outcome solid, the
+   forecast outlined, the budget a lighter base. */
+.timeline-seg[data-kind='amount'] {
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.timeline-seg[data-kind='amount'] > .timeline-seg-fill {
+  box-sizing: border-box;
+  border-radius: calc(var(--radius) / 2);
+}
+
+.timeline-seg[data-series='budget'] > .timeline-seg-fill {
+  opacity: 0.4;
+}
+
+.timeline-seg[data-series='forecast'] > .timeline-seg-fill {
+  border: 1.5px solid var(--marker-fill);
+  background: transparent;
+}
+
+/* The figure in thousands: after the fill, or inside its end when the fill
+   takes most of the cell; shown only when the cell is wide enough. */
+.timeline-seg[data-kind='amount'] > .timeline-seg-label {
+  left: calc(var(--share, 0) * 100% + 3px);
+  max-width: none;
+  padding: 0;
+  background: transparent;
+  font-size: 0.625rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline-seg[data-kind='amount'][data-label='inside'] > .timeline-seg-label {
+  left: auto;
+  right: calc((1 - var(--share, 0)) * 100% + 3px);
+}
+
+.timeline-seg[data-series='outcome'][data-label='inside'] > .timeline-seg-label {
+  color: var(--marker-text);
+}
+
+.timeline-seg[data-kind='amount']:is([data-label='inside'], [data-label='outside']) > .timeline-seg-label {
+  display: block;
+}
+
+/* The totals row: the per-year sums in the lines' sub-lanes, in a neutral
+   colour, staying at the top while the lines scroll. */
+.timeline-totals {
+  --marker-fill: var(--muted);
+  --marker-text: var(--panel);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: var(--timeline-name) 1fr;
+  align-items: center;
+  height: var(--timeline-line);
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.timeline-totals > .timeline-name {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  font-weight: 700;
+}
+
+.timeline-totals .timeline-typed {
+  max-width: 100%;
+  font-weight: 400;
+}
+
+/* The events (FR-80): a strip of label chips under the axis, one or two
+   rows of 20 pixels (22 or 42 pixels with its edge), and 1-pixel hairlines
+   crossing the whole body. */
+.timeline-event-strip {
+  flex: none;
+  display: grid;
+  grid-template-columns: var(--timeline-name) 1fr;
+  height: calc(var(--timeline-event-rows, 1) * 20px + 2px);
+  padding-right: var(--timeline-gutter, 0px);
+  border-bottom: 1px solid var(--border);
+}
+
+.timeline-event-strip.hidden {
+  display: none;
+}
+
+.timeline-event-plot {
+  position: relative;
+  overflow: hidden;
+}
+
+.timeline-event-stem,
+.timeline-event-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--fg);
+  opacity: 0.55;
+}
+
+.timeline-event-chip {
+  position: absolute;
+  top: calc(var(--row, 0) * 20px + 2px);
+  box-sizing: border-box;
+  height: 17px;
+  padding: 0 6px;
+  overflow: hidden;
+  border: 1px solid var(--fg);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--panel);
+  color: var(--fg);
+  font-size: 0.6875rem;
+  line-height: 15px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.timeline-event-chip[data-row='1'] {
+  --row: 1;
+}
+
+.timeline-event-more {
+  width: 28px;
+  margin-left: 2px;
+  padding: 0;
+  border-color: var(--border);
+  border-radius: var(--radius-pill);
+  color: var(--muted);
+  text-align: center;
+}
+
+.timeline-event-lines {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--timeline-name);
+  right: var(--timeline-gutter, 0px);
+  z-index: 3;
+  overflow: hidden;
+  pointer-events: none;
+}
+
 /* The "+n" badge: a first-class control in the line's name column; it counts
    the spans that do not fit the packed sub-lanes (FR-78). */
 .timeline-badge-more {
@@ -3050,7 +3232,10 @@ html[data-segment='presentation'] #presentation-toolbar button:hover:not(:disabl
   background: var(--panel);
 }
 
-html[data-segment='presentation'] #presentation-toolbar .pres-mode-button[aria-pressed='true'] {
+/* The active view keeps its fill under the pointer too: on a touch screen
+   the hover state stays after a tap. */
+html[data-segment='presentation'] #presentation-toolbar .pres-mode-button[aria-pressed='true'],
+html[data-segment='presentation'] #presentation-toolbar .pres-mode-button[aria-pressed='true']:hover:not(:disabled) {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--on-accent);
@@ -3329,7 +3514,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
 
   /* On the timeline, Reset is Fit: the narrow toolbar shows it once. The
      zoom level stays announced, not shown. */
-  html[data-mode='viewer'] #presentation-toolbar[data-view='timeline'] > #pres-reset {
+  html[data-mode='viewer'] #presentation-toolbar:is([data-view='timeline'], [data-view='costs']) > #pres-reset {
     display: none;
   }
 
@@ -3358,7 +3543,33 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     --timeline-lane-bar-h: 10px;
   }
 
+  /* The narrow costs view (FR-79): a 20-pixel name row over a 44-pixel
+     plot (12-pixel bars, 2-pixel gaps, 2-pixel padding: tops 2, 16, 30). */
+  html[data-mode='viewer'] .timeline[data-kind='costs'] {
+    --timeline-line: 64px;
+    --timeline-seg-h: 12px;
+    --timeline-seg-gap: 2px;
+    --timeline-seg-pad: 2px;
+  }
+
+  html[data-mode='viewer'] .timeline-totals {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1.25rem 1fr;
+    align-items: stretch;
+  }
+
+  html[data-mode='viewer'] .timeline-totals > .timeline-name {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: var(--space-1);
+  }
+
   html[data-mode='viewer'] .timeline-axis {
+    grid-template-columns: 1fr;
+  }
+
+  html[data-mode='viewer'] .timeline-event-strip {
     grid-template-columns: 1fr;
   }
 
@@ -3820,7 +4031,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
 
   /* On the timeline, Reset is Fit: shown once. The zoom level and the
      order's name stay announced, not shown. */
-  html:not([data-mode='viewer']) #presentation-toolbar[data-view='timeline'] > #pres-reset {
+  html:not([data-mode='viewer']) #presentation-toolbar:is([data-view='timeline'], [data-view='costs']) > #pres-reset {
     display: none;
   }
 
@@ -3870,7 +4081,33 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     --timeline-lane-bar-h: 10px;
   }
 
+  /* The narrow costs view (FR-79): a 20-pixel name row over a 44-pixel
+     plot (12-pixel bars, 2-pixel gaps, 2-pixel padding: tops 2, 16, 30). */
+  html:not([data-mode='viewer']) .timeline[data-kind='costs'] {
+    --timeline-line: 64px;
+    --timeline-seg-h: 12px;
+    --timeline-seg-gap: 2px;
+    --timeline-seg-pad: 2px;
+  }
+
+  html:not([data-mode='viewer']) .timeline-totals {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1.25rem 1fr;
+    align-items: stretch;
+  }
+
+  html:not([data-mode='viewer']) .timeline-totals > .timeline-name {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: var(--space-1);
+  }
+
   html:not([data-mode='viewer']) .timeline-axis {
+    grid-template-columns: 1fr;
+  }
+
+  html:not([data-mode='viewer']) .timeline-event-strip {
     grid-template-columns: 1fr;
   }
 

@@ -65,6 +65,11 @@ function sample(): WorkState {
     presentationMode: 'timeline',
     timelineView: { from: 19000, to: 20100.5, firstLine: 3 },
     presentationOrder: 'area',
+    events: [
+      { id: 'e1', date: '2025-06', label: 'Review' },
+      { id: 'e2', date: 'next spring', label: 'Decision' },
+    ],
+    costsView: { from: 18000, to: 21000, firstLine: 1 },
   };
 }
 
@@ -113,8 +118,8 @@ describe('work-state file (FR-13)', () => {
   test('the file carries the format name, schema version, and save time', () => {
     const file = fileOf(sample());
     expect(file.format).toBe(WORK_STATE_FORMAT);
-    expect(file.schemaVersion).toBe(10);
-    expect(WORK_STATE_SCHEMA_VERSION).toBe(10);
+    expect(file.schemaVersion).toBe(11);
+    expect(WORK_STATE_SCHEMA_VERSION).toBe(11);
     expect(file.savedAt).toBe('2026-01-02T03:04:05.000Z');
   });
 
@@ -131,7 +136,7 @@ describe('work-state file (FR-13)', () => {
   });
 
   test('an unknown schema version is rejected and named, never loaded silently', () => {
-    for (const version of [11, 0, '10', null]) {
+    for (const version of [12, 0, '11', null]) {
       const file = { ...fileOf(sample()), schemaVersion: version };
       expect(expectError(JSON.stringify(file), 'unknown-version').detail).toBe(String(version));
     }
@@ -249,7 +254,7 @@ describe('schema version 1 migration (FR-13)', () => {
     expect(migrated.manualColumns).toEqual([]);
     expect(migrated.rows.every((r) => !r.manual)).toBe(true);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(10);
+    expect(JSON.parse(text).schemaVersion).toBe(11);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 
@@ -316,7 +321,7 @@ describe('schema version 2 migration (FR-13)', () => {
   test('a migrated version 2 file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v2Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(10);
+    expect(JSON.parse(text).schemaVersion).toBe(11);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 
@@ -388,7 +393,7 @@ describe('schema version 3 migration (FR-13)', () => {
   test('a migrated version 3 file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v3Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(10);
+    expect(JSON.parse(text).schemaVersion).toBe(11);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 });
@@ -474,7 +479,7 @@ describe('schema version 4 migration (FR-13)', () => {
   test('a migrated version 4 file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v4Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(10);
+    expect(JSON.parse(text).schemaVersion).toBe(11);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 });
@@ -541,7 +546,7 @@ describe('schema version 6: programs, colour labels, at-a-glance columns, annota
     const state = parseWorkState(JSON.stringify(file));
     expect([state.programValues, state.colourLabels, state.glanceColumns, state.annotations]).toEqual([[], {}, null, []]);
     expect(state.background!.projection).toBeUndefined();
-    expect(JSON.parse(serialiseWorkState(state, SAVED_AT)).schemaVersion).toBe(10);
+    expect(JSON.parse(serialiseWorkState(state, SAVED_AT)).schemaVersion).toBe(11);
   });
 
   test('version 6 fields in an older file are ignored, as that version never wrote them', () => {
@@ -704,7 +709,7 @@ describe('schema version 9: the presentation view, the timeline view, and the or
     const back = parseWorkState(serialiseWorkState(sample(), SAVED_AT));
     expect([back.presentationMode, back.timelineView, back.presentationOrder]).toEqual(['timeline', { from: 19000, to: 20100.5, firstLine: 3 }, 'area']);
     const file = JSON.parse(serialiseWorkState(sample(), SAVED_AT));
-    expect(file.view.presentation).toEqual({ mode: 'timeline', order: 'area', timeline: { from: 19000, to: 20100.5, firstLine: 3 } });
+    expect(file.view.presentation).toEqual({ mode: 'timeline', order: 'area', timeline: { from: 19000, to: 20100.5, firstLine: 3 }, costs: { from: 18000, to: 21000, firstLine: 1 } });
     const fitted = parseWorkState(serialiseWorkState({ ...sample(), timelineView: null }, SAVED_AT));
     expect(fitted.timelineView).toBeNull();
   });
@@ -742,7 +747,7 @@ describe('activities in the work state (FR-77, schema 10)', () => {
     ];
     state.rows[0].activityImport = { file: 'plan.pdf', page: 1, columns: { label: 'Post', start: 'Från', end: 'Till', progress: 'Klart', duration: 'Längd' } };
     const text = serialiseWorkState(state, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(10);
+    expect(JSON.parse(text).schemaVersion).toBe(11);
     const file = JSON.parse(text);
     expect(file.rows[0].activities).toEqual(state.rows[0].activities);
     expect(file.rows[0].activityImport).toEqual(state.rows[0].activityImport);
@@ -772,5 +777,64 @@ describe('activities in the work state (FR-77, schema 10)', () => {
     expect(expectError(JSON.stringify(file), 'invalid').detail).toBe('rows[0].activities[0].progress');
     file.rows[0].activities = [{ label: 'x', start: '2024-01-01', end: '2024-02-01', progress: '50' }];
     expect(expectError(JSON.stringify(file), 'invalid').detail).toBe('rows[0].activities[0].progress');
+  });
+});
+
+describe('schema version 11: the events and the costs view (FR-79, FR-80)', () => {
+  const stamp = (version: number) => {
+    const file = JSON.parse(serialiseWorkState(sample(), SAVED_AT));
+    file.schemaVersion = version;
+    delete file.events;
+    delete file.view.presentation.costs;
+    return file;
+  };
+
+  test('the events and the costs view round-trip, byte-identically; the date is kept as typed', () => {
+    const text = serialiseWorkState(sample(), SAVED_AT);
+    const file = JSON.parse(text);
+    expect(file.schemaVersion).toBe(11);
+    expect(file.events).toEqual([
+      { id: 'e1', date: '2025-06', label: 'Review' },
+      { id: 'e2', date: 'next spring', label: 'Decision' },
+    ]);
+    const back = parseWorkState(text);
+    expect(back).toEqual(sample());
+    expect(serialiseWorkState(back, SAVED_AT)).toBe(text);
+    const costs = parseWorkState(serialiseWorkState({ ...sample(), presentationMode: 'costs', costsView: null, events: [] }, SAVED_AT));
+    expect([costs.presentationMode, costs.costsView, costs.events]).toEqual(['costs', null, []]);
+  });
+
+  test('files of versions 1 to 10 open with neither: no events, the costs view fitted', () => {
+    for (let v = 1; v <= 6; v++) {
+      const state = parseWorkState(readFileSync(join(process.cwd(), 'example-data', `example-work-state-v${v}.json`), 'utf8'));
+      expect([state.events, state.costsView]).toEqual([[], null]);
+    }
+    for (const v of [9, 10]) {
+      const state = parseWorkState(JSON.stringify(stamp(v)));
+      expect([state.events, state.costsView]).toEqual([[], null]);
+      expect(state.timelineView).toEqual({ from: 19000, to: 20100.5, firstLine: 3 });
+    }
+    // The additions are additive: what an earlier version carries is kept.
+    const ten = parseWorkState(JSON.stringify(stamp(10)));
+    expect({ ...ten, events: sample().events, costsView: sample().costsView }).toEqual(sample());
+  });
+
+  test('an earlier version cannot name the costs view; a damaged entry is refused with its field', () => {
+    const early = stamp(10);
+    early.view.presentation.mode = 'costs';
+    expectError(JSON.stringify(early), 'invalid');
+    const bad = (change: (f: any) => void) => {
+      const file = JSON.parse(serialiseWorkState(sample(), SAVED_AT));
+      change(file);
+      return JSON.stringify(file);
+    };
+    expectError(bad((f) => delete f.events), 'invalid');
+    expectError(bad((f) => (f.events[0].date = 2025)), 'invalid');
+    expectError(bad((f) => delete f.events[1].label), 'invalid');
+    expectError(bad((f) => (f.events[1].id = 'e1')), 'invalid');
+    expectError(bad((f) => (f.events[0].id = '')), 'invalid');
+    expectError(bad((f) => delete f.view.presentation.costs), 'invalid');
+    expectError(bad((f) => (f.view.presentation.costs.to = f.view.presentation.costs.from)), 'invalid');
+    expectError(bad((f) => (f.view.presentation.costs.firstLine = 1.5)), 'invalid');
   });
 });

@@ -7,7 +7,8 @@
 // neither pans nor zooms.
 
 import { dateOfDay, formatDate, readDate } from './dates';
-import { clampWindow, fitWindow, zoomWindow, type TimelineLine, type TimelineModel } from './timeline';
+import { amountShare, clampWindow, fitWindow, layoutEvents, zoomWindow, type ScheduleEvent, type CostsAmount, type CostsLine, type TimelineLine, type TimelineModel, type TimelineSpan } from './timeline';
+import type { SeriesRole } from './economics';
 
 // {placeholder} substitution, as in i18n.
 function fill(template: string, values: Record<string, string | number>): string {
@@ -30,6 +31,27 @@ export interface TimelineLabels {
   // (FR-78), and the header of the activities in a line's description.
   moreSpans: string;
   activities: string;
+  // The costs view's own words (FR-79); absent in the timeline.
+  costs?: CostsLabels;
+  // The events' heading and their "+n" chip (FR-80).
+  events: string;
+  moreEvents: string;
+}
+
+export interface CostsLabels {
+  // The series' names, the user's own words (FR-63).
+  series: Record<SeriesRole, string>;
+  // An amount in whole thousands, as shown on a bar, and exactly, with the
+  // unit, as said in a title and a description.
+  thousands: (value: number) => string;
+  exact: (amount: CostsAmount) => string;
+  // The totals row's name, its note of the unit shown, and its description.
+  totals: string;
+  unitNote: string;
+  totalsDescription: string;
+  // A line without amounts, and the header of the values shown as typed.
+  none: string;
+  typed: string;
 }
 
 export interface TimelineCallbacks {
@@ -68,6 +90,32 @@ export const PACKED_SUBLANES = 3;
 // A segment's label shows inside it only from this width on (the rest is
 // carried by its title and the line's description).
 const LABEL_MIN_PX = 64;
+// An amount's figure in thousands (FR-79) shows after its fill where the
+// year cell has room for both, else inside the fill's end where the fill is
+// wide enough to hold it, else not at all: the title and the description
+// carry it. The figure's width is estimated from its characters (10-pixel
+// tabular figures), so that placing it needs no measuring.
+// An event's label chip (FR-80): its width is estimated from its characters
+// (11-pixel text, 6 pixels of padding either side), up to a longest chip
+// that ends in an ellipsis; a "+n" chip beside it takes a fixed room.
+const EVENT_CHAR_PX = 6.5;
+const EVENT_PAD_PX = 14;
+const EVENT_MAX_PX = 160;
+const EVENT_MORE_PX = 30;
+
+export function eventChipWidth(label: string): number {
+  return Math.min(EVENT_MAX_PX, Math.ceil(label.length * EVENT_CHAR_PX) + EVENT_PAD_PX);
+}
+
+const AMOUNT_CHAR_PX = 6;
+const AMOUNT_GAP_PX = 3;
+
+export function amountLabelPlace(cellPx: number, share: number, characters: number): 'outside' | 'inside' | 'none' {
+  const label = characters * AMOUNT_CHAR_PX;
+  const fill = cellPx * share;
+  if (fill + AMOUNT_GAP_PX + label + AMOUNT_GAP_PX <= cellPx) return 'outside';
+  return fill >= label + 2 * AMOUNT_GAP_PX ? 'inside' : 'none';
+}
 // The plot's width where the layout gives none (before the first layout).
 const FALLBACK_WIDTH = 800;
 const DRAG_THRESHOLD = 5;
@@ -115,6 +163,12 @@ export function ticks(window: Window, width: number): Array<{ day: number; unit:
 export class TimelineView {
   private readonly axis: HTMLElement;
   private readonly grid: HTMLElement;
+  // The events (FR-80): the strip of label chips under the axis, and the
+  // hairlines crossing the whole body.
+  private readonly eventStrip: HTMLElement;
+  private readonly eventPlot: HTMLElement;
+  private readonly eventLines: HTMLElement;
+  private events: ScheduleEvent[] = [];
   private readonly scroller: HTMLElement;
   private readonly list: HTMLUListElement;
   private readonly message: HTMLElement;
@@ -137,8 +191,12 @@ export class TimelineView {
   constructor(
     readonly root: HTMLElement,
     private readonly callbacks: TimelineCallbacks,
+    // The costs view (FR-79) is the timeline's machinery with its own line
+    // geometry, set in the stylesheet by this kind.
+    kind: 'timeline' | 'costs' = 'timeline',
   ) {
     root.classList.add('timeline');
+    root.dataset.kind = kind;
     this.axis = el('div', 'timeline-axis');
     this.axis.setAttribute('aria-hidden', 'true');
     const body = el('div', 'timeline-body');
@@ -148,8 +206,14 @@ export class TimelineView {
     this.list = el('ul', 'timeline-lines');
     this.message = el('p', 'timeline-message notice hidden');
     this.scroller.append(this.list, this.message);
-    body.append(this.grid, this.scroller);
-    root.replaceChildren(this.axis, body);
+    this.eventStrip = el('div', 'timeline-event-strip hidden');
+    this.eventStrip.setAttribute('role', 'list');
+    this.eventPlot = el('div', 'timeline-event-plot');
+    this.eventStrip.append(el('div', 'timeline-axis-name'), this.eventPlot);
+    this.eventLines = el('div', 'timeline-event-lines');
+    this.eventLines.setAttribute('aria-hidden', 'true');
+    body.append(this.grid, this.scroller, this.eventLines);
+    root.replaceChildren(this.axis, this.eventStrip, body);
     // Neither the pointer nor the wheel reaches the map underneath.
     for (const type of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'wheel', 'dblclick'] as const) {
       root.addEventListener(type, (e) => e.stopPropagation());
@@ -276,14 +340,19 @@ export class TimelineView {
     else if (row.offsetTop + row.offsetHeight > top + this.scroller.clientHeight) this.scroller.scrollTop = row.offsetTop + row.offsetHeight - this.scroller.clientHeight;
   }
 
-  render(model: TimelineModel, labels: TimelineLabels, selectedId: string | null): void {
+  render(model: TimelineModel, labels: TimelineLabels, selectedId: string | null, events: ScheduleEvent[] = []): void {
     this.model = model;
     this.labels = labels;
+    this.events = events;
     this.fitted = fitWindow(model.extent);
     if (!this.chosen) this.current = { ...this.fitted };
     else this.current = clampWindow(this.current, this.fitted);
     const rows: HTMLLIElement[] = [];
     for (const row of model.rows) {
+      if (row.kind === 'heading' && row.heading === 'totals') {
+        rows.push(this.totalsRow(row.spans, labels));
+        continue;
+      }
       if (row.kind === 'heading') {
         const li = el('li', 'timeline-heading', row.heading === 'noDates' ? labels.noDates : row.area === '' ? labels.noArea : row.area);
         li.dataset.heading = row.heading;
@@ -322,6 +391,10 @@ export class TimelineView {
     const plot = el('span', 'timeline-plot');
     plot.setAttribute('aria-hidden', 'true');
     for (const span of line.spans) {
+      if (span.kind === 'amount') {
+        plot.appendChild(this.amountSeg(span, this.model.scale?.line ?? 0, labels, `marker-${line.item.colour}`));
+        continue;
+      }
       if (span.kind === 'activity') {
         // An activity segment (FR-78): the bar with its progress fill, and
         // its label inside when it is wide enough (set at positioning).
@@ -382,7 +455,63 @@ export class TimelineView {
     return li;
   }
 
+  // An amount span (FR-79): the year's cell, the amount as a width fill
+  // within it on the given scale, and its figure in thousands.
+  private amountSeg(span: TimelineSpan, scale: number, labels: TimelineLabels, colourClass: string | null): HTMLElement {
+    const a = span.amount!;
+    const seg = el('span', 'timeline-seg');
+    if (colourClass) seg.classList.add(colourClass);
+    seg.dataset.from = String(span.from);
+    seg.dataset.to = String(span.to + 1);
+    seg.dataset.lane = String(span.lane);
+    seg.dataset.kind = 'amount';
+    seg.dataset.series = a.series;
+    const share = amountShare(a.value, scale);
+    seg.dataset.share = share.toFixed(4);
+    seg.style.setProperty('--share', share.toFixed(4));
+    const fill = el('span', 'timeline-seg-fill');
+    fill.style.width = `${(share * 100).toFixed(2)}%`;
+    seg.append(fill, el('span', 'timeline-seg-label', labels.costs?.thousands(a.value) ?? ''));
+    if (labels.costs) seg.title = `${labels.costs.series[a.series]} ${a.year}: ${labels.costs.exact(a)}`;
+    return seg;
+  }
+
+  // The costs view's totals row (FR-79): the per-year sums in the lines'
+  // sub-lanes and styles, on the totals' own scale; it stays at the top
+  // while the lines scroll.
+  private totalsRow(spans: TimelineSpan[], labels: TimelineLabels): HTMLLIElement {
+    const li = el('li', 'timeline-totals');
+    li.dataset.heading = 'totals';
+    const name = el('span', 'timeline-name');
+    name.appendChild(el('span', 'timeline-title', labels.costs?.totals ?? ''));
+    name.appendChild(el('span', 'timeline-typed', labels.costs?.unitNote ?? ''));
+    const plot = el('span', 'timeline-plot');
+    plot.setAttribute('aria-hidden', 'true');
+    for (const span of spans) plot.appendChild(this.amountSeg(span, this.model.scale?.totals ?? 0, labels, null));
+    li.append(name, plot);
+    if (labels.costs) {
+      li.setAttribute('role', 'group');
+      li.setAttribute('aria-label', `${labels.costs.totals}. ${labels.costs.totalsDescription} ${this.amountList(spans.map((s) => s.amount!), labels.costs)}`);
+    }
+    return li;
+  }
+
+  // Amounts spelled out by year: "2024: Budget 1 000 kr, Outcome 900 kr".
+  private amountList(amounts: CostsAmount[], costs: CostsLabels): string {
+    const years = [...new Set(amounts.map((a) => a.year))].sort((a, b) => a - b);
+    return years.map((year) => `${year}: ${amounts.filter((a) => a.year === year).map((a) => `${costs.series[a.series]} ${costs.exact(a)}`).join(', ')}`).join('; ');
+  }
+
   private describe(line: TimelineLine, labels: TimelineLabels): string {
+    if (labels.costs) {
+      // A costs line (FR-79): its amounts exactly, by year; the values that
+      // are not numbers as typed; or that it has none.
+      const item = (line as CostsLine).item;
+      const parts = [`${item.label}: ${item.name}`];
+      parts.push(item.amounts.length > 0 ? this.amountList(item.amounts, labels.costs) : labels.costs.none);
+      if (item.typed.length > 0) parts.push(`${labels.costs.typed}: ${item.typed.map((v) => `${labels.costs!.series[v.series]} ${v.year}: ${v.text}`).join('; ')}`);
+      return parts.join('. ');
+    }
     const date = (r: TimelineLine['start'], which: 'start' | 'end') => (r.kind === 'date' ? formatDate(r, which) : r.kind === 'text' ? r.text : '');
     const s = date(line.start, 'start');
     const e = date(line.end, 'end');
@@ -426,9 +555,11 @@ export class TimelineView {
     const laneBarH = parseFloat(cs.getPropertyValue('--timeline-lane-bar-h')) || 14;
     const plotW = this.plotWidth();
     const linesById = new Map(this.model.lines.map((l) => [l.item.id, l]));
-    for (const row of this.list.querySelectorAll<HTMLElement>('.timeline-line')) {
+    for (const row of this.list.querySelectorAll<HTMLElement>('.timeline-line, .timeline-totals')) {
       const line = linesById.get(row.dataset.rowId ?? '');
-      const hasActivities = !!line && line.activitySpans.length > 0;
+      // A line with activities or amounts, and the totals row, pack their
+      // spans into sub-lanes (FR-78, FR-79).
+      const hasActivities = row.classList.contains('timeline-totals') || (!!line && line.spans.some((sp) => sp.kind === 'activity' || sp.kind === 'amount'));
       const expanded = !!line && this.expanded.has(line.item.id);
       row.style.setProperty('--timeline-lanes', String(expanded ? line!.lanes : 1));
       row.dataset.expanded = expanded ? 'true' : 'false';
@@ -467,7 +598,8 @@ export class TimelineView {
         }
         if (mark.classList.contains('timeline-seg')) {
           const px = ((b - a) / length) * plotW;
-          mark.dataset.wide = px >= LABEL_MIN_PX ? 'true' : 'false';
+          if (mark.dataset.kind === 'amount') mark.dataset.label = amountLabelPlace(px, Number(mark.dataset.share), mark.textContent?.length ?? 0);
+          else mark.dataset.wide = px >= LABEL_MIN_PX ? 'true' : 'false';
         }
       }
     }
@@ -494,6 +626,67 @@ export class TimelineView {
     }
     this.axis.replaceChildren(el('div', 'timeline-axis-name'), plot);
     this.grid.replaceChildren(...lines);
+    this.positionEvents(pct, plotW);
+  }
+
+  // The events (FR-80): a 1-pixel hairline crossing the whole body at each
+  // event's date, and its label chip in the strip at the top; chips that
+  // would overlap stagger into two rows, then a "+n" chip.
+  private positionEvents(pct: (day: number) => number, plotW: number): void {
+    const labels = this.labels;
+    this.eventStrip.classList.toggle('hidden', this.events.length === 0);
+    if (this.events.length === 0 || !labels) {
+      this.eventPlot.replaceChildren();
+      this.eventLines.replaceChildren();
+      return;
+    }
+    this.eventStrip.setAttribute('aria-label', labels.events);
+    const chips = layoutEvents(
+      this.events.map((event) => ({ event, x: (pct(event.day) / 100) * plotW, width: eventChipWidth(event.label) })),
+      plotW,
+      EVENT_MORE_PX,
+    );
+    const said = (e: ScheduleEvent) => `${e.date}: ${e.label}`;
+    const strip: HTMLElement[] = [];
+    const hairlines: HTMLElement[] = [];
+    for (const chip of chips) {
+      const at = `${pct(chip.event.day).toFixed(3)}%`;
+      const line = el('span', 'timeline-event-line');
+      line.style.left = at;
+      line.dataset.eventId = chip.event.id;
+      hairlines.push(line);
+      const stem = el('span', 'timeline-event-stem');
+      stem.style.left = at;
+      const node = el('span', 'timeline-event-chip', chip.event.label);
+      node.setAttribute('role', 'listitem');
+      node.dataset.eventId = chip.event.id;
+      node.dataset.row = String(chip.row);
+      node.style.left = `${((chip.left / plotW) * 100).toFixed(3)}%`;
+      node.style.width = `${chip.width}px`;
+      node.title = said(chip.event);
+      node.setAttribute('aria-label', said(chip.event));
+      strip.push(stem, node);
+      if (chip.more.length > 0) {
+        // The hidden events keep their hairlines; their labels are in the
+        // "+n" chip's title and name.
+        for (const hidden of chip.more) {
+          const hiddenLine = el('span', 'timeline-event-line');
+          hiddenLine.style.left = `${pct(hidden.day).toFixed(3)}%`;
+          hiddenLine.dataset.eventId = hidden.id;
+          hairlines.push(hiddenLine);
+        }
+        const more = el('span', 'timeline-event-chip timeline-event-more', fill(labels.moreEvents, { count: chip.more.length }));
+        more.setAttribute('role', 'listitem');
+        more.dataset.row = String(chip.row);
+        more.style.left = `${(((chip.left + chip.width) / plotW) * 100).toFixed(3)}%`;
+        more.title = chip.more.map(said).join('; ');
+        more.setAttribute('aria-label', chip.more.map(said).join('; '));
+        strip.push(more);
+      }
+    }
+    this.eventStrip.style.setProperty('--timeline-event-rows', String(Math.max(1, ...chips.map((c) => c.row + 1))));
+    this.eventPlot.replaceChildren(...strip);
+    this.eventLines.replaceChildren(...hairlines);
   }
 
   // A day at a client x coordinate, within the plot.

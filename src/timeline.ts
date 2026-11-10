@@ -9,6 +9,7 @@
 
 import { readDate, type DateReading } from './dates';
 import type { PresentationOrder } from './workstate';
+import type { SeriesRole } from './economics';
 
 export interface TimelineItem {
   id: string;
@@ -42,9 +43,20 @@ export interface TimelineSpan {
   from: number;
   to: number;
   lane: number;
-  kind: 'span' | 'start' | 'end' | 'activity';
+  kind: 'span' | 'start' | 'end' | 'activity' | 'amount';
   // For an activity span: the activity it draws (label and progress).
   activity?: TimelineActivity;
+  // For an amount span (FR-79): the year amount of a series it draws.
+  amount?: CostsAmount;
+}
+
+// A year amount of a series (FR-79): a value read as a number (FR-65), with
+// the decimals it was given.
+export interface CostsAmount {
+  series: SeriesRole;
+  year: number;
+  value: number;
+  decimals: number;
 }
 
 export interface TimelineLine {
@@ -64,13 +76,23 @@ export interface TimelineLine {
   end: DateReading;
 }
 
-export type TimelineRow = { kind: 'heading'; heading: 'area'; area: string } | { kind: 'heading'; heading: 'noDates' } | TimelineLine;
+export type TimelineRow =
+  | { kind: 'heading'; heading: 'area'; area: string }
+  | { kind: 'heading'; heading: 'noDates' }
+  // The costs view's per-year totals (FR-79): one amount span per series
+  // and year, the sum across the shown lines, in the lines' sub-lanes.
+  | { kind: 'heading'; heading: 'totals'; spans: TimelineSpan[] }
+  | TimelineLine;
 
 export interface TimelineModel {
   rows: TimelineRow[];
   lines: TimelineLine[];
   // The first and last day of all spans, or null when no item has a date.
   extent: { from: number; to: number } | null;
+  // The costs view's scales (FR-79): the largest single year amount of a
+  // line, and the largest year total; a fill is the amount's share of its
+  // scale. Absent in the timeline.
+  scale?: { line: number; totals: number };
 }
 
 // Lays spans out in lanes: each span in the first lane where it overlaps no
@@ -212,4 +234,134 @@ export function clampWindow(window: { from: number; to: number }, fitted: { from
 // Zooms a window by a factor (above 1 zooms in) around a day.
 export function zoomWindow(window: { from: number; to: number }, factor: number, around: number): { from: number; to: number } {
   return { from: around - (around - window.from) / factor, to: around + (window.to - around) / factor };
+}
+
+// The costs view's model (FR-79). Each item is a line carrying, for each
+// year with a value in an assigned series, one span per series covering the
+// year; the series of a year fully overlap, so the shared lane layout packs
+// them into the sub-lane rows, in the order budget, forecast, outcome. A
+// value that is not a number has no span: it is listed as typed in the
+// line's description and left out of the sums (FR-65). An item without
+// economics is an empty named line: absence is never an error and never a
+// zero.
+export interface CostsItem extends Omit<TimelineItem, 'activities'> {
+  amounts: CostsAmount[];
+  // Values that are not numbers, as typed.
+  typed: Array<{ series: SeriesRole; year: number; text: string }>;
+}
+
+export interface CostsLine extends TimelineLine {
+  item: CostsItem;
+}
+
+const SERIES_ORDER: SeriesRole[] = ['budget', 'forecast', 'outcome'];
+
+function yearSpan(year: number): { from: number; to: number } {
+  return { from: Math.round(Date.UTC(year, 0, 1) / 86_400_000), to: Math.round(Date.UTC(year, 11, 31) / 86_400_000) };
+}
+
+function amountSpans(amounts: CostsAmount[]): TimelineSpan[] {
+  const sorted = [...amounts].sort((a, b) => a.year - b.year || SERIES_ORDER.indexOf(a.series) - SERIES_ORDER.indexOf(b.series));
+  return layoutLanes(sorted.map((amount) => ({ ...yearSpan(amount.year), kind: 'amount' as const, amount }))).spans;
+}
+
+// The years are those of the assigned series (FR-79): the fitted window
+// spans them whether or not every year holds a value.
+export function buildCosts(items: CostsItem[], years: number[], order: PresentationOrder = 'number', areaOrder: string[] = [], locale = 'en'): TimelineModel {
+  const all: CostsLine[] = items.map((item) => {
+    const spans = amountSpans(item.amounts);
+    return { kind: 'line', item, spans, activitySpans: [], lanes: Math.max(1, ...spans.map((s) => s.lane + 1)), start: readDate(item.start), end: readDate(item.end) };
+  });
+  const ordered = orderEntries(all, order, (l) => ({ area: l.item.area, start: l.start.kind === 'date' ? l.start.start : null }), areaOrder, locale);
+  // The totals: per series and year, the sum of the lines' amounts, exact to
+  // the decimals given.
+  const sums = new Map<string, CostsAmount>();
+  for (const line of all) {
+    for (const a of line.item.amounts) {
+      const key = `${a.series} ${a.year}`;
+      const sum = sums.get(key) ?? { series: a.series, year: a.year, value: 0, decimals: 0 };
+      const decimals = Math.max(sum.decimals, a.decimals);
+      const scale = 10 ** decimals;
+      sums.set(key, { ...sum, decimals, value: (Math.round(sum.value * scale) + Math.round(a.value * scale)) / scale });
+    }
+  }
+  const totals = amountSpans([...sums.values()]);
+  const rows: TimelineRow[] = [];
+  if (totals.length > 0) rows.push({ kind: 'heading', heading: 'totals', spans: totals });
+  let area: string | null = null;
+  for (const line of ordered) {
+    if (order === 'area' && line.item.area !== area) {
+      area = line.item.area;
+      rows.push({ kind: 'heading', heading: 'area', area });
+    }
+    rows.push(line);
+  }
+  const extent = years.length > 0 ? { from: yearSpan(Math.min(...years)).from, to: yearSpan(Math.max(...years)).to } : null;
+  const largest = (spans: TimelineSpan[]) => Math.max(0, ...spans.map((s) => s.amount!.value));
+  return { rows, lines: ordered, extent, scale: { line: largest(all.flatMap((l) => l.spans)), totals: largest(totals) } };
+}
+
+// An amount's share of its scale, as a fill from 0 to 1: a negative amount
+// or an empty scale has no fill.
+export function amountShare(value: number, scale: number): number {
+  return scale > 0 && value > 0 ? Math.min(1, value / scale) : 0;
+}
+
+// An amount in whole thousands (FR-79 as ruled): rounded half away from zero.
+export function inThousands(value: number): number {
+  return Math.sign(value) * Math.round(Math.abs(value) / 1000);
+}
+
+// Events in a schedule view (FR-80): each is a hairline at its date with a
+// label chip at the top. Chips whose labels would overlap stagger into two
+// rows; an event that fits neither row is counted in a "+n" chip beside the
+// chip that blocks it. Pure: the chips' widths are given, so the layout
+// needs no measuring, and zooming, which spreads the positions, separates
+// them.
+export interface ScheduleEvent {
+  id: string;
+  label: string;
+  // The event's day (the first day of a year or a month), and its date as
+  // written.
+  day: number;
+  date: string;
+}
+
+export interface EventChip {
+  event: ScheduleEvent;
+  // The hairline's position, the chip's box, and its row.
+  x: number;
+  left: number;
+  width: number;
+  row: number;
+  // The events hidden behind this chip's "+n".
+  more: ScheduleEvent[];
+}
+
+export const EVENT_ROWS = 2;
+const EVENT_GAP = 4;
+
+export function layoutEvents(events: Array<{ event: ScheduleEvent; x: number; width: number }>, plotWidth: number, moreWidth: number, rows = EVENT_ROWS): EventChip[] {
+  const ends: number[] = Array.from({ length: rows }, () => -Infinity);
+  const last: Array<EventChip | null> = Array.from({ length: rows }, () => null);
+  const out: EventChip[] = [];
+  const sorted = events.filter((e) => e.x >= 0 && e.x <= plotWidth).sort((a, b) => a.x - b.x || a.event.day - b.event.day);
+  for (const e of sorted) {
+    // A chip stands after its hairline, or before it where the plot ends.
+    const left = e.x + e.width > plotWidth && e.x - e.width >= 0 ? e.x - e.width : e.x;
+    const row = ends.findIndex((end) => end + EVENT_GAP <= left);
+    if (row === -1) {
+      // Neither row has room: the event joins the "+n" of the chip that
+      // blocks it in the last row, which then takes the room of its "+n".
+      const blocker = last[rows - 1]!;
+      if (blocker.more.length === 0) ends[rows - 1] += moreWidth;
+      blocker.more.push(e.event);
+      continue;
+    }
+    const chip: EventChip = { event: e.event, x: e.x, left, width: e.width, row, more: [] };
+    ends[row] = left + e.width;
+    last[row] = chip;
+    out.push(chip);
+  }
+  return out;
 }

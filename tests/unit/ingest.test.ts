@@ -70,3 +70,32 @@ describe('direct import (FR-1)', () => {
     expect(headers.map((h) => columnLabel(h, ''))).toEqual(['Identitet', 'Område', '名前']);
   });
 });
+
+// A regression pin (v1.11.0): a text file that begins with a UTF-8 byte
+// order mark is read as UTF-8, and the mark is not part of the first header.
+describe('a text file with a byte order mark (FR-1)', () => {
+  const bytes = (text: string): ArrayBuffer => new TextEncoder().encode(text).buffer as ArrayBuffer;
+  const BOM = '\uFEFF';
+
+  test('the mark is not part of the first header, so the header matches as typed', () => {
+    const list = importColumns(parseWorkbook(bytes(`${BOM}Namn,Område,År\nÅsa,Östra,2024\n`)));
+    expect(list.headers).toEqual(['Namn', 'Område', 'År']);
+    expect(list.headers[0]).toHaveLength(4);
+    expect(list.headers[0].charCodeAt(0)).not.toBe(0xfeff);
+    expect(list.rows[0].Namn).toBe('Åsa');
+  });
+
+  test('letters outside ASCII are read as written, in headers and in values', () => {
+    const list = importColumns(parseWorkbook(bytes(`${BOM}Område;Anmärkning\nÖstra hamnen;Färdig på våren\n`)));
+    expect(list.headers).toEqual(['Område', 'Anmärkning']);
+    expect(list.rows).toEqual([{ Område: 'Östra hamnen', Anmärkning: 'Färdig på våren' }]);
+  });
+
+  test('values stay text as typed, with or without the mark', () => {
+    for (const mark of [BOM, '']) {
+      const list = importColumns(parseWorkbook(bytes(`${mark}Item,Start\nA-1,2024-03-15\nA-2,007\n`)));
+      expect(list.headers).toEqual(['Item', 'Start']);
+      expect(list.rows.map((r) => r.Start)).toEqual(['2024-03-15', '007']);
+    }
+  });
+});

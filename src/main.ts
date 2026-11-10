@@ -25,11 +25,11 @@ import { markersInView } from './glance';
 import { DEFAULT_SHAPE, placedMarkers, placeMarker, pruneMarkers, removeMarker, type MarkerPositions, type MarkerShapes, type PlacedMarker } from './markers';
 import { BUTTON_ZOOM_FACTOR, imageToScreen, screenToImage, type Point, type Viewport } from './viewport';
 import { isSegment, SEGMENTS, showSegment, type Segment } from './segments';
-import { type Problem, parseWorkState, rowNumbers, serialiseWorkState, SUGGESTED_FILE_NAME, WorkStateError, type ActivityImport, type PresentationMode, type PresentationOrder, type StoredActivity, type TimelineWindow, type WorkState } from './workstate';
-import { buildTimeline, orderEntries, startDay, type TimelineItem, type TimelineLine } from './timeline';
+import { type Problem, parseWorkState, rowNumbers, serialiseWorkState, SUGGESTED_FILE_NAME, WorkStateError, type ActivityImport, type PresentationMode, type PresentationOrder, type StoredEvent, type StoredActivity, type TimelineWindow, type WorkState } from './workstate';
+import { buildCosts, buildTimeline, inThousands, orderEntries, startDay, type CostsItem, type ScheduleEvent, type TimelineItem, type TimelineLine } from './timeline';
 import { parsePdfPages, parseRows, type ActivityDraft, type ActivityField, type ActivityTable } from './activityparse';
 import { readPdfText } from './pdftext';
-import { TimelineView } from './timelineview';
+import { TimelineView, type TimelineLabels } from './timelineview';
 import { ExportError, parseExport, serialiseExport, SUGGESTED_EXPORT_NAME, type ExportData } from './exportfile';
 import { embedDataIsland, readDataIsland, writeStaticViewerState } from './singlefile';
 import { HOSTED_ADDRESS } from './hosted';
@@ -38,7 +38,8 @@ import { areaGroups, programLabels } from './grouping';
 import { DEMO_MAP_TEXT, demoCounterparts, demoScenario, demoWorkbook } from './demo';
 import { NARROW_QUERY, NarrowViewer } from './narrowviewer';
 import { formatAmount, renderEconomics } from './economicsview';
-import { DEFAULT_CURRENCY_UNIT, economicsOf, informationTotals, proposeSeries, SERIES_ROLES, seriesKey, yearOfValue, type Economics, type SeriesAssignment, type SeriesAssignments, type SeriesProposal, type SeriesRole } from './economics';
+import { formatDate, readDate } from './dates';
+import { DEFAULT_CURRENCY_UNIT, readAmount, economicsOf, informationTotals, proposeSeries, SERIES_ROLES, seriesKey, yearOfValue, type Economics, type SeriesAssignment, type SeriesAssignments, type SeriesProposal, type SeriesRole } from './economics';
 import { DEFAULT_STYLE, formatArea, newAnnotationId, LINE_STYLES, OUTLINES, trueArea, type Annotation, type AnnotationKind, type AnnotationStyle, type LineStyle, type Outline } from './annotations';
 import { AnnotationLayer, DrawingTools, type DrawingTool } from './annotationlayer';
 
@@ -137,6 +138,10 @@ interface AppState {
   presentationMode: PresentationMode;
   presentationOrder: PresentationOrder;
   timelineRestore: TimelineWindow | null;
+  // The events (FR-80): global dated markers the user authored; and the
+  // costs view's view to restore when it is next drawn (FR-79).
+  events: StoredEvent[];
+  costsRestore: TimelineWindow | null;
 }
 
 const state: AppState = {
@@ -193,6 +198,8 @@ const state: AppState = {
   presentationMode: 'map',
   presentationOrder: 'number',
   timelineRestore: null,
+  events: [],
+  costsRestore: null,
 };
 
 // Drag-and-drop data type identifying a list row dragged onto the map.
@@ -254,6 +261,13 @@ function renderStaticText(): void {
   el<HTMLInputElement>('program-new').placeholder = t.programNew;
   el('program-add').textContent = t.vocabAdd;
   el('program-collect').textContent = t.areaCollect;
+  el('event-panel-summary').textContent = t.eventPanel;
+  el('event-panel-hint').textContent = t.eventPanelHint;
+  el('event-date-new').setAttribute('aria-label', t.eventDate);
+  el<HTMLInputElement>('event-date-new').placeholder = t.eventDatePlaceholder;
+  el('event-label-new').setAttribute('aria-label', t.eventLabel);
+  el<HTMLInputElement>('event-label-new').placeholder = t.eventLabel;
+  el('event-add').textContent = t.vocabAdd;
   el('status-panel-summary').textContent = t.statusPanel;
   el('status-panel-hint').textContent = t.statusPanelHint;
   el('status-new').setAttribute('aria-label', t.statusNew);
@@ -310,6 +324,7 @@ function renderStaticText(): void {
   el('pres-mode').setAttribute('aria-label', t.presentationViewGroup);
   el('pres-mode-map').textContent = t.presentationViewMap;
   el('pres-mode-timeline').textContent = t.presentationViewTimeline;
+  el('pres-mode-costs').textContent = t.presentationViewCosts;
   el('pres-order-text').textContent = t.presentationOrder;
   const orderOptions = el<HTMLSelectElement>('pres-order').options;
   const orderLabels: Record<string, string> = { number: t.presentationOrderNumber, area: t.presentationOrderArea, start: t.presentationOrderStart };
@@ -460,6 +475,7 @@ let demoBaseline = -1;
 // not renamed follow a change of language (FR-41 as amended).
 let demoLang: Lang | null = null;
 let demoAnnotationIds: string[] = [];
+let demoEventIds: string[] = [];
 
 function samePreset(a: ColumnPreset, b: ColumnPreset): boolean {
   return JSON.stringify(clonePreset(a)) === JSON.stringify(clonePreset(b));
@@ -482,6 +498,9 @@ export async function loadDemo(options: { confirmed?: boolean } = {}): Promise<b
   state.selectedMarker = null;
   state.presentationSelected = null;
   restoreTimelineView(null);
+  restoreCostsView(null);
+  state.events = [];
+  eventMessage = '';
   // The demo's preset of another language, if unchanged, gives way to this
   // language's.
   for (const other of (['en', 'sv'] as const).filter((l) => l !== lang)) {
@@ -539,6 +558,9 @@ export async function loadDemo(options: { confirmed?: boolean } = {}): Promise<b
       if (row) state.annotationLinks.set(annotation.id, row);
     }
   }
+  // The demo's two fictional events (FR-41 as amended, FR-80).
+  state.events = scenario.events.map((e, i) => ({ id: `e${i + 1}`, date: e.date, label: e.label }));
+  demoEventIds = state.events.map((e) => e.id);
   demoLoaded = true;
   demoLang = lang;
   markDirty();
@@ -588,6 +610,14 @@ function followDemoLanguage(to: Lang): void {
     const [from, next] = c.annotationLabels[i];
     if (annotation && annotation.label === from) {
       annotation.label = next;
+      changed = true;
+    }
+  });
+  demoEventIds.forEach((id, i) => {
+    const event = state.events.find((e) => e.id === id);
+    const [from, next] = c.eventLabels[i];
+    if (event && event.label === from) {
+      event.label = next;
       changed = true;
     }
   });
@@ -645,8 +675,13 @@ function resetList(headers: string[], rows: Record<string, string>[]): void {
   // choice belongs to the list it was made on (FR-46 as amended).
   if (demoLoaded) state.colourLabels = {};
   state.glanceColumns = null;
-  // A new list opens the timeline at its fitted view (FR-67).
+  // A new list opens the timeline and the costs view at their fitted views
+  // (FR-67, FR-79), and discards the demo's provided events with the demo
+  // (FR-80); events the user authored are the work's own and stay.
   restoreTimelineView(null);
+  restoreCostsView(null);
+  if (demoLoaded) state.events = [];
+  demoEventIds = [];
   // The card fields and the series name columns of the list they were made
   // on, and the unit belongs to that work (FR-62 to FR-64).
   state.cardColumns = null;
@@ -1189,6 +1224,7 @@ function renderList(): void {
   renderColumnVisibility();
   renderPresets();
   for (const kind of VALUE_VOCABULARIES) renderVocabPanel(kind);
+  renderEventPanel();
   renderColourPanel();
   renderSymbolPanel();
   renderGlanceColumnPicker();
@@ -1322,6 +1358,8 @@ export function captureWorkState(): WorkState {
     presentationMode: state.presentationMode,
     timelineView: currentTimelineView(),
     presentationOrder: state.presentationOrder,
+    events: state.events.map((e) => ({ ...e })),
+    costsView: currentCostsView(),
   };
 }
 
@@ -2288,6 +2326,9 @@ async function applyWorkState(ws: WorkState): Promise<boolean> {
   state.presentationMode = ws.presentationMode;
   state.presentationOrder = ws.presentationOrder;
   restoreTimelineView(ws.timelineView);
+  state.events = ws.events.map((e) => ({ ...e }));
+  eventMessage = '';
+  restoreCostsView(ws.costsView);
 
   el('ingest-error').classList.add('hidden');
   const hasRows = state.ingested.length > 0;
@@ -3257,6 +3298,90 @@ function renderVocabPanel(kind: ValueVocabulary): void {
   }
   el<HTMLButtonElement>(`${kind}-collect`).disabled = state.roles[kind] === undefined;
   el(`${kind}-status`).textContent = values.length === 0 && !vocabMessages[kind] ? t.vocabEmpty : vocabMessages[kind];
+}
+
+// The events panel (FR-80): global dated markers, hand-authored in the
+// vocabulary pattern -- add with a date and a label, list with rename and
+// remove. Nothing is inferred: the date is kept as typed and read by the
+// shared date reader (FR-68); one that cannot be read is kept, said to be
+// unreadable, and not drawn.
+let eventMessage = '';
+
+function newEventId(): string {
+  const used = new Set(state.events.map((e) => e.id));
+  let n = state.events.length + 1;
+  while (used.has(`e${n}`)) n++;
+  return `e${n}`;
+}
+
+function setEvents(next: StoredEvent[], message = ''): void {
+  state.events = next;
+  eventMessage = message;
+  markDirty();
+  renderList();
+  if (state.segment === 'presentation') renderPresentation();
+}
+
+function addEvent(): void {
+  const t = strings(state.prefs.lang);
+  const date = el<HTMLInputElement>('event-date-new');
+  const label = el<HTMLInputElement>('event-label-new');
+  const d = date.value.trim();
+  const l = label.value.trim();
+  if (d === '' || l === '') {
+    eventMessage = t.eventNeedsBoth;
+    renderEventPanel();
+    return;
+  }
+  date.value = '';
+  label.value = '';
+  setEvents([...state.events, { id: newEventId(), date: d, label: l }], readDate(d).kind === 'date' ? '' : t.eventUnreadable);
+}
+
+function renderEventPanel(): void {
+  const t = strings(state.prefs.lang);
+  const list = el('event-list');
+  list.innerHTML = '';
+  for (const event of state.events) {
+    const li = document.createElement('li');
+    li.className = 'vocab-item event-item';
+    li.dataset.eventId = event.id;
+    const readable = readDate(event.date).kind === 'date';
+    const date = document.createElement('input');
+    date.type = 'text';
+    date.className = 'vocab-name event-date';
+    date.value = event.date;
+    date.setAttribute('aria-label', `${t.eventDate}: ${event.label}`);
+    if (!readable) {
+      date.classList.add('not-in-vocabulary');
+      date.title = t.eventUnreadable;
+    }
+    date.addEventListener('change', () => {
+      const next = date.value.trim();
+      // An emptied date is not a date: the entry keeps the one it had.
+      if (next === '' || next === event.date) return renderEventPanel();
+      setEvents(state.events.map((e) => (e.id === event.id ? { ...e, date: next } : e)), readDate(next).kind === 'date' ? '' : t.eventUnreadable);
+    });
+    const name = document.createElement('input');
+    name.type = 'text';
+    name.className = 'vocab-name event-label';
+    name.value = event.label;
+    name.setAttribute('aria-label', `${t.vocabRename}: ${event.label}`);
+    name.addEventListener('change', () => {
+      const next = name.value.trim();
+      if (next === '' || next === event.label) return renderEventPanel();
+      setEvents(state.events.map((e) => (e.id === event.id ? { ...e, label: next } : e)));
+    });
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'vocab-remove';
+    remove.textContent = t.vocabRemove;
+    remove.setAttribute('aria-label', `${t.vocabRemove}: ${event.label}`);
+    remove.addEventListener('click', () => setEvents(state.events.filter((e) => e.id !== event.id)));
+    li.append(date, name, remove);
+    list.appendChild(li);
+  }
+  el('event-status').textContent = state.events.length === 0 && !eventMessage ? t.vocabEmpty : eventMessage;
 }
 
 function setColumnRole(header: string, role: Role | null): void {
@@ -4512,7 +4637,7 @@ function openCard(id: string | null): void {
   if (id !== null) el('presentation-card').querySelector<HTMLElement>('.details-close')?.focus({ preventScroll: true });
   else if (previous !== null && hadFocus) {
     // Focus returns to the marker the card belonged to.
-    const opener = timelineMode() ? `#presentation-timeline .timeline-entry[data-row-id="${previous}"]` : `#presentation-marker-layer .marker[data-row-id="${previous}"]`;
+    const opener = timelineMode() ? `#presentation-${state.presentationMode} .timeline-entry[data-row-id="${previous}"]` : `#presentation-marker-layer .marker[data-row-id="${previous}"]`;
     document.querySelector<HTMLElement>(opener)?.focus({ preventScroll: true });
   }
 }
@@ -4533,7 +4658,7 @@ function renderCard(): void {
   // stage's corner); on the timeline, the item's line (FR-67).
   let anchor: Point | null | undefined;
   if (timelineMode()) {
-    anchor = row && timeline ? (timeline.anchorOf(rowId(row), el('presentation-stage')) ?? undefined) : undefined;
+    anchor = row ? (schedule()?.anchorOf(rowId(row), el('presentation-stage')) ?? undefined) : undefined;
   } else {
     const placed = row && presentationView?.background ? state.positions.get(row) : undefined;
     const position = placed ?? (row && state.viewOnly ? null : undefined);
@@ -4615,14 +4740,16 @@ function renderPresentation(): void {
   el('presentation-stage').dataset.view = state.presentationMode;
   el('presentation-toolbar').dataset.view = state.presentationMode;
   el<HTMLSelectElement>('pres-order').value = state.presentationOrder;
-  el('presentation-timeline').classList.toggle('hidden', !onTimeline);
+  el('presentation-timeline').classList.toggle('hidden', state.presentationMode !== 'timeline');
+  el('presentation-costs').classList.toggle('hidden', state.presentationMode !== 'costs');
   for (const button of document.querySelectorAll<HTMLButtonElement>('.pres-mode-button')) {
     button.setAttribute('aria-pressed', button.dataset.mode === state.presentationMode ? 'true' : 'false');
   }
-  if (onTimeline) renderTimeline();
+  if (state.presentationMode === 'timeline') renderTimeline();
+  if (state.presentationMode === 'costs') renderCosts();
   renderPresentationGlance();
   renderCard();
-  const has = onTimeline ? (timeline?.hasLines() ?? false) : presentationView?.background != null;
+  const has = onTimeline ? (schedule()?.hasLines() ?? false) : presentationView?.background != null;
   for (const id of ['pres-zoom-in', 'pres-zoom-out', 'pres-fit', 'pres-reset']) {
     el<HTMLButtonElement>(id).disabled = !has;
   }
@@ -4632,7 +4759,7 @@ function renderPresentation(): void {
 }
 
 function renderZoomLevel(): void {
-  const percent = timelineMode() ? (timeline?.zoomPercent() ?? 100) : Math.round((presentationView?.viewport.scale ?? 1) * 100);
+  const percent = timelineMode() ? (schedule()?.zoomPercent() ?? 100) : Math.round((presentationView?.viewport.scale ?? 1) * 100);
   el('pres-zoom-level').textContent = `${percent}%`;
 }
 
@@ -4640,7 +4767,7 @@ function renderZoomLevel(): void {
 // narrow viewer, it first closes the overlay (FR-58).
 function choosePresentationEntry(id: string): void {
   if (narrowViewer()) closeNarrowOverlay();
-  if (timelineMode()) timeline?.reveal(id);
+  if (timelineMode()) schedule()?.reveal(id);
   openCard(id);
 }
 
@@ -4651,7 +4778,7 @@ function renderPresentationGlance(): void {
     renderGlance('presentation', presentationView, state.presentationSelected, choosePresentationEntry);
     return;
   }
-  const lines = timeline?.visibleLines() ?? [];
+  const lines = schedule()?.visibleLines() ?? [];
   const symbols = effectiveSymbols();
   const entries: PlacedMarker[] = lines.flatMap((line) => {
     const row = rowById(line.item.id);
@@ -4666,8 +4793,15 @@ let timeline: TimelineView | null = null;
 // A saved view waits until the timeline is next drawn.
 let timelinePending = true;
 
+// A schedule view is shown: the timeline (FR-67) or the costs view (FR-79),
+// which share the line, lane, window, and saved-view machinery.
 function timelineMode(): boolean {
-  return state.presentationMode === 'timeline';
+  return state.presentationMode !== 'map';
+}
+
+// The schedule view shown, if any.
+function schedule(): TimelineView | null {
+  return state.presentationMode === 'timeline' ? timeline : state.presentationMode === 'costs' ? costs : null;
 }
 
 function setPresentationOrder(order: PresentationOrder): void {
@@ -4683,6 +4817,24 @@ function setPresentationMode(mode: PresentationMode): void {
   if (cardId !== null) closeCard();
   markDirty();
   renderPresentation();
+}
+
+// The costs view's saved view (FR-79), beside the timeline's.
+let costs: TimelineView | null = null;
+let costsPending = true;
+
+function restoreCostsView(view: TimelineWindow | null): void {
+  state.costsRestore = view ? { ...view } : null;
+  costsPending = true;
+}
+
+// The costs view's view to save, like the timeline's: its own window and
+// first visible line, or null while it is the fitted view at the top.
+function currentCostsView(): TimelineWindow | null {
+  if (costsPending || !costs) return state.costsRestore ? { ...state.costsRestore } : null;
+  const firstLine = costs.firstLine();
+  if (!costs.isChosen() && firstLine === 0) return null;
+  return { ...costs.window, firstLine };
 }
 
 function restoreTimelineView(view: TimelineWindow | null): void {
@@ -4719,10 +4871,13 @@ function timelineItems(): TimelineItem[] {
     }));
 }
 
-function renderTimeline(): void {
-  if (!timeline) {
-    timeline = new TimelineView(el('presentation-timeline'), {
-      onSelect: (id) => openCard(id),
+// A schedule view on its layer of the stage, with the callbacks the
+// timeline and the costs view share.
+function newScheduleView(id: string, kind: 'timeline' | 'costs'): TimelineView {
+  const view = new TimelineView(
+    el(id),
+    {
+      onSelect: (rowId) => openCard(rowId),
       onHover: setHover,
       onViewChanged: () => {
         renderZoomLevel();
@@ -4737,37 +4892,111 @@ function renderTimeline(): void {
         drawSymbol(badge, shape, line.item.label);
         return badge;
       },
-    });
-    // A click on the timeline outside a line closes the card.
-    el('presentation-timeline').addEventListener('click', (e) => {
-      if (!(e.target as HTMLElement).closest('.timeline-entry') && cardId !== null) closeCard();
-    });
-  }
+    },
+    kind,
+  );
+  // A click on the view outside a line closes the card.
+  el(id).addEventListener('click', (e) => {
+    if (!(e.target as HTMLElement).closest('.timeline-entry') && cardId !== null) closeCard();
+  });
+  return view;
+}
+
+function scheduleLabels(): TimelineLabels {
+  const t = strings(state.prefs.lang);
+  const { start, end } = state.roles;
+  return {
+    noDates: t.timelineNoDates,
+    noArea: t.numberingNoArea,
+    empty: t.timelineEmpty,
+    noRoles: null,
+    startOnly: t.timelineStartOnly,
+    endOnly: t.timelineEndOnly,
+    startHeader: start === undefined ? '' : labelOf(start),
+    endHeader: end === undefined ? '' : labelOf(end),
+    locale: areaLocale(),
+    moreSpans: t.timelineMoreSpans,
+    activities: t.timelineActivities,
+    events: t.eventPanel,
+    moreEvents: t.eventsMore,
+  };
+}
+
+// The events as drawn in the schedule views (FR-80): those whose date reads,
+// each at its date's first day; one that cannot be read is not drawn.
+function scheduleEvents(): ScheduleEvent[] {
+  return state.events.flatMap((e) => {
+    const reading = readDate(e.date);
+    return reading.kind === 'date' ? [{ id: e.id, label: e.label, day: reading.start, date: formatDate(reading) }] : [];
+  });
+}
+
+function renderTimeline(): void {
+  if (!timeline) timeline = newScheduleView('presentation-timeline', 'timeline');
   const t = strings(state.prefs.lang);
   const { start, end } = state.roles;
   const model = buildTimeline(timelineItems(), state.presentationOrder, state.areaValues, areaLocale());
-  timeline.render(
-    model,
-    {
-      noDates: t.timelineNoDates,
-      noArea: t.numberingNoArea,
-      empty: t.timelineEmpty,
-      noRoles: start === undefined && end === undefined && model.lines.length > 0 ? t.timelineNoRoles : null,
-      startOnly: t.timelineStartOnly,
-      endOnly: t.timelineEndOnly,
-      startHeader: start === undefined ? '' : labelOf(start),
-      endHeader: end === undefined ? '' : labelOf(end),
-      locale: areaLocale(),
-      moreSpans: t.timelineMoreSpans,
-      activities: t.timelineActivities,
-    },
-    state.presentationSelected,
-  );
+  timeline.render(model, { ...scheduleLabels(), noRoles: start === undefined && end === undefined && model.lines.length > 0 ? t.timelineNoRoles : null }, state.presentationSelected, scheduleEvents());
   if (timelinePending) {
     timelinePending = false;
     const saved = state.timelineRestore;
     state.timelineRestore = null;
     timeline.setWindow(saved ? { from: saved.from, to: saved.to } : null, saved?.firstLine ?? 0);
+  }
+}
+
+// The costs view's items (FR-79): every item of the presentation, with the
+// year amounts of the assigned series read as numbers (FR-65); a value that
+// is not a number is kept as typed and has no bar.
+function costsItems(series: SeriesAssignments): CostsItem[] {
+  return timelineItems().map(({ activities: _activities, ...item }) => {
+    const row = rowById(item.id)!;
+    const amounts: CostsItem['amounts'] = [];
+    const typed: CostsItem['typed'] = [];
+    for (const role of SERIES_ROLES) {
+      for (const [year, key] of Object.entries(series[role]?.columns ?? {})) {
+        const reading = readAmount(row.values[key] ?? '', state.currencyUnit);
+        if (reading.kind === 'number') amounts.push({ series: role, year: Number(year), value: reading.value, decimals: reading.decimals });
+        else if (reading.kind === 'text') typed.push({ series: role, year: Number(year), text: reading.text });
+      }
+    }
+    return { ...item, amounts, typed };
+  });
+}
+
+function renderCosts(): void {
+  if (!costs) costs = newScheduleView('presentation-costs', 'costs');
+  const t = strings(state.prefs.lang);
+  const series = effectiveSeries();
+  const years = [...new Set(SERIES_ROLES.flatMap((role) => Object.keys(series[role]?.columns ?? {}).map(Number)))];
+  const model = buildCosts(costsItems(series), years, state.presentationOrder, state.areaValues, areaLocale());
+  const format = { locale: areaLocale(), unit: state.currencyUnit };
+  const roleNames: Record<SeriesRole, string> = { budget: t.seriesRoleBudget, forecast: t.seriesRoleForecast, outcome: t.seriesRoleOutcome };
+  costs.render(
+    model,
+    {
+      ...scheduleLabels(),
+      noRoles: years.length === 0 && model.lines.length > 0 ? t.costsNoSeries : null,
+      costs: {
+        // The series in the user's own words (FR-63).
+        series: Object.fromEntries(SERIES_ROLES.map((role) => [role, series[role]?.name ?? roleNames[role]])) as Record<SeriesRole, string>,
+        thousands: (value) => new Intl.NumberFormat(format.locale, { maximumFractionDigits: 0 }).format(inThousands(value)),
+        exact: (a) => formatAmount(a.value, a.decimals, format),
+        totals: t.costsTotals,
+        unitNote: fill(t.costsUnitNote, { unit: state.currencyUnit }).trim(),
+        totalsDescription: t.costsTotalsDescription,
+        none: t.costsNone,
+        typed: t.costsTyped,
+      },
+    },
+    state.presentationSelected,
+    scheduleEvents(),
+  );
+  if (costsPending) {
+    costsPending = false;
+    const saved = state.costsRestore;
+    state.costsRestore = null;
+    costs.setWindow(saved ? { from: saved.from, to: saved.to } : null, saved?.firstLine ?? 0);
   }
 }
 
@@ -4809,10 +5038,10 @@ function initialisePresentation(): void {
   });
   // The toolbar acts on the view shown (FR-66); on the timeline, Reset is
   // Fit (FR-67).
-  el('pres-zoom-in').addEventListener('click', () => (timelineMode() ? timeline?.zoomBy(BUTTON_ZOOM_FACTOR) : presentationView?.zoomBy(BUTTON_ZOOM_FACTOR)));
-  el('pres-zoom-out').addEventListener('click', () => (timelineMode() ? timeline?.zoomBy(1 / BUTTON_ZOOM_FACTOR) : presentationView?.zoomBy(1 / BUTTON_ZOOM_FACTOR)));
-  el('pres-fit').addEventListener('click', () => (timelineMode() ? timeline?.fit() : presentationView?.fit()));
-  el('pres-reset').addEventListener('click', () => (timelineMode() ? timeline?.fit() : presentationView?.reset()));
+  el('pres-zoom-in').addEventListener('click', () => (timelineMode() ? schedule()?.zoomBy(BUTTON_ZOOM_FACTOR) : presentationView?.zoomBy(BUTTON_ZOOM_FACTOR)));
+  el('pres-zoom-out').addEventListener('click', () => (timelineMode() ? schedule()?.zoomBy(1 / BUTTON_ZOOM_FACTOR) : presentationView?.zoomBy(1 / BUTTON_ZOOM_FACTOR)));
+  el('pres-fit').addEventListener('click', () => (timelineMode() ? schedule()?.fit() : presentationView?.fit()));
+  el('pres-reset').addEventListener('click', () => (timelineMode() ? schedule()?.fit() : presentationView?.reset()));
   for (const button of document.querySelectorAll<HTMLButtonElement>('.pres-mode-button')) {
     button.addEventListener('click', () => setPresentationMode(button.dataset.mode as PresentationMode));
   }
@@ -5358,6 +5587,12 @@ function wireEvents(): void {
       if ((e as KeyboardEvent).key === 'Enter') addVocabValue(kind);
     });
     el(`${kind}-collect`).addEventListener('click', () => collectVocabValues(kind));
+  }
+  el('event-add').addEventListener('click', addEvent);
+  for (const id of ['event-date-new', 'event-label-new']) {
+    el(id).addEventListener('keydown', (e) => {
+      if ((e as KeyboardEvent).key === 'Enter') addEvent();
+    });
   }
   const addStatusValue = () => {
     const input = el<HTMLInputElement>('status-new');

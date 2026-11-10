@@ -164,4 +164,30 @@ describe('the demo in both interface languages (FR-41 as amended in v1.3.1)', ()
     const back = demoCounterparts('sv', 'en');
     expect(back.statuses).toEqual(there.statuses.map(([a, b]) => [b, a]));
   });
+
+  // FR-41 as amended in v1.11.0, FR-80.
+  test('the demo carries two fictional events, a review date and a decision date, in both languages', () => {
+    expect(demoScenario('en').events).toEqual([
+      { date: '2024-06', label: 'Review' },
+      { date: '2026-03-15', label: 'Decision' },
+    ]);
+    expect(demoScenario('sv').events).toEqual([
+      { date: '2024-06', label: 'Granskning' },
+      { date: '2026-03-15', label: 'Beslut' },
+    ]);
+    expect(demoCounterparts('en', 'sv').eventLabels).toEqual([
+      ['Review', 'Granskning'],
+      ['Decision', 'Beslut'],
+    ]);
+  });
+
+  test('an event with a date that cannot be read, or without a label in a language, is refused', () => {
+    const damaged = (change: (events: Array<Record<string, unknown>>) => void) => {
+      const raw = JSON.parse(JSON.stringify(scenarioJson));
+      change(raw.events);
+      return raw;
+    };
+    expect(() => parseDemoScenarios(damaged((e) => (e[0].date = '15/03/2024')))).toThrow(/events\[0\].date/);
+    expect(() => parseDemoScenarios(damaged((e) => (e[1].label = { en: 'Decision' })))).toThrow(/events\[1\].label.sv/);
+  });
 });

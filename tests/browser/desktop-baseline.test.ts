@@ -172,6 +172,20 @@ function inside(target: string, ids: string[]): boolean {
   return ids.some((id) => target === id || target.startsWith(`${id}>`) || target.startsWith(`${id} `));
 }
 
+// Pass 20 (v1.11.0, FR-79 and FR-80): the Costs button joins the view switch
+// in every state that shows the presentation toolbar (the chrome, admitted
+// since Pass 18); in the demo's Information segment, the events panel takes
+// a row of its own under the vocabulary panels, so that their container
+// grows by that row and nothing else in it changes.
+const NEW_PASS_20 = ['#event-panel', '#event-panel-summary', '#event-panel-hint', '#event-list', '#event-date-new', '#event-label-new', '#event-add', '#event-status'];
+
+function pass20(d: NonNullable<ReturnType<typeof parse>>): boolean {
+  if (d.state !== 'demo-information' || d.target !== '#vocab-panels') return false;
+  if (!d.all) return ['box.height', 'height'].includes(d.what);
+  const [a, b] = [d.before.split('|'), d.after.split('|')];
+  return a[0] === b[0] && a[2] === b[2] && a.slice(4).join('|') === b.slice(4).join('|') && Number(b[3]) > Number(a[3]);
+}
+
 function intended(line: string): boolean {
   if (/ all #open-presentation: new$/.test(line)) return true;
   if (/ all #economics-overlay(>\S+)?: new$/.test(line)) return true;
@@ -181,12 +195,15 @@ function intended(line: string): boolean {
     // The used-only legend (FR-75) re-renders its entries in the presentation
     // states.
     if (PRESENTATION_STATES.includes(newEntry[1]) && inside(newEntry[2], ['#presentation-legend'])) return true;
+    if (PRESENTATION_STATES.includes(newEntry[1]) && newEntry[2] === '#pres-mode-costs') return true;
+    if (newEntry[1] === 'demo-information' && inside(newEntry[2], NEW_PASS_20)) return true;
     return false;
   }
   const d = parse(line);
   if (!d) return false;
   if (pass16(d)) return true;
   if (pass18(d)) return true;
+  if (pass20(d)) return true;
   // Pass 14's row.
   if (d.all && MOVED_IN_ROW.includes(d.target) && d.before.split('|').slice(1).join('|') === d.after.split('|').slice(1).join('|')) return true;
   if (inside(d.target, CHANGED_INSIDE)) return true;
@@ -248,6 +265,10 @@ describe('the desktop layout is that of v1.3.1 (Pass 13, unit 4)', () => {
     expect(found.filter((l) => / all #pres-mode: new$/.test(l)).map((l) => l.split(' ')[0])).toEqual(PRESENTATION_STATES);
     expect(found.filter((l) => / all #pres-order-label: new$/.test(l)).map((l) => l.split(' ')[0])).toEqual(PRESENTATION_STATES);
     expect(found.filter((l) => / all #list-totals: new$/.test(l)).map((l) => l.split(' ')[0])).toEqual(['demo-information']);
+    // Pass 20: the Costs button in every presentation state, the events panel
+    // in the demo's Information.
+    expect(found.filter((l) => / all #pres-mode-costs: new$/.test(l)).map((l) => l.split(' ')[0])).toEqual(PRESENTATION_STATES);
+    expect(found.filter((l) => / all #event-panel: new$/.test(l)).map((l) => l.split(' ')[0])).toEqual(['demo-information']);
     expect(found.filter((l) => !intended(l))).toEqual([]);
   }, 120_000);
 });

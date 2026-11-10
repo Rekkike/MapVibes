@@ -38,6 +38,7 @@ const SAME_IN_BOTH: Record<string, string> = {
   seriesRoleBudget: 'Swedish "budget"',
   economicsComposition: 'placeholders only: the series names and their years',
   economicsCompositionOnly: 'placeholders only: a series name and its years',
+  eventsMore: 'placeholder only: a count after a plus sign',
 };
 
 describe('translation parity: the string tables (FR-19)', () => {

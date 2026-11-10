@@ -864,5 +864,21 @@
       },
       "link": null
     }
+  ],
+  "events": [
+    {
+      "date": "2024-06",
+      "label": {
+        "en": "Review",
+        "sv": "Granskning"
+      }
+    },
+    {
+      "date": "2026-03-15",
+      "label": {
+        "en": "Decision",
+        "sv": "Beslut"
+      }
+    }
   ]
 }
