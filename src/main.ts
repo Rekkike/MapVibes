@@ -25,7 +25,7 @@ import { markersInView } from './glance';
 import { DEFAULT_SHAPE, placedMarkers, placeMarker, pruneMarkers, removeMarker, type MarkerPositions, type MarkerShapes, type PlacedMarker } from './markers';
 import { BUTTON_ZOOM_FACTOR, imageToScreen, screenToImage, type Point, type Viewport } from './viewport';
 import { isSegment, SEGMENTS, showSegment, type Segment } from './segments';
-import { type Problem, parseWorkState, rowNumbers, serialiseWorkState, SUGGESTED_FILE_NAME, WorkStateError, type ActivityImport, type PresentationMode, type PresentationOrder, type StoredEvent, type StoredActivity, type TimelineWindow, type WorkState } from './workstate';
+import { type Problem, parseWorkState, rowNumbers, serialiseWorkState, SUGGESTED_FILE_NAME, WorkStateError, type ActivityImport, activityId, type PresentationMode, type PresentationOrder, type StoredEvent, type StoredActivity, type TimelineWindow, type WorkState } from './workstate';
 import { buildCosts, buildTimeline, inThousands, orderEntries, startDay, type CostsItem, type ScheduleEvent, type TimelineItem, type TimelineLine } from './timeline';
 import { parsePdfPages, parseRows, type ActivityDraft, type ActivityField, type ActivityTable } from './activityparse';
 import { readPdfText } from './pdftext';
@@ -118,6 +118,8 @@ interface AppState {
   // (FR-76), both keyed by row, like the comments.
   activities: Map<RowData, StoredActivity[]>;
   activityImports: Map<RowData, ActivityImport>;
+  // The work phase of an item (FR-78): the id of one of its activities.
+  workPhases: Map<RowData, string>;
   // The exported viewer (FR-38): view-only, with the numbers the items have
   // in the exported presentation.
   viewOnly: boolean;
@@ -188,6 +190,7 @@ const state: AppState = {
   edited: new Map(),
   activities: new Map(),
   activityImports: new Map(),
+  workPhases: new Map(),
   viewOnly: false,
   numbers: null,
   viewerLabels: null,
@@ -519,7 +522,8 @@ export async function loadDemo(options: { confirmed?: boolean } = {}): Promise<b
     if (!row) continue;
     row.colour = item.colour;
     if (item.comments.length > 0) state.comments.set(row, restoreComments(item.comments));
-    if (item.activities && item.activities.length > 0) state.activities.set(row, item.activities.map((a) => ({ ...a })));
+    if (item.activities && item.activities.length > 0) state.activities.set(row, item.activities.map((a, j) => ({ id: activityId(j), ...a })));
+    if (item.workPhase !== undefined) state.workPhases.set(row, item.workPhase);
   }
   const outcome = await useOsmText(DEMO_MAP_TEXT);
   const bg = mapView?.background;
@@ -1319,6 +1323,7 @@ export function captureWorkState(): WorkState {
       edited: { ...(state.edited.get(row) ?? {}) },
       comments: commentsOf(state.comments, row).map((c) => ({ date: c.date, text: c.text, ...(c.edited ? { edited: c.edited } : {}) })),
       ...(state.activities.get(row)?.length ? { activities: state.activities.get(row)!.map((a) => ({ ...a })) } : {}),
+      ...(workPhaseOf(row) !== undefined ? { workPhase: workPhaseOf(row) } : {}),
       ...(state.activityImports.has(row) ? { activityImport: { ...state.activityImports.get(row)!, columns: { ...state.activityImports.get(row)!.columns } } } : {}),
     })),
     background: bg ? { ...bg } : null,
@@ -1521,7 +1526,30 @@ function formatSize(bytes: number): string {
 // and the parsed rows are reviewed (each droppable) before anything attaches
 // (hard constraint 6). The origin system's header words are displayed as the
 // user's own words and never matched (hard constraint 5).
+// The work phase of an item (FR-78): the id of one of its activities, or
+// undefined for none; a reference to an activity that is gone is no phase.
+function workPhaseOf(row: RowData): string | undefined {
+  const id = state.workPhases.get(row);
+  return id !== undefined && (state.activities.get(row) ?? []).some((a) => a.id === id) ? id : undefined;
+}
+
+// An activity as it is being corrected (FR-76): its texts as typed, the
+// progress as text (empty for none), and whether it is to be removed.
+interface ActivityEdit {
+  id: string;
+  label: string;
+  start: string;
+  end: string;
+  progress: string;
+  removed: boolean;
+}
+
 let activityDialog: {
+  // The import, or the correction of what an import gave (FR-76).
+  mode: 'import' | 'edit';
+  edits: ActivityEdit[];
+  // The work phase chosen in the edit mode (FR-78): an activity id, or ''.
+  phase: string;
   rowId: string;
   file: string;
   tables: ActivityTable[];
@@ -1545,10 +1573,167 @@ function activityRoleLabel(t: Strings, field: ActivityField): string {
 
 function openActivityDialog(id: string): void {
   if (state.viewOnly) return;
-  activityDialog = { rowId: id, file: '', tables: [], tableIndex: 0, grid: [], mapping: {}, drafts: [] };
+  activityDialog = { mode: 'import', edits: [], phase: '', rowId: id, file: '', tables: [], tableIndex: 0, grid: [], mapping: {}, drafts: [] };
+  el('activity-status').textContent = '';
   renderActivityDialog();
   el('activity-panel').classList.remove('hidden');
   el('activity-choose').focus();
+}
+
+// The edit mode (FR-76 as amended): the activities an import gave, each to
+// be repaired or removed. Nothing here creates an activity.
+function openActivityCorrection(id: string): void {
+  if (state.viewOnly) return;
+  const row = rowById(id);
+  const activities = row ? (state.activities.get(row) ?? []) : [];
+  if (!row || activities.length === 0) return;
+  activityDialog = {
+    mode: 'edit',
+    edits: activities.map((a) => ({ id: a.id, label: a.label, start: a.start, end: a.end, progress: a.progress === null ? '' : String(a.progress), removed: false })),
+    phase: workPhaseOf(row) ?? '',
+    rowId: id,
+    file: '',
+    tables: [],
+    tableIndex: 0,
+    grid: [],
+    mapping: {},
+    drafts: [],
+  };
+  el('activity-status').textContent = '';
+  renderActivityDialog();
+  el('activity-panel').classList.remove('hidden');
+  (el('activity-rows').querySelector<HTMLElement>('input') ?? el('activity-close')).focus();
+}
+
+// A progress as typed in the edit mode: a number from 0 to 100, null for
+// none, or undefined when it is neither.
+function readProgress(text: string): number | null | undefined {
+  const s = text.trim();
+  if (s === '') return null;
+  if (!/^\d+([.,]\d+)?$/.test(s)) return undefined;
+  const n = Number(s.replace(',', '.'));
+  return n >= 0 && n <= 100 ? n : undefined;
+}
+
+function renderActivityCorrection(): void {
+  const t = strings(state.prefs.lang);
+  const d = activityDialog!;
+  const row = rowById(d.rowId);
+  const before = new Map((row ? (state.activities.get(row) ?? []) : []).map((a) => [a.id, a]));
+  el('activity-heading').textContent = t.activityCorrectHeading;
+  el('activity-intro').textContent = t.activityCorrectIntro;
+  el('activity-go').textContent = t.activityCorrectGo;
+  el('activity-review-heading').textContent = t.activityCorrectListHeading;
+  el('activity-review-hint').textContent = t.activityCorrectHint;
+  el('activity-choose-row').classList.add('hidden');
+  el('activity-propose').classList.remove('hidden');
+  el('activity-propose-heading').classList.add('hidden');
+  el('activity-roles').classList.add('hidden');
+  el('activity-replace-notice').classList.add('hidden');
+  // The work phase (FR-78 as amended): one of the item's activities, or none.
+  el('activity-phase-row').classList.remove('hidden');
+  el('activity-phase-label').textContent = t.activityPhase;
+  el('activity-phase-hint').textContent = t.activityPhaseHint;
+  const phase = el<HTMLSelectElement>('activity-phase');
+  const none = document.createElement('option');
+  none.value = '';
+  none.textContent = t.activityPhaseNone;
+  phase.replaceChildren(none, ...d.edits.filter((e) => !e.removed).map((e) => {
+    const option = document.createElement('option');
+    option.value = e.id;
+    option.textContent = e.label.trim() === '' ? `${e.start} \u2013 ${e.end}` : e.label.trim();
+    return option;
+  }));
+  phase.value = d.phase;
+  const rows = el('activity-rows');
+  rows.replaceChildren(...d.edits.map((edit) => {
+    const original = before.get(edit.id);
+    const li = document.createElement('li');
+    li.className = 'vocab-item activity-row activity-edit';
+    li.dataset.activityId = edit.id;
+    li.dataset.dropped = String(edit.removed);
+    const name = original?.label || edit.id;
+    const note = document.createElement('span');
+    note.className = 'activity-edit-note notice';
+    // What the row is: edited by hand (before or now), and a date that
+    // cannot be read, kept as typed.
+    const describe = () => {
+      const changed = !!original && (edit.label.trim() !== original.label || edit.start.trim() !== original.start || edit.end.trim() !== original.end || readProgress(edit.progress) !== original.progress);
+      const notes: string[] = [];
+      if (original?.edited || changed) notes.push(t.activityEdited);
+      for (const [value, label] of [[edit.start, t.activityRoleStart], [edit.end, t.activityRoleEnd]] as const) {
+        if (value.trim() !== '' && readDate(value).kind !== 'date') notes.push(`${label}: ${value.trim()} (${t.activityAsTyped})`);
+      }
+      if (readProgress(edit.progress) === undefined) notes.push(t.activityProgressInvalid);
+      note.textContent = notes.join(' \u00b7 ');
+      li.dataset.edited = String(!!original?.edited || changed);
+    };
+    const input = (field: 'label' | 'start' | 'end' | 'progress', label: string) => {
+      const node = document.createElement('input');
+      node.type = 'text';
+      node.className = `activity-edit-${field}`;
+      node.value = edit[field];
+      node.disabled = edit.removed;
+      node.setAttribute('aria-label', `${label}: ${name}`);
+      node.placeholder = label;
+      if (field === 'progress') node.inputMode = 'decimal';
+      node.addEventListener('input', () => {
+        edit[field] = node.value;
+        describe();
+      });
+      return node;
+    };
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'vocab-remove activity-edit-remove';
+    remove.textContent = edit.removed ? t.activityRestore : t.vocabRemove;
+    remove.setAttribute('aria-label', `${edit.removed ? t.activityRestore : t.vocabRemove}: ${name}`);
+    remove.setAttribute('aria-pressed', String(edit.removed));
+    remove.addEventListener('click', () => {
+      edit.removed = !edit.removed;
+      // A removed activity cannot be the work phase.
+      if (edit.removed && d.phase === edit.id) d.phase = '';
+      renderActivityDialog();
+    });
+    li.append(input('label', t.activityRoleLabel), input('start', t.activityRoleStart), input('end', t.activityRoleEnd), input('progress', t.activityRoleProgress), remove, note);
+    describe();
+    return li;
+  }));
+  el<HTMLButtonElement>('activity-go').disabled = false;
+}
+
+function confirmActivityCorrection(): void {
+  const d = activityDialog;
+  if (!d) return;
+  const t = strings(state.prefs.lang);
+  const row = rowById(d.rowId);
+  if (!row) return;
+  const kept = d.edits.filter((e) => !e.removed);
+  if (kept.some((e) => readProgress(e.progress) === undefined)) {
+    el('activity-status').textContent = t.activityProgressRefused;
+    return;
+  }
+  const before = new Map((state.activities.get(row) ?? []).map((a) => [a.id, a]));
+  let changed = 0;
+  const next: StoredActivity[] = kept.map((e) => {
+    const original = before.get(e.id)!;
+    const fixed = { label: e.label.trim(), start: e.start.trim(), end: e.end.trim(), progress: readProgress(e.progress) as number | null };
+    const differs = fixed.label !== original.label || fixed.start !== original.start || fixed.end !== original.end || fixed.progress !== original.progress;
+    if (differs) changed++;
+    // Every correction marks the activity as edited by hand.
+    return { id: original.id, ...(original.edited || differs ? { edited: true as const } : {}), ...fixed };
+  });
+  const removed = d.edits.length - kept.length;
+  if (next.length > 0) state.activities.set(row, next);
+  else state.activities.delete(row);
+  const phaseBefore = workPhaseOf(row) ?? '';
+  const phase = next.some((a) => a.id === d.phase) ? d.phase : '';
+  if (phase === '') state.workPhases.delete(row);
+  else state.workPhases.set(row, phase);
+  if (changed > 0 || removed > 0 || phase !== phaseBefore) markDirty();
+  renderMapItems();
+  closeActivityDialog();
+  el('work-status').textContent = fill(t.activityCorrectDone, { changed, removed });
 }
 
 function closeActivityDialog(): void {
@@ -1559,12 +1744,20 @@ function closeActivityDialog(): void {
 
 function renderActivityDialog(): void {
   const t = strings(state.prefs.lang);
+  el('activity-close').textContent = t.close;
+  el('activity-cancel').textContent = t.commentCancel;
+  if (activityDialog?.mode === 'edit') {
+    renderActivityCorrection();
+    return;
+  }
+  el('activity-choose-row').classList.remove('hidden');
+  el('activity-phase-row').classList.add('hidden');
+  el('activity-propose-heading').classList.remove('hidden');
+  el('activity-roles').classList.remove('hidden');
   el('activity-heading').textContent = t.activityHeading;
   el('activity-intro').textContent = t.activityIntro;
   el('activity-choose').textContent = t.activityChoose;
-  el('activity-close').textContent = t.close;
   el('activity-go').textContent = t.activityGo;
-  el('activity-cancel').textContent = t.commentCancel;
   const d = activityDialog;
   const propose = el('activity-propose');
   if (!d || d.tables.length === 0) {
@@ -1615,6 +1808,20 @@ function renderActivityDialog(): void {
     li.appendChild(label);
     return li;
   }));
+  // A re-import (FR-76 as amended). The same file and page: a hand-corrected
+  // activity is matched by its row position and keeps its values and mark.
+  // A different file or page replaces the activities, said with its count.
+  const target = rowById(d.rowId);
+  const existing = target ? (state.activities.get(target) ?? []) : [];
+  const last = target ? state.activityImports.get(target) : undefined;
+  const same = sameImport(last, d.file, table.page);
+  const notice = el('activity-replace-notice');
+  const replaces = existing.length > 0 && !same;
+  notice.classList.toggle('hidden', !replaces);
+  notice.textContent = replaces
+    ? fill(last ? t.activityReplaceNotice : t.activityReplaceNoticeUnknown, { file: last?.file ?? '', page: last?.page ?? '', count: existing.length, edited: existing.filter((a) => a.edited).length }) +
+      (target && workPhaseOf(target) !== undefined ? ` ${t.activityReplacePhase}` : '')
+    : '';
   // The review: each parsed row with its cells, its read results, and a drop.
   const rows = el('activity-rows');
   rows.replaceChildren(...d.drafts.map((draft, i) => {
@@ -1641,6 +1848,16 @@ function renderActivityDialog(): void {
     });
     text.textContent = cells.join(' \u00b7 ');
     li.append(check, text);
+    // A row whose activity was corrected by hand: shown as edited by hand,
+    // with the values that are kept, beside the source's cells.
+    const kept = same ? existing.find((a) => a.id === activityId(i) && a.edited) : undefined;
+    if (kept) {
+      li.dataset.edited = 'true';
+      const mark = document.createElement('span');
+      mark.className = 'activity-edit-note notice';
+      mark.textContent = fill(t.activityKeptEdit, { values: [kept.label, `${kept.start} \u2013 ${kept.end}`, ...(kept.progress === null ? [] : [`${kept.progress} %`])].join(' \u00b7 ') });
+      li.appendChild(mark);
+    }
     return li;
   }));
   el<HTMLButtonElement>('activity-go').disabled = d.drafts.every((r) => r.dropped) || d.drafts.length === 0;
@@ -1691,20 +1908,43 @@ async function onActivityFile(file: File): Promise<void> {
   renderActivityDialog();
 }
 
+// The import is of the same file and page as the item's last one.
+function sameImport(last: ActivityImport | undefined, file: string, page: number): boolean {
+  return last !== undefined && last.file === file && last.page === page;
+}
+
 function confirmActivityImport(): void {
   const d = activityDialog;
   if (!d) return;
+  if (d.mode === 'edit') {
+    confirmActivityCorrection();
+    return;
+  }
   const t = strings(state.prefs.lang);
   const row = rowById(d.rowId);
   if (!row) return;
   const table = d.tables[d.tableIndex];
-  const kept = d.drafts.filter((r) => !r.dropped);
-  const activities: StoredActivity[] = kept.map((r) => ({
-    label: d.mapping.label === undefined ? '' : (r.cells[d.mapping.label] ?? '').trim(),
-    start: d.mapping.start === undefined ? '' : (r.cells[d.mapping.start] ?? '').trim(),
-    end: d.mapping.end === undefined ? '' : (r.cells[d.mapping.end] ?? '').trim(),
-    progress: d.mapping.progress === undefined ? null : (r.progress ?? null),
-  }));
+  // An imported activity's id is its row position in the source table.
+  const kept = d.drafts.map((r, position) => ({ r, position })).filter(({ r }) => !r.dropped);
+  const existing = state.activities.get(row) ?? [];
+  const same = sameImport(state.activityImports.get(row), d.file, table.page);
+  const activities: StoredActivity[] = kept.map(({ r, position }) => {
+    // The same file and page again: a hand-corrected activity at this row
+    // position keeps its values and its mark (FR-76 as amended).
+    const corrected = same ? existing.find((a) => a.id === activityId(position) && a.edited) : undefined;
+    if (corrected) return { ...corrected };
+    return {
+      id: activityId(position),
+      label: d.mapping.label === undefined ? '' : (r.cells[d.mapping.label] ?? '').trim(),
+      start: d.mapping.start === undefined ? '' : (r.cells[d.mapping.start] ?? '').trim(),
+      end: d.mapping.end === undefined ? '' : (r.cells[d.mapping.end] ?? '').trim(),
+      progress: d.mapping.progress === undefined ? null : (r.progress ?? null),
+    };
+  });
+  // A different file or page replaces the activities: the ids name other
+  // rows now, so the work phase goes with what it referred to. The same
+  // file keeps it while its activity is still there.
+  if (!same || !activities.some((a) => a.id === state.workPhases.get(row))) state.workPhases.delete(row);
   state.activities.set(row, activities);
   const columns: Record<string, string> = {};
   for (const field of ACTIVITY_FIELDS) if (d.mapping[field] !== undefined) columns[field] = table.columns[d.mapping[field]!].header;
@@ -2282,6 +2522,7 @@ async function applyWorkState(ws: WorkState): Promise<boolean> {
   demoLoaded = false;
   state.edited = new Map(state.ingested.flatMap((row, i) => (Object.keys(ws.rows[i].edited).length > 0 ? [[row, { ...ws.rows[i].edited }]] : [])));
   state.activities = new Map(state.ingested.flatMap((row, i) => (ws.rows[i].activities && ws.rows[i].activities.length > 0 ? [[row, ws.rows[i].activities!.map((a) => ({ ...a }))]] : [])));
+  state.workPhases = new Map(state.ingested.flatMap((row, i) => (ws.rows[i].workPhase !== undefined ? [[row, ws.rows[i].workPhase!]] : [])));
   state.activityImports = new Map(state.ingested.flatMap((row, i) => (ws.rows[i].activityImport ? [[row, { ...ws.rows[i].activityImport!, columns: { ...ws.rows[i].activityImport!.columns } }]] : [])));
   state.comments = new Map(state.ingested.flatMap((row, i) => (ws.rows[i].comments.length > 0 ? [[row, restoreComments(ws.rows[i].comments)]] : [])));
   state.detailsId = null;
@@ -3000,6 +3241,19 @@ function costsSeriesLegend(): SeriesLegend | undefined {
   return { names, used };
 }
 
+// The legend's work-phase entry (FR-75 as amended): only in the
+// timeline view, and only when at least one visible item has a work phase
+// that is drawn -- its activity's dates read.
+function workPhaseShown(): boolean {
+  if (state.presentationMode !== 'timeline') return false;
+  return state.rows.some((row) => {
+    if (state.excluded.has(row)) return false;
+    const id = workPhaseOf(row);
+    const activity = id === undefined ? undefined : state.activities.get(row)!.find((a) => a.id === id);
+    return activity !== undefined && readDate(activity.start).kind === 'date' && readDate(activity.end).kind === 'date';
+  });
+}
+
 function renderLegends(): void {
   const t = strings(state.prefs.lang);
   const groups = shownProgramGroups();
@@ -3009,7 +3263,7 @@ function renderLegends(): void {
   // the presentation's is used-only (FR-75), with the costs view's series
   // key when the costs view is shown (FR-79 as amended).
   renderLegend(el('map-legend'), t, state.statuses, groups, labels, names);
-  renderLegend(el('presentation-legend'), t, state.statuses, groups, labels, names, presentationLegendUse(), costsSeriesLegend());
+  renderLegend(el('presentation-legend'), t, state.statuses, groups, labels, names, presentationLegendUse(), costsSeriesLegend(), workPhaseShown());
 }
 
 // Editable colour labels (FR-45): the user's name for a colour, or the
@@ -3471,6 +3725,7 @@ function detailLabels(t: Strings): DetailLabels {
     cancel: t.commentCancel,
     footprints: t.detailsFootprints,
     importActivities: state.viewOnly ? null : t.activityImport,
+    correctActivities: state.viewOnly ? null : t.activityCorrect,
   };
 }
 
@@ -3573,6 +3828,8 @@ function renderDetailsPanel(): void {
     model.footprints,
     model.seriesGroups.map((g) => [g.role, g.label, g.keys]),
     model.economics,
+    // The correction is offered only while the item has activities.
+    (state.activities.get(row)?.length ?? 0) > 0,
   ]);
   const target = sameRow && panel.dataset.structure === structure ? document.createElement('div') : panel;
   if (target !== panel) target.id = panel.id;
@@ -3584,6 +3841,7 @@ function renderDetailsPanel(): void {
     },
     openEconomics: (opener) => openEconomics(rowId(row), opener),
     importActivities: state.viewOnly ? undefined : () => openActivityDialog(rowId(row)),
+    correctActivities: state.viewOnly || !state.activities.get(row)?.length ? undefined : () => openActivityCorrection(rowId(row)),
     edit: {
       renderField: (field) => (field.kind === 'status' ? statusCell(row, field.key, model.number) : detailValueInput(row, field.key, model.number)),
       removeComment: (id) => {
@@ -4898,6 +5156,7 @@ function timelineItems(): TimelineItem[] {
       end: value(n.row, end),
       // The item's activities (FR-78), or absent for none.
       ...(state.activities.get(n.row)?.length ? { activities: state.activities.get(n.row)!.map((a) => ({ ...a })) } : {}),
+      ...(workPhaseOf(n.row) !== undefined ? { workPhase: workPhaseOf(n.row) } : {}),
     }));
 }
 
@@ -4947,6 +5206,8 @@ function scheduleLabels(): TimelineLabels {
     locale: areaLocale(),
     moreSpans: t.timelineMoreSpans,
     activities: t.timelineActivities,
+    edited: t.activityEdited,
+    workPhase: t.legendWorkPhase,
     events: t.eventPanel,
     moreEvents: t.eventsMore,
     eventsBefore: t.eventsBefore,
@@ -5089,6 +5350,9 @@ function initialisePresentation(): void {
   el('activity-close').addEventListener('click', closeActivityDialog);
   el('activity-cancel').addEventListener('click', closeActivityDialog);
   el('activity-go').addEventListener('click', confirmActivityImport);
+  el('activity-phase').addEventListener('change', (e) => {
+    if (activityDialog) activityDialog.phase = (e.target as HTMLSelectElement).value;
+  });
   el('activity-panel').addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeActivityDialog();
   });

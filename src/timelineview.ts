@@ -31,6 +31,10 @@ export interface TimelineLabels {
   // (FR-78), and the header of the activities in a line's description.
   moreSpans: string;
   activities: string;
+  // An activity corrected by hand, and the work phase (FR-76, FR-78 as
+  // amended), as said in titles and descriptions.
+  edited: string;
+  workPhase: string;
   // The costs view's own words (FR-79); absent in the timeline.
   costs?: CostsLabels;
   // The events' heading and their "+n" chip (FR-80), and the edge
@@ -412,6 +416,15 @@ export class TimelineView {
     if (typed.length > 0) name.appendChild(el('span', 'timeline-typed', typed.join(' · ')));
     const plot = el('span', 'timeline-plot');
     plot.setAttribute('aria-hidden', 'true');
+    if (line.phase) {
+      // The work phase (FR-78 as amended): a hatched band across the full
+      // height of the plot, behind the bar and the segments.
+      const band = el('span', 'timeline-phase');
+      band.dataset.from = String(line.phase.from);
+      band.dataset.to = String(line.phase.to + 1);
+      band.title = `${labels.workPhase}: ${line.phase.activity.label}`;
+      plot.appendChild(band);
+    }
     for (const span of line.spans) {
       if (span.kind === 'amount') {
         plot.appendChild(this.amountSeg(span, this.model.scale?.line ?? 0, labels, `marker-${line.item.colour}`));
@@ -434,7 +447,11 @@ export class TimelineView {
         const s = readDate(a.start);
         const e = readDate(a.end);
         const when = s.kind === 'date' && e.kind === 'date' ? `${formatDate(s, 'start')} \u2013 ${formatDate(e, 'end')}` : `${a.start} \u2013 ${a.end}`;
-        seg.title = `${a.label}: ${when}${a.progress === null ? '' : `, ${a.progress}%`}`;
+        // The referenced segment is hatched where it is visible.
+        const isPhase = line.phase?.activity === a;
+        if (isPhase) seg.dataset.phase = 'true';
+        if (a.edited) seg.dataset.edited = 'true';
+        seg.title = `${a.label}: ${when}${a.progress === null ? '' : `, ${a.progress}%`}${a.edited ? `, ${labels.edited}` : ''}${isPhase ? `, ${labels.workPhase}` : ''}`;
         plot.appendChild(seg);
         continue;
       }
@@ -548,7 +565,7 @@ export class TimelineView {
         const re = readDate(a.end);
         const ws = rs.kind === 'date' ? formatDate(rs, 'start') : a.start;
         const we = re.kind === 'date' ? formatDate(re, 'end') : a.end;
-        return `${a.label}: ${ws} – ${we}${a.progress === null ? '' : `, ${a.progress}%`}`;
+        return `${a.label}: ${ws} – ${we}${a.progress === null ? '' : `, ${a.progress}%`}${a.edited ? `, ${labels.edited}` : ''}${line.phase?.activity === a ? `, ${labels.workPhase}` : ''}`;
       });
       parts.push(`${labels.activities}: ${list.join('; ')}`);
     }
@@ -585,6 +602,14 @@ export class TimelineView {
       const expanded = !!line && this.expanded.has(line.item.id);
       row.style.setProperty('--timeline-lanes', String(expanded ? line!.lanes : 1));
       row.dataset.expanded = expanded ? 'true' : 'false';
+      // The work-phase band: placed in time only; the stylesheet gives it
+      // the plot's full height, collapsed or expanded.
+      for (const band of row.querySelectorAll<HTMLElement>('.timeline-phase')) {
+        const a = Number(band.dataset.from);
+        const b = Number(band.dataset.to);
+        band.style.left = `${pct(a).toFixed(3)}%`;
+        band.style.width = `${(((b - a) / length) * 100).toFixed(3)}%`;
+      }
       for (const mark of row.querySelectorAll<HTMLElement>('.timeline-bar, .timeline-point, .timeline-seg')) {
         const a = Number(mark.dataset.from);
         const b = Number(mark.dataset.to);

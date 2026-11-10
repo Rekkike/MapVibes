@@ -74,7 +74,9 @@ describe('dense operator surfaces in a real layout (FR-42)', () => {
       });
       // The demo's eight columns of v1.5.0 and its two people columns.
       expect(layout.fields).toBe(10);
-      expect([layout.series, layout.action]).toEqual([3, 2]);
+      // Three action rows since v1.12.0: the Economics action, the activities
+      // import, and, as this item has activities, their correction (FR-76).
+      expect([layout.series, layout.action]).toEqual([3, 3]);
       expect(layout.lefts).toBe(2);
       expect(Math.max(...layout.gaps)).toBeLessThanOrEqual(8);
       expect(layout.scrolls).toBe(false);

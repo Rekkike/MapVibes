@@ -286,4 +286,27 @@ describe('a change of language while the demo is loaded (FR-41)', () => {
     await settle();
     expect(app.captureWorkState().events).toEqual([]);
   }, 30_000);
+
+  // FR-41 as amended in v1.12.0: the work phase and the hand correction.
+  test('the demo loads its work phase and its hand-corrected activity, in both languages; the timeline and its legend show the phase', async () => {
+    for (const [lang, excavation, review, entry] of [['en', 'Excavation', 'Review', 'Work phase'], ['sv', 'Schaktning', 'Granskning', 'Arbetsfas']] as const) {
+      const app = await mountDemo(lang);
+      const ws = app.captureWorkState();
+      const id = ws.roles.identifier!;
+      const row = (item: string) => ws.rows.find((r) => r.values[id] === item)!;
+      expect(row('D-05').workPhase).toBe('a3');
+      expect(row('D-05').activities![2]).toMatchObject({ id: 'a3', label: excavation });
+      expect(row('D-11').activities![1]).toEqual({ id: 'a2', edited: true, label: review, start: '2024-12-15', end: '2025-06-30', progress: 10 });
+      expect(ws.rows.filter((r) => r.workPhase !== undefined)).toHaveLength(1);
+      byId('tab-presentation').click();
+      byId('pres-mode-timeline').click();
+      await settle();
+      const bands = [...document.querySelectorAll<HTMLElement>('#presentation-timeline .timeline-phase')];
+      expect(bands).toHaveLength(1);
+      expect(bands[0].title).toBe(`${entry}: ${excavation}`);
+      expect(byId('presentation-legend').querySelector('.legend-group[data-kind="phase"] .legend-group-label')!.textContent).toBe(entry);
+      // The mended review now has its segment, marked as edited.
+      expect(document.querySelectorAll('#presentation-timeline .timeline-seg[data-edited="true"]')).toHaveLength(1);
+    }
+  }, 60_000);
 });

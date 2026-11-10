@@ -86,9 +86,9 @@ describe('the activities import (FR-76, FR-77, FR-78)', () => {
     // Attached and persisted (FR-77): three activities (the summary row was dropped).
     const ws = app.captureWorkState();
     expect(ws.rows[0].activities).toEqual([
-      { label: 'Grävning', start: '2024-01-08', end: '2024-02-16', progress: 100 },
-      { label: 'Ledningar', start: '2024-02-12', end: '2024-04-30', progress: 60 },
-      { label: '15/03/2024 rad', start: '15/03/2024', end: '2024-06-30', progress: 10 },
+      { id: 'a1', label: 'Grävning', start: '2024-01-08', end: '2024-02-16', progress: 100 },
+      { id: 'a2', label: 'Ledningar', start: '2024-02-12', end: '2024-04-30', progress: 60 },
+      { id: 'a3', label: '15/03/2024 rad', start: '15/03/2024', end: '2024-06-30', progress: 10 },
     ]);
     expect(ws.rows[0].activityImport).toEqual({ file: 'plan.pdf', page: 1, columns: { label: 'Post', start: 'Från', end: 'Till', progress: 'Klart', duration: 'Längd' } });
     // Rendered in the timeline (FR-78): the segments are there.

@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { DEMO_MAP_TEXT, demoCounterparts, demoScenario, demoWorkbook, parseDemoScenarios } from '../../src/demo';
 import { importColumns, parseWorkbook } from '../../src/ingest';
 import { parseOsm } from '../../src/osm';
+import { readDate } from '../../src/dates';
 import scenarioJson from '../../example-data/demo-scenario.json';
 
 const list = importColumns(parseWorkbook(demoWorkbook()));
@@ -189,5 +190,39 @@ describe('the demo in both interface languages (FR-41 as amended in v1.3.1)', ()
     };
     expect(() => parseDemoScenarios(damaged((e) => (e[0].date = '15/03/2024')))).toThrow(/events\[0\].date/);
     expect(() => parseDemoScenarios(damaged((e) => (e[1].label = { en: 'Decision' })))).toThrow(/events\[1\].label.sv/);
+  });
+
+  // FR-41 as amended in v1.12.0: the refinement's fixtures.
+  test('the project with eight activities has a work phase, its excavation, in both languages', () => {
+    for (const [lang, label] of [['en', 'Excavation'], ['sv', 'Schaktning']] as const) {
+      const item = demoScenario(lang).items.find((i) => i.item === 'D-05')!;
+      expect(item.activities).toHaveLength(8);
+      expect(item.workPhase).toBe('a3');
+      expect(item.activities![2].label).toBe(label);
+    }
+    // No other item has one.
+    expect(demoScenario().items.filter((i) => i.workPhase !== undefined).map((i) => i.item)).toEqual(['D-05']);
+  });
+
+  test('one activity is corrected by hand: the review whose date could not be read is mended and marked; no activity has an unreadable date any more', () => {
+    for (const [lang, label] of [['en', 'Review'], ['sv', 'Granskning']] as const) {
+      const review = demoScenario(lang).items.find((i) => i.item === 'D-11')!.activities![1];
+      expect(review).toEqual({ label, start: '2024-12-15', end: '2025-06-30', progress: 10, edited: true });
+    }
+    const all = demoScenario().items.flatMap((i) => i.activities ?? []);
+    expect(all.filter((a) => a.edited)).toHaveLength(1);
+    expect(all.every((a) => readDate(a.start).kind === 'date' && readDate(a.end).kind === 'date')).toBe(true);
+  });
+
+  test('a work phase that names no activity of its item, and an edited mark that is not true, are refused', () => {
+    const damaged = (change: (items: Array<Record<string, any>>) => void) => {
+      const raw = JSON.parse(JSON.stringify(scenarioJson));
+      change(raw.items);
+      return raw;
+    };
+    const d05 = (items: Array<Record<string, any>>) => items.find((i) => i.item === 'D-05')!;
+    expect(() => parseDemoScenarios(damaged((items) => (d05(items).workPhase = 'a9')))).toThrow(/workPhase/);
+    expect(() => parseDemoScenarios(damaged((items) => (items.find((i) => !i.activities)!.workPhase = 'a1')))).toThrow(/workPhase/);
+    expect(() => parseDemoScenarios(damaged((items) => (d05(items).activities[0].edited = 'yes')))).toThrow(/edited/);
   });
 });

@@ -28,18 +28,18 @@ beforeAll(async () => {
   const ws = parseWorkState(readFileSync(V6, 'utf8'));
   const byId: Record<string, number> = Object.fromEntries(ws.rows.map((r, i) => [r.values.ID, i]));
   ws.rows[byId['A-01']].activities = [
-    { label: 'Groundwork', start: '2024-01-05', end: '2024-01-20', progress: 100 },
-    { label: 'Piping', start: '2024-01-10', end: '2024-01-25', progress: 60 },
-    { label: 'Wiring', start: '2024-01-15', end: '2024-01-30', progress: 0 },
-    { label: 'Testing', start: '2024-01-20', end: '2024-02-01', progress: null },
-    { label: 'Handover', start: '2024-02-01', end: '2024-02-15', progress: 10 },
+    { id: 'a1', label: 'Groundwork', start: '2024-01-05', end: '2024-01-20', progress: 100 },
+    { id: 'a2', label: 'Piping', start: '2024-01-10', end: '2024-01-25', progress: 60 },
+    { id: 'a3', label: 'Wiring', start: '2024-01-15', end: '2024-01-30', progress: 0 },
+    { id: 'a4', label: 'Testing', start: '2024-01-20', end: '2024-02-01', progress: null },
+    { id: 'a5', label: 'Handover', start: '2024-02-01', end: '2024-02-15', progress: 10 },
   ];
   ws.rows[byId['A-01']].activityImport = { file: 'plan.pdf', page: 1, columns: { label: 'Post', start: 'Från', end: 'Till', progress: 'Klart' } };
   ws.rows[byId['A-04']].activities = [
-    { label: 'Survey', start: '2024-02-02', end: '2024-02-10', progress: 100 },
-    { label: 'Report', start: '2024-02-20', end: '2024-03-01', progress: 40 },
+    { id: 'a1', label: 'Survey', start: '2024-02-02', end: '2024-02-10', progress: 100 },
+    { id: 'a2', label: 'Report', start: '2024-02-20', end: '2024-03-01', progress: 40 },
   ];
-  ws.rows[byId['A-03']].activities = [{ label: 'Unknown dates', start: '15/03/2024', end: '2024-03-15', progress: 50 }];
+  ws.rows[byId['A-03']].activities = [{ id: 'a1', label: 'Unknown dates', start: '15/03/2024', end: '2024-03-15', progress: 50 }];
   const dir = mkdtempSync(join(tmpdir(), 'mapvibes-activities-'));
   const workFile = join(dir, 'work.json');
   writeFileSync(workFile, serialiseWorkState(ws, new Date('2026-01-02T03:04:05.000Z')));

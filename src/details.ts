@@ -84,6 +84,8 @@ export interface DetailLabels {
   footprints: string;
   // The activities import action's label (FR-76), or null on the card.
   importActivities: string | null;
+  // The hand-correction action's label (FR-76 as amended), or null.
+  correctActivities: string | null;
 
 }
 
@@ -95,6 +97,8 @@ export interface DetailHandlers {
   // The activities import (FR-76), present only when the details are
   // editable (never on the viewer's card).
   importActivities?(opener: HTMLElement): void;
+  // The correction of the item's activities, present only when it has some.
+  correctActivities?(opener: HTMLElement): void;
   // Present only when the details are editable.
   edit?: {
     renderField(field: DetailField): HTMLElement;
@@ -217,6 +221,16 @@ export function renderDetails(container: HTMLElement, model: DetailModel, labels
   if (labels.importActivities !== null && handlers.importActivities) {
     const open = handlers.importActivities;
     const action = el('button', 'details-economics', labels.importActivities);
+    action.type = 'button';
+    action.addEventListener('click', () => open(action));
+    const wrapper = el('div', 'details-field details-economics-row');
+    wrapper.appendChild(action);
+    fields.appendChild(wrapper);
+  }
+
+  if (labels.correctActivities !== null && handlers.correctActivities) {
+    const open = handlers.correctActivities;
+    const action = el('button', 'details-economics details-correct-activities', labels.correctActivities);
     action.type = 'button';
     action.addEventListener('click', () => open(action));
     const wrapper = el('div', 'details-field details-economics-row');

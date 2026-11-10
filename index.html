@@ -460,7 +460,7 @@
           <button type="button" id="activity-close">Close</button>
         </div>
         <p id="activity-intro"></p>
-        <div class="compare-actions">
+        <div id="activity-choose-row" class="compare-actions">
           <button type="button" id="activity-choose"></button>
           <input type="file" id="activity-file-input" accept="application/pdf,.pdf" hidden />
           <span id="activity-status" class="notice" aria-live="polite"></span>
@@ -470,6 +470,11 @@
           <ul id="activity-roles" class="vocab-list"></ul>
           <h3 id="activity-review-heading"></h3>
           <p id="activity-review-hint" class="hint"></p>
+          <p id="activity-replace-notice" class="notice hidden" role="status"></p>
+          <div id="activity-phase-row" class="hidden">
+            <label><span id="activity-phase-label"></span> <select id="activity-phase"></select></label>
+            <p id="activity-phase-hint" class="hint"></p>
+          </div>
           <ul id="activity-rows" class="vocab-list"></ul>
           <div class="compare-actions">
             <button type="button" id="activity-go" class="primary-action"></button>

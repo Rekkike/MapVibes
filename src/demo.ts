@@ -30,6 +30,7 @@ import { isCommentDate } from './comments';
 import { ANNOTATION_KINDS, LINE_STYLES, OUTLINES, type AnnotationKind, type LineStyle, type Outline } from './annotations';
 import type { Lang } from './i18n';
 import { readDate } from './dates';
+import { activityId } from './workstate';
 
 const LANGS: Lang[] = ['en', 'sv'];
 
@@ -43,13 +44,17 @@ export interface DemoItem {
   symbol: MarkerSymbol | null;
   comments: Array<{ date: string; text: string }>;
   // The item's fictional activities (FR-41 as amended in v1.10.0, FR-78).
-  activities?: Array<{ label: string; start: string; end: string; progress: number | null }>;
+  // One may be corrected by hand (FR-41 as amended in v1.12.0, FR-76).
+  activities?: Array<{ label: string; start: string; end: string; progress: number | null; edited?: true }>;
+  // The item's work phase (FR-78): the id of one of its activities, which
+  // are named by their order (a1, a2, ...).
+  workPhase?: string;
 }
 
 // While parsing, the labels are per-language, like the comments' texts.
 type ParsedDemoItem = Omit<DemoItem, 'comments' | 'activities'> & {
   comments: Array<{ date: string; text: Record<Lang, string> }>;
-  activities?: Array<{ label: Record<Lang, string>; start: string; end: string; progress: number | null }>;
+  activities?: Array<{ label: Record<Lang, string>; start: string; end: string; progress: number | null; edited?: true }>;
 };
 
 export interface DemoAnnotation {
@@ -142,9 +147,12 @@ export function parseDemoScenarios(raw: unknown): DemoScenarios {
         if (typeof a.start !== 'string' || typeof a.end !== 'string') fail(`items[${i}].activities[${j}]`);
         const progress = a.progress === null ? null : a.progress;
         if (progress !== null && (typeof progress !== 'number' || progress < 0 || progress > 100)) fail(`items[${i}].activities[${j}].progress`);
-        return { label: texts(a.label, `items[${i}].activities[${j}].label`), start: a.start as string, end: a.end as string, progress: progress as number | null };
+        if (a.edited !== undefined && a.edited !== true) fail(`items[${i}].activities[${j}].edited`);
+        return { label: texts(a.label, `items[${i}].activities[${j}].label`), start: a.start as string, end: a.end as string, progress: progress as number | null, ...(a.edited === true ? { edited: true as const } : {}) };
       });
     }
+    // The work phase names one of the item's activities by its order.
+    if (it.workPhase !== undefined && !(typeof it.workPhase === 'string' && (activities ?? []).some((_, j) => activityId(j) === it.workPhase))) fail(`items[${i}].workPhase`);
     return {
       item: it.item as string,
       colour: it.colour as RowColour,
@@ -152,6 +160,7 @@ export function parseDemoScenarios(raw: unknown): DemoScenarios {
       symbol: (it.symbol as MarkerSymbol | null) ?? null,
       comments,
       ...(activities ? { activities } : {}),
+      ...(it.workPhase !== undefined ? { workPhase: it.workPhase as string } : {}),
     };
   });
   if (new Set(items.map((i) => i.item)).size !== items.length) fail('repeated items');

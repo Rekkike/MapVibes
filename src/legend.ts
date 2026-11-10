@@ -93,10 +93,12 @@ export interface LegendItem {
   status?: string;
   group?: number;
   series?: SeriesRole;
+  // The work-phase entry (FR-75 as amended in v1.12.0).
+  phase?: true;
 }
 
 export interface LegendSection {
-  kind: 'colours' | 'shapes' | 'statuses' | 'programs' | 'series';
+  kind: 'colours' | 'shapes' | 'statuses' | 'programs' | 'series' | 'phase';
   label: string;
   items: LegendItem[];
 }
@@ -113,6 +115,9 @@ export function legendModel(
   symbolLabels: SymbolLabels = defaultSymbolLabels(t),
   used?: LegendUse,
   series?: SeriesLegend,
+  // The timeline is shown and at least one visible item has a work phase
+  // that is drawn (FR-75 as amended in v1.12.0).
+  phase = false,
 ): LegendSection[] {
   const sections: LegendSection[] = [
     {
@@ -144,12 +149,15 @@ export function legendModel(
     const seriesItems = SERIES_ROLES.filter((role) => series.used.has(role)).map((role) => ({ label: series.names[role], series: role }));
     if (seriesItems.length > 0) sections.push({ kind: 'series', label: t.legendSeries, items: seriesItems });
   }
+  if (phase) sections.push({ kind: 'phase', label: t.legendWorkPhase, items: [{ label: t.legendWorkPhaseEntry, phase: true }] });
   // With a used-only filter, a section whose entries are all unused does not
   // appear (FR-75).
   return used ? sections.filter((section) => section.items.length > 0) : sections;
 }
 
 function legendEntry(item: LegendItem): HTMLLIElement {
+  // The work phase (FR-78): a swatch hatched like the timeline's band.
+  if (item.phase) return entry('legend-phase-swatch', item.label, { phase: 'true' });
   if (item.series !== undefined) {
     // A series of the costs view (FR-79): a swatch in the series' own style,
     // so the bars can be told apart at a glance. The swatch carries the
@@ -185,6 +193,7 @@ export function renderLegend(
   symbolLabels: SymbolLabels = defaultSymbolLabels(t),
   used?: LegendUse,
   series?: SeriesLegend,
+  phase = false,
 ): void {
   container.innerHTML = '';
   const heading = document.createElement('span');
@@ -194,7 +203,7 @@ export function renderLegend(
   container.setAttribute('role', 'group');
   container.setAttribute('aria-labelledby', heading.id);
   container.append(heading);
-  for (const section of legendModel(t, statuses, numberGroups, colourLabels, symbolLabels, used, series)) {
+  for (const section of legendModel(t, statuses, numberGroups, colourLabels, symbolLabels, used, series, phase)) {
     const group = document.createElement('div');
     group.className = 'legend-group';
     group.dataset.kind = section.kind;

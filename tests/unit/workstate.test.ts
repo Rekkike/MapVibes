@@ -10,7 +10,7 @@ import {
   WorkStateError,
   PROBLEM_KINDS,
   type WorkState,
-} from '../../src/workstate';
+ activityId } from '../../src/workstate';
 import { newManualKey } from '../../src/manual';
 import { en, sv } from '../../src/i18n';
 
@@ -118,8 +118,8 @@ describe('work-state file (FR-13)', () => {
   test('the file carries the format name, schema version, and save time', () => {
     const file = fileOf(sample());
     expect(file.format).toBe(WORK_STATE_FORMAT);
-    expect(file.schemaVersion).toBe(11);
-    expect(WORK_STATE_SCHEMA_VERSION).toBe(11);
+    expect(file.schemaVersion).toBe(12);
+    expect(WORK_STATE_SCHEMA_VERSION).toBe(12);
     expect(file.savedAt).toBe('2026-01-02T03:04:05.000Z');
   });
 
@@ -136,7 +136,7 @@ describe('work-state file (FR-13)', () => {
   });
 
   test('an unknown schema version is rejected and named, never loaded silently', () => {
-    for (const version of [12, 0, '11', null]) {
+    for (const version of [13, 0, '12', null]) {
       const file = { ...fileOf(sample()), schemaVersion: version };
       expect(expectError(JSON.stringify(file), 'unknown-version').detail).toBe(String(version));
     }
@@ -254,7 +254,7 @@ describe('schema version 1 migration (FR-13)', () => {
     expect(migrated.manualColumns).toEqual([]);
     expect(migrated.rows.every((r) => !r.manual)).toBe(true);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(11);
+    expect(JSON.parse(text).schemaVersion).toBe(12);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 
@@ -321,7 +321,7 @@ describe('schema version 2 migration (FR-13)', () => {
   test('a migrated version 2 file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v2Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(11);
+    expect(JSON.parse(text).schemaVersion).toBe(12);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 
@@ -393,7 +393,7 @@ describe('schema version 3 migration (FR-13)', () => {
   test('a migrated version 3 file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v3Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(11);
+    expect(JSON.parse(text).schemaVersion).toBe(12);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 });
@@ -479,7 +479,7 @@ describe('schema version 4 migration (FR-13)', () => {
   test('a migrated version 4 file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v4Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(11);
+    expect(JSON.parse(text).schemaVersion).toBe(12);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 });
@@ -546,7 +546,7 @@ describe('schema version 6: programs, colour labels, at-a-glance columns, annota
     const state = parseWorkState(JSON.stringify(file));
     expect([state.programValues, state.colourLabels, state.glanceColumns, state.annotations]).toEqual([[], {}, null, []]);
     expect(state.background!.projection).toBeUndefined();
-    expect(JSON.parse(serialiseWorkState(state, SAVED_AT)).schemaVersion).toBe(11);
+    expect(JSON.parse(serialiseWorkState(state, SAVED_AT)).schemaVersion).toBe(12);
   });
 
   test('version 6 fields in an older file are ignored, as that version never wrote them', () => {
@@ -742,12 +742,12 @@ describe('activities in the work state (FR-77, schema 10)', () => {
   test('activities and the import assignment round-trip per row; rows without them stay absent', () => {
     const state = sample();
     state.rows[0].activities = [
-      { label: 'Grävning', start: '2024-01-08', end: '2024-02-16', progress: 100 },
-      { label: 'Målning', start: '15/03/2024', end: '2024-06-30', progress: null },
+      { id: 'a1', label: 'Grävning', start: '2024-01-08', end: '2024-02-16', progress: 100 },
+      { id: 'a3', label: 'Målning', start: '15/03/2024', end: '2024-06-30', progress: null },
     ];
     state.rows[0].activityImport = { file: 'plan.pdf', page: 1, columns: { label: 'Post', start: 'Från', end: 'Till', progress: 'Klart', duration: 'Längd' } };
     const text = serialiseWorkState(state, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(11);
+    expect(JSON.parse(text).schemaVersion).toBe(12);
     const file = JSON.parse(text);
     expect(file.rows[0].activities).toEqual(state.rows[0].activities);
     expect(file.rows[0].activityImport).toEqual(state.rows[0].activityImport);
@@ -773,9 +773,9 @@ describe('activities in the work state (FR-77, schema 10)', () => {
 
   test('a progress outside 0 to 100, or of the wrong type, is rejected with its field', () => {
     const file = fileOf(sample()) as { rows: Array<Record<string, unknown>> };
-    file.rows[0].activities = [{ label: 'x', start: '2024-01-01', end: '2024-02-01', progress: 101 }];
+    file.rows[0].activities = [{ id: 'a1', label: 'x', start: '2024-01-01', end: '2024-02-01', progress: 101 }];
     expect(expectError(JSON.stringify(file), 'invalid').detail).toBe('rows[0].activities[0].progress');
-    file.rows[0].activities = [{ label: 'x', start: '2024-01-01', end: '2024-02-01', progress: '50' }];
+    file.rows[0].activities = [{ id: 'a1', label: 'x', start: '2024-01-01', end: '2024-02-01', progress: '50' }];
     expect(expectError(JSON.stringify(file), 'invalid').detail).toBe('rows[0].activities[0].progress');
   });
 });
@@ -792,7 +792,7 @@ describe('schema version 11: the events and the costs view (FR-79, FR-80)', () =
   test('the events and the costs view round-trip, byte-identically; the date is kept as typed', () => {
     const text = serialiseWorkState(sample(), SAVED_AT);
     const file = JSON.parse(text);
-    expect(file.schemaVersion).toBe(11);
+    expect(file.schemaVersion).toBe(12);
     expect(file.events).toEqual([
       { id: 'e1', date: '2025-06', label: 'Review' },
       { id: 'e2', date: 'next spring', label: 'Decision' },
@@ -836,5 +836,105 @@ describe('schema version 11: the events and the costs view (FR-79, FR-80)', () =
     expectError(bad((f) => delete f.view.presentation.costs), 'invalid');
     expectError(bad((f) => (f.view.presentation.costs.to = f.view.presentation.costs.from)), 'invalid');
     expectError(bad((f) => (f.view.presentation.costs.firstLine = 1.5)), 'invalid');
+  });
+});
+
+describe('schema version 12: activity ids, the edited mark, and the work phase (FR-76 to FR-78)', () => {
+  const withActivities = () => {
+    const state = sample();
+    state.rows[0].activities = [
+      { id: 'a1', label: 'Excavation', start: '2024-01-08', end: '2024-02-16', progress: 100 },
+      { id: 'a2', edited: true, label: 'Review', start: '2024-03-15', end: '2024-03-20', progress: null },
+      { id: 'a5', label: 'Painting', start: '15/03/2024', end: '2024-06-30', progress: 40 },
+    ];
+    state.rows[0].workPhase = 'a1';
+    return state;
+  };
+  const fileWith = (change: (rows: any[]) => void, version = 12) => {
+    const file = JSON.parse(serialiseWorkState(withActivities(), SAVED_AT));
+    file.schemaVersion = version;
+    change(file.rows);
+    return JSON.stringify(file);
+  };
+
+  test('the ids, the edited mark, and the work phase round-trip, byte-identically; the mark is written only when set', () => {
+    const text = serialiseWorkState(withActivities(), SAVED_AT);
+    const file = JSON.parse(text);
+    expect(file.schemaVersion).toBe(12);
+    expect(file.rows[0].activities).toEqual([
+      { id: 'a1', label: 'Excavation', start: '2024-01-08', end: '2024-02-16', progress: 100 },
+      { id: 'a2', label: 'Review', start: '2024-03-15', end: '2024-03-20', progress: null, edited: true },
+      { id: 'a5', label: 'Painting', start: '15/03/2024', end: '2024-06-30', progress: 40 },
+    ]);
+    expect(file.rows[0].workPhase).toBe('a1');
+    expect('workPhase' in file.rows[2]).toBe(false);
+    const back = parseWorkState(text);
+    expect(back).toEqual(withActivities());
+    expect(serialiseWorkState(back, SAVED_AT)).toBe(text);
+  });
+
+  test('files of versions 10 and 11 open with defaults: ids by order, nothing edited, no work phase', () => {
+    for (const version of [10, 11]) {
+      const text = fileWith((rows) => {
+        delete rows[0].workPhase;
+        for (const a of rows[0].activities) {
+          delete a.id;
+          delete a.edited;
+        }
+      }, version);
+      const file = JSON.parse(text);
+      if (version === 10) {
+        delete file.events;
+        delete file.view.presentation.costs;
+      }
+      const state = parseWorkState(JSON.stringify(file));
+      expect(state.rows[0].activities!.map((a) => [a.id, a.edited, a.label])).toEqual([
+        ['a1', undefined, 'Excavation'],
+        ['a2', undefined, 'Review'],
+        ['a3', undefined, 'Painting'],
+      ]);
+      expect(state.rows.every((r) => r.workPhase === undefined)).toBe(true);
+    }
+  });
+
+  test('an earlier version cannot carry the mark or the phase: they are not read', () => {
+    const state = parseWorkState(fileWith(() => undefined, 11));
+    expect(state.rows[0].activities!.some((a) => a.edited)).toBe(false);
+    expect(state.rows[0].workPhase).toBeUndefined();
+  });
+
+  test('files of versions 1 to 9 open with no activities and no work phase', () => {
+    for (let v = 1; v <= 6; v++) {
+      const state = parseWorkState(readFileSync(join(process.cwd(), 'example-data', `example-work-state-v${v}.json`), 'utf8'));
+      expect(state.rows.every((r) => r.activities === undefined && r.workPhase === undefined)).toBe(true);
+    }
+  });
+
+  test('a dangling work phase is refused with its field', () => {
+    expect(expectError(fileWith((rows) => (rows[0].workPhase = 'a9')), 'invalid').detail).toBe('rows[0].workPhase');
+    // A phase on a row without activities names nothing.
+    expect(expectError(fileWith((rows) => (rows[2].workPhase = 'a1')), 'invalid').detail).toBe('rows[2].workPhase');
+    expect(expectError(fileWith((rows) => (rows[0].workPhase = 1)), 'invalid').detail).toBe('rows[0].workPhase');
+    const e = expectError(fileWith((rows) => (rows[0].workPhase = 'a9')), 'invalid');
+    expect(e.problem).toEqual({ kind: 'noSuchActivity', field: 'rows[0].workPhase' });
+  });
+
+  test('a missing, empty, or repeated id, and an edited mark that is not true, are refused with their fields', () => {
+    expect(expectError(fileWith((rows) => delete rows[0].activities[1].id), 'invalid').detail).toBe('rows[0].activities[1].id');
+    expect(expectError(fileWith((rows) => (rows[0].activities[1].id = '')), 'invalid').detail).toBe('rows[0].activities[1].id');
+    expect(expectError(fileWith((rows) => (rows[0].activities[2].id = 'a1')), 'invalid').detail).toBe('rows[0].activities[2].id');
+    expect(expectError(fileWith((rows) => (rows[0].activities[0].edited = false)), 'invalid').detail).toBe('rows[0].activities[0].edited');
+    expect(expectError(fileWith((rows) => (rows[0].activities[0].edited = 'yes')), 'invalid').detail).toBe('rows[0].activities[0].edited');
+  });
+
+  test('ids are unique within a row only: two rows may both have a1', () => {
+    const state = withActivities();
+    state.rows[2].activities = [{ id: 'a1', label: 'Survey', start: '2025', end: '2026', progress: null }];
+    state.rows[2].workPhase = 'a1';
+    expect(parseWorkState(serialiseWorkState(state, SAVED_AT))).toEqual(state);
+  });
+
+  test('an imported activity is named by its row position in the source table', () => {
+    expect([0, 1, 9].map(activityId)).toEqual(['a1', 'a2', 'a10']);
   });
 });

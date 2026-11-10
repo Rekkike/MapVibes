@@ -23,11 +23,18 @@ export interface TimelineItem {
   // The item's activities (FR-78), or absent for none. Absence is never an
   // error: the line shows its bar as before.
   activities?: TimelineActivity[];
+  // The item's work phase (FR-78 as amended): the id of one of its
+  // activities, or absent for none.
+  workPhase?: string;
 }
 
 // An activity (FR-76, FR-77): a label, a start and an end (read by the shared
 // date reader), and a progress or null.
 export interface TimelineActivity {
+  // The activity's id within its item and its edited mark (FR-77, schema
+  // 12); absent where a caller has none to give.
+  id?: string;
+  edited?: boolean;
   label: string;
   start: string;
   end: string;
@@ -74,6 +81,10 @@ export interface TimelineLine {
   lanes: number;
   start: DateReading;
   end: DateReading;
+  // The work phase as drawn (FR-78 as amended): the days of the referenced
+  // activity, when its dates read; absent otherwise. It is the line's, not
+  // a lane's: lane packing does not hide it.
+  phase?: { from: number; to: number; activity: TimelineActivity };
 }
 
 export type TimelineRow =
@@ -143,7 +154,9 @@ function lineOf(item: TimelineItem): TimelineLine {
   // All spans pack together; the item's own spans win lane ties, so the own
   // span is lane 0 (FR-78).
   const { spans, lanes } = layoutLanes([...own, ...acts]);
+  const marked = item.workPhase === undefined ? undefined : acts.find((a) => a.activity.id === item.workPhase);
   return {
+    ...(marked ? { phase: { from: marked.from, to: marked.to, activity: marked.activity } } : {}),
     kind: 'line',
     item,
     spans,

@@ -80,8 +80,14 @@ export const WORK_STATE_FORMAT = 'mapvibes-work-state';
 // typed, label), the costs view as a third presentation view, and the costs
 // view's saved view beside the timeline's (FR-79). Both are additive: files
 // of versions 1 to 10 open with no events and the costs view fitted.
-export const WORK_STATE_SCHEMA_VERSION = 11;
-export const READABLE_SCHEMA_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+//
+// Schema version 12 adds to version 11, per activity, an id unique within its
+// row and the edited mark of a hand correction (FR-76, FR-77), and per row
+// the work phase, a reference to one of its activities by id (FR-78). Files
+// of versions 10 and 11 give their activities ids by their order; no
+// activity is marked edited and no row has a work phase.
+export const WORK_STATE_SCHEMA_VERSION = 12;
+export const READABLE_SCHEMA_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
 export type PresentationMode = 'map' | 'timeline' | 'costs';
 export const PRESENTATION_MODES: readonly PresentationMode[] = ['map', 'timeline', 'costs'];
@@ -121,6 +127,9 @@ export interface WorkStateRow {
   activities?: StoredActivity[];
   // Version 10 (FR-76, FR-77): the import they came from, or absent.
   activityImport?: ActivityImport;
+  // Version 12 (FR-78): the row's work phase, the id of one of its
+  // activities, or absent for none.
+  workPhase?: string;
 }
 
 export interface StoredComment {
@@ -140,6 +149,13 @@ export interface ManualColumn {
 // as a number 0 to 100, or null for none. Absence of the list means no
 // activities, never an error.
 export interface StoredActivity {
+  // Version 12: unique within the row and stable for the activity's life.
+  // An imported activity's id is its row position in the source table (a1,
+  // a2, ...), which a re-import of the same file and page matches on.
+  id: string;
+  // Version 12: set when the activity was corrected by hand (FR-76); written
+  // only when set.
+  edited?: true;
   label: string;
   start: string;
   end: string;
@@ -149,6 +165,11 @@ export interface StoredActivity {
 // The import a row's activities came from (FR-76, FR-77): the file's name,
 // the page, and the column assignment as the user confirmed it, keyed by
 // role with the PDF's own header words. Persisted once per row.
+// The id of an activity by its row position in the source table, from 0.
+export function activityId(position: number): string {
+  return `a${position + 1}`;
+}
+
 export interface ActivityImport {
   file: string;
   page: number;
@@ -257,6 +278,7 @@ export const PROBLEM_KINDS = [
   'invalidEdit',
   'invalidComment',
   'invalidAnnotation',
+  'noSuchActivity',
 ] as const;
 
 export type ProblemKind = (typeof PROBLEM_KINDS)[number];
@@ -308,9 +330,10 @@ export function serialiseWorkState(state: WorkState, savedAt: Date): string {
       edited: { ...r.edited },
       comments: r.comments.map((c) => ({ date: c.date, text: c.text, ...(c.edited ? { edited: c.edited } : {}) })),
       ...(r.activities !== undefined && r.activities.length > 0
-        ? { activities: r.activities.map((a) => ({ label: a.label, start: a.start, end: a.end, progress: a.progress })) }
+        ? { activities: r.activities.map((a) => ({ id: a.id, label: a.label, start: a.start, end: a.end, progress: a.progress, ...(a.edited ? { edited: true } : {}) })) }
         : {}),
       ...(r.activityImport !== undefined ? { activityImport: { file: r.activityImport.file, page: r.activityImport.page, columns: { ...r.activityImport.columns } } } : {}),
+      ...(r.workPhase !== undefined ? { workPhase: r.workPhase } : {}),
     })),
     background: state.background
       ? {
@@ -459,7 +482,22 @@ export function parseWorkState(text: string): WorkState {
           const ao = obj(a, `rows[${i}].activities[${j}]`);
           const progress = ao.progress === null ? null : num(ao.progress, `rows[${i}].activities[${j}].progress`);
           if (progress !== null && (progress < 0 || progress > 100)) invalid('notNumber', `rows[${i}].activities[${j}].progress`);
-          return { label: str(ao.label, `rows[${i}].activities[${j}].label`), start: str(ao.start, `rows[${i}].activities[${j}].start`), end: str(ao.end, `rows[${i}].activities[${j}].end`), progress };
+          // Version 12: the id and the edited mark; earlier versions take
+          // ids by their order and carry no mark.
+          const id = version >= 12 ? str(ao.id, `rows[${i}].activities[${j}].id`) : activityId(j);
+          if (id === '') invalid('duplicateEntry', `rows[${i}].activities[${j}].id`);
+          if (version >= 12 && ao.edited !== undefined && ao.edited !== true) invalid('notBoolean', `rows[${i}].activities[${j}].edited`);
+          return {
+            id,
+            ...(version >= 12 && ao.edited === true ? { edited: true as const } : {}),
+            label: str(ao.label, `rows[${i}].activities[${j}].label`),
+            start: str(ao.start, `rows[${i}].activities[${j}].start`),
+            end: str(ao.end, `rows[${i}].activities[${j}].end`),
+            progress,
+          };
+        });
+        activities.forEach((a, j) => {
+          if (activities!.findIndex((b) => b.id === a.id) !== j) invalid('duplicateEntry', `rows[${i}].activities[${j}].id`);
         });
       }
       if (o.activityImport !== undefined) {
@@ -470,6 +508,13 @@ export function parseWorkState(text: string): WorkState {
         activityImport = { file: str(io2.file, `rows[${i}].activityImport.file`), page: num(io2.page, `rows[${i}].activityImport.page`), columns };
       }
     }
+    // Version 12 (FR-78): the work phase names one of the row's activities;
+    // a dangling reference is refused.
+    let workPhase: string | undefined;
+    if (version >= 12 && o.workPhase !== undefined) {
+      workPhase = str(o.workPhase, `rows[${i}].workPhase`);
+      if (!(activities ?? []).some((a) => a.id === workPhase)) invalid('noSuchActivity', `rows[${i}].workPhase`);
+    }
     return {
       values,
       colour: oneOf(o.colour, COLOURS, `rows[${i}].colour`),
@@ -479,6 +524,7 @@ export function parseWorkState(text: string): WorkState {
       comments,
       ...(activities !== undefined ? { activities } : {}),
       ...(activityImport !== undefined ? { activityImport } : {}),
+      ...(workPhase !== undefined ? { workPhase } : {}),
     };
   });
   const expected = rowNumbers(rows);

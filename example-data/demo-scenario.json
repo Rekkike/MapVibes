@@ -651,7 +651,8 @@
           "end": "2026-06-30",
           "progress": null
         }
-      ]
+      ],
+      "workPhase": "a3"
     },
     {
       "item": "D-06",
@@ -771,9 +772,10 @@
             "en": "Review",
             "sv": "Granskning"
           },
-          "start": "15/12/2024",
+          "start": "2024-12-15",
           "end": "2025-06-30",
-          "progress": 10
+          "progress": 10,
+          "edited": true
         }
       ]
     },
