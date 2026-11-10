@@ -436,6 +436,53 @@
             "sv": "Slutkontroll gjord."
           }
         }
+      ],
+      "activities": [
+        {
+          "label": {
+            "en": "Groundwork",
+            "sv": "Markarbete"
+          },
+          "start": "2019-03-04",
+          "end": "2019-05-31",
+          "progress": 100
+        },
+        {
+          "label": {
+            "en": "Paving",
+            "sv": "Beläggning"
+          },
+          "start": "2019-05-01",
+          "end": "2019-08-15",
+          "progress": 100
+        },
+        {
+          "label": {
+            "en": "Planting",
+            "sv": "Plantering"
+          },
+          "start": "2019-08-01",
+          "end": "2019-11-30",
+          "progress": 80
+        },
+        {
+          "label": {
+            "en": "Lighting",
+            "sv": "Belysning"
+          },
+          "start": "2019-10-01",
+          "end": "2020-02-28",
+          "progress": 60
+        },
+        {
+          "label": {
+            "en": "Inspection",
+            "sv": "Slutbesiktning"
+          },
+          "start": "2020-12-01",
+          "end": "2021-03-31",
+          "progress": 0
+        }
       ]
     },
     {
@@ -453,6 +500,44 @@
             "en": "Halfway along the path.",
             "sv": "Halvvägs längs gången."
           }
+        }
+      ],
+      "activities": [
+        {
+          "label": {
+            "en": "Survey",
+            "sv": "Uppmätning"
+          },
+          "start": "2022-04-01",
+          "end": "2022-06-30",
+          "progress": 100
+        },
+        {
+          "label": {
+            "en": "Edging",
+            "sv": "Kantläggning"
+          },
+          "start": "2022-06-01",
+          "end": "2023-05-31",
+          "progress": 70
+        },
+        {
+          "label": {
+            "en": "Sowing",
+            "sv": "Sådd"
+          },
+          "start": "2023-04-01",
+          "end": "2023-09-30",
+          "progress": 30
+        },
+        {
+          "label": {
+            "en": "Watering",
+            "sv": "Vattning"
+          },
+          "start": "2023-06-01",
+          "end": "2024-08-31",
+          "progress": null
         }
       ]
     },
@@ -492,7 +577,81 @@
         0.18
       ],
       "symbol": null,
-      "comments": []
+      "comments": [],
+      "activities": [
+        {
+          "label": {
+            "en": "Design",
+            "sv": "Projektering"
+          },
+          "start": "2023-01-09",
+          "end": "2023-06-30",
+          "progress": 100
+        },
+        {
+          "label": {
+            "en": "Permits",
+            "sv": "Tillstånd"
+          },
+          "start": "2023-03-01",
+          "end": "2023-09-30",
+          "progress": 100
+        },
+        {
+          "label": {
+            "en": "Excavation",
+            "sv": "Schaktning"
+          },
+          "start": "2023-07-01",
+          "end": "2024-03-31",
+          "progress": 90
+        },
+        {
+          "label": {
+            "en": "Formwork",
+            "sv": "Formbyggnad"
+          },
+          "start": "2024-01-01",
+          "end": "2024-07-31",
+          "progress": 50
+        },
+        {
+          "label": {
+            "en": "Concrete",
+            "sv": "Gjutning"
+          },
+          "start": "2024-04-01",
+          "end": "2024-10-31",
+          "progress": 20
+        },
+        {
+          "label": {
+            "en": "Rebar",
+            "sv": "Armering"
+          },
+          "start": "2024-03-01",
+          "end": "2024-06-30",
+          "progress": 100
+        },
+        {
+          "label": {
+            "en": "Railing",
+            "sv": "Räcke"
+          },
+          "start": "2024-09-01",
+          "end": "2025-05-31",
+          "progress": 0
+        },
+        {
+          "label": {
+            "en": "Finishing",
+            "sv": "Ytskikt"
+          },
+          "start": "2025-03-01",
+          "end": "2026-06-30",
+          "progress": null
+        }
+      ]
     },
     {
       "item": "D-06",
@@ -548,7 +707,27 @@
         0.5
       ],
       "symbol": "square",
-      "comments": []
+      "comments": [],
+      "activities": [
+        {
+          "label": {
+            "en": "Inventory",
+            "sv": "Inventering"
+          },
+          "start": "2022-02-01",
+          "end": "2022-08-31",
+          "progress": 100
+        },
+        {
+          "label": {
+            "en": "Restoration",
+            "sv": "Restaurering"
+          },
+          "start": "2022-09-01",
+          "end": "2026-03-31",
+          "progress": 45
+        }
+      ]
     },
     {
       "item": "D-10",
@@ -575,6 +754,26 @@
             "en": "Waiting for the second opinion.",
             "sv": "Väntar på ett andra utlåtande."
           }
+        }
+      ],
+      "activities": [
+        {
+          "label": {
+            "en": "Study",
+            "sv": "Förstudie"
+          },
+          "start": "2024-05-01",
+          "end": "2024-11-30",
+          "progress": 100
+        },
+        {
+          "label": {
+            "en": "Review",
+            "sv": "Granskning"
+          },
+          "start": "15/12/2024",
+          "end": "2025-06-30",
+          "progress": 10
         }
       ]
     },

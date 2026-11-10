@@ -71,6 +71,8 @@ describe('series groups in the details panel (FR-7)', () => {
     overlay.querySelector<HTMLButtonElement>('.economics-close')!.click();
     expect(overlay.dataset.state).toBe('closed');
     panel = openDetails(1);
-    expect(panel.querySelector('.details-economics')).toBeNull();
+    // No Economics action (the item has no economics); the activities import
+    // action (FR-76) is a separate button.
+    expect([...panel.querySelectorAll('.details-economics')].every((b) => b.textContent === 'Import activities')).toBe(true);
   });
 });

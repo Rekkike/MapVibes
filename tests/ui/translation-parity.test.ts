@@ -33,6 +33,7 @@ const SAME_IN_BOTH: Record<string, string> = {
   detailsSymbol: 'Swedish "symbol"',
   toolPolygon: 'Swedish "polygon"',
   kindPolygon: 'Swedish "polygon"',
+  activityRoleStart: 'Swedish "start"',
   annotationArea: 'Swedish "area"',
   seriesRoleBudget: 'Swedish "budget"',
   economicsComposition: 'placeholders only: the series names and their years',

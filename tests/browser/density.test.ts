@@ -51,7 +51,8 @@ describe('dense operator surfaces in a real layout (FR-42)', () => {
       const layout = await page.evaluate(() => {
         const panel = document.getElementById('details-panel')!;
         // The plain fields; the year series are one line each across the
-        // panel (FR-7 as amended in v1.6.0), then the Economics action.
+        // panel (FR-7 as amended in v1.6.0), then the action rows: the
+        // Economics action and the activities import (FR-76).
         const fields = [...panel.querySelectorAll('.details-fields > .details-field:not(.details-series):not(.details-economics-row)')].map((f) => f.getBoundingClientRect());
         const series = panel.querySelectorAll('.details-fields > .details-series').length;
         const action = panel.querySelectorAll('.details-fields > .details-economics-row').length;
@@ -73,7 +74,7 @@ describe('dense operator surfaces in a real layout (FR-42)', () => {
       });
       // The demo's eight columns of v1.5.0 and its two people columns.
       expect(layout.fields).toBe(10);
-      expect([layout.series, layout.action]).toEqual([3, 1]);
+      expect([layout.series, layout.action]).toEqual([3, 2]);
       expect(layout.lefts).toBe(2);
       expect(Math.max(...layout.gaps)).toBeLessThanOrEqual(8);
       expect(layout.scrolls).toBe(false);

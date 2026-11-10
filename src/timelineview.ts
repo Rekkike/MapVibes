@@ -6,8 +6,13 @@
 // Pointer and wheel events stop here, so that the stage's map underneath
 // neither pans nor zooms.
 
-import { dateOfDay, formatDate } from './dates';
+import { dateOfDay, formatDate, readDate } from './dates';
 import { clampWindow, fitWindow, zoomWindow, type TimelineLine, type TimelineModel } from './timeline';
+
+// {placeholder} substitution, as in i18n.
+function fill(template: string, values: Record<string, string | number>): string {
+  return template.replace(/\{(\w+)\}/g, (_, k) => String(values[k] ?? ''));
+}
 
 export interface TimelineLabels {
   noDates: string;
@@ -21,6 +26,10 @@ export interface TimelineLabels {
   startHeader: string;
   endHeader: string;
   locale: string;
+  // The "+n" badge of a line whose spans do not all fit the packed sub-lanes
+  // (FR-78), and the header of the activities in a line's description.
+  moreSpans: string;
+  activities: string;
 }
 
 export interface TimelineCallbacks {
@@ -49,6 +58,16 @@ const STEPS: Array<{ unit: 'day' | 'month' | 'year'; n: number; days: number }> 
   { unit: 'year', n: 50, days: 18262 },
 ];
 const MIN_TICK_PX = 64;
+// The packed sub-lane rows shown in a collapsed line (FR-78): the item's own
+// span is row 0; spans in later lanes collapse into the "+n" badge. The
+// geometry: 7-pixel segments with 2-pixel gaps and 2-pixel padding on a wide
+// viewport (3 rows: tops 2, 11, 20, bottom 27 of 28), 4-pixel segments with
+// 2-pixel gaps and 1-pixel padding in the narrow 20-pixel plot (tops 1, 7,
+// 13, bottom 17 of 20).
+export const PACKED_SUBLANES = 3;
+// A segment's label shows inside it only from this width on (the rest is
+// carried by its title and the line's description).
+const LABEL_MIN_PX = 64;
 // The plot's width where the layout gives none (before the first layout).
 const FALLBACK_WIDTH = 800;
 const DRAG_THRESHOLD = 5;
@@ -111,6 +130,9 @@ export class TimelineView {
   private drag: { x: number; y: number; window: Window; panning: boolean } | null = null;
   private pinch: { distance: number; window: Window; around: number } | null = null;
   private suppressClick = false;
+  // The lines expanded to full-height lanes (FR-78): transient UI state,
+  // never saved; the saved view is the window and the first visible line.
+  private readonly expanded = new Set<string>();
 
   constructor(
     readonly root: HTMLElement,
@@ -282,7 +304,9 @@ export class TimelineView {
     const li = el('li', 'timeline-line');
     li.dataset.rowId = line.item.id;
     li.dataset.lanes = String(line.lanes);
-    li.style.setProperty('--timeline-lanes', String(line.lanes));
+    // Collapsed, the line keeps its single row (the packed sub-lanes live
+    // inside it); expanded, every lane is a full row (FR-78).
+    li.style.setProperty('--timeline-lanes', String(this.expanded.has(line.item.id) ? line.lanes : 1));
     if (selectedId === line.item.id) li.dataset.selected = 'true';
     const entry = el('button', 'timeline-entry');
     entry.type = 'button';
@@ -298,6 +322,27 @@ export class TimelineView {
     const plot = el('span', 'timeline-plot');
     plot.setAttribute('aria-hidden', 'true');
     for (const span of line.spans) {
+      if (span.kind === 'activity') {
+        // An activity segment (FR-78): the bar with its progress fill, and
+        // its label inside when it is wide enough (set at positioning).
+        const seg = el('span', 'timeline-seg');
+        seg.classList.add(`marker-${line.item.colour}`);
+        seg.dataset.from = String(span.from);
+        seg.dataset.to = String(span.to + 1);
+        seg.dataset.lane = String(span.lane);
+        seg.dataset.kind = 'activity';
+        const a = span.activity!;
+        const fill = el('span', 'timeline-seg-fill');
+        fill.style.width = `${a.progress ?? 0}%`;
+        const label = el('span', 'timeline-seg-label', a.label);
+        seg.append(fill, label);
+        const s = readDate(a.start);
+        const e = readDate(a.end);
+        const when = s.kind === 'date' && e.kind === 'date' ? `${formatDate(s, 'start')} \u2013 ${formatDate(e, 'end')}` : `${a.start} \u2013 ${a.end}`;
+        seg.title = `${a.label}: ${when}${a.progress === null ? '' : `, ${a.progress}%`}`;
+        plot.appendChild(seg);
+        continue;
+      }
       const mark = el('span', span.kind === 'span' ? 'timeline-bar' : 'timeline-point');
       mark.classList.add(`marker-${line.item.colour}`);
       mark.dataset.from = String(span.from);
@@ -305,6 +350,26 @@ export class TimelineView {
       mark.dataset.lane = String(span.lane);
       if (span.kind !== 'span') mark.dataset.kind = span.kind;
       plot.appendChild(mark);
+    }
+    // The "+n" badge: a first-class control when spans do not all fit the
+    // packed sub-lanes. It counts spans, not activities, so a later view can
+    // reuse it. Activating expands the line to full-height lanes; activating
+    // again collapses it.
+    const hidden = line.spans.filter((sp) => sp.lane >= PACKED_SUBLANES).length;
+    if (hidden > 0) {
+      const badge = el('button', 'timeline-badge-more', fill(labels.moreSpans, { count: hidden }));
+      badge.type = 'button';
+      badge.setAttribute('aria-label', fill(labels.moreSpans, { count: hidden }));
+      badge.setAttribute('aria-expanded', this.expanded.has(line.item.id) ? 'true' : 'false');
+      badge.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (this.expanded.has(line.item.id)) this.expanded.delete(line.item.id);
+        else this.expanded.add(line.item.id);
+        badge.setAttribute('aria-expanded', this.expanded.has(line.item.id) ? 'true' : 'false');
+        this.position();
+        this.callbacks.onViewChanged();
+      });
+      name.appendChild(badge);
     }
     entry.append(name, plot);
     entry.setAttribute('aria-label', this.describe(line, labels));
@@ -321,9 +386,24 @@ export class TimelineView {
     const date = (r: TimelineLine['start'], which: 'start' | 'end') => (r.kind === 'date' ? formatDate(r, which) : r.kind === 'text' ? r.text : '');
     const s = date(line.start, 'start');
     const e = date(line.end, 'end');
-    const when = line.spans[0]?.kind === 'start' ? `${s} (${labels.startOnly})` : line.spans[0]?.kind === 'end' ? `${e} (${labels.endOnly})` : line.spans.length > 0 ? `${s} – ${e}` : labels.noDates;
-    return `${line.item.label}: ${line.item.name}, ${when}`;
+    const own = line.spans.find((sp) => sp.kind !== 'activity');
+    const when = own?.kind === 'start' ? `${s} (${labels.startOnly})` : own?.kind === 'end' ? `${e} (${labels.endOnly})` : own ? `${s} – ${e}` : labels.noDates;
+    const parts = [`${line.item.label}: ${line.item.name}, ${when}`];
+    // The activities, each with its dates (as typed when unreadable) and its
+    // progress (FR-78); the card itself is unchanged (FR-35, FR-37).
+    if (line.item.activities && line.item.activities.length > 0) {
+      const list = line.item.activities.map((a) => {
+        const rs = readDate(a.start);
+        const re = readDate(a.end);
+        const ws = rs.kind === 'date' ? formatDate(rs, 'start') : a.start;
+        const we = re.kind === 'date' ? formatDate(re, 'end') : a.end;
+        return `${a.label}: ${ws} – ${we}${a.progress === null ? '' : `, ${a.progress}%`}`;
+      });
+      parts.push(`${labels.activities}: ${list.join('; ')}`);
+    }
+    return parts.join('. ');
   }
+
 
   // The plot's width in pixels.
   private plotWidth(): number {
@@ -332,19 +412,63 @@ export class TimelineView {
     return width > 0 ? width : FALLBACK_WIDTH;
   }
 
-  // Places the bars, the points, the axis, and the grid for the window.
+  // Places the bars, the points, the segments, the axis, and the grid for
+  // the window.
   private position(): void {
     const { from, to } = this.current;
     const length = to - from;
     const pct = (day: number) => ((day - from) / length) * 100;
-    for (const mark of this.list.querySelectorAll<HTMLElement>('.timeline-bar, .timeline-point')) {
-      const a = Number(mark.dataset.from);
-      const b = Number(mark.dataset.to);
-      if (mark.classList.contains('timeline-bar')) {
-        mark.style.left = `${pct(a).toFixed(3)}%`;
-        mark.style.width = `${(((b - a) / length) * 100).toFixed(3)}%`;
-      } else {
-        mark.style.left = `${pct(mark.dataset.kind === 'end' ? b : a).toFixed(3)}%`;
+    const cs = getComputedStyle(this.root);
+    const lineH = parseFloat(cs.getPropertyValue('--timeline-line')) || 28;
+    const segH = parseFloat(cs.getPropertyValue('--timeline-seg-h')) || 7;
+    const segGap = parseFloat(cs.getPropertyValue('--timeline-seg-gap')) || 2;
+    const segPad = parseFloat(cs.getPropertyValue('--timeline-seg-pad')) || 2;
+    const laneBarH = parseFloat(cs.getPropertyValue('--timeline-lane-bar-h')) || 14;
+    const plotW = this.plotWidth();
+    const linesById = new Map(this.model.lines.map((l) => [l.item.id, l]));
+    for (const row of this.list.querySelectorAll<HTMLElement>('.timeline-line')) {
+      const line = linesById.get(row.dataset.rowId ?? '');
+      const hasActivities = !!line && line.activitySpans.length > 0;
+      const expanded = !!line && this.expanded.has(line.item.id);
+      row.style.setProperty('--timeline-lanes', String(expanded ? line!.lanes : 1));
+      row.dataset.expanded = expanded ? 'true' : 'false';
+      for (const mark of row.querySelectorAll<HTMLElement>('.timeline-bar, .timeline-point, .timeline-seg')) {
+        const a = Number(mark.dataset.from);
+        const b = Number(mark.dataset.to);
+        if (mark.classList.contains('timeline-point')) {
+          mark.style.left = `${pct(mark.dataset.kind === 'end' ? b : a).toFixed(3)}%`;
+        } else {
+          mark.style.left = `${pct(a).toFixed(3)}%`;
+          mark.style.width = `${(((b - a) / length) * 100).toFixed(3)}%`;
+        }
+        if (!hasActivities) {
+          // The plain line: the stylesheet's own centred bar.
+          mark.style.removeProperty('top');
+          mark.style.removeProperty('height');
+          continue;
+        }
+        // A line with activities: packed sub-lanes inside the unchanged row
+        // when collapsed (spans past the packed rows are hidden behind the
+        // badge), one full-height row per lane when expanded (FR-78).
+        const lane = Number(mark.dataset.lane ?? 0);
+        if (!expanded && lane >= PACKED_SUBLANES) {
+          mark.style.display = 'none';
+          continue;
+        }
+        mark.style.display = '';
+        if (expanded) {
+          const h = mark.classList.contains('timeline-point') ? 12 : laneBarH;
+          mark.style.height = `${h}px`;
+          mark.style.top = `${lane * lineH + (lineH - h) / 2}px`;
+        } else {
+          const h = mark.classList.contains('timeline-point') ? Math.max(6, segH - 1) : segH;
+          mark.style.height = `${h}px`;
+          mark.style.top = `${segPad + lane * (segH + segGap)}px`;
+        }
+        if (mark.classList.contains('timeline-seg')) {
+          const px = ((b - a) / length) * plotW;
+          mark.dataset.wide = px >= LABEL_MIN_PX ? 'true' : 'false';
+        }
       }
     }
     // The axis and the grid leave room for the list's scroll bar.

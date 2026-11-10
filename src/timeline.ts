@@ -19,22 +19,46 @@ export interface TimelineItem {
   area: string;
   start: string;
   end: string;
+  // The item's activities (FR-78), or absent for none. Absence is never an
+  // error: the line shows its bar as before.
+  activities?: TimelineActivity[];
+}
+
+// An activity (FR-76, FR-77): a label, a start and an end (read by the shared
+// date reader), and a progress or null.
+export interface TimelineActivity {
+  label: string;
+  start: string;
+  end: string;
+  progress: number | null;
 }
 
 // A span: from its first day to its last day, inclusive, in its lane. A
 // point marks an item of which only the start ('start') or only the end
-// ('end') can be read.
+// ('end') can be read. An 'activity' span is one activity of the line
+// (FR-78); the kind is extensible, so a later view (the costs view) can add
+// its own span kinds and reuse the line, lane, and badge machinery.
 export interface TimelineSpan {
   from: number;
   to: number;
   lane: number;
-  kind: 'span' | 'start' | 'end';
+  kind: 'span' | 'start' | 'end' | 'activity';
+  // For an activity span: the activity it draws (label and progress).
+  activity?: TimelineActivity;
 }
 
 export interface TimelineLine {
   kind: 'line';
   item: TimelineItem;
+  // All the line's spans, the item's own and the activities', packed into
+  // lanes; the item's own span is lane 0 (FR-78).
   spans: TimelineSpan[];
+  // The activity spans among them, for the badge, the fills, and the
+  // description.
+  activitySpans: TimelineSpan[];
+  // The total lane count, lane 0 included; the expanded line's height is the
+  // line height times this. The collapsed line packs up to three activity
+  // sub-lanes and shows a badge for the rest.
   lanes: number;
   start: DateReading;
   end: DateReading;
@@ -53,8 +77,10 @@ export interface TimelineModel {
 // earlier span. Returns the spans with their lanes, and the number of lanes.
 export function layoutLanes(spans: Array<Omit<TimelineSpan, 'lane'>>): { spans: TimelineSpan[]; lanes: number } {
   const ends: number[] = [];
+  // The item's own spans win lane ties against activity spans, so the own
+  // span keeps lane 0 (FR-78).
   const out = [...spans]
-    .sort((a, b) => a.from - b.from || a.to - b.to)
+    .sort((a, b) => a.from - b.from || (a.kind === 'activity' ? 1 : 0) - (b.kind === 'activity' ? 1 : 0) || a.to - b.to)
     .map((s) => {
       let lane = ends.findIndex((end) => end < s.from);
       if (lane === -1) {
@@ -71,18 +97,39 @@ export function layoutLanes(spans: Array<Omit<TimelineSpan, 'lane'>>): { spans: 
 function lineOf(item: TimelineItem): TimelineLine {
   const start = readDate(item.start);
   const end = readDate(item.end);
-  const raw: Array<Omit<TimelineSpan, 'lane'>> = [];
+  // The item's own spans: its bar, or a marked point.
+  const own: Array<Omit<TimelineSpan, 'lane'>> = [];
   if (start.kind === 'date' && end.kind === 'date') {
     // An end written before the start is drawn between the two, as written
     // values, not corrected.
-    raw.push({ from: Math.min(start.start, end.end), to: Math.max(start.start, end.end), kind: 'span' });
+    own.push({ from: Math.min(start.start, end.end), to: Math.max(start.start, end.end), kind: 'span' });
   } else if (start.kind === 'date') {
-    raw.push({ from: start.start, to: start.start, kind: 'start' });
+    own.push({ from: start.start, to: start.start, kind: 'start' });
   } else if (end.kind === 'date') {
-    raw.push({ from: end.end, to: end.end, kind: 'end' });
+    own.push({ from: end.end, to: end.end, kind: 'end' });
   }
-  const { spans, lanes } = layoutLanes(raw);
-  return { kind: 'line', item, spans, lanes, start, end };
+  // The activity spans: one per activity whose start and end both read
+  // (FR-68); an activity with an unreadable date has no segment and is
+  // listed as typed in the line's description instead.
+  const acts: Array<Omit<TimelineSpan, 'lane'> & { activity: TimelineActivity }> = [];
+  for (const a of item.activities ?? []) {
+    const s = readDate(a.start);
+    const e = readDate(a.end);
+    if (s.kind !== 'date' || e.kind !== 'date') continue;
+    acts.push({ from: Math.min(s.start, e.end), to: Math.max(s.start, e.end), kind: 'activity', activity: a });
+  }
+  // All spans pack together; the item's own spans win lane ties, so the own
+  // span is lane 0 (FR-78).
+  const { spans, lanes } = layoutLanes([...own, ...acts]);
+  return {
+    kind: 'line',
+    item,
+    spans,
+    activitySpans: spans.filter((sp) => sp.kind === 'activity'),
+    lanes,
+    start,
+    end,
+  };
 }
 
 // The first day an entry starts on, for the order by start date: the
@@ -137,7 +184,7 @@ export function buildTimeline(items: TimelineItem[], order: PresentationOrder = 
   }
   // "No dates" is always last, in number order.
   if (undated.length > 0) rows.push({ kind: 'heading', heading: 'noDates' }, ...undated);
-  const days = dated.flatMap((l) => l.spans.flatMap((s) => [s.from, s.to]));
+  const days = dated.flatMap((l) => [...l.spans, ...l.activitySpans].flatMap((s) => [s.from, s.to]));
   const extent = days.length > 0 ? { from: Math.min(...days), to: Math.max(...days) } : null;
   return { rows, lines: [...ordered, ...undated], extent };
 }

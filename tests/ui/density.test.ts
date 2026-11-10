@@ -188,7 +188,8 @@ describe('information density (FR-42): DOM, in both themes', () => {
       select.dispatchEvent(new Event('change'));
       pointer('pointerdown', markers()[0], STAGE.left + 100, STAGE.top + 100);
       pointer('pointerup', markers()[0], STAGE.left + 100, STAGE.top + 100);
-      const fields = [...byId('details-panel').querySelectorAll('.details-fields > .details-field')];
+      // The action rows (economics, activities import) are not fields.
+      const fields = [...byId('details-panel').querySelectorAll('.details-fields > .details-field:not(.details-economics-row)')];
       expect(fields).toHaveLength(5);
       expect(fields.every((f) => f.children.length === 2 && f.children[0].tagName === 'DT' && f.children[1].tagName === 'DD')).toBe(true);
       byId('tab-presentation').click();

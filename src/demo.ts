@@ -41,7 +41,15 @@ export interface DemoItem {
   position: [number, number] | null;
   symbol: MarkerSymbol | null;
   comments: Array<{ date: string; text: string }>;
+  // The item's fictional activities (FR-41 as amended in v1.10.0, FR-78).
+  activities?: Array<{ label: string; start: string; end: string; progress: number | null }>;
 }
+
+// While parsing, the labels are per-language, like the comments' texts.
+type ParsedDemoItem = Omit<DemoItem, 'comments' | 'activities'> & {
+  comments: Array<{ date: string; text: Record<Lang, string> }>;
+  activities?: Array<{ label: Record<Lang, string>; start: string; end: string; progress: number | null }>;
+};
 
 export interface DemoAnnotation {
   kind: AnnotationKind;
@@ -110,7 +118,7 @@ export function parseDemoScenarios(raw: unknown): DemoScenarios {
   for (const [role, key] of Object.entries(en.roles)) if (sv.roles[role as keyof typeof sv.roles] !== sv.headers[en.headers.indexOf(key as string)]) fail(`the role ${role} differs between the languages`);
   if (typeof o.symbolsFromStatus !== 'boolean') fail('symbolsFromStatus');
   if (!Array.isArray(o.items)) return fail('items');
-  const items = o.items.map((entry, i) => {
+  const items: ParsedDemoItem[] = o.items.map((entry, i) => {
     const it = entry as Json;
     if (typeof it.item !== 'string' || it.item === '') fail(`items[${i}].item`);
     if (!COLOURS.includes(it.colour as RowColour)) fail(`items[${i}].colour`);
@@ -122,12 +130,25 @@ export function parseDemoScenarios(raw: unknown): DemoScenarios {
       if (!isCommentDate(c.date)) fail(`items[${i}].comments[${j}]`);
       return { date: c.date as string, text: texts(c.text, `items[${i}].comments[${j}].text`) };
     });
+    // The activities, optional; the labels follow the interface language like
+    // the comments' texts.
+    let activities: ParsedDemoItem['activities'];
+    if (it.activities !== undefined) {
+      if (!Array.isArray(it.activities)) fail(`items[${i}].activities`);
+      activities = (it.activities as Json[]).map((a, j) => {
+        if (typeof a.start !== 'string' || typeof a.end !== 'string') fail(`items[${i}].activities[${j}]`);
+        const progress = a.progress === null ? null : a.progress;
+        if (progress !== null && (typeof progress !== 'number' || progress < 0 || progress > 100)) fail(`items[${i}].activities[${j}].progress`);
+        return { label: texts(a.label, `items[${i}].activities[${j}].label`), start: a.start as string, end: a.end as string, progress: progress as number | null };
+      });
+    }
     return {
       item: it.item as string,
       colour: it.colour as RowColour,
       position: position === null ? null : ([(position as number[])[0], (position as number[])[1]] as [number, number]),
       symbol: (it.symbol as MarkerSymbol | null) ?? null,
       comments,
+      ...(activities ? { activities } : {}),
     };
   });
   if (new Set(items.map((i) => i.item)).size !== items.length) fail('repeated items');
@@ -181,7 +202,7 @@ export function parseDemoScenarios(raw: unknown): DemoScenarios {
     symbolsFromStatus: o.symbolsFromStatus as boolean,
     colourLabels: colourLabels[lang],
     glanceColumns: glanceColumns[lang],
-    items: items.map((it) => ({ ...it, comments: it.comments.map((c) => ({ date: c.date, text: c.text[lang] })) })),
+    items: items.map((it) => ({ ...it, comments: it.comments.map((c) => ({ date: c.date, text: c.text[lang] })), activities: it.activities?.map((a) => ({ ...a, label: a.label[lang] })) })),
     annotations: annotations.map((a) => ({ ...a, label: a.label[lang] })),
   });
   return { en: inLang('en'), sv: inLang('sv') };

@@ -82,6 +82,9 @@ export interface DetailLabels {
   save: string;
   cancel: string;
   footprints: string;
+  // The activities import action's label (FR-76), or null on the card.
+  importActivities: string | null;
+
 }
 
 export interface DetailHandlers {
@@ -89,6 +92,9 @@ export interface DetailHandlers {
   // The series groups' opening and closing, and the Economics action.
   toggleSeries?(role: string, open: boolean): void;
   openEconomics?(opener: HTMLElement): void;
+  // The activities import (FR-76), present only when the details are
+  // editable (never on the viewer's card).
+  importActivities?(opener: HTMLElement): void;
   // Present only when the details are editable.
   edit?: {
     renderField(field: DetailField): HTMLElement;
@@ -202,6 +208,15 @@ export function renderDetails(container: HTMLElement, model: DetailModel, labels
   if (model.economics !== null && handlers.openEconomics) {
     const open = handlers.openEconomics;
     const action = el('button', 'details-economics', model.economics);
+    action.type = 'button';
+    action.addEventListener('click', () => open(action));
+    const wrapper = el('div', 'details-field details-economics-row');
+    wrapper.appendChild(action);
+    fields.appendChild(wrapper);
+  }
+  if (labels.importActivities !== null && handlers.importActivities) {
+    const open = handlers.importActivities;
+    const action = el('button', 'details-economics', labels.importActivities);
     action.type = 'button';
     action.addEventListener('click', () => open(action));
     const wrapper = el('div', 'details-field details-economics-row');

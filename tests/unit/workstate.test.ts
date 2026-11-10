@@ -113,8 +113,8 @@ describe('work-state file (FR-13)', () => {
   test('the file carries the format name, schema version, and save time', () => {
     const file = fileOf(sample());
     expect(file.format).toBe(WORK_STATE_FORMAT);
-    expect(file.schemaVersion).toBe(9);
-    expect(WORK_STATE_SCHEMA_VERSION).toBe(9);
+    expect(file.schemaVersion).toBe(10);
+    expect(WORK_STATE_SCHEMA_VERSION).toBe(10);
     expect(file.savedAt).toBe('2026-01-02T03:04:05.000Z');
   });
 
@@ -131,7 +131,7 @@ describe('work-state file (FR-13)', () => {
   });
 
   test('an unknown schema version is rejected and named, never loaded silently', () => {
-    for (const version of [10, 0, '9', null]) {
+    for (const version of [11, 0, '10', null]) {
       const file = { ...fileOf(sample()), schemaVersion: version };
       expect(expectError(JSON.stringify(file), 'unknown-version').detail).toBe(String(version));
     }
@@ -249,7 +249,7 @@ describe('schema version 1 migration (FR-13)', () => {
     expect(migrated.manualColumns).toEqual([]);
     expect(migrated.rows.every((r) => !r.manual)).toBe(true);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(9);
+    expect(JSON.parse(text).schemaVersion).toBe(10);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 
@@ -316,7 +316,7 @@ describe('schema version 2 migration (FR-13)', () => {
   test('a migrated version 2 file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v2Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(9);
+    expect(JSON.parse(text).schemaVersion).toBe(10);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 
@@ -388,7 +388,7 @@ describe('schema version 3 migration (FR-13)', () => {
   test('a migrated version 3 file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v3Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(9);
+    expect(JSON.parse(text).schemaVersion).toBe(10);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 });
@@ -474,7 +474,7 @@ describe('schema version 4 migration (FR-13)', () => {
   test('a migrated version 4 file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v4Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(9);
+    expect(JSON.parse(text).schemaVersion).toBe(10);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 });
@@ -541,7 +541,7 @@ describe('schema version 6: programs, colour labels, at-a-glance columns, annota
     const state = parseWorkState(JSON.stringify(file));
     expect([state.programValues, state.colourLabels, state.glanceColumns, state.annotations]).toEqual([[], {}, null, []]);
     expect(state.background!.projection).toBeUndefined();
-    expect(JSON.parse(serialiseWorkState(state, SAVED_AT)).schemaVersion).toBe(9);
+    expect(JSON.parse(serialiseWorkState(state, SAVED_AT)).schemaVersion).toBe(10);
   });
 
   test('version 6 fields in an older file are ignored, as that version never wrote them', () => {
@@ -728,5 +728,49 @@ describe('schema version 9: the presentation view, the timeline view, and the or
     expectError(bad((f) => (f.view.presentation.timeline.to = f.view.presentation.timeline.from)), 'invalid');
     expectError(bad((f) => (f.view.presentation.timeline.firstLine = -1)), 'invalid');
     expectError(bad((f) => delete f.view.presentation), 'invalid');
+  });
+});
+
+describe('activities in the work state (FR-77, schema 10)', () => {
+  const SAVED_AT = new Date('2026-01-02T03:04:05.000Z');
+
+  test('activities and the import assignment round-trip per row; rows without them stay absent', () => {
+    const state = sample();
+    state.rows[0].activities = [
+      { label: 'Grävning', start: '2024-01-08', end: '2024-02-16', progress: 100 },
+      { label: 'Målning', start: '15/03/2024', end: '2024-06-30', progress: null },
+    ];
+    state.rows[0].activityImport = { file: 'plan.pdf', page: 1, columns: { label: 'Post', start: 'Från', end: 'Till', progress: 'Klart', duration: 'Längd' } };
+    const text = serialiseWorkState(state, SAVED_AT);
+    expect(JSON.parse(text).schemaVersion).toBe(10);
+    const file = JSON.parse(text);
+    expect(file.rows[0].activities).toEqual(state.rows[0].activities);
+    expect(file.rows[0].activityImport).toEqual(state.rows[0].activityImport);
+    expect(file.rows[1].activities).toBeUndefined();
+    expect(file.rows[1].activityImport).toBeUndefined();
+    const restored = parseWorkState(text);
+    expect(restored).toEqual(state);
+    expect(serialiseWorkState(restored, SAVED_AT)).toBe(text); // byte-identical
+  });
+
+  test('files of versions 1 to 9 open with no activities -- absence means none', () => {
+    // A real version 1 fixture.
+    const v1 = parseWorkState(readFileSync(join(process.cwd(), 'example-data', 'example-work-state-v1.json'), 'utf8'));
+    expect(v1.rows.every((r) => r.activities === undefined && r.activityImport === undefined)).toBe(true);
+    // The current file shape stamped as version 9 (no activities keys).
+    const file = { ...fileOf(sample()), schemaVersion: 9 };
+    const parsed = parseWorkState(JSON.stringify(file));
+    expect(parsed.rows.every((r) => r.activities === undefined && r.activityImport === undefined)).toBe(true);
+    // A version 10 file without the keys also means none.
+    const current = parseWorkState(JSON.stringify(fileOf(sample())));
+    expect(current.rows.every((r) => r.activities === undefined)).toBe(true);
+  });
+
+  test('a progress outside 0 to 100, or of the wrong type, is rejected with its field', () => {
+    const file = fileOf(sample()) as { rows: Array<Record<string, unknown>> };
+    file.rows[0].activities = [{ label: 'x', start: '2024-01-01', end: '2024-02-01', progress: 101 }];
+    expect(expectError(JSON.stringify(file), 'invalid').detail).toBe('rows[0].activities[0].progress');
+    file.rows[0].activities = [{ label: 'x', start: '2024-01-01', end: '2024-02-01', progress: '50' }];
+    expect(expectError(JSON.stringify(file), 'invalid').detail).toBe('rows[0].activities[0].progress');
   });
 });

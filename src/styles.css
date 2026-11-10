@@ -1593,12 +1593,30 @@ input[type='text'] {
 
 /* Comparison with an exported file (FR-14): display only until the user
    adopts positions. */
-#compare-panel {
+#compare-panel,
+#activity-panel {
   margin-bottom: var(--space-3);
   padding: var(--space-3);
   border: 1px solid var(--accent);
   border-radius: var(--radius);
   background: var(--panel);
+}
+
+.activity-row[data-dropped='true'] .placement-label {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+#activity-roles .vocab-item label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+#activity-rows {
+  max-height: 40vh;
+  overflow: auto;
 }
 
 .compare-header,
@@ -2547,6 +2565,7 @@ html[data-mode='viewer'] #segment-presentation {
    application has started, an exported page shows the viewer's frame, never
    the editor. */
 html[data-mode='viewer']:not([data-started]) #compare-panel,
+html[data-mode='viewer']:not([data-started]) #activity-panel,
 html[data-mode='viewer']:not([data-started]) #segment-nav,
 html[data-mode='viewer']:not([data-started]) #work-controls,
 html[data-mode='viewer']:not([data-started]) #export-separator,
@@ -2646,6 +2665,14 @@ html[data-boot='failed'] #boot-notice {
 .timeline {
   --timeline-name: 180px;
   --timeline-line: 28px;
+  /* The activity segments of a line (FR-78): packed sub-lane rows inside
+     the unchanged line -- 7-pixel segments, 2-pixel gaps, 2-pixel padding,
+     three rows fitting the 28-pixel plot (tops 2, 11, 20, bottom 27). */
+  --timeline-seg-h: 7px;
+  --timeline-seg-gap: 2px;
+  --timeline-seg-pad: 2px;
+  /* A full lane of an expanded line: a 14-pixel bar centred in the row. */
+  --timeline-lane-bar-h: 14px;
   position: absolute;
   inset: 0;
   z-index: 4;
@@ -2814,6 +2841,70 @@ html[data-boot='failed'] #boot-notice {
   min-width: 3px;
   border-radius: calc(var(--radius) / 2);
   background: var(--marker-fill);
+}
+
+/* An activity segment (FR-78): the bar, the progress as a width fill, and
+   the label inside when the segment is wide enough (set at positioning) and
+   the line is expanded. */
+.timeline-seg {
+  position: absolute;
+  height: var(--timeline-seg-h);
+  min-width: 3px;
+  border-radius: calc(var(--radius) / 2);
+  border: 1px solid var(--marker-fill);
+  background: var(--input-bg);
+  overflow: hidden;
+}
+
+.timeline-seg-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  background: var(--marker-fill);
+}
+
+.timeline-seg-label {
+  display: none;
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  max-width: calc(100% - 8px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 4px;
+  border-radius: calc(var(--radius-sm) / 2);
+  background: var(--panel);
+  color: var(--fg);
+  font-size: var(--dense-label);
+  line-height: 1.4;
+}
+
+.timeline-line[data-expanded='true'] .timeline-seg[data-wide='true'] .timeline-seg-label {
+  display: block;
+}
+
+/* The "+n" badge: a first-class control in the line's name column; it counts
+   the spans that do not fit the packed sub-lanes (FR-78). */
+.timeline-badge-more {
+  flex: none;
+  margin-left: var(--space-1);
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--panel);
+  color: var(--muted);
+  font-size: var(--dense-label);
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.timeline-badge-more:hover {
+  border-color: var(--accent);
+  color: var(--fg);
 }
 
 /* A marked point: an item of which only the start or the end is known. */
@@ -3258,6 +3349,13 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     --timeline-line: 40px;
     --timeline-badge: 1.125rem;
     --timeline-badge-font: 0.6875rem;
+    /* The narrow plot is 20 pixels (the 40-pixel line holds a 20-pixel name
+       row above it): 4-pixel segments, 2-pixel gaps, 1-pixel padding, three
+       rows (tops 1, 7, 13, bottom 17 of 20). */
+    --timeline-seg-h: 4px;
+    --timeline-seg-gap: 2px;
+    --timeline-seg-pad: 1px;
+    --timeline-lane-bar-h: 10px;
   }
 
   html[data-mode='viewer'] .timeline-axis {
@@ -3766,6 +3864,10 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     --timeline-line: 40px;
     --timeline-badge: 1.125rem;
     --timeline-badge-font: 0.6875rem;
+    --timeline-seg-h: 4px;
+    --timeline-seg-gap: 2px;
+    --timeline-seg-pad: 1px;
+    --timeline-lane-bar-h: 10px;
   }
 
   html:not([data-mode='viewer']) .timeline-axis {

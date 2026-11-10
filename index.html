@@ -441,6 +441,29 @@
           <ul id="presentation-glance-list" class="glance-list"></ul>
         </aside>
       </div>
+      <section id="activity-panel" class="hidden" role="dialog" aria-labelledby="activity-heading">
+        <div class="compare-header">
+          <h2 id="activity-heading"></h2>
+          <button type="button" id="activity-close">Close</button>
+        </div>
+        <p id="activity-intro"></p>
+        <div class="compare-actions">
+          <button type="button" id="activity-choose"></button>
+          <input type="file" id="activity-file-input" accept="application/pdf,.pdf" hidden />
+          <span id="activity-status" class="notice" aria-live="polite"></span>
+        </div>
+        <div id="activity-propose" class="hidden">
+          <h3 id="activity-propose-heading"></h3>
+          <ul id="activity-roles" class="vocab-list"></ul>
+          <h3 id="activity-review-heading"></h3>
+          <p id="activity-review-hint" class="hint"></p>
+          <ul id="activity-rows" class="vocab-list"></ul>
+          <div class="compare-actions">
+            <button type="button" id="activity-go" class="primary-action"></button>
+            <button type="button" id="activity-cancel"></button>
+          </div>
+        </div>
+      </section>
       <aside id="details-panel" class="details-panel hidden" aria-label="Item details" tabindex="-1"></aside>
       <div id="economics-overlay" class="economics-overlay" role="dialog" aria-modal="true" data-state="closed" aria-hidden="true" tabindex="-1" inert></div>
     </main>

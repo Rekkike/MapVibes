@@ -88,3 +88,38 @@ describe('the presentation order (FR-70)', () => {
     expect(m.rows.map((r) => (r.kind === 'heading' ? `# ${r.heading === 'area' ? r.area : 'noDates'}` : r.item.id))).toEqual(['# North', '5', '# East', '4', '# South', '1', '# ', '2', '# noDates', '3']);
   });
 });
+
+describe('activities in the timeline model (FR-78)', () => {
+  const act = (label: string, start: string, end: string, progress: number | null = null) => ({ label, start, end, progress });
+
+  test('the own span keeps lane 0 and the activities pack into lanes; the extent includes them', () => {
+    const m = buildTimeline([
+      { ...item('1', 'P1', '2024', '2025'), activities: [act('a', '2024-01-01', '2024-03-01', 50), act('b', '2024-02-01', '2024-04-01', 100), act('c', '2024-02-15', '2024-05-01', null), act('d', '2025-06-01', '2025-12-31', 0)] },
+    ]);
+    const line = m.lines[0];
+    const own = line.spans.find((s) => s.kind !== 'activity')!;
+    expect(own.lane).toBe(0);
+    expect(line.activitySpans).toHaveLength(4);
+    // Overlapping activities pack into later lanes.
+    expect(line.lanes).toBeGreaterThan(1);
+    expect(line.lanes).toBe(1 + Math.max(...line.activitySpans.map((s) => s.lane)));
+    // The fitted window covers the activity extents too.
+    expect(m.extent!.to).toBeGreaterThanOrEqual(new Date('2025-12-31T00:00:00Z').getTime() / 86400000);
+  });
+
+  test('an activity with an unreadable date has no segment (absence is not an error)', () => {
+    const m = buildTimeline([{ ...item('1', 'P1', '2024', '2025'), activities: [act('bad', '15/03/2024', '2024-05-01', 10), act('ok', '2024-02-01', '2024-03-01', null)] }]);
+    const line = m.lines[0];
+    expect(line.activitySpans).toHaveLength(1);
+    expect(line.activitySpans[0].activity!.label).toBe('ok');
+    // The item's own activities are still all on the item, for the description.
+    expect(line.item.activities).toHaveLength(2);
+  });
+
+  test('a project without activities is exactly as before: one span, one lane', () => {
+    const m = buildTimeline([item('1', 'P1', '2024', '2025')]);
+    expect(m.lines[0].spans).toHaveLength(1);
+    expect(m.lines[0].lanes).toBe(1);
+    expect(m.lines[0].activitySpans).toEqual([]);
+  });
+});

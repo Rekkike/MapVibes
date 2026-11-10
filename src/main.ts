@@ -25,8 +25,10 @@ import { markersInView } from './glance';
 import { DEFAULT_SHAPE, placedMarkers, placeMarker, pruneMarkers, removeMarker, type MarkerPositions, type MarkerShapes, type PlacedMarker } from './markers';
 import { BUTTON_ZOOM_FACTOR, imageToScreen, screenToImage, type Point, type Viewport } from './viewport';
 import { isSegment, SEGMENTS, showSegment, type Segment } from './segments';
-import { type Problem, parseWorkState, rowNumbers, serialiseWorkState, SUGGESTED_FILE_NAME, WorkStateError, type PresentationMode, type PresentationOrder, type TimelineWindow, type WorkState } from './workstate';
+import { type Problem, parseWorkState, rowNumbers, serialiseWorkState, SUGGESTED_FILE_NAME, WorkStateError, type ActivityImport, type PresentationMode, type PresentationOrder, type StoredActivity, type TimelineWindow, type WorkState } from './workstate';
 import { buildTimeline, orderEntries, startDay, type TimelineItem, type TimelineLine } from './timeline';
+import { parsePdfPages, parseRows, type ActivityDraft, type ActivityField, type ActivityTable } from './activityparse';
+import { readPdfText } from './pdftext';
 import { TimelineView } from './timelineview';
 import { ExportError, parseExport, serialiseExport, SUGGESTED_EXPORT_NAME, type ExportData } from './exportfile';
 import { embedDataIsland, readDataIsland, writeStaticViewerState } from './singlefile';
@@ -111,6 +113,10 @@ interface AppState {
   comments: CommentStore;
   // The imported values edited by hand (FR-10), with their imported value.
   edited: Map<RowData, Record<string, string>>;
+  // The activities of each item (FR-77) and the import they came from
+  // (FR-76), both keyed by row, like the comments.
+  activities: Map<RowData, StoredActivity[]>;
+  activityImports: Map<RowData, ActivityImport>;
   // The exported viewer (FR-38): view-only, with the numbers the items have
   // in the exported presentation.
   viewOnly: boolean;
@@ -175,6 +181,8 @@ const state: AppState = {
   detailsId: null,
   comments: new Map(),
   edited: new Map(),
+  activities: new Map(),
+  activityImports: new Map(),
   viewOnly: false,
   numbers: null,
   viewerLabels: null,
@@ -293,6 +301,7 @@ function renderStaticText(): void {
   el('work-controls').setAttribute('aria-label', t.workGroup);
   renderWorkStatus();
   renderLegends();
+  renderActivityDialog();
   el('visibility-heading').textContent = t.visibilityHeading;
   el('visibility-hint').textContent = t.visibilityHint;
   el('visibility-empty').textContent = t.visibilityEmpty;
@@ -491,6 +500,7 @@ export async function loadDemo(options: { confirmed?: boolean } = {}): Promise<b
     if (!row) continue;
     row.colour = item.colour;
     if (item.comments.length > 0) state.comments.set(row, restoreComments(item.comments));
+    if (item.activities && item.activities.length > 0) state.activities.set(row, item.activities.map((a) => ({ ...a })));
   }
   const outcome = await useOsmText(DEMO_MAP_TEXT);
   const bg = mapView?.background;
@@ -1272,6 +1282,8 @@ export function captureWorkState(): WorkState {
       manual: state.manualRows.has(row),
       edited: { ...(state.edited.get(row) ?? {}) },
       comments: commentsOf(state.comments, row).map((c) => ({ date: c.date, text: c.text, ...(c.edited ? { edited: c.edited } : {}) })),
+      ...(state.activities.get(row)?.length ? { activities: state.activities.get(row)!.map((a) => ({ ...a })) } : {}),
+      ...(state.activityImports.has(row) ? { activityImport: { ...state.activityImports.get(row)!, columns: { ...state.activityImports.get(row)!.columns } } } : {}),
     })),
     background: bg ? { ...bg } : null,
     markers,
@@ -1464,6 +1476,205 @@ function formatSize(bytes: number): string {
   const mb = bytes / (1024 * 1024);
   if (mb >= 1) return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(mb)} MB`;
   return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(Math.max(1, Math.round(bytes / 1024)))} kB`;
+}
+
+// The activities import dialog (FR-76): choose a PDF, the table is
+// recognised generically, the columns are proposed and assigned by the user,
+// and the parsed rows are reviewed (each droppable) before anything attaches
+// (hard constraint 6). The origin system's header words are displayed as the
+// user's own words and never matched (hard constraint 5).
+let activityDialog: {
+  rowId: string;
+  file: string;
+  tables: ActivityTable[];
+  tableIndex: number;
+  grid: string[][];
+  mapping: Partial<Record<ActivityField, number>>;
+  drafts: ActivityDraft[];
+} | null = null;
+
+const ACTIVITY_FIELDS: ActivityField[] = ['label', 'start', 'end', 'progress', 'duration'];
+
+function activityRoleLabel(t: Strings, field: ActivityField): string {
+  return {
+    label: t.activityRoleLabel,
+    start: t.activityRoleStart,
+    end: t.activityRoleEnd,
+    progress: t.activityRoleProgress,
+    duration: t.activityRoleDuration,
+  }[field];
+}
+
+function openActivityDialog(id: string): void {
+  if (state.viewOnly) return;
+  activityDialog = { rowId: id, file: '', tables: [], tableIndex: 0, grid: [], mapping: {}, drafts: [] };
+  renderActivityDialog();
+  el('activity-panel').classList.remove('hidden');
+  el('activity-choose').focus();
+}
+
+function closeActivityDialog(): void {
+  activityDialog = null;
+  el('activity-panel').classList.add('hidden');
+  el('activity-status').textContent = '';
+}
+
+function renderActivityDialog(): void {
+  const t = strings(state.prefs.lang);
+  el('activity-heading').textContent = t.activityHeading;
+  el('activity-intro').textContent = t.activityIntro;
+  el('activity-choose').textContent = t.activityChoose;
+  el('activity-close').textContent = t.close;
+  el('activity-go').textContent = t.activityGo;
+  el('activity-cancel').textContent = t.commentCancel;
+  const d = activityDialog;
+  const propose = el('activity-propose');
+  if (!d || d.tables.length === 0) {
+    propose.classList.add('hidden');
+    if (d && d.file !== '' && d.tables.length === 0 && el('activity-status').textContent === '') el('activity-status').textContent = t.activityNoTable;
+    return;
+  }
+  propose.classList.remove('hidden');
+  const table = d.tables[d.tableIndex];
+  el('activity-propose-heading').textContent = t.activityProposeHeading;
+  el('activity-review-heading').textContent = t.activityReviewHeading;
+  el('activity-review-hint').textContent = t.activityReviewHint;
+  // The assign step: one select per role, the options being the PDF's own
+  // header words.
+  const roles = el('activity-roles');
+  roles.replaceChildren(...ACTIVITY_FIELDS.map((field) => {
+    const li = document.createElement('li');
+    li.className = 'vocab-item';
+    const label = document.createElement('label');
+    label.className = 'visibility-control';
+    const name = document.createElement('span');
+    name.textContent = activityRoleLabel(t, field);
+    const select = document.createElement('select');
+    select.className = 'activity-role';
+    select.dataset.field = field;
+    select.setAttribute('aria-label', `${activityRoleLabel(t, field)} (${table.columns.map((c) => c.header).join(', ')})`);
+    const none = document.createElement('option');
+    none.value = '';
+    none.textContent = t.activityRoleNone;
+    select.appendChild(none);
+    for (const col of table.columns) {
+      const opt = document.createElement('option');
+      opt.value = String(col.index);
+      opt.textContent = col.header === '' ? `#${col.index + 1}` : col.header;
+      select.appendChild(opt);
+    }
+    select.value = d.mapping[field] === undefined ? '' : String(d.mapping[field]);
+    select.addEventListener('change', () => {
+      const v = select.value === '' ? undefined : Number(select.value);
+      d.mapping = { ...d.mapping, [field]: v };
+      // A re-parse keeps the review's drop decisions, row by row.
+      const dropped = d.drafts.map((r) => r.dropped);
+      d.drafts = parseRows(d.grid, d.mapping);
+      d.drafts.forEach((r, i) => (r.dropped = dropped[i] ?? false));
+      renderActivityDialog();
+    });
+    label.append(name, select);
+    li.appendChild(label);
+    return li;
+  }));
+  // The review: each parsed row with its cells, its read results, and a drop.
+  const rows = el('activity-rows');
+  rows.replaceChildren(...d.drafts.map((draft, i) => {
+    const li = document.createElement('li');
+    li.className = 'vocab-item activity-row';
+    li.dataset.dropped = String(draft.dropped);
+    const check = document.createElement('input');
+    check.type = 'checkbox';
+    check.checked = !draft.dropped;
+    check.setAttribute('aria-label', t.activityRowDrop);
+    check.addEventListener('change', () => {
+      draft.dropped = !check.checked;
+      li.dataset.dropped = String(draft.dropped);
+    });
+    const text = document.createElement('span');
+    text.className = 'placement-label';
+    const cells = draft.cells.map((c, cIndex) => {
+      const col = table.columns[cIndex];
+      const role = ACTIVITY_FIELDS.find((f) => d.mapping[f] === cIndex);
+      let cell = c === '' ? '\u2013' : c;
+      if (role === 'start' && draft.startText !== null) cell = `${c} (${t.activityAsTyped})`;
+      if (role === 'end' && draft.endText !== null) cell = `${c} (${t.activityAsTyped})`;
+      return col ? `${col.header}: ${cell}` : cell;
+    });
+    text.textContent = cells.join(' \u00b7 ');
+    li.append(check, text);
+    return li;
+  }));
+  el<HTMLButtonElement>('activity-go').disabled = d.drafts.every((r) => r.dropped) || d.drafts.length === 0;
+}
+
+async function onActivityFile(file: File): Promise<void> {
+  const t = strings(state.prefs.lang);
+  const d = activityDialog;
+  if (!d) return;
+  el('activity-status').textContent = '';
+  let data: ArrayBuffer;
+  try {
+    data = await new Promise<ArrayBuffer>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as ArrayBuffer);
+      reader.onerror = () => reject(reader.error ?? new Error('read failed'));
+      reader.readAsArrayBuffer(file);
+    });
+  } catch {
+    el('activity-status').textContent = t.activityReadFailed;
+    return;
+  }
+  let pages;
+  try {
+    pages = await readPdfText(data);
+  } catch {
+    el('activity-status').textContent = t.activityReadFailed;
+    return;
+  }
+  const result = parsePdfPages(pages);
+  if (result.tables.length === 0) {
+    d.file = file.name;
+    d.tables = [];
+    renderActivityDialog();
+    el('activity-status').textContent = t.activityNoTable;
+    return;
+  }
+  const table = result.tables[0];
+  d.file = file.name;
+  d.tables = result.tables;
+  d.tableIndex = 0;
+  d.mapping = { ...table.mapping };
+  // The raw body grid, kept so a changed assignment re-parses without re-reading.
+  d.grid = table.rows.map((r) => r.cells);
+  d.drafts = table.rows;
+  if (result.tables.length > 1) el('activity-status').textContent = fill(t.activityPages, { count: result.tables.length });
+  if (d.drafts.length === 0) el('activity-status').textContent = t.activityEmpty;
+  renderActivityDialog();
+}
+
+function confirmActivityImport(): void {
+  const d = activityDialog;
+  if (!d) return;
+  const t = strings(state.prefs.lang);
+  const row = rowById(d.rowId);
+  if (!row) return;
+  const table = d.tables[d.tableIndex];
+  const kept = d.drafts.filter((r) => !r.dropped);
+  const activities: StoredActivity[] = kept.map((r) => ({
+    label: d.mapping.label === undefined ? '' : (r.cells[d.mapping.label] ?? '').trim(),
+    start: d.mapping.start === undefined ? '' : (r.cells[d.mapping.start] ?? '').trim(),
+    end: d.mapping.end === undefined ? '' : (r.cells[d.mapping.end] ?? '').trim(),
+    progress: d.mapping.progress === undefined ? null : (r.progress ?? null),
+  }));
+  state.activities.set(row, activities);
+  const columns: Record<string, string> = {};
+  for (const field of ACTIVITY_FIELDS) if (d.mapping[field] !== undefined) columns[field] = table.columns[d.mapping[field]!].header;
+  state.activityImports.set(row, { file: d.file, page: table.page, columns });
+  markDirty();
+  renderMapItems();
+  closeActivityDialog();
+  el('work-status').textContent = t.activityDone.replace('{count}', String(activities.length));
 }
 
 function openExportDialog(): void {
@@ -2032,6 +2243,8 @@ async function applyWorkState(ws: WorkState): Promise<boolean> {
   state.manualRows = new Set(state.ingested.filter((_, i) => ws.rows[i].manual));
   demoLoaded = false;
   state.edited = new Map(state.ingested.flatMap((row, i) => (Object.keys(ws.rows[i].edited).length > 0 ? [[row, { ...ws.rows[i].edited }]] : [])));
+  state.activities = new Map(state.ingested.flatMap((row, i) => (ws.rows[i].activities && ws.rows[i].activities.length > 0 ? [[row, ws.rows[i].activities!.map((a) => ({ ...a }))]] : [])));
+  state.activityImports = new Map(state.ingested.flatMap((row, i) => (ws.rows[i].activityImport ? [[row, { ...ws.rows[i].activityImport!, columns: { ...ws.rows[i].activityImport!.columns } }]] : [])));
   state.comments = new Map(state.ingested.flatMap((row, i) => (ws.rows[i].comments.length > 0 ? [[row, restoreComments(ws.rows[i].comments)]] : [])));
   state.detailsId = null;
   state.rowIds = new Map();
@@ -3105,6 +3318,7 @@ function detailLabels(t: Strings): DetailLabels {
     save: t.commentSave,
     cancel: t.commentCancel,
     footprints: t.detailsFootprints,
+    importActivities: state.viewOnly ? null : t.activityImport,
   };
 }
 
@@ -3217,6 +3431,7 @@ function renderDetailsPanel(): void {
       else openSeriesGroups.delete(role);
     },
     openEconomics: (opener) => openEconomics(rowId(row), opener),
+    importActivities: state.viewOnly ? undefined : () => openActivityDialog(rowId(row)),
     edit: {
       renderField: (field) => (field.kind === 'status' ? statusCell(row, field.key, model.number) : detailValueInput(row, field.key, model.number)),
       removeComment: (id) => {
@@ -4499,6 +4714,8 @@ function timelineItems(): TimelineItem[] {
       area: value(n.row, area).trim(),
       start: value(n.row, start),
       end: value(n.row, end),
+      // The item's activities (FR-78), or absent for none.
+      ...(state.activities.get(n.row)?.length ? { activities: state.activities.get(n.row)!.map((a) => ({ ...a })) } : {}),
     }));
 }
 
@@ -4541,6 +4758,8 @@ function renderTimeline(): void {
       startHeader: start === undefined ? '' : labelOf(start),
       endHeader: end === undefined ? '' : labelOf(end),
       locale: areaLocale(),
+      moreSpans: t.timelineMoreSpans,
+      activities: t.timelineActivities,
     },
     state.presentationSelected,
   );
@@ -4599,6 +4818,19 @@ function initialisePresentation(): void {
   }
   el<HTMLSelectElement>('pres-order').addEventListener('change', (e) => setPresentationOrder((e.target as HTMLSelectElement).value as PresentationOrder));
   el('export-open').addEventListener('click', openExportDialog);
+  el('activity-choose').addEventListener('click', () => el<HTMLInputElement>('activity-file-input').click());
+  el('activity-file-input').addEventListener('change', (e) => {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (file) void onActivityFile(file);
+    input.value = '';
+  });
+  el('activity-close').addEventListener('click', closeActivityDialog);
+  el('activity-cancel').addEventListener('click', closeActivityDialog);
+  el('activity-go').addEventListener('click', confirmActivityImport);
+  el('activity-panel').addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeActivityDialog();
+  });
   el('pdf-open').addEventListener('click', () => void openDocumentDialog('pdf'));
   el('pptx-open').addEventListener('click', () => void openDocumentDialog('pptx'));
   el('document-go').addEventListener('click', () => void runDocumentExport());
@@ -5269,7 +5501,7 @@ function wireEvents(): void {
 // island of an exported file, in view-only mode. Only the Presentation
 // segment is offered; the controls that edit, toggle visibility, open,
 // save, or export are not shown and cannot be reached.
-const VIEWER_HIDDEN = ['compare-panel', 'segment-nav', 'work-controls', 'export-separator', 'export-open', 'export-panel', 'export-status', 'pdf-open', 'pptx-open', 'document-panel', 'document-status', 'segment-information', 'segment-map', 'details-panel', 'visibility-area'];
+const VIEWER_HIDDEN = ['compare-panel', 'activity-panel', 'segment-nav', 'work-controls', 'export-separator', 'export-open', 'export-panel', 'export-status', 'pdf-open', 'pptx-open', 'document-panel', 'document-status', 'segment-information', 'segment-map', 'details-panel', 'visibility-area'];
 
 async function startViewer(text: string): Promise<void> {
   document.documentElement.dataset.mode = 'viewer';
