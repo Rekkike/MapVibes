@@ -75,7 +75,7 @@ function latin1(bytes: Uint8Array): string {
 }
 
 describe('document exports in a browser, offline (FR-50, FR-51)', () => {
-  test('the PDF downloads, is valid, and holds the whole stage in view and the table', async () => {
+  test('the PDF downloads, is valid, and holds the stage, the timeline pages, the economics pages, and the table', async () => {
     const { page, errors } = await demo();
     const { name, bytes } = await download(page, '#pdf-open');
     expect(name).toBe('mapvibes-presentation.pdf');
@@ -87,48 +87,86 @@ describe('document exports in a browser, offline (FR-50, FR-51)', () => {
     // captured before the dialog narrowed the stage.
     expect(s).toMatch(/\/Width 3000 \/Height 2000 \/ColorSpace \/DeviceRGB \/BitsPerComponent 8 \/Filter \/DCTDecode/);
     const pages = await pdfPages(bytes);
-    expect(pages).toHaveLength(2);
+    // Stage 1, timeline 2, economics 4, table 1 (measured on the demo).
+    expect(pages).toHaveLength(8);
     const stage = pages[0].split('|');
     for (let n = 1; n <= 11; n++) expect(stage, String(n)).toContain(String(n));
     for (const text of ['Jetty footprint', 'Survey zone', 'Planned footpath', 'Legend', 'On track', 'Lightning bolt']) expect(pages[0]).toContain(text);
-    for (const item of ['D-01', 'D-06', 'D-12', 'Old mill', 'Heritage route']) expect(pages[1]).toContain(item);
+    // The timeline pages: the fitted axis (2-year ticks over 2018..2030), the
+    // lines with their names, the events' chips, the work-phase legend entry
+    // (the demo marks one activity as the work phase), and the captions.
+    const timeline = pages.slice(1, 3).join('|');
+    for (const text of ['Timeline', '2018', '2030', 'North gate', 'Old mill', 'Review', 'Decision', 'Work phase', 'The marked activity of an item', 'Groundwork']) expect(timeline).toContain(text);
+    expect(timeline).toMatch(/page 2 of 8/);
+    // The economics pages: per-item blocks, the years with the unit, the
+    // series names as headings, the totals.
+    const economics = pages.slice(3, 7).join('|');
+    for (const text of ['Economics', '237,000 kr', 'North gate', 'Outcome / Forecast', 'Budget:']) expect(economics).toContain(text);
+    // The table is the last page.
+    expect(pages[7].startsWith('Items 1 to 12 of 12')).toBe(true);
+    for (const item of ['D-01', 'D-06', 'D-12', 'Old mill', 'Heritage route']) expect(pages[7]).toContain(item);
     expect(errors).toEqual([]);
     await page.close();
   }, 60_000);
 
-  test('the PowerPoint file downloads and is a valid package: the stage image, then the table slide', async () => {
+  test('the PowerPoint file downloads and is a valid package: the image slides (stage, timeline, economics), then the table slides', async () => {
     const { page, errors } = await demo();
     const { name, bytes } = await download(page, '#pptx-open');
     expect(name).toBe('mapvibes-presentation.pptx');
     expect(bytes.length).toBeGreaterThan(10_000);
     const parts = new Map(unzipStored(bytes).map((e) => [e.name, e.data]));
-    for (const part of ['[Content_Types].xml', '_rels/.rels', 'ppt/presentation.xml', 'ppt/slideMasters/slideMaster1.xml', 'ppt/slideLayouts/slideLayout1.xml', 'ppt/theme/theme1.xml', 'ppt/slides/slide1.xml', 'ppt/slides/slide2.xml']) {
+    for (const part of ['[Content_Types].xml', '_rels/.rels', 'ppt/presentation.xml', 'ppt/slideMasters/slideMaster1.xml', 'ppt/slideLayouts/slideLayout1.xml', 'ppt/theme/theme1.xml']) {
       expect(parts.has(part), part).toBe(true);
     }
-    // The slide image: a PNG of 1920 by 1080 pixels.
-    const png = parts.get('ppt/media/image1.png')!;
-    expect([...png.slice(1, 4)].map((c) => String.fromCharCode(c)).join('')).toBe('PNG');
-    const view = new DataView(png.buffer, png.byteOffset);
-    expect([view.getUint32(16), view.getUint32(20)]).toEqual([1920, 1080]);
-    const table = new TextDecoder().decode(parts.get('ppt/slides/slide2.xml'));
+    // 9 slides (measured on the demo): stage 1, timeline 2, economics 4,
+    // table 2. The first 7 are pictures, each with its own media part at
+    // 1920 by 1080 pixels.
+    const slides = [...parts.keys()].filter((k) => /^ppt\/slides\/slide\d+\.xml$/.test(k)).sort();
+    expect(slides).toHaveLength(9);
+    const media = [...parts.keys()].filter((k) => /^ppt\/media\/image\d+\.png$/.test(k)).sort();
+    expect(media).toHaveLength(7);
+    for (const name of media) {
+      const png = parts.get(name)!;
+      expect([...png.slice(1, 4)].map((c) => String.fromCharCode(c)).join('')).toBe('PNG');
+      const view = new DataView(png.buffer, png.byteOffset);
+      expect([view.getUint32(16), view.getUint32(20)]).toEqual([1920, 1080]);
+    }
+    for (let i = 1; i <= 7; i++) {
+      const xml = new TextDecoder().decode(parts.get(`ppt/slides/slide${i}.xml`)!);
+      expect(xml).toContain('<p:pic>');
+      expect(xml).not.toContain('<a:tbl>');
+      expect(new TextDecoder().decode(parts.get(`ppt/slides/_rels/slide${i}.xml.rels`)!)).toContain(`../media/image${i}.png`);
+    }
+    // The table slides follow, as native tables.
+    for (const n of [8, 9]) {
+      const xml = new TextDecoder().decode(parts.get(`ppt/slides/slide${n}.xml`)!);
+      expect(xml).toContain('<a:tbl>');
+      expect(xml).not.toContain('<p:pic>');
+    }
+    const table = new TextDecoder().decode(parts.get('ppt/slides/slide8.xml')!);
+    expect(table).toContain('Items 1 to 12 of 12');
     for (const item of ['D-01', 'D-12', 'Heritage route']) expect(table).toContain(`<a:t>${item}</a:t>`);
     expect(errors).toEqual([]);
     await page.close();
   }, 60_000);
 
-  test('a switched-off item is absent from both documents', async () => {
+  test('a switched-off item is absent from the timeline pages, the economics pages, and the table in both documents', async () => {
     const { page } = await demo();
     // The first item toggle is D-01's (North gate).
     await page.locator('.visibility-toggle').first().click();
     const pdf = await download(page, '#pdf-open');
     const pages = await pdfPages(pdf.bytes);
-    expect(pages[1]).not.toContain('D-01');
-    expect(pages[1]).not.toContain('North gate');
-    expect(pages[1]).toContain('D-02');
-    const pptx = await download(page, '#pptx-open');
-    const table = new TextDecoder().decode(unzipStored(pptx.bytes).find((e) => e.name === 'ppt/slides/slide2.xml')!.data);
+    const table = pages[pages.length - 1];
+    const schedule = pages.slice(1, -1).join('|');
     expect(table).not.toContain('D-01');
     expect(table).toContain('D-02');
+    expect(schedule).not.toContain('North gate');
+    expect(schedule).toContain('Garden path');
+    const pptx = await download(page, '#pptx-open');
+    const tableSlides = unzipStored(pptx.bytes).filter((e) => /^ppt\/slides\/slide\d+\.xml$/.test(e.name) && new TextDecoder().decode(e.data).includes('<a:tbl>'));
+    const tableXml = tableSlides.map((e) => new TextDecoder().decode(e.data)).join('');
+    expect(tableXml).not.toContain('D-01');
+    expect(tableXml).toContain('D-02');
     await page.close();
   }, 60_000);
 
@@ -138,8 +176,37 @@ describe('document exports in a browser, offline (FR-50, FR-51)', () => {
     const pages = await pdfPages(bytes);
     expect(pages[0]).toContain('Teckenförklaring');
     expect(pages[0]).toContain('Färger');
-    expect(pages[1]).toContain('Objekt 1 till 12 av 12');
+    expect(pages[1]).toContain('Tidslinje');
+    expect(pages[1]).toContain('Arbetsfas');
+    expect(pages[3]).toContain('Ekonomi');
+    expect(pages[pages.length - 1]).toContain('Objekt 1 till 12 av 12');
     await page.close();
+  }, 60_000);
+
+  test('on a phone the dialog states the same pages and the documents come out the same size (the page kinds are laid out at document scale)', async () => {
+    const phone = await context.newPage();
+    await phone.setViewportSize({ width: 390, height: 844 });
+    const errors: string[] = [];
+    phone.on('pageerror', (e) => errors.push(String(e)));
+    await phone.goto(`file://${BUILT}`);
+    await phone.evaluate(() => delete (window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker);
+    await phone.selectOption('#select-language', 'en');
+    await phone.click('#load-demo');
+    await phone.waitForFunction(() => document.querySelectorAll('#marker-layer .marker').length === 11);
+    await phone.click('#tab-presentation');
+    await phone.click('#pres-fit');
+    await phone.waitForTimeout(400);
+    await phone.click('#pdf-open');
+    await phone.waitForFunction(() => !(document.getElementById('document-go') as HTMLButtonElement).disabled, null, { timeout: 30_000 });
+    const contains = await phone.$$eval('#document-contains li', (lis) => lis.map((li) => li.textContent ?? ''));
+    expect(contains).toContain('the timeline of the 12 shown items, fitted to the full span, on 2 pages');
+    expect(contains).toContain('economics blocks for 11 of the shown items, on 4 pages');
+    const [dl] = await Promise.all([phone.waitForEvent('download'), phone.click('#document-go')]);
+    const pdfBytes = new Uint8Array(readFileSync(await dl.path()));
+    const pages = await pdfPages(pdfBytes);
+    expect(pages).toHaveLength(8);
+    expect(errors).toEqual([]);
+    await phone.close();
   }, 60_000);
 
   test('no request is made beyond the local file itself', () => {

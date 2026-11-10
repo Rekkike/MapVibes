@@ -90,6 +90,7 @@ describe('PDF export (FR-12, FR-50, FR-52)', () => {
       'the presentation stage as shown: 3 markers and 1 annotation in view',
       'the visible part of the background (1200 × 800 pixels)',
       'the legend',
+      'the timeline of the 5 shown items, fitted to the full span, on 1 page',
       'a table of the 5 shown items with 5 columns, on 1 page',
     ]);
     expect(lines('document-omitted')).toEqual([
@@ -109,11 +110,21 @@ describe('PDF export (FR-12, FR-50, FR-52)', () => {
   test('the document holds the stage page and the table, and lands as a PDF file', async () => {
     const bytes = await exportPdf();
     expect(new TextDecoder('latin1').decode(bytes.slice(0, 8))).toBe('%PDF-1.4');
-    const [stage, table] = await pageTexts(bytes);
-    // The stage page: the markers' numbers, the annotation label, the legend.
+    const [stage, timeline, table] = await pageTexts(bytes);
+    // The stage page: the markers' numbers, the annotation label, the used-only
+    // legend (FR-75 as amended in v1.13.0: only Green and Circle are used here).
     // The placed items are the first, third, and fifth.
-    for (const text of ['1', '3', '5', 'Survey area', 'Legend', 'Green', 'Lightning bolt']) expect(stage.split('|')).toContain(text);
-    expect(stage).toMatch(/MapVibes v\d+\.\d+\.\d+ · .+ · page 1 of 2$/);
+    for (const text of ['1', '3', '5', 'Survey area', 'Legend', 'Green', 'Circle']) expect(stage.split('|')).toContain(text);
+    expect(stage).not.toContain('Lightning bolt');
+    // The timeline page: the title, the notice (no start or end role is
+    // assigned in this fixture), and the "No dates" section with every item.
+    expect(timeline).toContain('Timeline');
+    expect(timeline).toContain('Assign the start and end roles');
+    expect(timeline).toContain('No dates');
+    for (const id of ['A-01', 'A-05']) expect(timeline).toContain(id);
+    expect(stage).toMatch(/MapVibes v\d+\.\d+\.\d+ · .+ · page 1 of 3$/);
+    expect(timeline).toMatch(/page 2 of 3$/);
+    expect(table).toMatch(/page 3 of 3$/);
     // The table: the number, the shown columns, every shown item.
     // The reader may split a short bold word into pieces; the text is whole.
     expect(table.replace(/\|/g, '').startsWith('Items 1 to 5 of 5No.IDStartEndGroupNote1A-012024-01-05')).toBe(true);
@@ -144,8 +155,10 @@ describe('PDF export (FR-12, FR-50, FR-52)', () => {
       '1 hidden column',
     ]);
     byId('document-cancel').click();
-    const [stage, table] = await pageTexts(await exportPdf());
+    const [stage, timeline, table] = await pageTexts(await exportPdf());
     expect(stage).not.toContain('Survey area');
+    expect(timeline).not.toContain('A-01');
+    expect(timeline).toContain('A-03');
     expect(table).not.toContain('A-01');
     expect(table).not.toContain('A-05');
     expect(table).not.toContain('|Note|');
@@ -160,7 +173,7 @@ describe('PDF export (FR-12, FR-50, FR-52)', () => {
     await openPdf();
     expect(lines('document-omitted')).toContain('characters that the standard PDF fonts cannot show (2 in all): each is replaced by a question mark');
     byId('document-cancel').click();
-    const [, table] = await pageTexts(await exportPdf());
+    const [, , table] = await pageTexts(await exportPdf());
     expect(table).toContain('?mega ?');
   });
 
@@ -189,11 +202,13 @@ describe('PDF export (FR-12, FR-50, FR-52)', () => {
     expect(byId('pdf-open').textContent).toBe('Exportera PDF');
     await openPdf();
     expect(byId('document-heading').textContent).toBe('Exportera PDF');
+    expect(lines('document-contains')[3]).toMatch(/^tidslinjen f.r de 5 visade objekten, anpassad till hela spannet, p. 1 sida$/);
     expect(lines('document-contains')[2]).toBe('teckenförklaringen');
-    const [stage, table] = await pageTexts(await (async () => {
+    const [stage, timeline, table] = await pageTexts(await (async () => {
       byId('document-cancel').click();
       return exportPdf();
     })());
+    expect(timeline).toContain('Tidslinje');
     expect(stage.split('|')).toContain('Teckenförklaring');
     // The reader may split a short bold word into letters; the text is whole.
     expect(table.replace(/\|/g, '').startsWith('Objekt 1 till 5 av 5NrIDStartEnd')).toBe(true);

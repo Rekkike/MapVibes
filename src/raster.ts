@@ -144,10 +144,11 @@ export class CanvasPainter implements Painter {
   }
 }
 
-// The stage page rasterised as a PNG image: the frame in page units, drawn
-// at the given pixels per unit, on white.
-export async function stagePagePng(scene: StageScene, frame: PageFrame, pixelsPerUnit: number, backgroundSrc: string | null): Promise<{ png: Uint8Array; width: number; height: number }> {
-  const background = backgroundSrc && scene.background ? { img: await loadImage(backgroundSrc), crop: scene.background.image } : null;
+// Any document page rasterised as a PNG image: the frame in page units, drawn
+// through the given function at the given pixels per unit, on white. Used for
+// the PowerPoint image slides — the stage page and, since v1.13.0, the
+// timeline pages and the economics blocks.
+export async function pagePng(frame: PageFrame, pixelsPerUnit: number, draw: (p: Painter) => void, background: { img: HTMLImageElement; crop: Rect } | null = null): Promise<{ png: Uint8Array; width: number; height: number }> {
   const width = Math.round(frame.width * pixelsPerUnit);
   const height = Math.round(frame.height * pixelsPerUnit);
   const canvas = document.createElement('canvas');
@@ -158,6 +159,12 @@ export async function stagePagePng(scene: StageScene, frame: PageFrame, pixelsPe
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, width, height);
   ctx.scale(pixelsPerUnit, pixelsPerUnit);
-  drawStagePage(new CanvasPainter(ctx, background), scene, frame);
+  draw(new CanvasPainter(ctx, background));
   return { png: await canvasBlob(canvas, 'image/png'), width, height };
+}
+
+// The stage page rasterised as a PNG image.
+export async function stagePagePng(scene: StageScene, frame: PageFrame, pixelsPerUnit: number, backgroundSrc: string | null): Promise<{ png: Uint8Array; width: number; height: number }> {
+  const background = backgroundSrc && scene.background ? { img: await loadImage(backgroundSrc), crop: scene.background.image } : null;
+  return pagePng(frame, pixelsPerUnit, (p) => drawStagePage(p, scene, frame), background);
 }

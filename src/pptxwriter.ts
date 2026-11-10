@@ -1,8 +1,10 @@
 // A minimal PowerPoint writer (FR-51): a valid .pptx package (Office Open
 // XML, a zip of XML parts with their content types and relationships) with
-// one slide master, one blank layout, and one theme; the first slide carries
-// an image filling the slide, the following slides each carry a title and a
-// native table. Written for this application alone: no libraries.
+// one slide master, one blank layout, and one theme; the first slides each
+// carry an image filling the slide (the stage, then the timeline pages and
+// the economics blocks, FR-12 as amended in v1.13.0), the following slides
+// each carry a title and a native table. Written for this application alone:
+// no libraries.
 
 import { zip, type ZipEntry } from './zipwriter';
 
@@ -22,9 +24,17 @@ export interface PptxTableSlide {
   headingHeight: number;
 }
 
+export interface PptxImage {
+  png: Uint8Array;
+  // The image's alternative text.
+  description: string;
+}
+
 export interface PptxContent {
   title: string;
-  image: { png: Uint8Array; description: string };
+  // The image slides, before the table slides: the stage, then the timeline
+  // pages and the economics blocks (FR-12 as amended in v1.13.0).
+  images: PptxImage[];
   tables: PptxTableSlide[];
   // Text sizes in points and the cell padding in points.
   font: number;
@@ -151,10 +161,10 @@ function slide(shapes: string): string {
   return `${DECLARATION}<p:sld xmlns:a="${NS.a}" xmlns:r="${NS.r}" xmlns:p="${NS.p}"><p:cSld><p:spTree>${EMPTY_TREE}${shapes}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`;
 }
 
-function picture(description: string): string {
+function picture(name: string, description: string, rid: string): string {
   return (
-    `<p:pic><p:nvPicPr><p:cNvPr id="2" name="Presentation stage" descr="${xmlText(description)}"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr>` +
-    `<p:blipFill><a:blip r:embed="rId2"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>` +
+    `<p:pic><p:nvPicPr><p:cNvPr id="2" name="${xmlText(name)}" descr="${xmlText(description)}"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr>` +
+    `<p:blipFill><a:blip r:embed="${rid}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>` +
     `<p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${SLIDE.width}" cy="${SLIDE.height}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>`
   );
 }
@@ -215,7 +225,7 @@ function isoDate(d: Date): string {
 
 export function buildPptx(c: PptxContent): Uint8Array {
   const encoder = new TextEncoder();
-  const slides = [slide(picture(c.image.description)), ...c.tables.map((t) => slide(titleBox(t.title, c) + table(t, c)))];
+  const slides = [...c.images.map((img, i) => slide(picture(i === 0 ? 'Presentation stage' : 'Document page', img.description, `rId${i + 2}`))), ...c.tables.map((t) => slide(titleBox(t.title, c) + table(t, c)))];
   const entries: ZipEntry[] = [];
   const add = (name: string, text: string) => entries.push({ name, data: encoder.encode(text) });
 
@@ -276,9 +286,9 @@ export function buildPptx(c: PptxContent): Uint8Array {
   slides.forEach((xml, i) => {
     add(`ppt/slides/slide${i + 1}.xml`, xml);
     const rels: Array<[string, string, string]> = [['rId1', REL.slideLayout, '../slideLayouts/slideLayout1.xml']];
-    if (i === 0) rels.push(['rId2', REL.image, '../media/image1.png']);
+    if (i < c.images.length) rels.push([`rId${i + 2}`, REL.image, `../media/image${i + 1}.png`]);
     add(`ppt/slides/_rels/slide${i + 1}.xml.rels`, relationships(rels));
   });
-  entries.push({ name: 'ppt/media/image1.png', data: c.image.png });
+  c.images.forEach((img, i) => entries.push({ name: `ppt/media/image${i + 1}.png`, data: img.png }));
   return zip(entries, c.created);
 }

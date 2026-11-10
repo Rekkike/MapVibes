@@ -11,7 +11,7 @@ import type { RowColour } from './dataset';
 import type { LegendSection } from './legend';
 import { fitText, PdfDocument, textWidth, type PdfFont, type PdfImage, type Rgb, type Transform } from './pdfwriter';
 import { ICON_PATHS, isIcon, type MarkerSymbol } from './symbols';
-import { buildPptx, type PptxTableSlide } from './pptxwriter';
+import { buildPptx, type PptxImage, type PptxTableSlide } from './pptxwriter';
 import { format } from './i18n';
 import { imageToScreen, type Point, type Viewport } from './viewport';
 
@@ -38,7 +38,7 @@ export const PALETTE = {
   shade: [0xee, 0xf0, 0xf3],
 } as const satisfies Record<string, Rgb>;
 
-const COLOUR_RGB: Record<RowColour, Rgb> = { green: PALETTE.green, blue: PALETTE.blue, yellow: PALETTE.yellow, red: PALETTE.red };
+export const COLOUR_RGB: Record<RowColour, Rgb> = { green: PALETTE.green, blue: PALETTE.blue, yellow: PALETTE.yellow, red: PALETTE.red };
 
 // --- The scene -------------------------------------------------------------
 
@@ -269,7 +269,7 @@ export class PdfPainter implements Painter {
 // number in bold at 12.8 pixels; an icon 14.72 pixels wide before it.
 const MARKER = { height: 28, tall: 36, ring: 2, font: 12.8, padding: 8, iconPadding: 10.4, glyph: 14.72, gap: 1, glyphStroke: 2.6 };
 
-function markerSize(symbol: MarkerSymbol, label: string): { width: number; height: number } {
+export function markerSize(symbol: MarkerSymbol, label: string): { width: number; height: number } {
   const tall = symbol === 'diamond' || symbol === 'triangle';
   const height = tall ? MARKER.tall : MARKER.height;
   const text = label === '' ? 0 : textWidth(label, 'bold', MARKER.font);
@@ -485,6 +485,66 @@ export function layoutLegend(title: string, sections: LegendSection[], width: nu
       section !== sections[0],
     );
     for (const item of section.items) {
+      // The work-phase entry (FR-75 as amended in v1.13.0): a hatched swatch,
+      // as the timeline's band is hatched.
+      if (item.phase) {
+        const w = swatch * 1.67 + gap + textWidth(item.label, 'regular', font);
+        place(w, (p, x, b) => {
+          const ww = swatch * 1.67;
+          const h = swatch;
+          const y = b - font * 0.33 - h / 2;
+          p.save();
+          p.beginPath();
+          p.rect(x, y, ww, h);
+          p.clip();
+          p.strokeColour(PALETTE.muted);
+          p.lineWidth(0.8);
+          p.beginPath();
+          for (let sx = x - h; sx < x + ww; sx += 5) {
+            p.moveTo(sx, y + h);
+            p.lineTo(sx + h, y);
+          }
+          p.stroke();
+          p.restore();
+          p.strokeColour(PALETTE.muted);
+          p.lineWidth(0.5);
+          p.beginPath();
+          p.rect(x, y, ww, h);
+          p.stroke();
+          p.fillColour(PALETTE.fg);
+          p.text(x + ww + gap, b, item.label, 'regular', font);
+        });
+        continue;
+      }
+      // A series entry (FR-79's key, as a later costs page would carry it):
+      // a bar in the series' own style -- outcome solid, forecast outlined,
+      // budget a lighter base.
+      if (item.series !== undefined) {
+        const w = swatch * 1.67 + gap + textWidth(item.label, 'regular', font);
+        place(w, (p, x, b) => {
+          const ww = swatch * 1.67;
+          const h = swatch * 0.67;
+          const y = b - font * 0.33 - h / 2;
+          p.beginPath();
+          p.rect(x, y, ww, h);
+          if (item.series === 'outcome') {
+            p.fillColour(PALETTE.fg);
+            p.fill();
+          } else if (item.series === 'forecast') {
+            p.strokeColour(PALETTE.fg);
+            p.lineWidth(0.8);
+            p.stroke();
+          } else {
+            p.fillColour(PALETTE.fg);
+            p.opacity(0.4);
+            p.fill();
+            p.opacity(1);
+          }
+          p.fillColour(PALETTE.fg);
+          p.text(x + ww + gap, b, item.label, 'regular', font);
+        });
+        continue;
+      }
       if (item.group !== undefined) {
         const number = `${item.group}.`;
         const w = textWidth(number, 'bold', font) + gap + textWidth(item.label, 'regular', font);
@@ -576,7 +636,7 @@ export function drawStagePage(p: Painter, scene: StageScene, frame: PageFrame): 
   return { mapBox, scale };
 }
 
-function drawFooter(p: Painter, frame: PageFrame): void {
+export function drawFooter(p: Painter, frame: PageFrame): void {
   if (frame.footer === '') return;
   p.fillColour(PALETTE.muted);
   p.text(frame.margin, frame.height - frame.margin + LEGEND_FONT * 0.6, frame.footer, 'regular', LEGEND_FONT - 1);
@@ -759,22 +819,36 @@ export interface PdfResult {
   tablePages: number;
   columnGroups: number;
   replaced: number;
+  // The pages between the stage page and the table pages (the timeline pages
+  // and the economics blocks, FR-12 as amended in v1.13.0).
+  extraPages: number;
+}
+
+// One page kind between the stage page and the table pages: drawn through the
+// Painter with the page's frame (its footer already filled in).
+export interface DocumentExtraPage {
+  draw(p: Painter, frame: PageFrame): void;
 }
 
 function fillIn(template: string, values: Record<string, string | number>): string {
   return format(template, values);
 }
 
-// The PDF document (FR-12, FR-50): the stage page, then the table pages.
-export function buildPdf(scene: StageScene, table: DocumentTable, background: { jpeg: Uint8Array; width: number; height: number } | null, texts: DocumentTexts, created: Date): PdfResult {
+// The PDF document (FR-12, FR-50 as amended in v1.13.0): the stage page, then
+// the extra page kinds (the timeline pages, the economics blocks), then the
+// table pages.
+export function buildPdf(scene: StageScene, table: DocumentTable, background: { jpeg: Uint8Array; width: number; height: number } | null, texts: DocumentTexts, created: Date, extraPages: DocumentExtraPage[] = []): PdfResult {
   const doc = new PdfDocument({ title: texts.title, created });
   const img = background ? doc.addJpeg(background.jpeg, background.width, background.height) : null;
   const frame = (page: number, pages: number): PageFrame => ({ width: PDF_PAGE.width, height: PDF_PAGE.height, margin: PDF_PAGE.margin, footer: fillIn(texts.footer, { page, pages }) });
   const layout = layoutTable(table, PDF_PAGE.width - 2 * PDF_PAGE.margin);
   const tableHeight = PDF_PAGE.height - 2 * PDF_PAGE.margin - 20 - LEGEND_FONT * 2;
   const pages = table.rows.length > 0 ? paginateTable(table, layout, tableHeight) : [];
-  const total = 1 + pages.length;
+  const total = 1 + extraPages.length + pages.length;
   drawStagePage(new PdfPainter(doc.addPage(PDF_PAGE.width, PDF_PAGE.height), img), scene, frame(1, total));
+  extraPages.forEach((extra, i) => {
+    extra.draw(new PdfPainter(doc.addPage(PDF_PAGE.width, PDF_PAGE.height), null), frame(i + 2, total));
+  });
   pages.forEach((page, i) => {
     const title = fillIn(layout.groups.length > 1 ? texts.tableTitleParts : texts.tableTitle, {
       from: page.rows[0] + 1,
@@ -783,9 +857,9 @@ export function buildPdf(scene: StageScene, table: DocumentTable, background: { 
       part: page.group + 1,
       parts: layout.groups.length,
     });
-    drawTablePage(new PdfPainter(doc.addPage(PDF_PAGE.width, PDF_PAGE.height), null), table, layout, page, frame(i + 2, total), title);
+    drawTablePage(new PdfPainter(doc.addPage(PDF_PAGE.width, PDF_PAGE.height), null), table, layout, page, frame(i + 2 + extraPages.length, total), title);
   });
-  return { bytes: doc.toBytes(), pages: total, tablePages: pages.length, columnGroups: layout.groups.length, replaced: doc.replacedCharacters };
+  return { bytes: doc.toBytes(), pages: total, tablePages: pages.length, columnGroups: layout.groups.length, replaced: doc.replacedCharacters, extraPages: extraPages.length };
 }
 
 // --- The inventory -----------------------------------------------------------
@@ -848,10 +922,15 @@ export function pptxTables(table: DocumentTable, texts: Pick<DocumentTexts, 'tab
   return { slides, columnGroups: layout.groups.length };
 }
 
-export function buildPptxDocument(png: Uint8Array, description: string, tables: PptxTables, title: string, lang: string, created: Date): Uint8Array {
+export type { PptxImage };
+
+// The PowerPoint document (FR-12, FR-51 as amended in v1.13.0): the first
+// slides carry the images — the stage, then the timeline pages and the
+// economics blocks — then the table slides.
+export function buildPptxDocument(images: PptxImage[], tables: PptxTables, title: string, lang: string, created: Date): Uint8Array {
   return buildPptx({
     title,
-    image: { png, description },
+    images,
     tables: tables.slides,
     font: PPTX_TABLE.font,
     padding: PPTX_TABLE.padding,

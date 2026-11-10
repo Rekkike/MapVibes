@@ -16,8 +16,10 @@ import { renderPlanToDataUrl } from './osmrender';
 import { fetchableBounds, FetchError, fetchMapData, isOnline, parseBounds, searchPlace, type BoundsField, type FetchErrorCode, type PlaceResult } from './openmap';
 import { MarkerLayer } from './markerlayer';
 import { colourName, legendModel, renderLegend, shapeName, type ColourLabels, type LegendGroup, type LegendUse, type SeriesLegend, type SymbolLabels } from './legend';
-import { buildPdf, buildPptxDocument, PPTX_PAGE, pptxTables, sceneFromStage, type DocumentTable, type StageScene } from './documents';
-import { backgroundJpeg, stagePagePng } from './raster';
+import { buildPdf, buildPptxDocument, PDF_PAGE, PPTX_PAGE, pptxTables, sceneFromStage, type DocumentExtraPage, type DocumentTable, type PageFrame, type PptxImage, type StageScene } from './documents';
+import { drawTimelinePage, layoutTimeline, type FigureItem, type TimelineFigure } from './documenttimeline';
+import { drawEconomicsPage, economicsBlock, layoutEconomics, type EconomicsBlock, type EconomicsPageLabels } from './documenteconomics';
+import { backgroundJpeg, pagePng, stagePagePng } from './raster';
 import { addComment, commentsOf, editComment, formatCommentDate, removeComment, restoreComments, type CommentStore } from './comments';
 import { renderCard as renderCardContent, renderDetails, type DetailField, type DetailLabels, type DetailModel } from './details';
 import { drawSymbol, isSymbol, SYMBOLS, symbolClasses, type MarkerSymbol } from './symbols';
@@ -2148,6 +2150,11 @@ interface PreparedDocument {
   pages: number;
   columnGroups: number;
   replaced: number;
+  // The timeline pages and the economics blocks between the stage page and
+  // the table pages (FR-12 as amended in the documents' chapter).
+  timelinePages: number;
+  economicsPages: number;
+  economicsItems: number;
 }
 
 let documentKind: DocumentKind | null = null;
@@ -2166,8 +2173,9 @@ function documentLocale(): string {
 // number.
 export function documentTable(): DocumentTable {
   const t = strings(state.prefs.lang);
-  // The documents leave the year series out for now (FR-64, the owner's
-  // ruling D9): their economics are a later pass.
+  // The assigned series columns are carried by the economics blocks, not by
+  // the table (FR-12 as amended in the documents' chapter, the explicit reversal of Pass
+  // 15's ruling D9).
   const series = effectiveSeries();
   const inSeries = new Set(SERIES_ROLES.flatMap((r) => (series[r] ? [...Object.values(series[r]!.columns), ...(series[r]!.total ? [series[r]!.total!] : [])] : [])));
   const columns = listColumnOrder(state.headers, state.roles).filter((h) => !state.hiddenHeaders.has(h) && !inSeries.has(h));
@@ -2192,8 +2200,94 @@ export function documentScene(): StageScene | null {
     markers,
     annotations: state.annotations.filter((a) => annotationShown(a)),
     legendTitle: t.legend,
-    legend: legendModel(t, state.statuses, shownProgramGroups(), colourLabels(), symbolLabels()),
+    // The stage page's legend is used-only, as the Presentation segment's is
+    // (FR-75 as amended in the documents' chapter).
+    legend: legendModel(t, state.statuses, shownProgramGroups(), colourLabels(), symbolLabels(), presentationLegendUse()),
   });
+}
+
+// Whether any shown item has a work phase that is drawn (FR-75 as amended
+// in the documents' chapter): the timeline pages of the documents carry the
+// phase entry then.
+function documentPhaseShown(): boolean {
+  return state.rows.some((row) => {
+    if (state.excluded.has(row)) return false;
+    const id = workPhaseOf(row);
+    const activity = id === undefined ? undefined : state.activities.get(row)!.find((a) => a.id === id);
+    return activity !== undefined && readDate(activity.start).kind === 'date' && readDate(activity.end).kind === 'date';
+  });
+}
+
+// The timeline figure of the documents (FR-12 as amended in the documents' chapter): the
+// shown items' schedule at the fitted window, with the used-only legend and
+// the work-phase entry. Null when no item is shown.
+function documentFigure(): TimelineFigure | null {
+  const t = strings(state.prefs.lang);
+  const { start, end } = state.roles;
+  const symbols = effectiveSymbols();
+  const items: FigureItem[] = timelineItems().map((item) => ({ ...item, symbol: symbols.get(rowById(item.id)!) ?? DEFAULT_SHAPE }));
+  if (items.length === 0) return null;
+  return {
+    model: buildTimeline(items, state.presentationOrder, state.areaValues, areaLocale()),
+    events: scheduleEvents(),
+    labels: {
+      title: t.presentationViewTimeline,
+      noDates: t.timelineNoDates,
+      noArea: t.numberingNoArea,
+      empty: t.timelineEmpty,
+      noRoles: start === undefined && end === undefined ? t.timelineNoRoles : null,
+      startOnly: t.timelineStartOnly,
+      endOnly: t.timelineEndOnly,
+      startHeader: start === undefined ? '' : labelOf(start),
+      endHeader: end === undefined ? '' : labelOf(end),
+      locale: areaLocale(),
+      activities: t.timelineActivities,
+      edited: t.activityEdited,
+      workPhase: t.legendWorkPhase,
+      events: t.eventPanel,
+      moreEvents: t.eventsMore,
+      eventsBefore: t.eventsBefore,
+      eventsAfter: t.eventsAfter,
+    },
+    legendTitle: t.legend,
+    legend: legendModel(t, state.statuses, shownProgramGroups(), colourLabels(), symbolLabels(), presentationLegendUse(), undefined, documentPhaseShown()),
+  };
+}
+
+// The economics blocks of the documents (FR-12 as amended in the documents' chapter, the
+// explicit reversal of Pass 15's D9): every shown item with economics.
+function documentEconomics(): { blocks: EconomicsBlock[]; labels: EconomicsPageLabels } {
+  const t = strings(state.prefs.lang);
+  const series = effectiveSeries();
+  const outcome = series.outcome?.name ?? '';
+  const forecast = series.forecast?.name ?? '';
+  const blocks: EconomicsBlock[] = [];
+  for (const n of numbered()) {
+    if (state.excluded.has(n.row)) continue;
+    const block = economicsBlock(n.label, itemLabel(n.row, n.label), n.row.values, series, itemSpan(n.row), state.currencyUnit);
+    if (block) blocks.push(block);
+  }
+  return {
+    blocks,
+    labels: {
+      title: t.economicsHeading,
+      name: '',
+      heading: t.economicsHeading,
+      close: t.close,
+      year: t.economicsYear,
+      budget: series.budget?.name ?? '',
+      outcome,
+      forecast,
+      track: outcome && forecast ? `${outcome} / ${forecast}` : outcome || forecast,
+      outside: t.economicsOutside,
+      noValue: t.economicsNoValue,
+      sumBeside: t.economicsSumBeside,
+      composition: t.economicsComposition,
+      compositionOnly: t.economicsCompositionOnly,
+      texts: t.economicsTexts,
+      span: t.economicsSpan,
+    },
+  };
 }
 
 function documentTexts(t: Strings) {
@@ -2212,18 +2306,58 @@ async function prepareDocument(kind: DocumentKind, scene: StageScene, table: Doc
   if (!src) return null;
   const t = strings(state.prefs.lang);
   const texts = documentTexts(t);
+  const fig = documentFigure();
+  const { blocks, labels: econLabels } = documentEconomics();
+  const fmt = { locale: areaLocale(), unit: state.currencyUnit };
   if (kind === 'pptx') {
-    // The slide image at twice the slide's size in points: 1920 by 1080
-    // pixels.
-    const frame = { width: PPTX_PAGE.width, height: PPTX_PAGE.height, margin: PPTX_PAGE.margin, footer: texts.slideFooter };
-    const image = await stagePagePng(scene, frame, 2, scene.background ? src : null);
+    // The slide images at twice the slide's size in points: 1920 by 1080
+    // pixels each — the stage, then the timeline pages, then the economics
+    // blocks (FR-12 as amended in the documents' chapter).
+    const frame: PageFrame = { width: PPTX_PAGE.width, height: PPTX_PAGE.height, margin: PPTX_PAGE.margin, footer: texts.slideFooter };
+    const stage = await stagePagePng(scene, frame, 2, scene.background ? src : null);
+    const images: PptxImage[] = [{ png: stage.png, description: t.documentImageDescription }];
+    let timelinePages = 0;
+    if (fig) {
+      const layout = layoutTimeline(fig, frame);
+      timelinePages = layout.pages.length;
+      for (const rows of layout.pages) {
+        const png = await pagePng(frame, 2, (p) => drawTimelinePage(p, fig, layout, rows, frame));
+        images.push({ png: png.png, description: t.documentTimelineImageDescription });
+      }
+    }
+    let economicsPages = 0;
+    if (blocks.length > 0) {
+      const layout = layoutEconomics(blocks, frame, econLabels, fmt);
+      economicsPages = layout.pages.length;
+      for (const page of layout.pages) {
+        const png = await pagePng(frame, 2, (p) => drawEconomicsPage(p, blocks, econLabels, fmt, layout, page, frame));
+        images.push({ png: png.png, description: t.documentEconomicsImageDescription });
+      }
+    }
     const tables = pptxTables(table, texts);
-    const bytes = buildPptxDocument(image.png, t.documentImageDescription, tables, texts.title, documentLocale(), new Date());
-    return { kind, bytes, scene, table, pages: 1 + tables.slides.length, columnGroups: tables.columnGroups, replaced: 0 };
+    const bytes = buildPptxDocument(images, tables, texts.title, documentLocale(), new Date());
+    return { kind, bytes, scene, table, pages: images.length + tables.slides.length, columnGroups: tables.columnGroups, replaced: 0, timelinePages, economicsPages, economicsItems: blocks.length };
   }
   const background = scene.background ? await backgroundJpeg(src, scene.background.image) : null;
-  const pdf = buildPdf(scene, table, background, texts, new Date());
-  return { kind, bytes: pdf.bytes, scene, table, pages: pdf.pages, columnGroups: pdf.columnGroups, replaced: pdf.replaced };
+  // The extra page kinds between the stage page and the table pages: the
+  // timeline pages, then the economics blocks. The layout frame reserves the
+  // footer's space, as the pages drawn into the document do.
+  const frame: PageFrame = { width: PDF_PAGE.width, height: PDF_PAGE.height, margin: PDF_PAGE.margin, footer: 'footer' };
+  const extras: DocumentExtraPage[] = [];
+  let timelinePages = 0;
+  if (fig) {
+    const layout = layoutTimeline(fig, frame);
+    timelinePages = layout.pages.length;
+    for (const rows of layout.pages) extras.push({ draw: (p, f) => drawTimelinePage(p, fig, layout, rows, f) });
+  }
+  let economicsPages = 0;
+  if (blocks.length > 0) {
+    const layout = layoutEconomics(blocks, frame, econLabels, fmt);
+    economicsPages = layout.pages.length;
+    for (const page of layout.pages) extras.push({ draw: (p, f) => drawEconomicsPage(p, blocks, econLabels, fmt, layout, page, f) });
+  }
+  const pdf = buildPdf(scene, table, background, texts, new Date(), extras);
+  return { kind, bytes: pdf.bytes, scene, table, pages: pdf.pages, columnGroups: pdf.columnGroups, replaced: pdf.replaced, timelinePages, economicsPages, economicsItems: blocks.length };
 }
 
 async function openDocumentDialog(kind: DocumentKind): Promise<void> {
@@ -2307,8 +2441,10 @@ function renderDocument(): void {
     item(fill(t.documentStage, { markers: doc.scene.markers.length, annotations: doc.scene.annotations.length })),
     item(doc.scene.background && bg ? fill(t.documentBackground, { width: Math.round(doc.scene.background.image.width), height: Math.round(doc.scene.background.image.height) }) : t.documentNoBackground),
     item(t.documentLegend),
-    item(fill(pptx ? t.documentTableSlides : t.documentTable, { items: shownItems, columns, pages: doc.pages - 1 })),
   ];
+  if (doc.timelinePages > 0) contains.push(item(fill(pptx ? t.documentTimelineSlides : t.documentTimeline, { items: shownItems, pages: doc.timelinePages })));
+  if (doc.economicsPages > 0) contains.push(item(fill(pptx ? t.documentEconomicsSlides : t.documentEconomics, { items: doc.economicsItems, pages: doc.economicsPages })));
+  contains.push(item(fill(pptx ? t.documentTableSlides : t.documentTable, { items: shownItems, columns, pages: doc.pages - 1 - doc.timelinePages - doc.economicsPages })));
   if (doc.columnGroups > 1) contains.push(item(fill(t.documentColumnGroups, { groups: doc.columnGroups })));
   el('document-contains').replaceChildren(...contains);
   const hiddenColumns = state.headers.filter((h) => state.hiddenHeaders.has(h)).length;

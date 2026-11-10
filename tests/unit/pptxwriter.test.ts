@@ -41,8 +41,8 @@ describe('the zip writer (FR-51)', () => {
   });
 });
 
-function content(tables: PptxContent['tables'] = []): PptxContent {
-  return { title: 'Plan & översikt <1>', image: { png, description: 'The stage' }, tables, font: 10, padding: 5, margin: 30, titleHeight: 28, lang: 'sv-SE', created: AT };
+function content(tables: PptxContent['tables'] = [], images: PptxContent['images'] = [{ png, description: 'The stage' }]): PptxContent {
+  return { title: 'Plan & översikt <1>', images, tables, font: 10, padding: 5, margin: 30, titleHeight: 28, lang: 'sv-SE', created: AT };
 }
 
 function parts(bytes: Uint8Array): Map<string, string> {
@@ -100,6 +100,25 @@ describe('the PowerPoint writer: package structure (FR-51)', () => {
     expect(first.getElementsByTagName('a:blip')[0].getAttribute('r:embed')).toBe('rId2');
     expect(p.get('ppt/slides/_rels/slide1.xml.rels')).toContain('Target="../media/image1.png"');
     expect(unzipStored(buildPptx(content())).find((e) => e.name === 'ppt/media/image1.png')!.data).toEqual(png);
+  });
+
+  test('several image slides each carry their own picture part and relationship (FR-12 as amended in v1.13.0)', () => {
+    const images = [{ png, description: 'The stage' }, { png, description: 'The timeline page' }, { png, description: 'An economics page' }];
+    const p = parts(buildPptx(content(pptxTables(sample, texts).slides, images)));
+    expect(xml(p.get('ppt/presentation.xml')!).getElementsByTagName('p:sldId')).toHaveLength(4);
+    for (let i = 0; i < 3; i++) {
+      const s = xml(p.get(`ppt/slides/slide${i + 1}.xml`)!);
+      expect(s.getElementsByTagName('p:pic')).toHaveLength(1);
+      expect(s.getElementsByTagName('a:blip')[0].getAttribute('r:embed')).toBe(`rId${i + 2}`);
+      expect(p.get(`ppt/slides/_rels/slide${i + 1}.xml.rels`)).toContain(`Target="../media/image${i + 1}.png"`);
+      expect(p.has(`ppt/media/image${i + 1}.png`)).toBe(true);
+    }
+    // The table slides follow the image slides, with no image relationship.
+    expect(p.get('ppt/slides/_rels/slide4.xml.rels')).not.toContain('media/');
+    expect(xml(p.get('ppt/slides/slide4.xml')!).getElementsByTagName('a:tbl')).toHaveLength(1);
+    // Each image carries its own alternative text.
+    expect(p.get('ppt/slides/slide2.xml')).toContain('descr="The timeline page"');
+    expect(p.get('ppt/slides/slide3.xml')).toContain('descr="An economics page"');
   });
 
   test('the table slides hold native tables with the headings and every value, lines as laid out', () => {

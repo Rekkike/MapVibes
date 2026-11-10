@@ -3,11 +3,13 @@ import { join } from 'node:path';
 import { describe, expect, test } from 'vitest';
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import * as pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.mjs';
-import { buildPdf, layoutTable, paginateTable, PALETTE, PDF_PAGE, sceneFromStage, TABLE, wrapValue, type DocumentTable, type StageInput } from '../../src/documents';
-import { legendModel } from '../../src/legend';
+import { buildPdf, drawFooter, layoutLegend, layoutTable, paginateTable, PALETTE, PDF_PAGE, PdfPainter, sceneFromStage, TABLE, wrapValue, type DocumentExtraPage, type DocumentTable, type StageInput } from '../../src/documents';
+import { legendModel, type SeriesLegend } from '../../src/legend';
 import { en } from '../../src/i18n';
-import { textWidth } from '../../src/pdfwriter';
+import { PdfDocument, textWidth } from '../../src/pdfwriter';
 import type { Annotation } from '../../src/annotations';
+import type { RowColour } from '../../src/dataset';
+import type { MarkerSymbol } from '../../src/symbols';
 
 (globalThis as { pdfjsWorker?: unknown }).pdfjsWorker = pdfjsWorker;
 
@@ -176,5 +178,50 @@ describe('the PDF document (FR-12, FR-50)', () => {
   test('characters the fonts cannot show are counted across the whole document', () => {
     const result = buildPdf(sceneFromStage(input()), table(1, 2, (r) => (r === 0 ? 'Ωμέγα' : 'plain')), null, texts, new Date());
     expect(result.replaced).toBe(5);
+  });
+
+  test('the extra page kinds sit between the stage page and the table pages, each with its footer (FR-12 as amended in v1.13.0)', async () => {
+    const extras: DocumentExtraPage[] = [0, 1].map((n) => ({
+      draw: (p, frame) => {
+        p.fillColour(PALETTE.fg);
+        p.text(frame.margin, frame.margin + 10, `Extra page ${n + 1}`, 'bold', 11);
+        drawFooter(p, frame);
+      },
+    }));
+    const result = buildPdf(sceneFromStage(input()), table(3, 70), null, texts, new Date(), extras);
+    expect(result.extraPages).toBe(2);
+    expect(result.pages).toBe(1 + 2 + result.tablePages);
+    const pages = await read(result.bytes);
+    expect(pages[0].endsWith(`MapVibes · page 1 of ${result.pages}`)).toBe(true);
+    expect(pages[1]).toContain('Extra page 1');
+    expect(pages[1].endsWith(`MapVibes · page 2 of ${result.pages}`)).toBe(true);
+    expect(pages[2]).toContain('Extra page 2');
+    expect(pages[2].endsWith(`MapVibes · page 3 of ${result.pages}`)).toBe(true);
+    expect(pages[3].startsWith('Items 1 to ')).toBe(true);
+    expect(pages[3].endsWith(`MapVibes · page 4 of ${result.pages}`)).toBe(true);
+  });
+});
+
+describe("the documents' legend (FR-75 as amended in v1.13.0)", () => {
+  test('the used-only filter drops unused sections and entries; the phase and series swatches are drawn', () => {
+    const used = { colours: new Set<RowColour>(['green']), symbols: new Set<MarkerSymbol>(['circle']), statuses: new Set<string>(), groups: new Set<number>() };
+    const series: SeriesLegend = { names: { budget: 'Budget', forecast: 'Forecast', outcome: 'Outcome' }, used: new Set(['budget', 'outcome']) };
+    const sections = legendModel(en, [{ name: 'Planned', symbol: 'bulb' }], [{ index: 1, name: 'Program' }], undefined, undefined, used, series, true);
+    expect(sections.map((s) => s.kind)).toEqual(['colours', 'shapes', 'series', 'phase']);
+    const layout = layoutLegend(en.legend, sections, 700);
+    const doc = new PdfDocument({ title: 't' });
+    const page = doc.addPage(841.89, 595.28);
+    layout.draw(new PdfPainter(page, null), 28, 28);
+    const content = page.content();
+    // The text is written as WinAnsi hex codes; 'Budget' is 427564676574.
+    const hex = (s: string) => [...s].map((c) => c.charCodeAt(0).toString(16).padStart(2, '0')).join('');
+    // The hatched phase swatch clips its hatch lines; the series bars are drawn.
+    expect(content).toContain('W n');
+    expect(content).toContain(hex('Budget'));
+    expect(content).toContain(hex('Outcome'));
+    expect(content).not.toContain(hex('Forecast'));
+    expect(content).not.toContain(hex('Planned'));
+    expect(content).not.toContain(hex('Program'));
+    doc.toBytes();
   });
 });
