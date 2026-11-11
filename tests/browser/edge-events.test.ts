@@ -47,8 +47,8 @@ beforeAll(async () => {
   await page.click('#event-panel-summary');
   await page.waitForTimeout(300);
   for (const [date, label] of [
-    ['2015-03', 'Early'],
-    ['2035-06', 'Far review'],
+    ['2022-03', 'Early'],
+    ['2042-06', 'Far review'],
   ] as const) {
     await page.fill('#event-date-new', date);
     await page.fill('#event-label-new', label);
@@ -130,8 +130,8 @@ describe.each([
       const m = await readStrip(page, view);
       // One chip at each end, in the strip's first row, as small as the "+n" chip.
       expect(m.edges.map((e) => [e.side, e.text, e.title])).toEqual([
-        ['before', '+1', 'Events before the shown window: 2015-03: Early'],
-        ['after', '+1', 'Events after the shown window: 2035-06: Far review'],
+        ['before', '+1', 'Events before the shown window: 2022-03: Early'],
+        ['after', '+1', 'Events after the shown window: 2042-06: Far review'],
       ]);
       for (const e of m.edges) {
         expect(e.w).toBe(28);
