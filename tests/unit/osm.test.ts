@@ -95,7 +95,8 @@ describe('feature classes and the render plan (FR-31)', () => {
   });
 
   test('ways referring to missing nodes are skipped, not invented', () => {
-    const text = '<osm><node id="1" lat="0" lon="0"/><node id="2" lat="0.001" lon="0.001"/>' +
+    const text =
+      '<osm><node id="1" lat="0" lon="0"/><node id="2" lat="0.001" lon="0.001"/>' +
       '<way id="1"><nd ref="1"/><nd ref="2"/><tag k="highway" v="residential"/></way>' +
       '<way id="2"><nd ref="1"/><nd ref="99"/><tag k="highway" v="residential"/></way></osm>';
     expect(planRender(parseOsm(text)).shapes).toHaveLength(1);

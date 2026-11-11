@@ -1,5 +1,14 @@
 import { describe, expect, test } from 'vitest';
-import { clonePreset, findMatchingPreset, parsePresets, presetConfiguration, presetMatches, removePreset, upsertPreset, type ColumnPreset } from '../../src/presets';
+import {
+  clonePreset,
+  findMatchingPreset,
+  parsePresets,
+  presetConfiguration,
+  presetMatches,
+  removePreset,
+  upsertPreset,
+  type ColumnPreset,
+} from '../../src/presets';
 
 const p = (name: string, headers: string[], extra: Partial<ColumnPreset> = {}): ColumnPreset => ({
   name,

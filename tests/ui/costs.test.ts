@@ -12,7 +12,7 @@ type App = Awaited<ReturnType<typeof mountApp>>;
 
 const root = () => byId('presentation-costs');
 const rows = () => [...root().querySelectorAll<HTMLElement>('.timeline-lines > li')];
-const line = (name: string) => rows().find((li) => li.classList.contains('timeline-line') && li.textContent!.includes(name))!;
+const line = (name: string) => rows().find((li) => li.classList.contains('timeline-line') && li.textContent.includes(name))!;
 const segs = (row: HTMLElement) => [...row.querySelectorAll<HTMLElement>('.timeline-seg')];
 const totals = () => root().querySelector<HTMLElement>('.timeline-totals')!;
 
@@ -75,7 +75,14 @@ describe('the costs view (FR-79)', () => {
 
   test('each item is a line; each year with a value is one span per series, in the sub-lanes', () => {
     byId('pres-mode-costs').click();
-    expect(rows().map((li) => (li.classList.contains('timeline-totals') ? '# totals' : li.querySelector('.timeline-title')!.textContent))).toEqual(['# totals', 'Long item', 'No economics', 'Budget only', 'Gaps', 'Outside']);
+    expect(rows().map((li) => (li.classList.contains('timeline-totals') ? '# totals' : li.querySelector('.timeline-title')!.textContent))).toEqual([
+      '# totals',
+      'Long item',
+      'No economics',
+      'Budget only',
+      'Gaps',
+      'Outside',
+    ]);
     // E-01: thirteen budget years, thirteen forecast years, five outcome years.
     const long = segs(line('Long item'));
     expect(long).toHaveLength(31);
@@ -115,7 +122,11 @@ describe('the costs view (FR-79)', () => {
     expect(none.querySelector('.timeline-chip')!.getAttribute('aria-label')).toBe('2: No economics. no amounts');
     const gaps = line('Gaps');
     // Budget 2026 and the forecasts of 2024 and 2026; "ca 1 M" has no bar.
-    expect(segs(gaps).map((s) => `${s.dataset.series} ${s.querySelector('.timeline-seg-label')!.textContent}`)).toEqual(['forecast 200', 'budget 300', 'forecast 310']);
+    expect(segs(gaps).map((s) => `${s.dataset.series} ${s.querySelector('.timeline-seg-label')!.textContent}`)).toEqual([
+      'forecast 200',
+      'budget 300',
+      'forecast 310',
+    ]);
     expect(gaps.querySelector('.timeline-chip')!.getAttribute('aria-label')).toBe(
       '4: Gaps. 2024: Prognos 200,000 SEK; 2026: Budget 300,000 SEK, Prognos 310,000 SEK. Not numbers, shown as typed: Budget 2024: ca 1 M',
     );
@@ -136,7 +147,9 @@ describe('the costs view (FR-79)', () => {
     expect(at('forecast', 2026).title).toBe('Prognos 2026: 1,050,000 SEK');
     expect(at('forecast', 2026).dataset.share).toBe('0.7500');
     expect(at('outcome', 2020).dataset.lane).toBe('2');
-    expect(totals().getAttribute('aria-label')).toContain('The totals have their own scale; their bars are not comparable by width with the bars of the items.');
+    expect(totals().getAttribute('aria-label')).toContain(
+      'The totals have their own scale; their bars are not comparable by width with the bars of the items.',
+    );
     expect(totals().getAttribute('aria-label')).toContain('2026: Budget 1,400,000 SEK, Prognos 1,050,000 SEK');
   });
 
@@ -157,7 +170,7 @@ describe('the costs view (FR-79)', () => {
     expect(app.captureWorkState().costsView).toBeNull();
   });
 
-  test('the saved view is the costs view\'s own window and first line, beside the timeline\'s', async () => {
+  test("the saved view is the costs view's own window and first line, beside the timeline's", async () => {
     byId('pres-mode-costs').click();
     byId('pres-zoom-in').click();
     const saved = app.captureWorkState();
@@ -177,7 +190,14 @@ describe('the costs view (FR-79)', () => {
   test('the order is shared with the timeline and the list', () => {
     byId('pres-mode-costs').click();
     choose(byId<HTMLSelectElement>('pres-order'), 'start');
-    expect(rows().map((li) => (li.classList.contains('timeline-totals') ? '# totals' : li.querySelector('.timeline-title')!.textContent))).toEqual(['# totals', 'Long item', 'No economics', 'Gaps', 'Budget only', 'Outside']);
+    expect(rows().map((li) => (li.classList.contains('timeline-totals') ? '# totals' : li.querySelector('.timeline-title')!.textContent))).toEqual([
+      '# totals',
+      'Long item',
+      'No economics',
+      'Gaps',
+      'Budget only',
+      'Outside',
+    ]);
   });
 
   test('an item switched off is absent, from the lines and from the totals', () => {
@@ -186,10 +206,12 @@ describe('the costs view (FR-79)', () => {
     expect(before).toBe('Budget 2026: 1,400,000 SEK');
     document.querySelectorAll<HTMLInputElement>('#visibility-list input[type="checkbox"]')[0].click();
     expect(line('Long item')).toBeUndefined();
-    expect(segs(totals()).find((s) => s.dataset.series === 'budget' && Number(s.dataset.from) === dayNumber(2026, 1, 1))!.title).toBe('Budget 2026: 650,000 SEK');
+    expect(segs(totals()).find((s) => s.dataset.series === 'budget' && Number(s.dataset.from) === dayNumber(2026, 1, 1))!.title).toBe(
+      'Budget 2026: 650,000 SEK',
+    );
   });
 
-  test('a line\'s chip opens the item\'s card, unchanged', () => {
+  test("a line's chip opens the item's card, unchanged", () => {
     byId('pres-mode-costs').click();
     line('Budget only').querySelector<HTMLButtonElement>('.timeline-chip')!.click();
     const card = byId('presentation-card');
@@ -228,7 +250,9 @@ describe('the costs view without series (FR-79)', () => {
     expect(totals()).toBeNull();
     expect(rows().filter((li) => li.classList.contains('timeline-line'))).toHaveLength(5);
     expect(root().querySelectorAll('.timeline-seg')).toHaveLength(0);
-    expect(root().querySelector('.timeline-message')!.textContent).toBe('Assign year series to budget, forecast, or outcome in the Information segment to show the costs by year.');
+    expect(root().querySelector('.timeline-message')!.textContent).toBe(
+      'Assign year series to budget, forecast, or outcome in the Information segment to show the costs by year.',
+    );
   });
 });
 
@@ -245,7 +269,7 @@ describe("the costs view's series key (FR-79 as amended in v1.11.1)", () => {
     byId('pres-mode-costs').click();
     const entries = key();
     expect(groupLabel()).toBe('Series');
-    expect(entries.map((e) => [e.dataset.series, e.textContent!.trim()])).toEqual([
+    expect(entries.map((e) => [e.dataset.series, e.textContent.trim()])).toEqual([
       ['budget', 'Budget'],
       ['forecast', 'Prognos'],
       ['outcome', 'Utfall'],
@@ -293,7 +317,7 @@ describe("the costs view's series key (FR-79 as amended in v1.11.1)", () => {
     await flush();
     expect(document.documentElement.dataset.mode).toBe('viewer');
     expect(byId('presentation-stage').dataset.view).toBe('costs');
-    expect(key().map((e) => [e.dataset.series, e.textContent!.trim()])).toEqual([
+    expect(key().map((e) => [e.dataset.series, e.textContent.trim()])).toEqual([
       ['budget', 'Budget'],
       ['forecast', 'Prognos'],
       ['outcome', 'Utfall'],

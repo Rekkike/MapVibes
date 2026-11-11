@@ -1,10 +1,8 @@
 // Work-state file (FR-13). The complete work state is written to, and read
 // from, a single local JSON file on explicit Save and Open only. The file
-// carries a schema version. Version 7 is written; version 1 files (v0.4.0),
-// version 2 files (v0.5.x), version 3 files (v0.6.0), version 4 files
-// (v0.7.0), version 5 files (v0.8.0 to v1.0.0), and version 6 files (v1.1.0
-// and v1.2.0) are read and migrated; a file with any other version is
-// rejected.
+// carries a schema version. Version 12 is written; files of versions 1 to 12
+// are read and migrated (what each version adds is recorded below); a file
+// with any other version is rejected.
 //
 // Schema version 2 adds to version 1: role assignments by column key
 // (replacing the version 1 column mapping, as all columns are now kept), the
@@ -330,9 +328,20 @@ export function serialiseWorkState(state: WorkState, savedAt: Date): string {
       edited: { ...r.edited },
       comments: r.comments.map((c) => ({ date: c.date, text: c.text, ...(c.edited ? { edited: c.edited } : {}) })),
       ...(r.activities !== undefined && r.activities.length > 0
-        ? { activities: r.activities.map((a) => ({ id: a.id, label: a.label, start: a.start, end: a.end, progress: a.progress, ...(a.edited ? { edited: true } : {}) })) }
+        ? {
+            activities: r.activities.map((a) => ({
+              id: a.id,
+              label: a.label,
+              start: a.start,
+              end: a.end,
+              progress: a.progress,
+              ...(a.edited ? { edited: true } : {}),
+            })),
+          }
         : {}),
-      ...(r.activityImport !== undefined ? { activityImport: { file: r.activityImport.file, page: r.activityImport.page, columns: { ...r.activityImport.columns } } } : {}),
+      ...(r.activityImport !== undefined
+        ? { activityImport: { file: r.activityImport.file, page: r.activityImport.page, columns: { ...r.activityImport.columns } } }
+        : {}),
       ...(r.workPhase !== undefined ? { workPhase: r.workPhase } : {}),
     })),
     background: state.background
@@ -404,32 +413,44 @@ function invalid(kind: ProblemKind, field: string): never {
 }
 
 function obj(value: unknown, where: string): Json {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) invalid('notObject', where);
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    invalid('notObject', where);
+  }
   return value as Json;
 }
 
 function arr(value: unknown, where: string): unknown[] {
-  if (!Array.isArray(value)) invalid('notList', where);
+  if (!Array.isArray(value)) {
+    invalid('notList', where);
+  }
   return value;
 }
 
 function str(value: unknown, where: string): string {
-  if (typeof value !== 'string') invalid('notText', where);
+  if (typeof value !== 'string') {
+    invalid('notText', where);
+  }
   return value;
 }
 
 function num(value: unknown, where: string): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) invalid('notNumber', where);
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    invalid('notNumber', where);
+  }
   return value;
 }
 
 function bool(value: unknown, where: string): boolean {
-  if (typeof value !== 'boolean') invalid('notBoolean', where);
+  if (typeof value !== 'boolean') {
+    invalid('notBoolean', where);
+  }
   return value;
 }
 
 function oneOf<T extends string>(value: unknown, allowed: readonly T[], where: string): T {
-  if (typeof value !== 'string' || !(allowed as readonly string[]).includes(value)) invalid('unknownValue', where);
+  if (typeof value !== 'string' || !(allowed as readonly string[]).includes(value)) {
+    invalid('unknownValue', where);
+  }
   return value as T;
 }
 
@@ -451,12 +472,16 @@ export function parseWorkState(text: string): WorkState {
 
   const columns = obj(file.columns, 'columns');
   const headers = arr(columns.headers, 'columns.headers').map((h, i) => str(h, `columns.headers[${i}]`));
-  if (new Set(headers).size !== headers.length) invalid('duplicateEntry', 'columns.headers');
+  if (new Set(headers).size !== headers.length) {
+    invalid('duplicateEntry', 'columns.headers');
+  }
   const roles = version === 1 ? migrateMappingV1(columns, headers) : parseRolesV2(columns, headers);
   const manualColumns = version >= 3 ? parseManualColumns(columns, headers) : [];
   const hiddenHeaders = arr(columns.hiddenInList, 'columns.hiddenInList').map((h, i) => {
     const header = str(h, `columns.hiddenInList[${i}]`);
-    if (!headers.includes(header)) invalid('notAColumn', `columns.hiddenInList[${i}]`);
+    if (!headers.includes(header)) {
+      invalid('notAColumn', `columns.hiddenInList[${i}]`);
+    }
     return header;
   });
 
@@ -465,7 +490,9 @@ export function parseWorkState(text: string): WorkState {
     const valuesIn = obj(o.values, `rows[${i}].values`);
     const values: Record<string, string> = {};
     for (const [k, v] of Object.entries(valuesIn)) {
-      if (!headers.includes(k)) invalid('notAColumn', `rows[${i}].values`);
+      if (!headers.includes(k)) {
+        invalid('notAColumn', `rows[${i}].values`);
+      }
       values[k] = str(v, `rows[${i}].values`);
     }
     // Versions 1 and 2 have no manual rows.
@@ -481,12 +508,18 @@ export function parseWorkState(text: string): WorkState {
         activities = arr(o.activities, `rows[${i}].activities`).map((a, j) => {
           const ao = obj(a, `rows[${i}].activities[${j}]`);
           const progress = ao.progress === null ? null : num(ao.progress, `rows[${i}].activities[${j}].progress`);
-          if (progress !== null && (progress < 0 || progress > 100)) invalid('notNumber', `rows[${i}].activities[${j}].progress`);
+          if (progress !== null && (progress < 0 || progress > 100)) {
+            invalid('notNumber', `rows[${i}].activities[${j}].progress`);
+          }
           // Version 12: the id and the edited mark; earlier versions take
           // ids by their order and carry no mark.
           const id = version >= 12 ? str(ao.id, `rows[${i}].activities[${j}].id`) : activityId(j);
-          if (id === '') invalid('duplicateEntry', `rows[${i}].activities[${j}].id`);
-          if (version >= 12 && ao.edited !== undefined && ao.edited !== true) invalid('notBoolean', `rows[${i}].activities[${j}].edited`);
+          if (id === '') {
+            invalid('duplicateEntry', `rows[${i}].activities[${j}].id`);
+          }
+          if (version >= 12 && ao.edited !== undefined && ao.edited !== true) {
+            invalid('notBoolean', `rows[${i}].activities[${j}].edited`);
+          }
           return {
             id,
             ...(version >= 12 && ao.edited === true ? { edited: true as const } : {}),
@@ -497,14 +530,18 @@ export function parseWorkState(text: string): WorkState {
           };
         });
         activities.forEach((a, j) => {
-          if (activities!.findIndex((b) => b.id === a.id) !== j) invalid('duplicateEntry', `rows[${i}].activities[${j}].id`);
+          if (activities!.findIndex((b) => b.id === a.id) !== j) {
+            invalid('duplicateEntry', `rows[${i}].activities[${j}].id`);
+          }
         });
       }
       if (o.activityImport !== undefined) {
         const io2 = obj(o.activityImport, `rows[${i}].activityImport`);
         const cols = obj(io2.columns, `rows[${i}].activityImport.columns`);
         const columns: Record<string, string> = {};
-        for (const [k, v] of Object.entries(cols)) columns[str(k, `rows[${i}].activityImport.columns key`)] = str(v, `rows[${i}].activityImport.columns.${k}`);
+        for (const [k, v] of Object.entries(cols)) {
+          columns[str(k, `rows[${i}].activityImport.columns key`)] = str(v, `rows[${i}].activityImport.columns.${k}`);
+        }
         activityImport = { file: str(io2.file, `rows[${i}].activityImport.file`), page: num(io2.page, `rows[${i}].activityImport.page`), columns };
       }
     }
@@ -513,7 +550,9 @@ export function parseWorkState(text: string): WorkState {
     let workPhase: string | undefined;
     if (version >= 12 && o.workPhase !== undefined) {
       workPhase = str(o.workPhase, `rows[${i}].workPhase`);
-      if (!(activities ?? []).some((a) => a.id === workPhase)) invalid('noSuchActivity', `rows[${i}].workPhase`);
+      if (!(activities ?? []).some((a) => a.id === workPhase)) {
+        invalid('noSuchActivity', `rows[${i}].workPhase`);
+      }
     }
     return {
       values,
@@ -529,7 +568,9 @@ export function parseWorkState(text: string): WorkState {
   });
   const expected = rowNumbers(rows);
   arr(file.rows, 'rows').forEach((r, i) => {
-    if ((r as Json).number !== expected[i]) invalid('numbering', `rows[${i}].number`);
+    if ((r as Json).number !== expected[i]) {
+      invalid('numbering', `rows[${i}].number`);
+    }
   });
 
   let background: Background | null = null;
@@ -538,17 +579,27 @@ export function parseWorkState(text: string): WorkState {
     const src = str(b.dataUrl, 'background.dataUrl');
     // Only embedded image data is accepted: a URL would make the browser
     // fetch a resource, which the privacy constraints forbid.
-    if (!/^data:image\/[a-z0-9.+-]+(;[a-z0-9=.+-]+)*,/i.test(src)) invalid('notEmbedded', 'background.dataUrl');
+    if (!/^data:image\/[a-z0-9.+-]+(;[a-z0-9=.+-]+)*,/i.test(src)) {
+      invalid('notEmbedded', 'background.dataUrl');
+    }
     const width = num(b.width, 'background.width');
     const height = num(b.height, 'background.height');
-    if (width <= 0 || height <= 0) invalid('notPositive', 'background');
+    if (width <= 0 || height <= 0) {
+      invalid('notPositive', 'background');
+    }
     background = { src, width, height };
     // Version 6: the projection of a background rendered from OpenStreetMap
     // data (FR-49).
     if (version >= 6 && b.projection !== undefined) {
       const p = obj(b.projection, 'background.projection');
-      const projection: MercatorProjection = { x0: num(p.x0, 'background.projection.x0'), y1: num(p.y1, 'background.projection.y1'), scale: num(p.scale, 'background.projection.scale') };
-      if (projection.scale <= 0) invalid('notPositive', 'background.projection.scale');
+      const projection: MercatorProjection = {
+        x0: num(p.x0, 'background.projection.x0'),
+        y1: num(p.y1, 'background.projection.y1'),
+        scale: num(p.scale, 'background.projection.scale'),
+      };
+      if (projection.scale <= 0) {
+        invalid('notPositive', 'background.projection.scale');
+      }
       background.projection = projection;
     }
   }
@@ -557,9 +608,15 @@ export function parseWorkState(text: string): WorkState {
   const markers: WorkStateMarker[] = arr(file.markers, 'markers').map((m, i) => {
     const o = obj(m, `markers[${i}]`);
     const row = num(o.row, `markers[${i}].row`);
-    if (!Number.isInteger(row) || row < 0 || row >= rows.length) invalid('noSuchRow', `markers[${i}].row`);
-    if (rows[row].removed) invalid('removedRow', `markers[${i}]`);
-    if (placed.has(row)) invalid('duplicateMarker', `markers[${i}]`);
+    if (!Number.isInteger(row) || row < 0 || row >= rows.length) {
+      invalid('noSuchRow', `markers[${i}].row`);
+    }
+    if (rows[row].removed) {
+      invalid('removedRow', `markers[${i}]`);
+    }
+    if (placed.has(row)) {
+      invalid('duplicateMarker', `markers[${i}]`);
+    }
     placed.add(row);
     let symbol: MarkerSymbol | null = null;
     if (version >= 4) {
@@ -571,19 +628,27 @@ export function parseWorkState(text: string): WorkState {
     }
     return { row, position: { x: num(o.x, `markers[${i}].x`), y: num(o.y, `markers[${i}].y`) }, symbol };
   });
-  if (markers.length > 0 && !background) invalid('markersWithoutBackground', 'markers');
+  if (markers.length > 0 && !background) {
+    invalid('markersWithoutBackground', 'markers');
+  }
 
   const view = obj(file.view, 'view');
   const vp = obj(view.viewport, 'view.viewport');
   const viewport = { scale: num(vp.scale, 'view.viewport.scale'), x: num(vp.x, 'view.viewport.x'), y: num(vp.y, 'view.viewport.y') };
-  if (viewport.scale <= 0) invalid('notPositive', 'view.viewport.scale');
+  if (viewport.scale <= 0) {
+    invalid('notPositive', 'view.viewport.scale');
+  }
   const list = obj(view.list, 'view.list');
   const sortIn = obj(list.sort, 'view.list.sort');
   const sortHeader = sortIn.header === null ? null : str(sortIn.header, 'view.list.sort.header');
-  if (sortHeader !== null && !headers.includes(sortHeader)) invalid('notAColumn', 'view.list.sort.header');
+  if (sortHeader !== null && !headers.includes(sortHeader)) {
+    invalid('notAColumn', 'view.list.sort.header');
+  }
   const filterIn = obj(list.filter, 'view.list.filter');
   const filterHeader = str(filterIn.header, 'view.list.filter.header');
-  if (filterHeader !== '' && !headers.includes(filterHeader)) invalid('notAColumn', 'view.list.filter.header');
+  if (filterHeader !== '' && !headers.includes(filterHeader)) {
+    invalid('notAColumn', 'view.list.filter.header');
+  }
 
   // Version 1 has no presentation toggles and no presets.
   const excluded: number[] = [];
@@ -592,20 +657,28 @@ export function parseWorkState(text: string): WorkState {
     const presentation = obj(file.presentation, 'presentation');
     for (const [i, h] of arr(presentation.hidden, 'presentation.hidden').entries()) {
       const row = num(h, `presentation.hidden[${i}]`);
-      if (!Number.isInteger(row) || row < 0 || row >= rows.length) invalid('noSuchRow', `presentation.hidden[${i}]`);
-      if (rows[row].removed) invalid('removedRow', `presentation.hidden[${i}]`);
-      if (excluded.includes(row)) invalid('duplicateEntry', `presentation.hidden[${i}]`);
+      if (!Number.isInteger(row) || row < 0 || row >= rows.length) {
+        invalid('noSuchRow', `presentation.hidden[${i}]`);
+      }
+      if (rows[row].removed) {
+        invalid('removedRow', `presentation.hidden[${i}]`);
+      }
+      if (excluded.includes(row)) {
+        invalid('duplicateEntry', `presentation.hidden[${i}]`);
+      }
       excluded.push(row);
     }
     const parsed = parsePresets(file.presets);
-    if (parsed === null) invalid('invalidPresets', 'presets');
+    if (parsed === null) {
+      invalid('invalidPresets', 'presets');
+    }
     presets = parsed;
   }
 
   // Versions 1 to 3 have no vocabularies, and the toggle was not yet there.
   let areaValues: string[] = [];
   let programValues: string[] = [];
-  let colourLabels: Partial<Record<RowColour, string>> = {};
+  const colourLabels: Partial<Record<RowColour, string>> = {};
   const symbolLabels: Partial<Record<MarkerSymbol, string>> = {};
   // Version 7: the symbol labels (FR-54).
   if (version >= 7) {
@@ -622,9 +695,13 @@ export function parseWorkState(text: string): WorkState {
   if (version >= 4) {
     const vocab = obj(file.vocabularies, 'vocabularies');
     const areas = parseValueList(vocab.areas);
-    if (areas === null) invalid('invalidVocabulary', 'vocabularies.areas');
+    if (areas === null) {
+      invalid('invalidVocabulary', 'vocabularies.areas');
+    }
     const parsedStatuses = parseStatuses(vocab.statuses, isSymbol);
-    if (parsedStatuses === null) invalid('invalidVocabulary', 'vocabularies.statuses');
+    if (parsedStatuses === null) {
+      invalid('invalidVocabulary', 'vocabularies.statuses');
+    }
     areaValues = areas;
     statuses = parsedStatuses;
     symbolsFromStatus = bool(file.symbolsFromStatus, 'symbolsFromStatus');
@@ -633,7 +710,9 @@ export function parseWorkState(text: string): WorkState {
   if (version >= 6) {
     const vocab = obj(file.vocabularies, 'vocabularies');
     const programs = parseValueList(vocab.programs);
-    if (programs === null) invalid('invalidVocabulary', 'vocabularies.programs');
+    if (programs === null) {
+      invalid('invalidVocabulary', 'vocabularies.programs');
+    }
     programValues = programs;
     const labels = obj(file.colourLabels, 'colourLabels');
     for (const [colour, label] of Object.entries(labels)) {
@@ -647,10 +726,14 @@ export function parseWorkState(text: string): WorkState {
       // this work (as the demo's choice kept by a new list before v1.3.1):
       // it opens as no choice, with the full defaults (FR-46 as amended in
       // v1.3.1).
-      if (glanceColumns.some((h) => !headers.includes(h))) glanceColumns = null;
+      if (glanceColumns.some((h) => !headers.includes(h))) {
+        glanceColumns = null;
+      }
     }
     annotations = arr(file.annotations, 'annotations').map((a, i) => parseAnnotation(a, `annotations[${i}]`, rows.length));
-    if (annotations.length > 0 && !background) invalid('markersWithoutBackground', 'annotations');
+    if (annotations.length > 0 && !background) {
+      invalid('markersWithoutBackground', 'annotations');
+    }
   }
   // Version 7 (FR-46 as amended in v1.3.0): the at-a-glance panels show the
   // end column at minimum. A saved choice of an earlier version that lacks
@@ -695,12 +778,16 @@ export function parseWorkState(text: string): WorkState {
 
 // Version 11 (FR-79, FR-80): the events and the costs view's saved view.
 function parseVersion11(file: Json, view: Json, version: number): Pick<WorkState, 'events' | 'costsView'> {
-  if (version < 11) return { events: [], costsView: null };
+  if (version < 11) {
+    return { events: [], costsView: null };
+  }
   const ids = new Set<string>();
   const events = arr(file.events, 'events').map((e, i) => {
     const o = obj(e, `events[${i}]`);
     const id = str(o.id, `events[${i}].id`);
-    if (id === '' || ids.has(id)) invalid('duplicateEntry', `events[${i}].id`);
+    if (id === '' || ids.has(id)) {
+      invalid('duplicateEntry', `events[${i}].id`);
+    }
     ids.add(id);
     return { id, date: str(o.date, `events[${i}].date`), label: str(o.label, `events[${i}].label`) };
   });
@@ -713,14 +800,20 @@ function parseWindow(value: unknown, where: string): TimelineWindow {
   const from = num(t.from, `${where}.from`);
   const to = num(t.to, `${where}.to`);
   const firstLine = num(t.firstLine, `${where}.firstLine`);
-  if (!(to > from)) invalid('notPositive', `${where}.to`);
-  if (!Number.isInteger(firstLine) || firstLine < 0) invalid('notPositive', `${where}.firstLine`);
+  if (!(to > from)) {
+    invalid('notPositive', `${where}.to`);
+  }
+  if (!Number.isInteger(firstLine) || firstLine < 0) {
+    invalid('notPositive', `${where}.firstLine`);
+  }
   return { from, to, firstLine };
 }
 
 // Version 9 (FR-66, FR-67, FR-70).
 function parseVersion9(view: Json, version: number): Pick<WorkState, 'presentationMode' | 'timelineView' | 'presentationOrder'> {
-  if (version < 9) return { presentationMode: 'map', timelineView: null, presentationOrder: 'number' };
+  if (version < 9) {
+    return { presentationMode: 'map', timelineView: null, presentationOrder: 'number' };
+  }
   const p = obj(view.presentation, 'view.presentation');
   const timelineView = p.timeline === null ? null : parseWindow(p.timeline, 'view.presentation.timeline');
   // The costs view is a view of version 11; an earlier file cannot name it.
@@ -734,12 +827,16 @@ function parseVersion9(view: Json, version: number): Pick<WorkState, 'presentati
 
 // Version 8 (FR-62 to FR-64).
 function parseVersion8(file: Json, version: number, headers: string[]): Pick<WorkState, 'cardColumns' | 'series' | 'currencyUnit'> {
-  if (version < 8) return { cardColumns: null, series: {}, currencyUnit: DEFAULT_CURRENCY_UNIT };
+  if (version < 8) {
+    return { cardColumns: null, series: {}, currencyUnit: DEFAULT_CURRENCY_UNIT };
+  }
   const card = obj(file.card, 'card');
   let cardColumns: string[] | null = null;
   if (card.columns !== null) {
     cardColumns = arr(card.columns, 'card.columns').map((h, i) => str(h, `card.columns[${i}]`));
-    if (cardColumns.some((h) => !headers.includes(h))) cardColumns = null;
+    if (cardColumns.some((h) => !headers.includes(h))) {
+      cardColumns = null;
+    }
   }
   const economics = obj(file.economics, 'economics');
   const currencyUnit = str(economics.unit, 'economics.unit');
@@ -752,12 +849,16 @@ function parseVersion8(file: Json, version: number, headers: string[]): Pick<Wor
     const name = str(a.name, `${where}.name`);
     const columns: Record<string, string> = {};
     for (const [year, key] of Object.entries(obj(a.columns, `${where}.columns`))) {
-      if (!/^\d{4}$/.test(year)) invalid('invalidVocabulary', `${where}.columns`);
+      if (!/^\d{4}$/.test(year)) {
+        invalid('invalidVocabulary', `${where}.columns`);
+      }
       columns[year] = str(key, `${where}.columns.${year}`);
     }
     const total = a.total === null ? null : str(a.total, `${where}.total`);
     // A series naming a column the work does not have is dropped.
-    if (Object.values(columns).some((k) => !headers.includes(k)) || (total !== null && !headers.includes(total))) continue;
+    if (Object.values(columns).some((k) => !headers.includes(k)) || (total !== null && !headers.includes(total))) {
+      continue;
+    }
     series[r] = { name, columns, total };
   }
   return { cardColumns, series, currencyUnit };
@@ -772,7 +873,9 @@ function migrateMappingV1(columns: Json, headers: string[]): RoleAssignments {
   const mapping = arr(columns.mapping, 'columns.mapping').map((m, i) => {
     const o = obj(m, `columns.mapping[${i}]`);
     const role = str(o.role, `columns.mapping[${i}].role`);
-    if (role !== 'none' && !(V1_ROLES as string[]).includes(role)) invalid('unknownValue', `columns.mapping[${i}].role`);
+    if (role !== 'none' && !(V1_ROLES as string[]).includes(role)) {
+      invalid('unknownValue', `columns.mapping[${i}].role`);
+    }
     return {
       header: str(o.header, `columns.mapping[${i}].header`),
       keep: bool(o.keep, `columns.mapping[${i}].keep`),
@@ -785,8 +888,12 @@ function migrateMappingV1(columns: Json, headers: string[]): RoleAssignments {
   }
   const roles: RoleAssignments = {};
   for (const m of mapping) {
-    if (!m.keep || !isRole(m.role)) continue;
-    if (roles[m.role] !== undefined) invalid('duplicateRole', m.role);
+    if (!m.keep || !isRole(m.role)) {
+      continue;
+    }
+    if (roles[m.role] !== undefined) {
+      invalid('duplicateRole', m.role);
+    }
     roles[m.role] = m.header;
   }
   return roles;
@@ -795,10 +902,16 @@ function migrateMappingV1(columns: Json, headers: string[]): RoleAssignments {
 function parseRolesV2(columns: Json, headers: string[]): RoleAssignments {
   const roles: RoleAssignments = {};
   for (const [role, key] of Object.entries(obj(columns.roles, 'columns.roles'))) {
-    if (!isRole(role)) invalid('unknownValue', `columns.roles.${role}`);
+    if (!isRole(role)) {
+      invalid('unknownValue', `columns.roles.${role}`);
+    }
     const header = str(key, `columns.roles.${role}`);
-    if (!headers.includes(header)) invalid('notAColumn', `columns.roles.${role}`);
-    if (Object.values(roles).includes(header)) invalid('duplicateRole', role);
+    if (!headers.includes(header)) {
+      invalid('notAColumn', `columns.roles.${role}`);
+    }
+    if (Object.values(roles).includes(header)) {
+      invalid('duplicateRole', role);
+    }
     roles[role] = header;
   }
   return roles;
@@ -812,9 +925,15 @@ function parseManualColumns(columns: Json, headers: string[]): ManualColumn[] {
     const o = obj(c, `columns.manual[${i}]`);
     const key = str(o.key, `columns.manual[${i}].key`);
     const label = str(o.label, `columns.manual[${i}].label`);
-    if (!headers.includes(key) || !isManualKey(key)) invalid('notAColumn', `columns.manual[${i}].key`);
-    if (out.some((m) => m.key === key)) invalid('duplicateEntry', `columns.manual[${i}]`);
-    if (label.trim() === '') invalid('notText', `columns.manual[${i}].label`);
+    if (!headers.includes(key) || !isManualKey(key)) {
+      invalid('notAColumn', `columns.manual[${i}].key`);
+    }
+    if (out.some((m) => m.key === key)) {
+      invalid('duplicateEntry', `columns.manual[${i}]`);
+    }
+    if (label.trim() === '') {
+      invalid('notText', `columns.manual[${i}].label`);
+    }
     out.push({ key, label });
   }
   return out;
@@ -826,8 +945,12 @@ function parseEdited(value: unknown, where: string, headers: string[], manualRow
   const o = obj(value, where);
   const out: Record<string, string> = {};
   for (const [key, original] of Object.entries(o)) {
-    if (!headers.includes(key)) invalid('notAColumn', where);
-    if (manualRow || isManualKey(key)) invalid('invalidEdit', `${where}.${key}`);
+    if (!headers.includes(key)) {
+      invalid('notAColumn', where);
+    }
+    if (manualRow || isManualKey(key)) {
+      invalid('invalidEdit', `${where}.${key}`);
+    }
     out[key] = str(original, `${where}.${key}`);
   }
   return out;
@@ -839,9 +962,13 @@ function parseComments(value: unknown, where: string, version: number): StoredCo
   return arr(value, where).map((c, i) => {
     const o = obj(c, `${where}[${i}]`);
     const text = str(o.text, `${where}[${i}].text`);
-    if (!isCommentDate(o.date) || text.trim() === '') invalid('invalidComment', `${where}[${i}]`);
+    if (!isCommentDate(o.date) || text.trim() === '') {
+      invalid('invalidComment', `${where}[${i}]`);
+    }
     if (version >= 7 && o.edited !== undefined) {
-      if (!isCommentDate(o.edited)) invalid('invalidComment', `${where}[${i}].edited`);
+      if (!isCommentDate(o.edited)) {
+        invalid('invalidComment', `${where}[${i}].edited`);
+      }
       return { date: o.date, text, edited: o.edited };
     }
     return { date: o.date, text };
@@ -858,13 +985,19 @@ function parseAnnotation(value: unknown, where: string, rowCount: number): WorkS
     return { x: num(q.x, `${where}.points[${i}].x`), y: num(q.y, `${where}.points[${i}].y`) };
   });
   const enough = kind === 'rectangle' || kind === 'circle' ? points.length === 2 : points.length >= (kind === 'polygon' ? 3 : 2);
-  if (!enough) invalid('invalidAnnotation', `${where}.points`);
+  if (!enough) {
+    invalid('invalidAnnotation', `${where}.points`);
+  }
   const fillOpacity = num(o.fillOpacity, `${where}.fillOpacity`);
-  if (fillOpacity < 0 || fillOpacity > 1) invalid('invalidAnnotation', `${where}.fillOpacity`);
+  if (fillOpacity < 0 || fillOpacity > 1) {
+    invalid('invalidAnnotation', `${where}.fillOpacity`);
+  }
   let link: number | null = null;
   if (o.link !== null) {
     link = num(o.link, `${where}.link`);
-    if (!Number.isInteger(link) || link < 0 || link >= rowCount) invalid('noSuchRow', `${where}.link`);
+    if (!Number.isInteger(link) || link < 0 || link >= rowCount) {
+      invalid('noSuchRow', `${where}.link`);
+    }
   }
   return {
     kind,

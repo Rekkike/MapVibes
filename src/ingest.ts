@@ -1,7 +1,6 @@
 import * as XLSX from 'xlsx';
 import { columnKeys } from './columns';
 
-
 export interface ParseResult {
   headers: string[];
   rows: string[][];
@@ -19,15 +18,26 @@ export class ParseError extends Error {
 // cell's wall-clock date and time in local time, so the local getters return
 // exactly what the spreadsheet shows, whatever the time zone.
 export function cellToString(value: unknown): string {
-  if (value === null || value === undefined) return '';
+  if (value === null || value === undefined) {
+    return '';
+  }
   if (value instanceof Date) {
-    if (Number.isNaN(value.getTime())) return '';
+    if (Number.isNaN(value.getTime())) {
+      return '';
+    }
     const two = (n: number) => String(n).padStart(2, '0');
     const date = `${String(value.getFullYear()).padStart(4, '0')}-${two(value.getMonth() + 1)}-${two(value.getDate())}`;
     const [h, m] = [value.getHours(), value.getMinutes()];
     return h === 0 && m === 0 ? date : `${date} ${two(h)}:${two(m)}`;
   }
-  return String(value);
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+    return String(value);
+  }
+  // No cell value is an object or symbol; dates are handled above.
+  return '';
 }
 
 export function parseWorkbook(data: ArrayBuffer): ParseResult {
@@ -43,9 +53,13 @@ export function parseWorkbook(data: ArrayBuffer): ParseResult {
     throw new ParseError(e instanceof Error ? e.message : String(e));
   }
   const sheetName = workbook.SheetNames[0];
-  if (!sheetName) throw new ParseError('workbook has no sheets');
+  if (!sheetName) {
+    throw new ParseError('workbook has no sheets');
+  }
   const sheet = workbook.Sheets[sheetName];
-  if (!sheet) throw new ParseError('first sheet is missing');
+  if (!sheet) {
+    throw new ParseError('first sheet is missing');
+  }
   const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
     header: 1,
     blankrows: true,
@@ -64,7 +78,7 @@ export function parseWorkbook(data: ArrayBuffer): ParseResult {
   const rows: string[][] = [];
   for (let r = 1; r < matrix.length; r++) {
     const row = matrix[r];
-    const out: string[] = new Array(width).fill('');
+    const out: string[] = Array.from({ length: width }, () => '');
     if (Array.isArray(row)) {
       for (let c = 0; c < width; c++) {
         out[c] = cellToString(row[c]);

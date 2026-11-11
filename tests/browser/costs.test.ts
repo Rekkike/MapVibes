@@ -21,14 +21,18 @@ let exported: string;
 const measured: string[] = [];
 
 beforeAll(async () => {
-  if (!existsSync(BUILT)) throw new Error('dist/build/index.html is missing: run the build first');
+  if (!existsSync(BUILT)) {
+    throw new Error('dist/build/index.html is missing: run the build first');
+  }
   const dir = mkdtempSync(join(tmpdir(), 'mapvibes-costs-'));
   browser = await chromium.launch();
   const context = await browser.newContext({ viewport: { width: 1500, height: 950 }, acceptDownloads: true });
   await context.setOffline(true);
   await context.route('**/*', (route) => {
     const url = route.request().url();
-    if (url.startsWith('file://') || url.startsWith('data:') || url.startsWith('blob:')) return route.continue();
+    if (url.startsWith('file://') || url.startsWith('data:') || url.startsWith('blob:')) {
+      return route.continue();
+    }
     return route.abort();
   });
   const page = await context.newPage();
@@ -54,7 +58,7 @@ afterAll(async () => {
 });
 
 async function openViewer(options: object): Promise<{ page: Page; errors: string[] }> {
-  const context = await browser.newContext({ ...(options as object) });
+  const context = await browser.newContext({ ...options });
   await context.setOffline(true);
   const page = await context.newPage();
   const errors: string[] = [];
@@ -73,8 +77,8 @@ test('the exported file carries the events and the costs view in its island', ()
   const ws = parseWorkState(JSON.stringify(data.workState));
   expect(ws.presentationMode).toBe('costs');
   expect(ws.events).toEqual([
-    { id: 'e1', date: '2024-06', label: 'Review' },
-    { id: 'e2', date: '2026-03-15', label: 'Decision' },
+    { id: 'e1', date: '2031-06', label: 'Review' },
+    { id: 'e2', date: '2033-03-15', label: 'Decision' },
   ]);
 });
 
@@ -82,7 +86,7 @@ describe.each([
   ['desktop 1500x950', { viewport: { width: 1500, height: 950 } }, 28, 28, 46, 46, [3, 17, 31]],
   ['phone 390x844', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, 48, 24, 64, 40, [0, 14, 28]],
 ] as const)('the costs view and the events in the viewer on %s', (name, options, lineH, laneH, openH, openPlotH, tops) => {
-  test('the viewer opens in the costs view; collapsed, the budget spine at the line\'s rhythm in the budget\'s one style; pressed, the three sub-lanes and the fills on the scale of the largest year amount', async () => {
+  test("the viewer opens in the costs view; collapsed, the budget spine at the line's rhythm in the budget's one style; pressed, the three sub-lanes and the fills on the scale of the largest year amount", async () => {
     const { page, errors } = await openViewer(options);
     expect(await page.getAttribute('#presentation-stage', 'data-view')).toBe('costs');
     expect(await page.getAttribute('#pres-mode-costs', 'aria-pressed')).toBe('true');
@@ -93,12 +97,23 @@ describe.each([
       const lines = [...root.querySelectorAll<HTMLElement>('.timeline-line')];
       const shown = lines.flatMap((l) => {
         const plot = l.querySelector('.timeline-plot')!.getBoundingClientRect();
-        return [...l.querySelectorAll<HTMLElement>('.timeline-seg')].filter((s) => s.getClientRects().length > 0).map((s) => {
-          const r = s.getBoundingClientRect();
-          const f = getComputedStyle(s.querySelector('.timeline-seg-fill')!);
-          const before = getComputedStyle(s.querySelector('.timeline-seg-fill')!, '::before');
-          return { series: s.dataset.series, top: r.top - plot.top, h: r.height, border: `${f.borderTopStyle} ${f.borderTopColor}`, fillColour: f.backgroundColor, faint: before.opacity, faintColour: before.backgroundColor, item: getComputedStyle(s).getPropertyValue('--marker-fill') };
-        });
+        return [...l.querySelectorAll<HTMLElement>('.timeline-seg')]
+          .filter((s) => s.getClientRects().length > 0)
+          .map((s) => {
+            const r = s.getBoundingClientRect();
+            const f = getComputedStyle(s.querySelector('.timeline-seg-fill')!);
+            const before = getComputedStyle(s.querySelector('.timeline-seg-fill')!, '::before');
+            return {
+              series: s.dataset.series,
+              top: r.top - plot.top,
+              h: r.height,
+              border: `${f.borderTopStyle} ${f.borderTopColor}`,
+              fillColour: f.backgroundColor,
+              faint: before.opacity,
+              faintColour: before.backgroundColor,
+              item: getComputedStyle(s).getPropertyValue('--marker-fill'),
+            };
+          });
       });
       return {
         heights: [...new Set(lines.map((l) => Math.round(l.getBoundingClientRect().height)))],
@@ -139,12 +154,27 @@ describe.each([
         return [...row.querySelectorAll<HTMLElement>('.timeline-seg')].map((s) => {
           const r = s.getBoundingClientRect();
           const f = s.querySelector('.timeline-seg-fill')!.getBoundingClientRect();
-          return { series: s.dataset.series!, lane: Number(s.dataset.lane), share: Number(s.dataset.share), top: r.top - plot.top, h: r.height, w: r.width, fill: f.width, title: s.title, label: s.dataset.label, text: s.textContent };
+          return {
+            series: s.dataset.series!,
+            lane: Number(s.dataset.lane),
+            share: Number(s.dataset.share),
+            top: r.top - plot.top,
+            h: r.height,
+            w: r.width,
+            fill: f.width,
+            title: s.title,
+            label: s.dataset.label,
+            text: s.textContent,
+          };
         });
       };
       return {
         heights: [...new Set(lines.filter((l) => l.dataset.expanded === 'true').map((l) => Math.round(l.getBoundingClientRect().height)))],
-        plots: [...new Set(lines.filter((l) => l.dataset.expanded === 'true').map((l) => Math.round(l.querySelector('.timeline-plot')!.getBoundingClientRect().height)))],
+        plots: [
+          ...new Set(
+            lines.filter((l) => l.dataset.expanded === 'true').map((l) => Math.round(l.querySelector('.timeline-plot')!.getBoundingClientRect().height)),
+          ),
+        ],
         segs: lines.filter((l) => l.dataset.expanded === 'true').map(of),
         empty: lines.filter((l) => !l.querySelector('.timeline-seg')).length,
         names: lines.map((l) => l.querySelector('.timeline-title')!.textContent),
@@ -168,18 +198,22 @@ describe.each([
       expect(s.top).toBeCloseTo(tops[s.lane], 0);
       expect(s.lane).toBeLessThan(3);
     }
-    const full = m.segs[0].filter((s) => s.title.includes(' 2019:'));
+    const full = m.segs[0].filter((s) => s.title.includes(' 2026:'));
     expect(full.map((s) => [s.series, s.lane])).toEqual([
       ['budget', 0],
       ['forecast', 1],
       ['outcome', 2],
     ]);
     // A fill is the amount's share of its year cell; the largest amount fills it.
-    for (const s of all) expect(s.fill).toBeCloseTo(s.share * s.w, 0);
+    for (const s of all) {
+      expect(s.fill).toBeCloseTo(s.share * s.w, 0);
+    }
     const largest = all.reduce((a, b) => (b.share > a.share ? b : a));
     expect(largest.share).toBe(1);
     expect(largest.title).toContain('663,000 kr');
-    measured.push(`${name}: collapsed line ${quiet.heights[0]} px, the budget spine 12 px at ${Math.round(quiet.shown[0].top)} px, ${quiet.shown.length} spans; opened line ${m.heights[0]} px, plot ${m.plots[0]} px, sub-lane tops ${[...new Set(all.map((s) => Math.round(s.top)))].sort((a, b) => a - b).join(', ')}, bars 12 px, year cell ${all[0].w.toFixed(1)} px, ${all.length} amount spans on ${m.segs.length} open lines, figures shown on ${all.filter((s) => s.label !== 'none').length}`);
+    measured.push(
+      `${name}: collapsed line ${quiet.heights[0]} px, the budget spine 12 px at ${Math.round(quiet.shown[0].top)} px, ${quiet.shown.length} spans; opened line ${m.heights[0]} px, plot ${m.plots[0]} px, sub-lane tops ${[...new Set(all.map((s) => Math.round(s.top)))].sort((a, b) => a - b).join(', ')}, bars 12 px, year cell ${all[0].w.toFixed(1)} px, ${all.length} amount spans on ${m.segs.length} open lines, figures shown on ${all.filter((s) => s.label !== 'none').length}`,
+    );
     expect(errors).toEqual([]);
     await page.context().close();
   }, 60_000);
@@ -193,12 +227,29 @@ describe.each([
       const top = () => totals.getBoundingClientRect().top - scroll.getBoundingClientRect().top;
       const before = top();
       scroll.scrollTop = 200;
-      const segs = [...totals.querySelectorAll<HTMLElement>('.timeline-seg')].map((s) => ({ series: s.dataset.series, share: Number(s.dataset.share), title: s.title, lane: Number(s.dataset.lane), w: s.getBoundingClientRect().width, fill: s.querySelector('.timeline-seg-fill')!.getBoundingClientRect().width }));
-      return { first: root.querySelector('.timeline-lines')!.firstElementChild === totals, before, after: top(), scrolled: scroll.scrollTop, h: totals.getBoundingClientRect().height, name: totals.querySelector('.timeline-name')!.textContent, segs };
+      const segs = [...totals.querySelectorAll<HTMLElement>('.timeline-seg')].map((s) => ({
+        series: s.dataset.series,
+        share: Number(s.dataset.share),
+        title: s.title,
+        lane: Number(s.dataset.lane),
+        w: s.getBoundingClientRect().width,
+        fill: s.querySelector('.timeline-seg-fill')!.getBoundingClientRect().width,
+      }));
+      return {
+        first: root.querySelector('.timeline-lines')!.firstElementChild === totals,
+        before,
+        after: top(),
+        scrolled: scroll.scrollTop,
+        h: totals.getBoundingClientRect().height,
+        name: totals.querySelector('.timeline-name')!.textContent,
+        segs,
+      };
     });
     expect(m.first).toBe(true);
     expect(m.before).toBeCloseTo(0, 0);
-    if (m.scrolled > 0) expect(m.after).toBeCloseTo(0, 0);
+    if (m.scrolled > 0) {
+      expect(m.after).toBeCloseTo(0, 0);
+    }
     // The totals row is unchanged: 46 pixels, 64 on the phone.
     expect(m.h).toBe(openH);
     expect(m.name).toBe('Total per yearthousands of kr');
@@ -206,13 +257,15 @@ describe.each([
     const count = (series: string) => m.segs.filter((s) => s.series === series).length;
     expect([count('budget'), count('forecast'), count('outcome')]).toEqual([12, 12, 8]);
     const largest = m.segs.reduce((a, b) => (b.share > a.share ? b : a));
-    expect(largest.title).toBe('Budget 2026: 3,201,000 kr');
+    expect(largest.title).toBe('Budget 2033: 3,201,000 kr');
     expect(largest.share).toBe(1);
     expect(largest.fill).toBeCloseTo(largest.w, 0);
     // On the totals' own scale, no other bar is saturated.
     expect(m.segs.filter((s) => s.share === 1)).toHaveLength(1);
     const shares = m.segs.map((s) => s.share);
-    measured.push(`${name}: totals row ${m.h} px at the top (${m.before.toFixed(0)} px before and ${m.after.toFixed(0)} px after scrolling ${m.scrolled} px), ${m.segs.length} bars, shares ${Math.min(...shares).toFixed(2)} to ${Math.max(...shares).toFixed(2)} of the largest year total`);
+    measured.push(
+      `${name}: totals row ${m.h} px at the top (${m.before.toFixed(0)} px before and ${m.after.toFixed(0)} px after scrolling ${m.scrolled} px), ${m.segs.length} bars, shares ${Math.min(...shares).toFixed(2)} to ${Math.max(...shares).toFixed(2)} of the largest year total`,
+    );
     expect(errors).toEqual([]);
     await page.context().close();
   }, 60_000);
@@ -249,22 +302,29 @@ describe.each([
       expect(m.stripTop).toBeCloseTo(0, 0);
       expect(m.bodyTop).toBeCloseTo(0, 0);
       expect(m.chips.map((c) => [c.text, c.title])).toEqual([
-        ['Review', '2024-06: Review'],
-        ['Decision', '2026-03-15: Decision'],
+        ['Review', '2031-06: Review'],
+        ['Decision', '2033-03-15: Decision'],
       ]);
       // A chip starts at its hairline.
       m.chips.forEach((c, i) => expect(c.x).toBeCloseTo(m.lines[i].x, 0));
       // The chips never overlap: side by side in one row, or staggered into two.
       const [a, b] = m.chips;
-      if (a.row === b.row) expect(b.x).toBeGreaterThanOrEqual(a.right);
-      else expect([a.row, b.row]).toEqual(['0', '1']);
+      if (a.row === b.row) {
+        expect(b.x).toBeGreaterThanOrEqual(a.right);
+      } else {
+        expect([a.row, b.row]).toEqual(['0', '1']);
+      }
       expect(m.stripH).toBe(a.row === b.row ? 22 : 42);
-      measured.push(`${name}, ${view}: hairlines 1 px wide over the body's ${m.bodyH.toFixed(0)} px; chips ${m.chips.map((c) => `${c.text} row ${c.row}`).join(', ')}; strip ${m.stripH} px`);
+      measured.push(
+        `${name}, ${view}: hairlines 1 px wide over the body's ${m.bodyH.toFixed(0)} px; chips ${m.chips.map((c) => `${c.text} row ${c.row}`).join(', ')}; strip ${m.stripH} px`,
+      );
     }
     await page.locator('#pres-mode-map').scrollIntoViewIfNeeded();
     await page.click('#pres-mode-map');
     await page.waitForFunction(() => (document.querySelector('#presentation-stage') as HTMLElement).dataset.view === 'map');
-    const visible = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>('.timeline-event-line, .timeline-event-chip')].filter((e) => e.getClientRects().length > 0).length);
+    const visible = await page.evaluate(
+      () => [...document.querySelectorAll<HTMLElement>('.timeline-event-line, .timeline-event-chip')].filter((e) => e.getClientRects().length > 0).length,
+    );
     expect(visible).toBe(0);
     expect(errors).toEqual([]);
     await page.context().close();
@@ -275,14 +335,24 @@ describe.each([
     const readKey = () =>
       page.evaluate(() => {
         const group = document.querySelector<HTMLElement>('#presentation-legend .legend-group[data-kind="series"]');
-        if (!group) return null;
+        if (!group) {
+          return null;
+        }
         return {
           label: group.querySelector('.legend-group-label')!.textContent,
           entries: [...group.querySelectorAll<HTMLElement>('.legend-entry')].map((e) => {
             const swatch = e.querySelector<HTMLElement>('.legend-swatch')!;
             const cs = getComputedStyle(swatch);
             const r = swatch.getBoundingClientRect();
-            return { series: e.dataset.series, text: e.textContent!.trim(), w: r.width, h: r.height, background: cs.backgroundColor, borderTop: `${cs.borderTopWidth} ${cs.borderTopStyle}`, opacity: cs.opacity };
+            return {
+              series: e.dataset.series,
+              text: e.textContent.trim(),
+              w: r.width,
+              h: r.height,
+              background: cs.backgroundColor,
+              borderTop: `${cs.borderTopWidth} ${cs.borderTopStyle}`,
+              opacity: cs.opacity,
+            };
           }),
           mapLegend: !!document.querySelector('#map-legend .legend-group[data-kind="series"]'),
         };
@@ -314,8 +384,12 @@ describe.each([
     expect(budget.background).toBe('rgba(0, 0, 0, 0)');
     expect(budget.borderTop).toMatch(/^1px solid/);
     expect(budget.opacity).toBe('1');
-    expect(await page.evaluate(() => getComputedStyle(document.querySelector('#presentation-legend .legend-swatch[data-series="budget"]')!, '::before').opacity)).toBe('0.4');
-    measured.push(`${name}: series key in the legend while the costs view is shown: ${m!.entries.map((e) => `${e.series} ${e.text} (${e.w.toFixed(1)}x${e.h.toFixed(1)} px, ${e.borderTop}, opacity ${e.opacity})`).join(', ')}`);
+    expect(
+      await page.evaluate(() => getComputedStyle(document.querySelector('#presentation-legend .legend-swatch[data-series="budget"]')!, '::before').opacity),
+    ).toBe('0.4');
+    measured.push(
+      `${name}: series key in the legend while the costs view is shown: ${m!.entries.map((e) => `${e.series} ${e.text} (${e.w.toFixed(1)}x${e.h.toFixed(1)} px, ${e.borderTop}, opacity ${e.opacity})`).join(', ')}`,
+    );
     // Another view: the key is gone; the costs view again: it is back.
     await page.click('#pres-mode-map');
     await page.waitForFunction(() => (document.querySelector('#presentation-stage') as HTMLElement).dataset.view === 'map');

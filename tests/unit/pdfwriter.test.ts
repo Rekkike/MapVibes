@@ -23,7 +23,10 @@ async function open(bytes: Uint8Array) {
 async function pageText(bytes: Uint8Array, page = 1): Promise<string> {
   const doc = await open(bytes);
   const content = await (await doc.getPage(page)).getTextContent();
-  return content.items.map((i) => ('str' in i ? i.str : '')).filter((s) => s !== '').join('|');
+  return content.items
+    .map((i) => ('str' in i ? i.str : ''))
+    .filter((s) => s !== '')
+    .join('|');
 }
 
 function sample(): PdfDocument {
@@ -46,7 +49,10 @@ describe('the PDF writer: document structure (FR-50)', () => {
     expect(s.slice(startxref, startxref + 5)).toBe('xref\n');
     const [, first, count] = /^xref\n(\d+) (\d+)\n/.exec(s.slice(startxref))!;
     expect(first).toBe('0');
-    const entries = s.slice(startxref).split('\n').slice(2, 2 + Number(count));
+    const entries = s
+      .slice(startxref)
+      .split('\n')
+      .slice(2, 2 + Number(count));
     expect(entries[0]).toBe('0000000000 65535 f ');
     // Every entry points at the start of its object.
     entries.slice(1).forEach((entry, i) => {
@@ -67,7 +73,7 @@ describe('the PDF writer: document structure (FR-50)', () => {
   test('content streams state their exact length', () => {
     const s = text(sample().toBytes());
     for (const m of s.matchAll(/<< \/Length (\d+) >>\nstream\n/g)) {
-      const start = m.index! + m[0].length;
+      const start = m.index + m[0].length;
       expect(s.slice(start + Number(m[1]), start + Number(m[1]) + 10)).toBe('\nendstream');
     }
   });
@@ -110,7 +116,27 @@ describe('the PDF writer: WinAnsi text (FR-50)', () => {
     const special = 'åäöÅÄÖéÉüÜ²€–—…«»°×';
     const { codes, replaced } = encodeWinAnsi(special);
     expect(replaced).toBe(0);
-    expect(codes.map((c) => c.toString(16))).toEqual(['e5', 'e4', 'f6', 'c5', 'c4', 'd6', 'e9', 'c9', 'fc', 'dc', 'b2', '80', '96', '97', '85', 'ab', 'bb', 'b0', 'd7']);
+    expect(codes.map((c) => c.toString(16))).toEqual([
+      'e5',
+      'e4',
+      'f6',
+      'c5',
+      'c4',
+      'd6',
+      'e9',
+      'c9',
+      'fc',
+      'dc',
+      'b2',
+      '80',
+      '96',
+      '97',
+      '85',
+      'ab',
+      'bb',
+      'b0',
+      'd7',
+    ]);
     expect(winAnsiCode('A'.codePointAt(0)!)).toBe(0x41);
   });
 
@@ -154,7 +180,15 @@ describe('the PDF writer: shapes, opacity, and images (FR-50)', () => {
     const doc = new PdfDocument({ created: AT });
     const page = doc.addPage(100, 100);
     page.opacity(0.3).circle(50, 50, 10).fill();
-    page.opacity(0.3).dash([4, 2]).polygon([[0, 0], [10, 0], [10, 10]]).stroke();
+    page
+      .opacity(0.3)
+      .dash([4, 2])
+      .polygon([
+        [0, 0],
+        [10, 0],
+        [10, 10],
+      ])
+      .stroke();
     page.opacity(1);
     expect(page.content().match(/ c$/gm)).toHaveLength(4);
     expect(page.content()).toContain('[4 2] 0 d');
@@ -186,14 +220,7 @@ describe('the PDF writer: shapes, opacity, and images (FR-50)', () => {
 
 describe('SVG path data for the icons (FR-26, FR-50)', () => {
   test('absolute and relative lines, horizontal and vertical moves, and closing', () => {
-    expect(parseSvgPath('M1 2h3v4l-1 1L0 0z')).toEqual([
-      ['M', 1, 2],
-      ['L', 4, 2],
-      ['L', 4, 6],
-      ['L', 3, 7],
-      ['L', 0, 0],
-      ['Z'],
-    ]);
+    expect(parseSvgPath('M1 2h3v4l-1 1L0 0z')).toEqual([['M', 1, 2], ['L', 4, 2], ['L', 4, 6], ['L', 3, 7], ['L', 0, 0], ['Z']]);
     // Coordinate pairs after a move are lines.
     expect(parseSvgPath('M0 0 10 0 10 10')).toEqual([
       ['M', 0, 0],

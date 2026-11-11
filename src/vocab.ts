@@ -14,7 +14,9 @@ export function hasValue(list: string[], value: string): boolean {
 // Adds a value at the end; an empty or already present value adds nothing.
 export function addValue(list: string[], value: string): string[] {
   const v = normalise(value);
-  if (v === '' || list.includes(v)) return list;
+  if (v === '' || list.includes(v)) {
+    return list;
+  }
   return [...list, v];
 }
 
@@ -28,7 +30,9 @@ export type RenameResult = { list: string[]; renamed: boolean };
 // that is already in the list is refused.
 export function renameValue(list: string[], from: string, to: string): RenameResult {
   const v = normalise(to);
-  if (!list.includes(from) || v === '' || (v !== from && list.includes(v))) return { list, renamed: false };
+  if (!list.includes(from) || v === '' || (v !== from && list.includes(v))) {
+    return { list, renamed: false };
+  }
   return { list: list.map((x) => (x === from ? v : x)), renamed: v !== from };
 }
 
@@ -36,7 +40,9 @@ export function renameValue(list: string[], from: string, to: string): RenameRes
 export function moveValue(list: string[], value: string, step: -1 | 1): string[] {
   const i = list.indexOf(value);
   const j = i + step;
-  if (i < 0 || j < 0 || j >= list.length) return list;
+  if (i < 0 || j < 0 || j >= list.length) {
+    return list;
+  }
   const next = [...list];
   [next[i], next[j]] = [next[j], next[i]];
   return next;
@@ -45,7 +51,9 @@ export function moveValue(list: string[], value: string, step: -1 | 1): string[]
 // The non-empty values present in a column, in first-seen order.
 export function collectValues(rows: Array<{ values: Record<string, string> }>, key: string): string[] {
   let list: string[] = [];
-  for (const row of rows) list = addValue(list, row.values[key] ?? '');
+  for (const row of rows) {
+    list = addValue(list, row.values[key] ?? '');
+  }
   return list;
 }
 
@@ -55,10 +63,14 @@ export function mergeValues(list: string[], values: string[]): string[] {
 }
 
 export function parseValueList(raw: unknown): string[] | null {
-  if (!Array.isArray(raw)) return null;
+  if (!Array.isArray(raw)) {
+    return null;
+  }
   let list: string[] = [];
   for (const v of raw) {
-    if (typeof v !== 'string' || normalise(v) === '' || list.includes(normalise(v))) return null;
+    if (typeof v !== 'string' || normalise(v) === '' || list.includes(normalise(v))) {
+      return null;
+    }
     list = addValue(list, v);
   }
   return list;
@@ -78,7 +90,9 @@ export function statusNames(statuses: StatusEntry[]): string[] {
 
 export function addStatus(statuses: StatusEntry[], name: string, symbol: string): StatusEntry[] {
   const names = addValue(statusNames(statuses), name);
-  if (names.length === statuses.length) return statuses;
+  if (names.length === statuses.length) {
+    return statuses;
+  }
   return [...statuses, { name: names[names.length - 1], symbol }];
 }
 
@@ -88,14 +102,18 @@ export function removeStatus(statuses: StatusEntry[], name: string): StatusEntry
 
 export function renameStatus(statuses: StatusEntry[], from: string, to: string): { statuses: StatusEntry[]; renamed: boolean; name: string } {
   const { list, renamed } = renameValue(statusNames(statuses), from, to);
-  if (!renamed) return { statuses, renamed: false, name: from };
+  if (!renamed) {
+    return { statuses, renamed: false, name: from };
+  }
   const name = list[statusNames(statuses).indexOf(from)];
   return { statuses: statuses.map((s) => (s.name === from ? { ...s, name } : s)), renamed: true, name };
 }
 
 export function moveStatus(statuses: StatusEntry[], name: string, step: -1 | 1): StatusEntry[] {
   const order = moveValue(statusNames(statuses), name, step);
-  if (order === statusNames(statuses) || order.every((n, i) => n === statuses[i].name)) return statuses;
+  if (order === statusNames(statuses) || order.every((n, i) => n === statuses[i].name)) {
+    return statuses;
+  }
   return order.map((n) => statuses.find((s) => s.name === n)!);
 }
 
@@ -109,13 +127,21 @@ export function statusSymbol(statuses: StatusEntry[], value: string): string | n
 }
 
 export function parseStatuses(raw: unknown, isSymbol: (v: unknown) => boolean): StatusEntry[] | null {
-  if (!Array.isArray(raw)) return null;
+  if (!Array.isArray(raw)) {
+    return null;
+  }
   const out: StatusEntry[] = [];
   for (const item of raw) {
-    if (typeof item !== 'object' || item === null) return null;
+    if (typeof item !== 'object' || item === null) {
+      return null;
+    }
     const o = item as Record<string, unknown>;
-    if (typeof o.name !== 'string' || normalise(o.name) === '' || out.some((s) => s.name === normalise(o.name as string))) return null;
-    if (!isSymbol(o.symbol)) return null;
+    if (typeof o.name !== 'string' || normalise(o.name) === '' || out.some((s) => s.name === normalise(o.name as string))) {
+      return null;
+    }
+    if (!isSymbol(o.symbol)) {
+      return null;
+    }
     out.push({ name: normalise(o.name), symbol: o.symbol as string });
   }
   return out;

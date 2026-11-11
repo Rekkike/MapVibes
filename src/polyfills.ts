@@ -14,7 +14,9 @@ function at(this: { length: number; [index: number]: unknown }, index: number): 
 
 const TypedArray = Object.getPrototypeOf(Uint8Array.prototype) as object;
 for (const target of [Array.prototype, String.prototype, TypedArray]) {
-  if (!('at' in target)) Object.defineProperty(target, 'at', { value: at, writable: true, configurable: true, enumerable: false });
+  if (!('at' in target)) {
+    Object.defineProperty(target, 'at', { value: at, writable: true, configurable: true, enumerable: false });
+  }
 }
 
 export {};

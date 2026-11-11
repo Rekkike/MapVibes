@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'vitest';
-import { byId, flush, markers, mountApp, placeExampleMarkers, pointer, presentationMarkers, setRole, STAGE } from './harness';
+import { byId, flush, markers, mountApp, placeExampleMarkers, pointer, setRole, STAGE } from './harness';
 
 function entries(prefix: 'map' | 'presentation'): HTMLElement[] {
   return [...document.querySelectorAll<HTMLElement>(`#${prefix}-glance-list .glance-entry`)];

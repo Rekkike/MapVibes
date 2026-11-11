@@ -1,12 +1,33 @@
 import { describe, expect, test } from 'vitest';
-import { amountShare, buildCosts, inThousands, layoutEvents, type EventChip, type CostsAmount, type CostsItem, type TimelineModel, type TimelineSpan } from '../../src/timeline';
+import {
+  amountShare,
+  buildCosts,
+  inThousands,
+  layoutEvents,
+  type EventChip,
+  type CostsAmount,
+  type CostsItem,
+  type TimelineModel,
+  type TimelineSpan,
+} from '../../src/timeline';
 import { amountLabelPlace, eventChipWidth } from '../../src/timelineview';
 import { dayNumber } from '../../src/dates';
 
 // The costs view's model (FR-79).
 
 const amount = (series: CostsAmount['series'], year: number, value: number, decimals = 0): CostsAmount => ({ series, year, value, decimals });
-const item = (id: string, amounts: CostsAmount[], extra: Partial<CostsItem> = {}): CostsItem => ({ id, label: id, name: `Item ${id}`, colour: 'green', area: '', start: '', end: '', amounts, typed: [], ...extra });
+const item = (id: string, amounts: CostsAmount[], extra: Partial<CostsItem> = {}): CostsItem => ({
+  id,
+  label: id,
+  name: `Item ${id}`,
+  colour: 'green',
+  area: '',
+  start: '',
+  end: '',
+  amounts,
+  typed: [],
+  ...extra,
+});
 const brief = (spans: TimelineSpan[]) => spans.map((s) => `${s.amount!.year} ${s.amount!.series} ${s.amount!.value} @${s.lane}`);
 
 describe('the costs model (FR-79)', () => {
@@ -21,7 +42,10 @@ describe('the costs model (FR-79)', () => {
   });
 
   test('the series of a year fully overlap, so the lane layout packs them into the three sub-lanes, budget, forecast, outcome', () => {
-    const m = buildCosts([item('1', [amount('outcome', 2025, 3), amount('budget', 2024, 1), amount('forecast', 2025, 2), amount('budget', 2025, 1), amount('outcome', 2026, 5)])], [2024, 2025, 2026]);
+    const m = buildCosts(
+      [item('1', [amount('outcome', 2025, 3), amount('budget', 2024, 1), amount('forecast', 2025, 2), amount('budget', 2025, 1), amount('outcome', 2026, 5)])],
+      [2024, 2025, 2026],
+    );
     expect(brief(m.lines[0].spans)).toEqual(['2024 budget 1 @0', '2025 budget 1 @0', '2025 forecast 2 @1', '2025 outcome 3 @2', '2026 outcome 5 @0']);
     expect(m.lines[0].lanes).toBe(3);
     // Never more than the three sub-lanes: the badge has nothing to hide.
@@ -46,7 +70,11 @@ describe('the costs model (FR-79)', () => {
 
   test('the totals row is first: one sum per series and year across the lines, in the same sub-lanes, exact to the decimals given', () => {
     const m = buildCosts(
-      [item('1', [amount('budget', 2024, 100.1, 1), amount('outcome', 2024, 90)]), item('2', [amount('budget', 2024, 0.25, 2), amount('forecast', 2025, 7)]), item('3', [])],
+      [
+        item('1', [amount('budget', 2024, 100.1, 1), amount('outcome', 2024, 90)]),
+        item('2', [amount('budget', 2024, 0.25, 2), amount('forecast', 2025, 7)]),
+        item('3', []),
+      ],
       [2024, 2025],
     );
     const totals = m.rows[0];
@@ -82,7 +110,11 @@ describe('the costs model (FR-79)', () => {
   });
 
   test('the order is shared with the timeline: by number, by area with headings, or by start date', () => {
-    const items = [item('1', [], { area: 'South', start: '2026' }), item('2', [], { area: 'North', start: '2024' }), item('3', [amount('budget', 2024, 1)], { area: 'South' })];
+    const items = [
+      item('1', [], { area: 'South', start: '2026' }),
+      item('2', [], { area: 'North', start: '2024' }),
+      item('3', [amount('budget', 2024, 1)], { area: 'South' }),
+    ];
     const ids = (m: TimelineModel) => m.rows.map((r) => (r.kind !== 'heading' ? r.item.id : r.heading === 'area' ? `# ${r.area}` : `# ${r.heading}`));
     expect(ids(buildCosts(items, [2024]))).toEqual(['# totals', '1', '2', '3']);
     expect(ids(buildCosts(items, [2024], 'area', ['North', 'South']))).toEqual(['# totals', '# North', '2', '# South', '1', '3']);
@@ -121,7 +153,12 @@ describe('the events layout (FR-80)', () => {
     const chips = layoutEvents([ev('a', 100), ev('b', 110), ev('c', 120), ev('d', 130)], 800, 30);
     expect(brief(chips)).toEqual(['a@0:100', 'b@1:110+c,d']);
     // The "+n" chip takes its own room: an event just past the blocker joins it too.
-    expect(brief(layoutEvents([ev('a', 100), ev('b', 110), ev('c', 120), ev('d', 180), ev('e', 400)], 800, 30))).toEqual(['a@0:100', 'b@1:110+c', 'd@0:180', 'e@0:400']);
+    expect(brief(layoutEvents([ev('a', 100), ev('b', 110), ev('c', 120), ev('d', 180), ev('e', 400)], 800, 30))).toEqual([
+      'a@0:100',
+      'b@1:110+c',
+      'd@0:180',
+      'e@0:400',
+    ]);
   });
 
   test('zooming, which spreads the positions, separates them', () => {

@@ -30,7 +30,9 @@ function tablePdf(): Uint8Array {
   ];
   rows.forEach((row, r) => {
     row.forEach((cell, c) => {
-      if (cell !== '') page.text(x[c], 780 - (r + 1) * 24, cell, 'regular', 10);
+      if (cell !== '') {
+        page.text(x[c], 780 - (r + 1) * 24, cell, 'regular', 10);
+      }
     });
   });
   page.text(40, 60, 'Sammanställning klar.', 'regular', 9);

@@ -58,15 +58,21 @@ export class MarkerLayer {
       }
       const screen = imageToScreen(v, marker.position);
       node.className = `marker marker-${marker.colour} ${symbolClasses(marker.shape)}`;
-      if (this.hooks.isExcluded?.(marker)) node.classList.add('marker-excluded');
-      if (this.hooks.isHighlighted?.(marker)) node.classList.add('highlighted');
+      if (this.hooks.isExcluded?.(marker)) {
+        node.classList.add('marker-excluded');
+      }
+      if (this.hooks.isHighlighted?.(marker)) {
+        node.classList.add('highlighted');
+      }
       node.classList.toggle('selected', id === selectedId);
       node.setAttribute('aria-pressed', id === selectedId ? 'true' : 'false');
       node.dataset.number = marker.label;
       node.dataset.colour = marker.colour;
       node.dataset.shape = marker.shape;
       const source = this.hooks.symbolSource?.(marker);
-      if (source) node.dataset.symbolSource = source;
+      if (source) {
+        node.dataset.symbolSource = source;
+      }
       if (node.dataset.drawn !== `${marker.shape}:${marker.label}`) {
         drawSymbol(node, marker.shape, marker.label);
         node.dataset.drawn = `${marker.shape}:${marker.label}`;
@@ -78,7 +84,9 @@ export class MarkerLayer {
       // Document order follows the numbering (and so does keyboard order);
       // nodes are moved only when out of place, so focus is kept.
       const at = this.layer.children[index];
-      if (at !== node) this.layer.insertBefore(node, at ?? null);
+      if (at !== node) {
+        this.layer.insertBefore(node, at ?? null);
+      }
     });
     existing.forEach((node) => node.remove());
   }
@@ -86,7 +94,9 @@ export class MarkerLayer {
   private wire(): void {
     this.layer.addEventListener('pointerdown', (e) => {
       const node = (e.target as HTMLElement).closest<HTMLElement>('.marker');
-      if (!node || e.button !== 0) return;
+      if (!node || e.button !== 0) {
+        return;
+      }
       const id = node.dataset.rowId ?? '';
       if (!this.hooks.editable) {
         // The press goes on to the stage, which may pan or pinch.
@@ -108,31 +118,43 @@ export class MarkerLayer {
       this.hooks.onSelect(id);
     });
     this.layer.addEventListener('pointermove', (e) => {
-      if (!this.drag || e.pointerId !== this.drag.pointerId) return;
+      if (!this.drag || e.pointerId !== this.drag.pointerId) {
+        return;
+      }
       const pointer = this.hooks.stagePoint(e.clientX, e.clientY);
       const screen = { x: pointer.x - this.drag.offset.x, y: pointer.y - this.drag.offset.y };
       this.hooks.onMove(this.drag.rowId, screenToImage(this.hooks.viewport(), screen));
     });
     const end = (e: PointerEvent) => {
-      if (!this.drag || e.pointerId !== this.drag.pointerId) return;
+      if (!this.drag || e.pointerId !== this.drag.pointerId) {
+        return;
+      }
       this.layer.querySelector(`.marker.dragging`)?.classList.remove('dragging');
       this.drag = null;
     };
     this.layer.addEventListener('mouseover', (e) => {
       const node = (e.target as HTMLElement).closest<HTMLElement>('.marker');
-      if (node) this.hooks.onHover?.(node.dataset.rowId ?? null);
+      if (node) {
+        this.hooks.onHover?.(node.dataset.rowId ?? null);
+      }
     });
     this.layer.addEventListener('mouseout', (e) => {
       const node = (e.target as HTMLElement).closest<HTMLElement>('.marker');
-      const to = (e as MouseEvent).relatedTarget as HTMLElement | null;
-      if (node && !node.contains(to)) this.hooks.onHover?.(null);
+      const to = e.relatedTarget as HTMLElement | null;
+      if (node && !node.contains(to)) {
+        this.hooks.onHover?.(null);
+      }
     });
     this.layer.addEventListener('pointerup', end);
     this.layer.addEventListener('pointercancel', end);
-    if (!this.hooks.editable) this.wireTap();
+    if (!this.hooks.editable) {
+      this.wireTap();
+    }
     this.layer.addEventListener('keydown', (e) => {
       const node = (e.target as HTMLElement).closest<HTMLElement>('.marker');
-      if (!node) return;
+      if (!node) {
+        return;
+      }
       const id = node.dataset.rowId ?? '';
       if ((e.key === 'Delete' || e.key === 'Backspace') && this.hooks.editable) {
         e.preventDefault();
@@ -146,22 +168,32 @@ export class MarkerLayer {
 
   private wireTap(): void {
     const stage = this.layer.parentElement;
-    if (!stage) return;
+    if (!stage) {
+      return;
+    }
     stage.addEventListener(
       'pointerdown',
       (e) => {
-        if (this.tap && e.pointerId !== this.tap.pointerId) this.tap = null;
+        if (this.tap && e.pointerId !== this.tap.pointerId) {
+          this.tap = null;
+        }
       },
       true,
     );
     stage.addEventListener('pointermove', (e) => {
-      if (this.tap && e.pointerId === this.tap.pointerId && Math.hypot(e.clientX - this.tap.x, e.clientY - this.tap.y) > TAP_SLOP) this.tap = null;
+      if (this.tap && e.pointerId === this.tap.pointerId && Math.hypot(e.clientX - this.tap.x, e.clientY - this.tap.y) > TAP_SLOP) {
+        this.tap = null;
+      }
     });
     stage.addEventListener('pointerup', (e) => {
       const tap = this.tap;
-      if (!tap || e.pointerId !== tap.pointerId) return;
+      if (!tap || e.pointerId !== tap.pointerId) {
+        return;
+      }
       this.tap = null;
-      if (Math.hypot(e.clientX - tap.x, e.clientY - tap.y) <= TAP_SLOP) this.hooks.onSelect(tap.rowId);
+      if (Math.hypot(e.clientX - tap.x, e.clientY - tap.y) <= TAP_SLOP) {
+        this.hooks.onSelect(tap.rowId);
+      }
     });
     stage.addEventListener('pointercancel', () => (this.tap = null));
   }

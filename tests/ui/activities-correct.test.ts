@@ -23,12 +23,20 @@ function tablePdf(name = 'plan.pdf', rows = ROWS): File {
   const page = doc.addPage(595, 842);
   const x = [40, 220, 320, 400, 470];
   ['Post', 'Från', 'Till', 'Längd', 'Klart'].forEach((h, c) => page.text(x[c], 780, h, 'bold', 10));
-  rows.forEach((row, r) => row.forEach((cell, c) => { if (cell !== '') page.text(x[c], 780 - (r + 1) * 24, cell, 'regular', 10); }));
+  rows.forEach((row, r) =>
+    row.forEach((cell, c) => {
+      if (cell !== '') {
+        page.text(x[c], 780 - (r + 1) * 24, cell, 'regular', 10);
+      }
+    }),
+  );
   return new File([doc.toBytes() as unknown as BlobPart], name, { type: 'application/pdf' });
 }
 
 async function settle(): Promise<void> {
-  for (let i = 0; i < 3; i++) await flush();
+  for (let i = 0; i < 3; i++) {
+    await flush();
+  }
 }
 
 const action = (text: string) => [...document.querySelectorAll<HTMLElement>('#details-panel .details-economics')].find((b) => b.textContent === text);
@@ -46,7 +54,9 @@ async function importPdf(file: File, drop: number[] = [3]): Promise<void> {
   Object.defineProperty(input, 'files', { value: [file], configurable: true });
   input.dispatchEvent(new Event('change'));
   await settle();
-  for (const i of drop) document.querySelectorAll<HTMLInputElement>('#activity-rows .activity-row input[type="checkbox"]')[i].click();
+  for (const i of drop) {
+    document.querySelectorAll<HTMLInputElement>('#activity-rows .activity-row input[type="checkbox"]')[i].click();
+  }
 }
 
 async function attach(): Promise<void> {
@@ -96,9 +106,24 @@ describe('hand corrections (FR-76, FR-77)', () => {
     expect(byId('activity-choose-row').classList.contains('hidden')).toBe(true);
     expect(byId('activity-roles').classList.contains('hidden')).toBe(true);
     expect(editRows().map((li) => [...li.querySelectorAll('input')].map((i) => [i.type, i.value]))).toEqual([
-      [['text', 'Grävning'], ['text', '2024-01-08'], ['text', '2024-02-16'], ['text', '100']],
-      [['text', 'Ledningar'], ['text', '2024-02-12'], ['text', '2024-04-30'], ['text', '60']],
-      [['text', 'Granskning'], ['text', '15/03/2024'], ['text', '2024-06-30'], ['text', '10']],
+      [
+        ['text', 'Grävning'],
+        ['text', '2024-01-08'],
+        ['text', '2024-02-16'],
+        ['text', '100'],
+      ],
+      [
+        ['text', 'Ledningar'],
+        ['text', '2024-02-12'],
+        ['text', '2024-04-30'],
+        ['text', '60'],
+      ],
+      [
+        ['text', 'Granskning'],
+        ['text', '15/03/2024'],
+        ['text', '2024-06-30'],
+        ['text', '10'],
+      ],
     ]);
     expect(editRows().every((li) => li.querySelectorAll('button.activity-edit-remove').length === 1)).toBe(true);
     // Repair only: the dialog has exactly its close, save, and cancel
@@ -194,7 +219,9 @@ describe('hand corrections (FR-76, FR-77)', () => {
     expect(byId('work-status').textContent).toBe('Corrections saved: 0 corrected, 1 removed.');
     expect(activities()!.map((a) => a.id)).toEqual(['a1', 'a3']);
     await openCorrection();
-    for (const b of remove()) b.click();
+    for (const b of remove()) {
+      b.click();
+    }
     await attach();
     expect(activities()).toBeUndefined();
     expect(action('Correct activities')).toBeUndefined();
@@ -242,7 +269,14 @@ describe('hand corrections (FR-76, FR-77)', () => {
       },
     });
     await flush();
-    expect(viewer.captureWorkState().rows[0].activities![2]).toEqual({ id: 'a3', edited: true, label: 'Granskning', start: '2024-03-15', end: '2024-06-30', progress: 10 });
+    expect(viewer.captureWorkState().rows[0].activities![2]).toEqual({
+      id: 'a3',
+      edited: true,
+      label: 'Granskning',
+      start: '2024-03-15',
+      end: '2024-06-30',
+      progress: 10,
+    });
     expect(document.querySelector('.details-correct-activities')).toBeNull();
   });
 });
@@ -275,7 +309,9 @@ describe('re-import after hand corrections (FR-76)', () => {
     expect(reviewRows().map((li) => li.dataset.edited ?? 'false')).toEqual(['false', 'false', 'true', 'false']);
     // Beside the source's cells, the values that are kept.
     expect(reviewRows()[2].textContent).toContain('Post: Granskning (ny)');
-    expect(reviewRows()[2].querySelector('.activity-edit-note')!.textContent).toBe('Edited by hand; kept as corrected: Slutgranskning · 2024-03-15 – 2024-06-30 · 10 %');
+    expect(reviewRows()[2].querySelector('.activity-edit-note')!.textContent).toBe(
+      'Edited by hand; kept as corrected: Slutgranskning · 2024-03-15 – 2024-06-30 · 10 %',
+    );
     await attach();
     expect(activities()).toEqual([
       // Not corrected by hand: the source's new value.
@@ -309,7 +345,9 @@ describe('re-import after hand corrections (FR-76)', () => {
   test('another file: the import replaces the activities, and the review says so with the count, never silently', async () => {
     await importPdf(tablePdf('other.pdf'));
     expect(notice().classList.contains('hidden')).toBe(false);
-    expect(notice().textContent).toBe('This is another file or page than the last import (plan.pdf, page 1). Attaching replaces the 3 activities the item has, 1 of them corrected by hand.');
+    expect(notice().textContent).toBe(
+      'This is another file or page than the last import (plan.pdf, page 1). Attaching replaces the 3 activities the item has, 1 of them corrected by hand.',
+    );
     // No row is shown as kept: nothing is kept.
     expect(reviewRows().some((li) => li.dataset.edited === 'true')).toBe(false);
     await attach();

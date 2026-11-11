@@ -116,13 +116,23 @@ describe('export format (FR-40)', () => {
 
 describe('export format version 2 (FR-40 as amended in v1.1.0)', () => {
   function grouped(): Omit<ExportData, 'exportedAt'> {
-    return { ...sample(), labels: ['1.1', '1.2', '2.1', '1', '2'].slice(0, sample().numbers.length), programGroups: [{ index: 1, name: 'First programme' }, { index: 2, name: 'Second programme' }] };
+    return {
+      ...sample(),
+      labels: ['1.1', '1.2', '2.1', '1', '2'].slice(0, sample().numbers.length),
+      programGroups: [
+        { index: 1, name: 'First programme' },
+        { index: 2, name: 'Second programme' },
+      ],
+    };
   }
 
   test('the program groups round-trip', () => {
     const data = grouped();
     const f = JSON.parse(serialiseExport(data, AT));
-    expect(f.programGroups).toEqual([{ index: 1, name: 'First programme' }, { index: 2, name: 'Second programme' }]);
+    expect(f.programGroups).toEqual([
+      { index: 1, name: 'First programme' },
+      { index: 2, name: 'Second programme' },
+    ]);
     expect(parseExport(serialiseExport(data, AT))).toEqual({ ...data, exportedAt: '2024-10-01T12:00:00.000Z' });
   });
 

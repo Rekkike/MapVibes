@@ -23,19 +23,25 @@ describe('date cells read as dates (FR-1 as amended)', () => {
 
     // The list.
     const text = [...document.querySelectorAll<HTMLInputElement>('#row-table-body .cell-input')].map((i) => i.value).join(' | ');
-    for (const d of ['2024-03-15', '2026-06-30', '2024-05-02 18:00', '2025-12-31', '2025-01-10']) expect(text).toContain(d);
+    for (const d of ['2024-03-15', '2026-06-30', '2024-05-02 18:00', '2025-12-31', '2025-01-10']) {
+      expect(text).toContain(d);
+    }
     expect(text).not.toMatch(/\b4\d{4}\b/);
     // The value that is not a date stays as typed.
     expect(text).toContain('15/03/2024');
 
     // The details.
     document.querySelectorAll<HTMLElement>('#row-table-body tr')[0].querySelector<HTMLElement>('.row-details')!.click();
-    const detail = (header: string) => byId('details-panel').querySelector<HTMLInputElement>(`.details-value[data-header="${header}"] input, .details-value[data-header="${header}"] textarea`)!.value;
+    const detail = (header: string) =>
+      byId('details-panel').querySelector<HTMLInputElement>(`.details-value[data-header="${header}"] input, .details-value[data-header="${header}"] textarea`)!
+        .value;
     expect([detail('Start'), detail('End')]).toEqual(['2024-03-15', '2026-06-30']);
 
     // The at-a-glance.
     byId('tab-map').click();
-    const glance = [...byId('map-glance-list').querySelectorAll('.glance-entry')].map((e) => [...e.querySelectorAll('.glance-value')].map((v) => v.textContent));
+    const glance = [...byId('map-glance-list').querySelectorAll('.glance-entry')].map((e) =>
+      [...e.querySelectorAll('.glance-value')].map((v) => v.textContent),
+    );
     expect(glance).toEqual([
       ['2024-03-15', '2026-06-30'],
       ['2024-05-02 18:00', '2027'],
@@ -46,7 +52,10 @@ describe('date cells read as dates (FR-1 as amended)', () => {
     const m = presentationMarkers()[1];
     pointer('pointerdown', m, STAGE.left + parseFloat(m.style.left), STAGE.top + parseFloat(m.style.top));
     pointer('pointerup', m, STAGE.left + parseFloat(m.style.left), STAGE.top + parseFloat(m.style.top));
-    const card = [...byId('presentation-card').querySelectorAll('.card-field')].map((f) => [f.querySelector('.card-label')!.textContent, f.querySelector('.card-value')!.textContent]);
+    const card = [...byId('presentation-card').querySelectorAll('.card-field')].map((f) => [
+      f.querySelector('.card-label')!.textContent,
+      f.querySelector('.card-value')!.textContent,
+    ]);
     expect(card).toEqual([
       ['ID', 'T-02'],
       ['Start', '2024-05-02 18:00'],

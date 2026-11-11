@@ -23,7 +23,9 @@ export const PREFERRED_RENDER_SCALE = 3;
 // MAX_RENDER_SIDE.
 export function renderScale(widthPt: number, heightPt: number): number {
   const longest = Math.max(widthPt, heightPt);
-  if (!(longest > 0)) return 1;
+  if (!(longest > 0)) {
+    return 1;
+  }
   return Math.min(PREFERRED_RENDER_SCALE, MAX_RENDER_SIDE / longest);
 }
 
@@ -34,16 +36,48 @@ export interface PdfDocument {
   close(): Promise<void>;
 }
 
-export async function openPdf(data: ArrayBuffer): Promise<PdfDocument> {
-  // PDF.js 6 contains no eval-based code paths; XFA forms are not rendered.
-  const task = pdfjs.getDocument({
-    data: new Uint8Array(data),
+export type DocumentParameters = NonNullable<Parameters<typeof pdfjs.getDocument>[0]>;
+
+// No external cmap or font-data URL is ever configured (hard constraint 2):
+// the URLs are pinned to a non-network data URL, worker-side fetching is
+// switched off, and every binary-data load (cmap, standard font, wasm) is
+// refused by the factory below before a request is built, so no library
+// version can open a fetch path for them. Fonts fall back to the system
+// fonts (useSystemFonts). The offline browser assertion, no non-local
+// request under setOffline, is mandatory on every pdfjs-dist bump.
+export const NO_FETCH_URL = 'data:,/';
+
+class NoFetchBinaryDataFactory {
+  constructor(_options: unknown) {
+    void _options;
+  }
+
+  fetch(): Promise<never> {
+    return Promise.reject(new Error('MapVibes never fetches PDF resources (hard constraint 2)'));
+  }
+}
+
+// The document parameters shared by every PDF.js entry point in the
+// application.
+export function documentParams(data: Uint8Array): DocumentParameters {
+  return {
+    data,
+    // PDF.js 6 contains no eval-based code paths; XFA forms are not rendered.
     enableXfa: false,
     useSystemFonts: true,
     disableFontFace: false,
     stopAtErrors: false,
     verbosity: pdfjs.VerbosityLevel.ERRORS,
-  });
+    cMapUrl: NO_FETCH_URL,
+    cMapPacked: true,
+    standardFontDataUrl: NO_FETCH_URL,
+    useWorkerFetch: false,
+    BinaryDataFactory: NoFetchBinaryDataFactory,
+  };
+}
+
+export async function openPdf(data: ArrayBuffer): Promise<PdfDocument> {
+  const task = pdfjs.getDocument(documentParams(new Uint8Array(data)));
   const doc = await task.promise;
   return {
     pageCount: doc.numPages,
@@ -60,7 +94,9 @@ export async function openPdf(data: ArrayBuffer): Promise<PdfDocument> {
       canvas.width = Math.max(1, Math.floor(viewport.width));
       canvas.height = Math.max(1, Math.floor(viewport.height));
       const context = canvas.getContext('2d');
-      if (!context) throw new Error('canvas 2d context unavailable');
+      if (!context) {
+        throw new Error('canvas 2d context unavailable');
+      }
       context.fillStyle = '#ffffff';
       context.fillRect(0, 0, canvas.width, canvas.height);
       await p.render({ canvas, canvasContext: context, viewport }).promise;

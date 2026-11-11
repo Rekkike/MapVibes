@@ -17,7 +17,7 @@ describe('the premapped empty list (FR-30)', () => {
     await mountApp();
   });
 
-  test('the starter columns carry the name, start, end, and note roles, in the interface language', async () => {
+  test('the starter columns carry the name, start, end, and note roles, in the interface language', () => {
     const lang = byId<HTMLSelectElement>('select-language');
     lang.value = 'sv';
     lang.dispatchEvent(new Event('change'));
@@ -50,7 +50,16 @@ describe('the role explanation (FR-55)', () => {
 
   test('"What do these do?" explains what every role feeds', () => {
     expect(byId('role-help-summary').textContent).toBe('What do these do?');
-    expect([...byId('role-help-list').querySelectorAll('li')].map((li) => li.dataset.role)).toEqual(['identifier', 'name', 'start', 'end', 'area', 'status', 'program', 'note']);
+    expect([...byId('role-help-list').querySelectorAll('li')].map((li) => li.dataset.role)).toEqual([
+      'identifier',
+      'name',
+      'start',
+      'end',
+      'area',
+      'status',
+      'program',
+      'note',
+    ]);
     expect(helpLine('name').textContent).toContain('the header of the details panel and the card');
     expect(helpLine('start').textContent).toContain('at-a-glance column');
     expect(helpLine('end').textContent).toContain('at-a-glance column');

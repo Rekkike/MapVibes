@@ -46,8 +46,8 @@ const STYLE_CONTROLS = ['annotation-colour', 'annotation-fill', 'annotation-outl
 async function mountNarrowPhone(): Promise<void> {
   await mountApp({
     beforeMain: () => {
-      const plain = window.matchMedia;
-      window.matchMedia = ((q: string) => (q === NARROW_QUERY ? { ...plain(q), matches: true } : plain(q))) as typeof window.matchMedia;
+      const plain = window.matchMedia.bind(window);
+      window.matchMedia = (q: string) => (q === NARROW_QUERY ? { ...plain(q), matches: true } : plain(q));
     },
   });
   await placeExampleMarkers([
@@ -76,7 +76,9 @@ describe('the annotation inspector as a bottom sheet (FR-47 as amended in v1.15.
     expect(inspector.inert).toBe(false);
     expect(inspector.classList.contains('hidden')).toBe(false);
     expect(document.activeElement).toBe(inspector);
-    for (const id of STYLE_CONTROLS) expect(byId(id).closest('#annotation-inspector'), id).not.toBeNull();
+    for (const id of STYLE_CONTROLS) {
+      expect(byId(id).closest('#annotation-inspector'), id).not.toBeNull();
+    }
     expect(byId('annotation-toolbar').querySelectorAll(':scope > label')).toHaveLength(0);
     // Selecting an annotation does not touch the details flow: the sheet
     // overlays the stage, the stage's own layout is not refit.
@@ -90,7 +92,9 @@ describe('the annotation inspector as a bottom sheet (FR-47 as amended in v1.15.
     expect(inspector.classList.contains('hidden')).toBe(false);
     expect(inspector.dataset.state).toBeUndefined();
     expect(inspector.inert).toBe(false);
-    for (const id of STYLE_CONTROLS) expect(byId(id).closest('#annotation-toolbar'), id).not.toBeNull();
+    for (const id of STYLE_CONTROLS) {
+      expect(byId(id).closest('#annotation-toolbar'), id).not.toBeNull();
+    }
   });
 
   test('focus returns on Escape; a re-tap on the shape reopens the sheet; a tap outside closes it; the Close button closes it', async () => {

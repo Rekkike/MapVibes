@@ -115,12 +115,14 @@ describe('failure classes (FR-31)', () => {
   });
 
   function reply(status: number, body = '', headers: Record<string, string> = {}): void {
-    globalThis.fetch = vi.fn(async () => ({
-      ok: status >= 200 && status < 300,
-      status,
-      headers: new Headers(headers),
-      text: async () => body,
-    })) as unknown as typeof fetch;
+    globalThis.fetch = vi.fn(() =>
+      Promise.resolve({
+        ok: status >= 200 && status < 300,
+        status,
+        headers: new Headers(headers),
+        text: () => Promise.resolve(body),
+      }),
+    ) as unknown as typeof fetch;
   }
 
   test('HTTP statuses are classified, and the status is kept', () => {
@@ -158,9 +160,7 @@ describe('failure classes (FR-31)', () => {
   });
 
   test('a network error is reported as such', async () => {
-    globalThis.fetch = vi.fn(async () => {
-      throw new TypeError('Failed to fetch');
-    }) as unknown as typeof fetch;
+    globalThis.fetch = vi.fn(() => Promise.reject(new TypeError('Failed to fetch')));
     expect((await failureOf(fetchMapData(area))).code).toBe('network');
   });
 
@@ -201,7 +201,9 @@ describe('failure classes (FR-31)', () => {
 // operation. No other application source may open a network request.
 describe('the only network operation', () => {
   test('the exempted identifiers of the PowerPoint format are schema namespaces only', () => {
-    for (const id of XML_IDENTIFIERS) expect(id).toMatch(/^http:\/\/(schemas\.openxmlformats\.org\/|purl\.org\/dc\/|www\.w3\.org\/2001\/XMLSchema-instance$)/);
+    for (const id of XML_IDENTIFIERS) {
+      expect(id).toMatch(/^http:\/\/(schemas\.openxmlformats\.org\/|purl\.org\/dc\/|www\.w3\.org\/2001\/XMLSchema-instance$)/);
+    }
   });
 
   const srcDir = join(process.cwd(), 'src');
@@ -216,10 +218,21 @@ describe('the only network operation', () => {
         // documents, not addresses that are fetched; exactly these literals
         // are exempted, nothing else.
         let text = readFileSync(join(srcDir, f), 'utf8').replaceAll("'http://www.w3.org/2000/svg'", "''");
-        if (f === 'pptxwriter.ts') for (const id of XML_IDENTIFIERS) text = text.replaceAll(`'${id}'`, "''");
+        if (f === 'pptxwriter.ts') {
+          for (const id of XML_IDENTIFIERS) {
+            text = text.replaceAll(`'${id}'`, "''");
+          }
+        }
         // The hosted application's address, written as text into the
         // no-scripts notice (FR-59), is exempted in its own module only.
-        if (f === 'hosted.ts') text = text.replaceAll(`'${HOSTED_ADDRESS}'`, "''");
+        if (f === 'hosted.ts') {
+          text = text.replaceAll(`'${HOSTED_ADDRESS}'`, "''");
+        }
+        // The PDF library's binary-data factory refuses every load; its
+        // method signature is the interface's method name, not a call.
+        if (f === 'pdfbackground.ts') {
+          text = text.replaceAll('fetch(): Promise<never>', "''");
+        }
         return NETWORK.test(text);
       });
     expect(offenders).toEqual([]);

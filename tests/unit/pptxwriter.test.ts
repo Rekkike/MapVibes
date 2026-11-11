@@ -37,7 +37,12 @@ describe('the zip writer (FR-51)', () => {
   });
 
   test('repeated names are refused', () => {
-    expect(() => zip([{ name: 'x', data: new Uint8Array() }, { name: 'x', data: new Uint8Array() }])).toThrow();
+    expect(() =>
+      zip([
+        { name: 'x', data: new Uint8Array() },
+        { name: 'x', data: new Uint8Array() },
+      ]),
+    ).toThrow();
   });
 });
 
@@ -68,19 +73,29 @@ describe('the PowerPoint writer: package structure (FR-51)', () => {
   test('every part is well-formed XML and has a content type; every relationship target exists', () => {
     const bytes = buildPptx(content(pptxTables(sample, texts).slides));
     const p = parts(bytes);
-    for (const [name, text] of p) if (!name.endsWith('.png')) xml(text);
+    for (const [name, text] of p) {
+      if (!name.endsWith('.png')) {
+        xml(text);
+      }
+    }
     const types = xml(p.get('[Content_Types].xml')!);
     const defaults = new Map([...types.getElementsByTagName('Default')].map((d) => [d.getAttribute('Extension'), d.getAttribute('ContentType')]));
     const overrides = new Map([...types.getElementsByTagName('Override')].map((o) => [o.getAttribute('PartName'), o.getAttribute('ContentType')]));
     for (const name of p.keys()) {
-      if (name === '[Content_Types].xml') continue;
+      if (name === '[Content_Types].xml') {
+        continue;
+      }
       const ext = name.slice(name.lastIndexOf('.') + 1);
       expect(overrides.has(`/${name}`) || defaults.has(ext), name).toBe(true);
     }
-    for (const part of overrides.keys()) expect(p.has(part!.slice(1)), part!).toBe(true);
+    for (const part of overrides.keys()) {
+      expect(p.has(part!.slice(1)), part!).toBe(true);
+    }
     // Relationships point at parts that exist, relative to their source.
     for (const [name, text] of p) {
-      if (!name.endsWith('.rels')) continue;
+      if (!name.endsWith('.rels')) {
+        continue;
+      }
       const base = name.replace(/_rels\/[^/]*\.rels$/, '');
       for (const rel of xml(text).getElementsByTagName('Relationship')) {
         const target = new URL(rel.getAttribute('Target')!, `http://x/${base}`).pathname.slice(1);
@@ -103,7 +118,11 @@ describe('the PowerPoint writer: package structure (FR-51)', () => {
   });
 
   test('several image slides each carry their own picture part and relationship (FR-12 as amended in v1.13.0)', () => {
-    const images = [{ png, description: 'The stage' }, { png, description: 'The timeline page' }, { png, description: 'An economics page' }];
+    const images = [
+      { png, description: 'The stage' },
+      { png, description: 'The timeline page' },
+      { png, description: 'An economics page' },
+    ];
     const p = parts(buildPptx(content(pptxTables(sample, texts).slides, images)));
     expect(xml(p.get('ppt/presentation.xml')!).getElementsByTagName('p:sldId')).toHaveLength(4);
     for (let i = 0; i < 3; i++) {
@@ -134,7 +153,7 @@ describe('the PowerPoint writer: package structure (FR-51)', () => {
     // Characters beyond WinAnsi are kept as they are in the PowerPoint file.
     expect(texts2).toContain('Ω and 平和 are kept');
     // The long note is in several paragraphs, as the layout broke it.
-    const cell = [...slide.getElementsByTagName('a:tc')].find((tc) => tc.textContent!.startsWith('A long note'))!;
+    const cell = [...slide.getElementsByTagName('a:tc')].find((tc) => tc.textContent.startsWith('A long note'))!;
     expect(cell.getElementsByTagName('a:p').length).toBeGreaterThan(1);
     // The grid fills the slide's width between the margins.
     const widths = [...slide.getElementsByTagName('a:gridCol')].map((g) => Number(g.getAttribute('w')));
@@ -156,7 +175,9 @@ describe('the PowerPoint writer: package structure (FR-51)', () => {
     const tables = pptxTables(many, texts);
     expect(tables.columnGroups).toBeGreaterThan(1);
     expect(tables.slides.length).toBeGreaterThan(tables.columnGroups);
-    for (const s of tables.slides) expect(s.headings[0]).toBe('No.');
+    for (const s of tables.slides) {
+      expect(s.headings[0]).toBe('No.');
+    }
     expect(tables.slides[0].title).toMatch(/^Items 1 to \d+ of 60 \(1 of \d+\)$/);
   });
 

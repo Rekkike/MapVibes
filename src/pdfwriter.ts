@@ -27,14 +27,13 @@ export type Transform = readonly [number, number, number, number, number, number
 
 export const IDENTITY: Transform = [1, 0, 0, 1, 0, 0];
 
-// Paper sizes in points.
-export const A4_LANDSCAPE = { width: 841.89, height: 595.28 };
-
 const REPLACEMENT = 0x3f; // '?'
 
 // The WinAnsi code of a Unicode code point, or null.
 export function winAnsiCode(codePoint: number): number | null {
-  if ((codePoint >= 0x20 && codePoint <= 0x7e) || (codePoint >= 0xa0 && codePoint <= 0xff)) return codePoint;
+  if ((codePoint >= 0x20 && codePoint <= 0x7e) || (codePoint >= 0xa0 && codePoint <= 0xff)) {
+    return codePoint;
+  }
   return WINANSI_SPECIAL.get(codePoint) ?? null;
 }
 
@@ -77,20 +76,27 @@ export function textWidth(text: string, font: PdfFont, size: number): number {
 
 // The text shortened with an ellipsis to fit the width, or the whole text.
 export function fitText(text: string, font: PdfFont, size: number, width: number): string {
-  if (textWidth(text, font, size) <= width) return text;
+  if (textWidth(text, font, size) <= width) {
+    return text;
+  }
   const chars = [...text];
   let lo = 0;
   let hi = chars.length;
   while (lo < hi) {
     const mid = Math.ceil((lo + hi) / 2);
-    if (textWidth(`${chars.slice(0, mid).join('').trimEnd()}…`, font, size) <= width) lo = mid;
-    else hi = mid - 1;
+    if (textWidth(`${chars.slice(0, mid).join('').trimEnd()}…`, font, size) <= width) {
+      lo = mid;
+    } else {
+      hi = mid - 1;
+    }
   }
   return lo === 0 ? '' : `${chars.slice(0, lo).join('').trimEnd()}…`;
 }
 
 function num(n: number): string {
-  if (!Number.isFinite(n)) throw new Error(`pdf: not a finite number: ${n}`);
+  if (!Number.isFinite(n)) {
+    throw new Error(`pdf: not a finite number: ${n}`);
+  }
   const r = Math.round(n * 1000) / 1000;
   return Object.is(r, -0) ? '0' : String(r);
 }
@@ -121,7 +127,9 @@ export function parseSvgPath(d: string): PathSegment[] {
   let lastQuad: [number, number] | null = null;
   const next = (): number => {
     const t = tokens[i++];
-    if (t === undefined || /[a-zA-Z]/.test(t)) throw new Error(`pdf: bad path data: ${d}`);
+    if (t === undefined || /[a-zA-Z]/.test(t)) {
+      throw new Error(`pdf: bad path data: ${d}`);
+    }
     return Number(t);
   };
   const flag = (): number => {
@@ -137,8 +145,11 @@ export function parseSvgPath(d: string): PathSegment[] {
     out.push(['C', x + ((x1 - x) * 2) / 3, y + ((y1 - y) * 2) / 3, x2 + ((x1 - x2) * 2) / 3, y2 + ((y1 - y2) * 2) / 3, x2, y2]);
   };
   while (i < tokens.length) {
-    if (/[a-zA-Z]/.test(tokens[i])) cmd = tokens[i++];
-    else if (cmd === '') throw new Error(`pdf: bad path data: ${d}`);
+    if (/[a-zA-Z]/.test(tokens[i])) {
+      cmd = tokens[i++];
+    } else if (cmd === '') {
+      throw new Error(`pdf: bad path data: ${d}`);
+    }
     const rel = cmd === cmd.toLowerCase();
     const ox = rel ? x : 0;
     const oy = rel ? y : 0;
@@ -218,7 +229,9 @@ export function parseSvgPath(d: string): PathSegment[] {
         const sweep = flag();
         const x2 = ox + next();
         const y2 = oy + next();
-        for (const seg of arcToCubics(x, y, rx, ry, rotation, large === 1, sweep === 1, x2, y2)) out.push(seg);
+        for (const seg of arcToCubics(x, y, rx, ry, rotation, large === 1, sweep === 1, x2, y2)) {
+          out.push(seg);
+        }
         x = x2;
         y = y2;
         break;
@@ -238,8 +251,20 @@ export function parseSvgPath(d: string): PathSegment[] {
 }
 
 // An elliptical arc as cubic curves (the SVG endpoint parameterisation).
-function arcToCubics(x1: number, y1: number, rx: number, ry: number, rotationDeg: number, large: boolean, sweep: boolean, x2: number, y2: number): PathSegment[] {
-  if (rx === 0 || ry === 0 || (x1 === x2 && y1 === y2)) return [['L', x2, y2]];
+function arcToCubics(
+  x1: number,
+  y1: number,
+  rx: number,
+  ry: number,
+  rotationDeg: number,
+  large: boolean,
+  sweep: boolean,
+  x2: number,
+  y2: number,
+): PathSegment[] {
+  if (rx === 0 || ry === 0 || (x1 === x2 && y1 === y2)) {
+    return [['L', x2, y2]];
+  }
   rx = Math.abs(rx);
   ry = Math.abs(ry);
   const phi = (rotationDeg * Math.PI) / 180;
@@ -267,8 +292,12 @@ function arcToCubics(x1: number, y1: number, rx: number, ry: number, rotationDeg
   };
   const theta1 = angle(1, 0, (x1p - cxp) / rx, (y1p - cyp) / ry);
   let delta = angle((x1p - cxp) / rx, (y1p - cyp) / ry, (-x1p - cxp) / rx, (-y1p - cyp) / ry);
-  if (!sweep && delta > 0) delta -= 2 * Math.PI;
-  if (sweep && delta < 0) delta += 2 * Math.PI;
+  if (!sweep && delta > 0) {
+    delta -= 2 * Math.PI;
+  }
+  if (sweep && delta < 0) {
+    delta += 2 * Math.PI;
+  }
   const parts = Math.ceil(Math.abs(delta) / (Math.PI / 2));
   const step = delta / parts;
   const k = (4 / 3) * Math.tan(step / 4);
@@ -379,16 +408,20 @@ export class PdfPage {
   // SVG path data, mapped through a transform into page coordinates.
   svgPath(d: string, t: Transform = IDENTITY): this {
     for (const seg of parseSvgPath(d)) {
-      if (seg[0] === 'Z') this.close();
-      else if (seg[0] === 'C') {
+      if (seg[0] === 'Z') {
+        this.close();
+      } else if (seg[0] === 'C') {
         const [x1, y1] = applyTransform(t, seg[1], seg[2]);
         const [x2, y2] = applyTransform(t, seg[3], seg[4]);
         const [x, y] = applyTransform(t, seg[5], seg[6]);
         this.curveTo(x1, y1, x2, y2, x, y);
       } else {
         const [x, y] = applyTransform(t, seg[1], seg[2]);
-        if (seg[0] === 'M') this.moveTo(x, y);
-        else this.lineTo(x, y);
+        if (seg[0] === 'M') {
+          this.moveTo(x, y);
+        } else {
+          this.lineTo(x, y);
+        }
       }
     }
     return this;
@@ -467,7 +500,9 @@ export class PdfDocument {
 
   // A baseline JPEG image (DCTDecode), RGB or greyscale.
   addJpeg(data: Uint8Array, width: number, height: number): PdfImage {
-    if (data.length < 4 || data[0] !== 0xff || data[1] !== 0xd8) throw new Error('pdf: not a JPEG image');
+    if (data.length < 4 || data[0] !== 0xff || data[1] !== 0xd8) {
+      throw new Error('pdf: not a JPEG image');
+    }
     const entry = { name: `Im${this.images.length + 1}`, width, height, data };
     this.images.push(entry);
     return { name: entry.name, width, height };
@@ -484,7 +519,9 @@ export class PdfDocument {
   }
 
   toBytes(): Uint8Array {
-    if (this.pages.length === 0) throw new Error('pdf: a document needs a page');
+    if (this.pages.length === 0) {
+      throw new Error('pdf: a document needs a page');
+    }
     const chunks: Uint8Array[] = [];
     let length = 0;
     const offsets: number[] = [];
@@ -531,7 +568,9 @@ export class PdfDocument {
       begin(imageBase + i);
       const components = jpegComponents(img.data);
       const space = components === 1 ? '/DeviceGray' : components === 4 ? '/DeviceCMYK' : '/DeviceRGB';
-      ascii(`<< /Type /XObject /Subtype /Image /Width ${img.width} /Height ${img.height} /ColorSpace ${space} /BitsPerComponent 8 /Filter /DCTDecode /Length ${img.data.length} >>\nstream\n`);
+      ascii(
+        `<< /Type /XObject /Subtype /Image /Width ${img.width} /Height ${img.height} /ColorSpace ${space} /BitsPerComponent 8 /Filter /DCTDecode /Length ${img.data.length} >>\nstream\n`,
+      );
       push(img.data);
       ascii('\nendstream');
       end();
@@ -559,7 +598,9 @@ export class PdfDocument {
 
     const xref = length;
     ascii(`xref\n0 ${objectCount + 1}\n0000000000 65535 f \n`);
-    for (let n = 1; n <= objectCount; n++) ascii(`${String(offsets[n]).padStart(10, '0')} 00000 n \n`);
+    for (let n = 1; n <= objectCount; n++) {
+      ascii(`${String(offsets[n]).padStart(10, '0')} 00000 n \n`);
+    }
     ascii(`trailer\n<< /Size ${objectCount + 1} /Root 1 0 R /Info 5 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
 
     const out = new Uint8Array(length);
@@ -576,7 +617,9 @@ function latin1(text: string): Uint8Array {
   const out = new Uint8Array(text.length);
   for (let i = 0; i < text.length; i++) {
     const c = text.charCodeAt(i);
-    if (c > 0xff) throw new Error('pdf: internal text is not Latin-1');
+    if (c > 0xff) {
+      throw new Error('pdf: internal text is not Latin-1');
+    }
     out[i] = c;
   }
   return out;
@@ -586,7 +629,9 @@ function latin1(text: string): Uint8Array {
 // order mark, written in hexadecimal, so that any title survives.
 export function pdfTextString(text: string): string {
   let hex = 'feff';
-  for (let i = 0; i < text.length; i++) hex += text.charCodeAt(i).toString(16).padStart(4, '0');
+  for (let i = 0; i < text.length; i++) {
+    hex += text.charCodeAt(i).toString(16).padStart(4, '0');
+  }
   return `<${hex}>`;
 }
 
@@ -600,11 +645,15 @@ function pdfDate(d: Date): string {
 export function jpegComponents(data: Uint8Array): number {
   let i = 2;
   while (i + 9 < data.length) {
-    if (data[i] !== 0xff) return 3;
+    if (data[i] !== 0xff) {
+      return 3;
+    }
     const marker = data[i + 1];
     const size = (data[i + 2] << 8) | data[i + 3];
     // Start-of-frame markers, except DHT (C4), JPG (C8), and DAC (CC).
-    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) return data[i + 9];
+    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+      return data[i + 9];
+    }
     i += 2 + size;
   }
   return 3;

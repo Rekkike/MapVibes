@@ -9,8 +9,9 @@
 //
 // Export format version 2 (v1.1.0) is written; versions 1 and 2 are read;
 // any other version is rejected with a clear message. Version 2 embeds a
-// work state of schema version 6, which carries the annotations, the colour
-// labels, the program vocabulary, and the at-a-glance columns, and adds the
+// work state of the current schema version (12 since v1.12.0), which carries
+// the annotations, the colour labels, the program vocabulary, the at-a-glance
+// columns, the activities, the events, and the saved windows, and adds the
 // program groups as numbered in the exported presentation (FR-17, FR-43).
 // A version 1 file has none of these: its work state is of schema version 5
 // at most, and it has no program groups.
@@ -104,24 +105,38 @@ export function parseExport(text: string): ExportData {
     throw new ExportError('unknown-version', String(version));
   }
   const exportedAt = file.exportedAt;
-  if (typeof exportedAt !== 'string' || Number.isNaN(Date.parse(exportedAt))) throw new ExportError('invalid', 'exportedAt');
-  if (typeof file.application !== 'string') throw new ExportError('invalid', 'application');
+  if (typeof exportedAt !== 'string' || Number.isNaN(Date.parse(exportedAt))) {
+    throw new ExportError('invalid', 'exportedAt');
+  }
+  if (typeof file.application !== 'string') {
+    throw new ExportError('invalid', 'application');
+  }
   const prefs = file.preferences;
-  if (typeof prefs !== 'object' || prefs === null) throw new ExportError('invalid', 'preferences');
+  if (typeof prefs !== 'object' || prefs === null) {
+    throw new ExportError('invalid', 'preferences');
+  }
   const lang = (prefs as Json).language;
   const theme = (prefs as Json).theme;
-  if (!LANGS.includes(lang as Lang)) throw new ExportError('invalid', 'preferences.language');
-  if (!THEMES.includes(theme as ThemeChoice)) throw new ExportError('invalid', 'preferences.theme');
+  if (!LANGS.includes(lang as Lang)) {
+    throw new ExportError('invalid', 'preferences.language');
+  }
+  if (!THEMES.includes(theme as ThemeChoice)) {
+    throw new ExportError('invalid', 'preferences.theme');
+  }
   let workState: WorkState;
   try {
     workState = parseWorkState(JSON.stringify(file.workState));
   } catch (e) {
-    if (e instanceof WorkStateError) throw new ExportError('invalid', 'workState', e);
+    if (e instanceof WorkStateError) {
+      throw new ExportError('invalid', 'workState', e);
+    }
     throw e;
   }
   // Every row of an export is shown: none is removed, and each has a
   // presentation number; the numbers rise with the rows and are distinct.
-  if (workState.rows.some((r) => r.removed)) throw new ExportError('invalid', 'workState.rows');
+  if (workState.rows.some((r) => r.removed)) {
+    throw new ExportError('invalid', 'workState.rows');
+  }
   const numbers = file.numbers;
   if (
     !Array.isArray(numbers) ||

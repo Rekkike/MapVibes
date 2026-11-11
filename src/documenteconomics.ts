@@ -10,7 +10,19 @@
 
 import { economicsOf, yearRanges, type Economics, type SeriesAssignments } from './economics';
 import { formatAmount, type EconomicsFormat, type EconomicsLabels } from './economicsview';
-import { drawFooter, layoutTable, LEGEND_FONT, PALETTE, rowCells, rowHeight, wrapValue, type DocumentTable, type PageFrame, type Painter, TABLE } from './documents';
+import {
+  drawFooter,
+  layoutTable,
+  LEGEND_FONT,
+  PALETTE,
+  rowCells,
+  rowHeight,
+  wrapValue,
+  type DocumentTable,
+  type PageFrame,
+  type Painter,
+  TABLE,
+} from './documents';
 import { fitText, textWidth, type Rgb } from './pdfwriter';
 
 // One shown item's economics block, or null when the item has none (absence
@@ -22,7 +34,14 @@ export interface EconomicsBlock {
   economics: Economics;
 }
 
-export function economicsBlock(label: string, name: string, values: Record<string, string>, series: SeriesAssignments, span: { start: number | null; end: number | null }, unit: string): EconomicsBlock | null {
+export function economicsBlock(
+  label: string,
+  name: string,
+  values: Record<string, string>,
+  series: SeriesAssignments,
+  span: { start: number | null; end: number | null },
+  unit: string,
+): EconomicsBlock | null {
   const economics = economicsOf(values, series, span, unit);
   return economics === null ? null : { label, name, economics };
 }
@@ -33,7 +52,19 @@ export interface EconomicsPageLabels extends EconomicsLabels {
 }
 
 // The blocks' geometry in page units.
-export const ECON = { titleFont: 11, titleHeight: 20, headingFont: 9, headingHeight: 15, totalsFont: 8, totalsLineHeight: 11, totalsMaxLines: 2, noteFont: 7, noteLineHeight: 9.5, barHeight: 3, gap: 5 } as const;
+export const ECON = {
+  titleFont: 11,
+  titleHeight: 20,
+  headingFont: 9,
+  headingHeight: 15,
+  totalsFont: 8,
+  totalsLineHeight: 11,
+  totalsMaxLines: 2,
+  noteFont: 7,
+  noteLineHeight: 9.5,
+  barHeight: 3,
+  gap: 5,
+} as const;
 
 export interface EconomicsLayout {
   titleHeight: number;
@@ -50,11 +81,35 @@ export interface EconomicsLayout {
 // years table (heading row and year rows, wrapped as the table wraps), and
 // the not-a-number note. The table's layout is the one computed over all the
 // blocks' cells, so that every block's rows wrap as laid out.
-export function blockHeight(block: EconomicsBlock, labels: EconomicsPageLabels, fmt: EconomicsFormat, width: number, table: ReturnType<typeof layoutTable>, e = ECON): number {
+export function blockHeight(
+  block: EconomicsBlock,
+  labels: EconomicsPageLabels,
+  fmt: EconomicsFormat,
+  width: number,
+  table: ReturnType<typeof layoutTable>,
+  e = ECON,
+): number {
   const own = blockTable(block, labels, fmt);
   const heading = e.headingHeight;
   const totals = totalsLines(block, labels, fmt, width, e).reduce((s, lines) => s + lines * e.totalsLineHeight, 0);
-  const rows = rowHeight(table.groups[0].map((c) => own.headings[c]), table.widths[0], 'bold', TABLE) + own.rows.reduce((s, r) => s + rowHeight(table.groups[0].map((c) => r[c] ?? ''), table.widths[0], 'regular', TABLE), 0);
+  const rows =
+    rowHeight(
+      table.groups[0].map((c) => own.headings[c]),
+      table.widths[0],
+      'bold',
+      TABLE,
+    ) +
+    own.rows.reduce(
+      (s, r) =>
+        s +
+        rowHeight(
+          table.groups[0].map((c) => r[c] ?? ''),
+          table.widths[0],
+          'regular',
+          TABLE,
+        ),
+      0,
+    );
   const note = block.economics.texts.length > 0 ? e.noteLineHeight : 0;
   return heading + totals + rows + note + e.gap;
 }
@@ -64,9 +119,15 @@ export function blockHeight(block: EconomicsBlock, labels: EconomicsPageLabels, 
 // value, a value that is not a number as typed.
 function blockTable(block: EconomicsBlock, labels: EconomicsPageLabels, fmt: EconomicsFormat): DocumentTable {
   const cell = (reading: Economics['years'][number]['budget']): string => {
-    if (reading === null) return '';
-    if (reading.kind === 'number') return formatAmount(reading.value, reading.decimals, fmt);
-    if (reading.kind === 'text') return reading.text;
+    if (reading === null) {
+      return '';
+    }
+    if (reading.kind === 'number') {
+      return formatAmount(reading.value, reading.decimals, fmt);
+    }
+    if (reading.kind === 'text') {
+      return reading.text;
+    }
     return '–';
   };
   return {
@@ -74,7 +135,13 @@ function blockTable(block: EconomicsBlock, labels: EconomicsPageLabels, fmt: Eco
     rows: block.economics.years.map((y) => [
       String(y.year) + (y.outside ? ` (${labels.outside})` : ''),
       cell(y.budget),
-      y.track === null ? '' : y.track.reading.kind === 'number' ? `${formatAmount(y.track.reading.value, y.track.reading.decimals, fmt)} (${y.track.kind === 'outcome' ? labels.outcome : labels.forecast})` : y.track.reading.kind === 'text' ? y.track.reading.text : '–',
+      y.track === null
+        ? ''
+        : y.track.reading.kind === 'number'
+          ? `${formatAmount(y.track.reading.value, y.track.reading.decimals, fmt)} (${y.track.kind === 'outcome' ? labels.outcome : labels.forecast})`
+          : y.track.reading.kind === 'text'
+            ? y.track.reading.text
+            : '–',
     ]),
   };
 }
@@ -88,20 +155,35 @@ function totalsLines(block: EconomicsBlock, labels: EconomicsPageLabels, fmt: Ec
     const sum = formatAmount(t.sum, t.decimals, fmt);
     if (t.file?.kind === 'number') {
       text += formatAmount(t.file.value, t.file.decimals, fmt);
-      if (Math.abs(t.file.value - t.sum) > 1e-9) text += ` (${fill(labels.sumBeside, { sum })})`;
+      if (Math.abs(t.file.value - t.sum) > 1e-9) {
+        text += ` (${fill(labels.sumBeside, { sum })})`;
+      }
     } else {
       text += sum;
     }
-    if (detail) text += ` — ${detail}`;
+    if (detail) {
+      text += ` — ${detail}`;
+    }
     out.push(wrapValue(text, width, 'regular', e.totalsFont, e.totalsMaxLines).length);
   };
-  const rangesText = (years: number[]) => yearRanges(years).map(([a, b]) => (a === b ? String(a) : `${a}–${b}`)).join(', ');
-  if (block.economics.budget) total(labels.budget, block.economics.budget, null);
+  const rangesText = (years: number[]) =>
+    yearRanges(years)
+      .map(([a, b]) => (a === b ? String(a) : `${a}–${b}`))
+      .join(', ');
+  if (block.economics.budget) {
+    total(labels.budget, block.economics.budget, null);
+  }
   if (block.economics.track) {
     const { outcomeYears, forecastYears } = block.economics.track;
     let detail: string | null = null;
-    if (outcomeYears.length > 0 && forecastYears.length > 0) detail = fill(labels.composition, { outcome: labels.outcome, outcomeYears: rangesText(outcomeYears), forecast: labels.forecast, forecastYears: rangesText(forecastYears) });
-    else if (outcomeYears.length > 0 || forecastYears.length > 0) {
+    if (outcomeYears.length > 0 && forecastYears.length > 0) {
+      detail = fill(labels.composition, {
+        outcome: labels.outcome,
+        outcomeYears: rangesText(outcomeYears),
+        forecast: labels.forecast,
+        forecastYears: rangesText(forecastYears),
+      });
+    } else if (outcomeYears.length > 0 || forecastYears.length > 0) {
       const only = outcomeYears.length > 0;
       detail = fill(labels.compositionOnly, { series: only ? labels.outcome : labels.forecast, years: rangesText(only ? outcomeYears : forecastYears) });
     }
@@ -122,7 +204,11 @@ export function layoutEconomics(blocks: EconomicsBlock[], frame: PageFrame, labe
   const bodyHeight = frame.height - frame.margin - footerSpace - bodyTop;
   // The three columns' layout, computed over every block's cells, so the
   // widest cell (a year with its outside mark) sets the year column's width.
-  const table = layoutTable({ headings: [labels.year, labels.budget, labels.track], rows: blocks.flatMap((b) => blockTable(b, labels, fmt).rows) }, width, TABLE);
+  const table = layoutTable(
+    { headings: [labels.year, labels.budget, labels.track], rows: blocks.flatMap((b) => blockTable(b, labels, fmt).rows) },
+    width,
+    TABLE,
+  );
   const pages: number[][] = [];
   let page: number[] = [];
   let used = 0;
@@ -136,14 +222,25 @@ export function layoutEconomics(blocks: EconomicsBlock[], frame: PageFrame, labe
     page.push(i);
     used += h;
   });
-  if (page.length > 0) pages.push(page);
+  if (page.length > 0) {
+    pages.push(page);
+  }
   return { titleHeight: e.titleHeight, bodyTop, bodyHeight, pages, table };
 }
 
 // One economics page: the title, then the blocks — heading, totals, the
 // years table with the track's bar in each cell, and the not-a-number note —
 // then the footer.
-export function drawEconomicsPage(p: Painter, blocks: EconomicsBlock[], labels: EconomicsPageLabels, fmt: EconomicsFormat, layout: EconomicsLayout, page: number[], frame: PageFrame, e = ECON): void {
+export function drawEconomicsPage(
+  p: Painter,
+  blocks: EconomicsBlock[],
+  labels: EconomicsPageLabels,
+  fmt: EconomicsFormat,
+  layout: EconomicsLayout,
+  page: number[],
+  frame: PageFrame,
+  e = ECON,
+): void {
   const width = frame.width - 2 * frame.margin;
   let y = frame.margin;
   p.fillColour(PALETTE.fg);
@@ -155,7 +252,13 @@ export function drawEconomicsPage(p: Painter, blocks: EconomicsBlock[], labels: 
     p.fillColour(PALETTE.fg);
     const number = `${block.label} `;
     p.text(frame.margin, y + e.headingFont, number, 'bold', e.headingFont);
-    p.text(frame.margin + textWidth(number, 'bold', e.headingFont), y + e.headingFont, fitText(block.name, 'regular', e.headingFont, width - textWidth(number, 'bold', e.headingFont)), 'regular', e.headingFont);
+    p.text(
+      frame.margin + textWidth(number, 'bold', e.headingFont),
+      y + e.headingFont,
+      fitText(block.name, 'regular', e.headingFont, width - textWidth(number, 'bold', e.headingFont)),
+      'regular',
+      e.headingFont,
+    );
     y += e.headingHeight;
     // The totals.
     p.fillColour(PALETTE.fg);
@@ -170,16 +273,29 @@ export function drawEconomicsPage(p: Painter, blocks: EconomicsBlock[], labels: 
     const t = layout.table;
     const g = t.groups[0];
     const widths = t.widths[0];
-    const numbers = block.economics.years.flatMap((yr) => [yr.budget, yr.track?.reading]).filter((r): r is Extract<NonNullable<Economics['years'][number]['budget']>, { kind: 'number' }> => r?.kind === 'number');
+    const numbers = block.economics.years
+      .flatMap((yr) => [yr.budget, yr.track?.reading])
+      .filter((r): r is Extract<NonNullable<Economics['years'][number]['budget']>, { kind: 'number' }> => r?.kind === 'number');
     const scale = Math.max(0, ...numbers.map((r) => Math.abs(r.value)));
-    const drawRow = (values: string[], font: 'regular' | 'bold', shade: Rgb | null, trackKinds?: Array<'outcome' | 'forecast' | null>, trackValues?: Array<number | null>) => {
+    const drawRow = (
+      values: string[],
+      font: 'regular' | 'bold',
+      shade: Rgb | null,
+      trackKinds?: Array<'outcome' | 'forecast' | null>,
+      trackValues?: Array<number | null>,
+    ) => {
       const cells = rowCells(values, widths, font, TABLE);
       const h = Math.max(1, ...cells.map((c) => c.length)) * TABLE.lineHeight + 2 * TABLE.padding;
       let x = frame.margin;
       if (shade) {
         p.fillColour(shade);
         p.beginPath();
-        p.rect(x, y, widths.reduce((s, w) => s + w, 0), h);
+        p.rect(
+          x,
+          y,
+          widths.reduce((s, w) => s + w, 0),
+          h,
+        );
         p.fill();
       }
       cells.forEach((cellLines, ci) => {
@@ -212,7 +328,11 @@ export function drawEconomicsPage(p: Painter, blocks: EconomicsBlock[], labels: 
       p.stroke();
       y += h;
     };
-    drawRow(g.map((c) => table.headings[c]), 'bold', PALETTE.shade);
+    drawRow(
+      g.map((c) => table.headings[c]),
+      'bold',
+      PALETTE.shade,
+    );
     table.rows.forEach((row, ri) => {
       const yr = block.economics.years[ri];
       drawRow(
@@ -242,20 +362,35 @@ function totalsText(block: EconomicsBlock, labels: EconomicsPageLabels, fmt: Eco
     const sum = formatAmount(t.sum, t.decimals, fmt);
     if (t.file?.kind === 'number') {
       text += formatAmount(t.file.value, t.file.decimals, fmt);
-      if (Math.abs(t.file.value - t.sum) > 1e-9) text += ` (${fill(labels.sumBeside, { sum })})`;
+      if (Math.abs(t.file.value - t.sum) > 1e-9) {
+        text += ` (${fill(labels.sumBeside, { sum })})`;
+      }
     } else {
       text += sum;
     }
-    if (detail) text += ` — ${detail}`;
+    if (detail) {
+      text += ` — ${detail}`;
+    }
     out.push(...wrapValue(text, width, 'regular', e.totalsFont, e.totalsMaxLines));
   };
-  const rangesText = (years: number[]) => yearRanges(years).map(([a, b]) => (a === b ? String(a) : `${a}–${b}`)).join(', ');
-  if (block.economics.budget) total(labels.budget, block.economics.budget, null);
+  const rangesText = (years: number[]) =>
+    yearRanges(years)
+      .map(([a, b]) => (a === b ? String(a) : `${a}–${b}`))
+      .join(', ');
+  if (block.economics.budget) {
+    total(labels.budget, block.economics.budget, null);
+  }
   if (block.economics.track) {
     const { outcomeYears, forecastYears } = block.economics.track;
     let detail: string | null = null;
-    if (outcomeYears.length > 0 && forecastYears.length > 0) detail = fill(labels.composition, { outcome: labels.outcome, outcomeYears: rangesText(outcomeYears), forecast: labels.forecast, forecastYears: rangesText(forecastYears) });
-    else if (outcomeYears.length > 0 || forecastYears.length > 0) {
+    if (outcomeYears.length > 0 && forecastYears.length > 0) {
+      detail = fill(labels.composition, {
+        outcome: labels.outcome,
+        outcomeYears: rangesText(outcomeYears),
+        forecast: labels.forecast,
+        forecastYears: rangesText(forecastYears),
+      });
+    } else if (outcomeYears.length > 0 || forecastYears.length > 0) {
       const only = outcomeYears.length > 0;
       detail = fill(labels.compositionOnly, { series: only ? labels.outcome : labels.forecast, years: rangesText(only ? outcomeYears : forecastYears) });
     }
@@ -263,4 +398,3 @@ function totalsText(block: EconomicsBlock, labels: EconomicsPageLabels, fmt: Eco
   }
   return out;
 }
-

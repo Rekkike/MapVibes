@@ -36,7 +36,9 @@ function listValues(index: number): string[] {
 
 function panelControl(header: string): HTMLInputElement | HTMLSelectElement {
   const control = document.querySelector<HTMLInputElement | HTMLSelectElement>(`#details-panel dd[data-header="${header}"] .cell-input`);
-  if (!control) throw new Error(`no panel control for ${header}`);
+  if (!control) {
+    throw new Error(`no panel control for ${header}`);
+  }
   return control;
 }
 
@@ -130,7 +132,9 @@ describe('value editing (FR-10)', () => {
 
   test('focusing a cell of another line moves the open panel to that line', () => {
     rows()[0].querySelector<HTMLElement>('.row-details')!.click();
-    rows()[3].querySelector<HTMLElement>('.cell-input')!.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+    rows()[3]
+      .querySelector<HTMLElement>('.cell-input')!
+      .dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
     expect(byId('details-panel').querySelector('.details-title')!.textContent).toBe('A-04');
   });
 

@@ -20,14 +20,18 @@ let context: BrowserContext;
 const requests: string[] = [];
 
 beforeAll(async () => {
-  if (!existsSync(BUILT)) throw new Error('dist/build/index.html is missing: run the build first');
+  if (!existsSync(BUILT)) {
+    throw new Error('dist/build/index.html is missing: run the build first');
+  }
   browser = await chromium.launch();
   context = await browser.newContext({ viewport: { width: 1500, height: 950 }, acceptDownloads: true });
   await context.setOffline(true);
   await context.route('**/*', (route) => {
     const url = route.request().url();
     requests.push(url);
-    if (url.startsWith('file://') || url.startsWith('data:') || url.startsWith('blob:')) return route.continue();
+    if (url.startsWith('file://') || url.startsWith('data:') || url.startsWith('blob:')) {
+      return route.continue();
+    }
     return route.abort();
   });
 }, 60_000);
@@ -65,7 +69,12 @@ async function pdfPages(bytes: Uint8Array): Promise<string[]> {
   const pages: string[] = [];
   for (let i = 1; i <= doc.numPages; i++) {
     const content = await (await doc.getPage(i)).getTextContent();
-    pages.push(content.items.map((it) => ('str' in it ? it.str : '')).filter((s) => s.trim() !== '').join('|'));
+    pages.push(
+      content.items
+        .map((it) => ('str' in it ? it.str : ''))
+        .filter((s) => s.trim() !== '')
+        .join('|'),
+    );
   }
   return pages;
 }
@@ -90,21 +99,42 @@ describe('document exports in a browser, offline (FR-50, FR-51)', () => {
     // Stage 1, timeline 2, economics 4, table 1 (measured on the demo).
     expect(pages).toHaveLength(8);
     const stage = pages[0].split('|');
-    for (let n = 1; n <= 11; n++) expect(stage, String(n)).toContain(String(n));
-    for (const text of ['Jetty footprint', 'Survey zone', 'Planned footpath', 'Legend', 'On track', 'Lightning bolt']) expect(pages[0]).toContain(text);
-    // The timeline pages: the fitted axis (2-year ticks over 2018..2030), the
+    for (let n = 1; n <= 11; n++) {
+      expect(stage, String(n)).toContain(String(n));
+    }
+    for (const text of ['Jetty footprint', 'Survey zone', 'Planned footpath', 'Legend', 'On track', 'Lightning bolt']) {
+      expect(pages[0]).toContain(text);
+    }
+    // The timeline pages: the fitted axis (2-year ticks over 2026..2036), the
     // lines with their names, the events' chips, the work-phase legend entry
     // (the demo marks one activity as the work phase), and the captions.
     const timeline = pages.slice(1, 3).join('|');
-    for (const text of ['Timeline', '2018', '2030', 'North gate', 'Old mill', 'Review', 'Decision', 'Work phase', 'The marked activity of an item', 'Groundwork']) expect(timeline).toContain(text);
+    for (const text of [
+      'Timeline',
+      '2026',
+      '2036',
+      'North gate',
+      'Old mill',
+      'Review',
+      'Decision',
+      'Work phase',
+      'The marked activity of an item',
+      'Groundwork',
+    ]) {
+      expect(timeline).toContain(text);
+    }
     expect(timeline).toMatch(/page 2 of 8/);
     // The economics pages: per-item blocks, the years with the unit, the
     // series names as headings, the totals.
     const economics = pages.slice(3, 7).join('|');
-    for (const text of ['Economics', '237,000 kr', 'North gate', 'Outcome / Forecast', 'Budget:']) expect(economics).toContain(text);
+    for (const text of ['Economics', '237,000 kr', 'North gate', 'Outcome / Forecast', 'Budget:']) {
+      expect(economics).toContain(text);
+    }
     // The table is the last page.
     expect(pages[7].startsWith('Items 1 to 12 of 12')).toBe(true);
-    for (const item of ['D-01', 'D-06', 'D-12', 'Old mill', 'Heritage route']) expect(pages[7]).toContain(item);
+    for (const item of ['D-01', 'D-06', 'D-12', 'Old mill', 'Heritage route']) {
+      expect(pages[7]).toContain(item);
+    }
     expect(errors).toEqual([]);
     await page.close();
   }, 60_000);
@@ -115,7 +145,14 @@ describe('document exports in a browser, offline (FR-50, FR-51)', () => {
     expect(name).toBe('mapvibes-presentation.pptx');
     expect(bytes.length).toBeGreaterThan(10_000);
     const parts = new Map(unzipStored(bytes).map((e) => [e.name, e.data]));
-    for (const part of ['[Content_Types].xml', '_rels/.rels', 'ppt/presentation.xml', 'ppt/slideMasters/slideMaster1.xml', 'ppt/slideLayouts/slideLayout1.xml', 'ppt/theme/theme1.xml']) {
+    for (const part of [
+      '[Content_Types].xml',
+      '_rels/.rels',
+      'ppt/presentation.xml',
+      'ppt/slideMasters/slideMaster1.xml',
+      'ppt/slideLayouts/slideLayout1.xml',
+      'ppt/theme/theme1.xml',
+    ]) {
       expect(parts.has(part), part).toBe(true);
     }
     // 9 slides (measured on the demo): stage 1, timeline 2, economics 4,
@@ -132,20 +169,22 @@ describe('document exports in a browser, offline (FR-50, FR-51)', () => {
       expect([view.getUint32(16), view.getUint32(20)]).toEqual([1920, 1080]);
     }
     for (let i = 1; i <= 7; i++) {
-      const xml = new TextDecoder().decode(parts.get(`ppt/slides/slide${i}.xml`)!);
+      const xml = new TextDecoder().decode(parts.get(`ppt/slides/slide${i}.xml`));
       expect(xml).toContain('<p:pic>');
       expect(xml).not.toContain('<a:tbl>');
-      expect(new TextDecoder().decode(parts.get(`ppt/slides/_rels/slide${i}.xml.rels`)!)).toContain(`../media/image${i}.png`);
+      expect(new TextDecoder().decode(parts.get(`ppt/slides/_rels/slide${i}.xml.rels`))).toContain(`../media/image${i}.png`);
     }
     // The table slides follow, as native tables.
     for (const n of [8, 9]) {
-      const xml = new TextDecoder().decode(parts.get(`ppt/slides/slide${n}.xml`)!);
+      const xml = new TextDecoder().decode(parts.get(`ppt/slides/slide${n}.xml`));
       expect(xml).toContain('<a:tbl>');
       expect(xml).not.toContain('<p:pic>');
     }
-    const table = new TextDecoder().decode(parts.get('ppt/slides/slide8.xml')!);
+    const table = new TextDecoder().decode(parts.get('ppt/slides/slide8.xml'));
     expect(table).toContain('Items 1 to 12 of 12');
-    for (const item of ['D-01', 'D-12', 'Heritage route']) expect(table).toContain(`<a:t>${item}</a:t>`);
+    for (const item of ['D-01', 'D-12', 'Heritage route']) {
+      expect(table).toContain(`<a:t>${item}</a:t>`);
+    }
     expect(errors).toEqual([]);
     await page.close();
   }, 60_000);
@@ -163,7 +202,9 @@ describe('document exports in a browser, offline (FR-50, FR-51)', () => {
     expect(schedule).not.toContain('North gate');
     expect(schedule).toContain('Garden path');
     const pptx = await download(page, '#pptx-open');
-    const tableSlides = unzipStored(pptx.bytes).filter((e) => /^ppt\/slides\/slide\d+\.xml$/.test(e.name) && new TextDecoder().decode(e.data).includes('<a:tbl>'));
+    const tableSlides = unzipStored(pptx.bytes).filter(
+      (e) => /^ppt\/slides\/slide\d+\.xml$/.test(e.name) && new TextDecoder().decode(e.data).includes('<a:tbl>'),
+    );
     const tableXml = tableSlides.map((e) => new TextDecoder().decode(e.data)).join('');
     expect(tableXml).not.toContain('D-01');
     expect(tableXml).toContain('D-02');

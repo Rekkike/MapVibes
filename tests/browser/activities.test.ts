@@ -20,7 +20,9 @@ let browser: Browser;
 let exported: string;
 
 beforeAll(async () => {
-  if (!existsSync(BUILT)) throw new Error('dist/build/index.html is missing: run the build first');
+  if (!existsSync(BUILT)) {
+    throw new Error('dist/build/index.html is missing: run the build first');
+  }
   // A schema-10 work state built through the repository's own parser and
   // serializer on the v6 fixture: activities on A-01 (five, deliberately
   // overlapping, so lanes and the badge are exercised), two on A-04, none on
@@ -49,7 +51,9 @@ beforeAll(async () => {
   await context.setOffline(true);
   await context.route('**/*', (route) => {
     const url = route.request().url();
-    if (url.startsWith('file://') || url.startsWith('data:') || url.startsWith('blob:')) return route.continue();
+    if (url.startsWith('file://') || url.startsWith('data:') || url.startsWith('blob:')) {
+      return route.continue();
+    }
     return route.abort();
   });
   const page = await context.newPage();
@@ -73,7 +77,7 @@ afterAll(async () => {
 });
 
 async function openViewer(options: object): Promise<{ page: Page; errors: string[] }> {
-  const context = await browser.newContext({ ...(options as object) });
+  const context = await browser.newContext({ ...options });
   await context.setOffline(true);
   const page = await context.newPage();
   const errors: string[] = [];
@@ -87,12 +91,10 @@ async function openViewer(options: object): Promise<{ page: Page; errors: string
   return { page, errors };
 }
 
-const box = (page: Page, sel: string) => page.locator(sel).first().boundingBox();
-
 describe.each([
   ['desktop 1500x950', { viewport: { width: 1500, height: 950 } }, 28, 28, 14, 0],
   ['phone 390x844', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, 48, 24, 10, 24],
-] as const)('the activities in the viewer timeline on %s (FR-78 as amended in v1.14.0)', (name, options, lineH, laneH, barH, nameRow) => {
+] as const)('the activities in the viewer timeline on %s (FR-78 as amended in v1.14.0)', (_name, options, lineH, laneH, barH, nameRow) => {
   test('collapsed, the own bar alone and the indicator; pressed, the lanes whole with the names beside the bars, the fill, the fitted window', async () => {
     const { page, errors } = await openViewer(options);
     const line = (id: string) => `#presentation-timeline .timeline-line[data-row-id="${id}"]`;
@@ -133,10 +135,27 @@ describe.each([
       });
       const names = [...row.querySelectorAll<HTMLElement>('.timeline-lane-label')].map((n) => {
         const r = n.getBoundingClientRect();
-        const seg = [...row.querySelectorAll<HTMLElement>('.timeline-seg')].find((s) => s.dataset.from === n.dataset.from && s.dataset.lane === n.dataset.lane)!.getBoundingClientRect();
-        return { text: n.textContent, place: n.dataset.place, shown: n.getClientRects().length > 0, beside: r.right <= seg.left + 0.5 || r.left >= seg.right - 0.5, inPlot: r.left >= plot.left - 0.5 && r.right <= plot.right + 0.5, lane: Number(n.dataset.lane), top: r.top - plot.top, h: r.height };
+        const seg = [...row.querySelectorAll<HTMLElement>('.timeline-seg')]
+          .find((s) => s.dataset.from === n.dataset.from && s.dataset.lane === n.dataset.lane)!
+          .getBoundingClientRect();
+        return {
+          text: n.textContent,
+          place: n.dataset.place,
+          shown: n.getClientRects().length > 0,
+          beside: r.right <= seg.left + 0.5 || r.left >= seg.right - 0.5,
+          inPlot: r.left >= plot.left - 0.5 && r.right <= plot.right + 0.5,
+          lane: Number(n.dataset.lane),
+          top: r.top - plot.top,
+          h: r.height,
+        };
       });
-      return { entryH: Math.round(row.querySelector('.timeline-entry')!.getBoundingClientRect().height), plotH: Math.round(plot.height), marks, names, expanded: row.querySelector('.timeline-plot-control')!.getAttribute('aria-expanded') };
+      return {
+        entryH: Math.round(row.querySelector('.timeline-entry')!.getBoundingClientRect().height),
+        plotH: Math.round(plot.height),
+        marks,
+        names,
+        expanded: row.querySelector('.timeline-plot-control')!.getAttribute('aria-expanded'),
+      };
     }, line('row-1'));
     expect(open.expanded).toBe('true');
     expect(open.plotH).toBe(laneH * 5);
@@ -158,14 +177,16 @@ describe.each([
     expect(open.names.filter((x) => x.shown).length).toBeGreaterThanOrEqual(3);
     // The progress fill: the 100% activity's fill spans its segment.
     const fill = await page.evaluate((sel) => {
-      const seg = [...document.querySelectorAll<HTMLElement>(`${sel} .timeline-seg`)].find((s) => s.title!.startsWith('Groundwork'))!;
+      const seg = [...document.querySelectorAll<HTMLElement>(`${sel} .timeline-seg`)].find((s) => s.title.startsWith('Groundwork'))!;
       return { segW: seg.getBoundingClientRect().width, fillW: seg.querySelector('.timeline-seg-fill')!.getBoundingClientRect().width };
     }, line('row-1'));
     expect(fill.fillW).toBeCloseTo(fill.segW - 2, 0); // the segment border
     // A press again collapses it.
     await page.locator(`${line('row-1')} .timeline-plot-control`).click({ position: { x: 4, y: 4 } });
     await page.waitForTimeout(300);
-    expect(await page.evaluate((sel) => Math.round(document.querySelector<HTMLElement>(`${sel} .timeline-entry`)!.getBoundingClientRect().height), line('row-1'))).toBe(lineH);
+    expect(
+      await page.evaluate((sel) => Math.round(document.querySelector<HTMLElement>(`${sel} .timeline-entry`)!.getBoundingClientRect().height), line('row-1')),
+    ).toBe(lineH);
     // The accessible description carries the activities, the unreadable date as typed.
     expect(a01.aria).toContain('Activities');
     expect(await page.locator(`${line('row-3')} .timeline-chip`).getAttribute('aria-label')).toContain('15/03/2024');
@@ -173,20 +194,30 @@ describe.each([
     // no plot control.
     const a05 = await page.evaluate((sel) => {
       const row = document.querySelector<HTMLElement>(sel)!;
-      return { segs: row.querySelectorAll('.timeline-seg').length, indicator: !!row.querySelector('.timeline-indicator'), control: row.querySelector('.timeline-plot-control')!.tagName, marks: row.querySelectorAll('.timeline-bar, .timeline-point').length, entryH: Math.round(row.querySelector('.timeline-entry')!.getBoundingClientRect().height) };
+      return {
+        segs: row.querySelectorAll('.timeline-seg').length,
+        indicator: !!row.querySelector('.timeline-indicator'),
+        control: row.querySelector('.timeline-plot-control')!.tagName,
+        marks: row.querySelectorAll('.timeline-bar, .timeline-point').length,
+        entryH: Math.round(row.querySelector('.timeline-entry')!.getBoundingClientRect().height),
+      };
     }, line('row-5'));
     expect(a05).toEqual({ segs: 0, indicator: false, control: 'SPAN', marks: 0, entryH: lineH }); // "No dates", as before
     // The fitted window includes the activities' extents: with every line
     // open, after Fit, every segment is inside the plot.
-    for (const id of ['row-1', 'row-4']) await page.locator(`${line(id)} .timeline-plot-control`).click({ position: { x: 4, y: 4 } });
+    for (const id of ['row-1', 'row-4']) {
+      await page.locator(`${line(id)} .timeline-plot-control`).click({ position: { x: 4, y: 4 } });
+    }
     await page.click('#pres-fit');
     await page.waitForTimeout(1200);
     const inside = await page.evaluate(() => {
       const plot = document.querySelector('#presentation-timeline .timeline-plot')!.getBoundingClientRect();
-      const out = [...document.querySelectorAll<HTMLElement>('#presentation-timeline .timeline-seg')].filter((s) => s.getClientRects().length > 0).map((s) => {
-        const r = s.getBoundingClientRect();
-        return { ok: r.left >= plot.left - 0.5 && r.right <= plot.right + 0.5 };
-      });
+      const out = [...document.querySelectorAll<HTMLElement>('#presentation-timeline .timeline-seg')]
+        .filter((s) => s.getClientRects().length > 0)
+        .map((s) => {
+          const r = s.getBoundingClientRect();
+          return { ok: r.left >= plot.left - 0.5 && r.right <= plot.right + 0.5 };
+        });
       return { count: out.length, all: out.every((o) => o.ok) };
     });
     expect(inside.count).toBe(7);

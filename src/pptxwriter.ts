@@ -112,7 +112,8 @@ function relationships(rels: Array<[string, string, string]>): string {
   return `${DECLARATION}<Relationships xmlns="${NS.rel}">${rels.map(([id, type, target]) => `<Relationship Id="${id}" Type="${type}" Target="${target}"/>`).join('')}</Relationships>`;
 }
 
-const EMPTY_TREE = '<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>';
+const EMPTY_TREE =
+  '<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>';
 
 function theme(): string {
   const colour = (name: string, hex: string) => `<a:${name}><a:srgbClr val="${hex}"/></a:${name}>`;
@@ -184,7 +185,8 @@ function titleBox(text: string, c: PptxContent): string {
 
 function cell(text: string, c: PptxContent, bold: boolean, shade: string | null): string {
   const pad = emu(c.padding);
-  const border = (side: string) => `<a:${side} w="6350" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:srgbClr val="C9CED6"/></a:solidFill><a:prstDash val="solid"/></a:${side}>`;
+  const border = (side: string) =>
+    `<a:${side} w="6350" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:srgbClr val="C9CED6"/></a:solidFill><a:prstDash val="solid"/></a:${side}>`;
   const none = (side: string) => `<a:${side} w="0"><a:noFill/></a:${side}>`;
   // Each line of the cell is a paragraph of its own, so that the lines
   // break where the layout broke them.
@@ -207,7 +209,8 @@ function table(t: PptxTableSlide, c: PptxContent): string {
   const widths = t.widths.map(emu);
   const total = widths.reduce((s, w) => s + w, 0);
   const height = emu(t.headingHeight + t.rowHeights.reduce((s, h) => s + h, 0));
-  const row = (values: string[], h: number, bold: boolean, shade: string | null) => `<a:tr h="${emu(h)}">${values.map((v) => cell(v, c, bold, shade)).join('')}</a:tr>`;
+  const row = (values: string[], h: number, bold: boolean, shade: string | null) =>
+    `<a:tr h="${emu(h)}">${values.map((v) => cell(v, c, bold, shade)).join('')}</a:tr>`;
   return (
     `<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="3" name="Table"/><p:cNvGraphicFramePr><a:graphicFrameLocks noGrp="1"/></p:cNvGraphicFramePr><p:nvPr/></p:nvGraphicFramePr>` +
     `<p:xfrm><a:off x="${emu(c.margin)}" y="${emu(c.margin + c.titleHeight)}"/><a:ext cx="${total}" cy="${height}"/></p:xfrm>` +
@@ -225,7 +228,10 @@ function isoDate(d: Date): string {
 
 export function buildPptx(c: PptxContent): Uint8Array {
   const encoder = new TextEncoder();
-  const slides = [...c.images.map((img, i) => slide(picture(i === 0 ? 'Presentation stage' : 'Document page', img.description, `rId${i + 2}`))), ...c.tables.map((t) => slide(titleBox(t.title, c) + table(t, c)))];
+  const slides = [
+    ...c.images.map((img, i) => slide(picture(i === 0 ? 'Presentation stage' : 'Document page', img.description, `rId${i + 2}`))),
+    ...c.tables.map((t) => slide(titleBox(t.title, c) + table(t, c))),
+  ];
   const entries: ZipEntry[] = [];
   const add = (name: string, text: string) => entries.push({ name, data: encoder.encode(text) });
 
@@ -286,7 +292,9 @@ export function buildPptx(c: PptxContent): Uint8Array {
   slides.forEach((xml, i) => {
     add(`ppt/slides/slide${i + 1}.xml`, xml);
     const rels: Array<[string, string, string]> = [['rId1', REL.slideLayout, '../slideLayouts/slideLayout1.xml']];
-    if (i < c.images.length) rels.push([`rId${i + 2}`, REL.image, `../media/image${i + 1}.png`]);
+    if (i < c.images.length) {
+      rels.push([`rId${i + 2}`, REL.image, `../media/image${i + 1}.png`]);
+    }
     add(`ppt/slides/_rels/slide${i + 1}.xml.rels`, relationships(rels));
   });
   c.images.forEach((img, i) => entries.push({ name: `ppt/media/image${i + 1}.png`, data: img.png }));

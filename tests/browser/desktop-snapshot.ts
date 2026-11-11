@@ -140,20 +140,36 @@ async function take(page: Page): Promise<StateSnapshot> {
             break;
           }
           const parent = e.parentElement;
-          const index = parent ? [...parent.children].filter((c) => c.tagName === e!.tagName).indexOf(e) : 0;
+          const index = parent ? [...parent.children].filter((c) => c.tagName === e.tagName).indexOf(e) : 0;
           parts.unshift(`${e.tagName.toLowerCase()}:${index}`);
         }
         return parts.join('>');
       };
       for (const el of document.body.querySelectorAll('*')) {
-        if (el.closest(excluded.map((id) => `#${id}`).join(','))) continue;
-        if (el.closest('script, style')) continue;
+        if (el.closest(excluded.map((id) => `#${id}`).join(','))) {
+          continue;
+        }
+        if (el.closest('script, style')) {
+          continue;
+        }
         // Only what is rendered: an element with a layout box.
-        if (el.getClientRects().length === 0) continue;
+        if (el.getClientRects().length === 0) {
+          continue;
+        }
         const cs = getComputedStyle(el);
         const r = el.getBoundingClientRect();
         const round = (v: number) => Math.round(v * 2) / 2;
-        out[`all ${path(el)}`] = [round(r.x), round(r.y), round(r.width), round(r.height), cs.display, cs.visibility, cs.fontSize, cs.color, cs.backgroundColor].join('|');
+        out[`all ${path(el)}`] = [
+          round(r.x),
+          round(r.y),
+          round(r.width),
+          round(r.height),
+          cs.display,
+          cs.visibility,
+          cs.fontSize,
+          cs.color,
+          cs.backgroundColor,
+        ].join('|');
       }
       return out;
     },
@@ -165,9 +181,13 @@ async function take(page: Page): Promise<StateSnapshot> {
 async function normalise(page: Page): Promise<void> {
   await page.evaluate(() => {
     const version = document.getElementById('app-version');
-    if (version) version.textContent = 'v0.0.0';
+    if (version) {
+      version.textContent = 'v0.0.0';
+    }
     const badge = document.getElementById('viewer-badge');
-    if (badge && badge.textContent) badge.textContent = 'View-only presentation, exported 2000-01-01 00:00';
+    if (badge && badge.textContent) {
+      badge.textContent = 'View-only presentation, exported 2000-01-01 00:00';
+    }
   });
 }
 
@@ -262,20 +282,36 @@ export function differences(expected: Snapshot, actual: Snapshot): string[] {
   const out: string[] = [];
   for (const state of Object.keys(expected)) {
     // An element rendered now that was not before is a difference too.
-    for (const selector of Object.keys(actual[state] ?? {})) if (!(selector in expected[state])) out.push(`${state} ${selector}: new`);
+    for (const selector of Object.keys(actual[state] ?? {})) {
+      if (!(selector in expected[state])) {
+        out.push(`${state} ${selector}: new`);
+      }
+    }
     for (const selector of Object.keys(expected[state])) {
       const a = expected[state][selector];
       const b = actual[state]?.[selector];
       if (typeof a === 'string' || typeof b === 'string') {
-        if (a !== b) out.push(`${state} ${selector}: ${a} → ${b ?? 'absent'}`);
+        if (a !== b) {
+          out.push(`${state} ${selector}: ${a as string} → ${(b ?? 'absent') as string}`);
+        }
         continue;
       }
       if (a === null || b === null || b === undefined) {
-        if ((a === null) !== (b === null || b === undefined)) out.push(`${state} ${selector}: present ${a !== null} → ${b !== null && b !== undefined}`);
+        if ((a === null) !== (b === null || b === undefined)) {
+          out.push(`${state} ${selector}: present ${a !== null} → ${b !== null && b !== undefined}`);
+        }
         continue;
       }
-      for (const k of ['x', 'y', 'width', 'height'] as const) if (Math.abs(a.box[k] - b.box[k]) > 0.5) out.push(`${state} ${selector} box.${k}: ${a.box[k]} → ${b.box[k]}`);
-      for (const p of Object.keys(a.style)) if (a.style[p] !== b.style[p]) out.push(`${state} ${selector} ${p}: ${a.style[p]} → ${b.style[p]}`);
+      for (const k of ['x', 'y', 'width', 'height'] as const) {
+        if (Math.abs(a.box[k] - b.box[k]) > 0.5) {
+          out.push(`${state} ${selector} box.${k}: ${a.box[k]} → ${b.box[k]}`);
+        }
+      }
+      for (const p of Object.keys(a.style)) {
+        if (a.style[p] !== b.style[p]) {
+          out.push(`${state} ${selector} ${p}: ${a.style[p]} → ${b.style[p]}`);
+        }
+      }
     }
   }
   return out;

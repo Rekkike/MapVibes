@@ -12,7 +12,7 @@ function choose(select: HTMLSelectElement, value: string): void {
 }
 
 const role = (key: string) => document.querySelector<HTMLSelectElement>(`#series-list .series-item[data-series="${key}"] .series-role`)!;
-const parts = () => [...byId('list-totals').children].map((c) => c.textContent!.replace(/ /g, ' '));
+const parts = () => [...byId('list-totals').children].map((c) => c.textContent.replace(/ /g, ' '));
 
 describe('the Information totals (FR-69)', () => {
   beforeEach(async () => {
@@ -39,7 +39,12 @@ describe('the Information totals (FR-69)', () => {
     // E-01's file figure (9,000,000) replaces the sum of its years (9,750,000).
     const budget = (p: string[]) => Number(p.find((x) => x.startsWith('Budget:'))!.replace(/[^\d]/g, ''));
     expect(budget(withoutFile) - budget(parts())).toBe(750_000);
-    expect(parts()).toEqual(['Totals of all retained rows', 'Budget: 10,050,000 SEK', expect.stringMatching(/^Utfall \/ Prognos: [\d,]+ SEK$/), '1 value is not a number and left out']);
+    expect(parts()).toEqual([
+      'Totals of all retained rows',
+      'Budget: 10,050,000 SEK',
+      expect.stringMatching(/^Utfall \/ Prognos: [\d,]+ SEK$/),
+      '1 value is not a number and left out',
+    ]);
   });
 
   test('the filter and hidden columns change nothing; the unit and the language follow', () => {

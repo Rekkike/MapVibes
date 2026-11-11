@@ -258,7 +258,9 @@ export class PdfPainter implements Painter {
     this.page.text(x, y, text, font, size, align);
   }
   image(x: number, y: number, w: number, h: number): void {
-    if (this.img) this.page.image(this.img, x, y, w, h);
+    if (this.img) {
+      this.page.image(this.img, x, y, w, h);
+    }
   }
 }
 
@@ -291,11 +293,27 @@ function markerOutline(p: Painter, symbol: MarkerSymbol, x: number, y: number, w
       roundedRect(p, x, y, w, h, Math.min(3, w / 2, h / 2));
       return;
     case 'diamond':
-      return poly([[0.5, 0], [1, 0.5], [0.5, 1], [0, 0.5]]);
+      return poly([
+        [0.5, 0],
+        [1, 0.5],
+        [0.5, 1],
+        [0, 0.5],
+      ]);
     case 'triangle':
-      return poly([[0.5, 0], [1, 1], [0, 1]]);
+      return poly([
+        [0.5, 0],
+        [1, 1],
+        [0, 1],
+      ]);
     case 'hexagon':
-      return poly([[0.25, 0], [0.75, 0], [1, 0.5], [0.75, 1], [0.25, 1], [0, 0.5]]);
+      return poly([
+        [0.25, 0],
+        [0.75, 0],
+        [1, 0.5],
+        [0.75, 1],
+        [0.25, 1],
+        [0, 0.5],
+      ]);
     default:
       roundedRect(p, x, y, w, h, Math.min(w, h) / 2);
   }
@@ -382,7 +400,9 @@ function annotationPath(p: Painter, a: SceneAnnotation, t: (q: Point) => Point):
   }
   const pts = a.kind === 'rectangle' ? rectCorners(a.points[0], a.points[1]) : a.points;
   pts.map(t).forEach((q, i) => (i === 0 ? p.moveTo(q.x, q.y) : p.lineTo(q.x, q.y)));
-  if (a.kind !== 'line') p.close();
+  if (a.kind !== 'line') {
+    p.close();
+  }
 }
 
 function rectCorners(a: Point, b: Point): Point[] {
@@ -427,7 +447,9 @@ export function drawAnnotation(p: Painter, a: SceneAnnotation, t: (q: Point) => 
 }
 
 export function drawAnnotationLabel(p: Painter, a: SceneAnnotation, t: (q: Point) => Point, scale: number): void {
-  if (a.label === '') return;
+  if (a.label === '') {
+    return;
+  }
   const anchor = t(labelAnchor(a));
   const size = ANNOTATION.labelFont * scale;
   const w = textWidth(a.label, 'bold', size) + 2 * ANNOTATION.labelPadding * scale;
@@ -451,7 +473,12 @@ interface LegendLine {
 
 export const LEGEND_FONT = 8;
 
-export function layoutLegend(title: string, sections: LegendSection[], width: number, font = LEGEND_FONT): { height: number; draw: (p: Painter, x: number, y: number) => void } {
+export function layoutLegend(
+  title: string,
+  sections: LegendSection[],
+  width: number,
+  font = LEGEND_FONT,
+): { height: number; draw: (p: Painter, x: number, y: number) => void } {
   const lineHeight = font * 1.9;
   const swatch = font * 1.35;
   const gap = font * 0.5;
@@ -594,7 +621,9 @@ export function layoutLegend(title: string, sections: LegendSection[], width: nu
       });
     }
   }
-  if (line.entries.length > 0) lines.push(line);
+  if (line.entries.length > 0) {
+    lines.push(line);
+  }
   const height = lines.reduce((h, l) => h + l.height, 0);
   return {
     height,
@@ -602,7 +631,9 @@ export function layoutLegend(title: string, sections: LegendSection[], width: nu
       let top = y;
       for (const l of lines) {
         const baseline = top + l.height * 0.68;
-        for (const e of l.entries) e.draw(p, x + e.x, baseline);
+        for (const e of l.entries) {
+          e.draw(p, x + e.x, baseline);
+        }
         top += l.height;
       }
     },
@@ -643,12 +674,16 @@ export function drawStagePage(p: Painter, scene: StageScene, frame: PageFrame): 
     const b = scene.background.stage;
     p.image(mapBox.x + b.x * scale, mapBox.y + b.y * scale, b.width * scale, b.height * scale);
   }
-  for (const a of scene.annotations) drawAnnotation(p, a, t, scale);
+  for (const a of scene.annotations) {
+    drawAnnotation(p, a, t, scale);
+  }
   for (const m of scene.markers) {
     const c = t(m);
     drawMarker(p, c.x, c.y, m.symbol, m.colour, m.label, scale);
   }
-  for (const a of scene.annotations) drawAnnotationLabel(p, a, t, scale);
+  for (const a of scene.annotations) {
+    drawAnnotationLabel(p, a, t, scale);
+  }
   p.restore();
 
   p.save();
@@ -665,7 +700,9 @@ export function drawStagePage(p: Painter, scene: StageScene, frame: PageFrame): 
 }
 
 export function drawFooter(p: Painter, frame: PageFrame): void {
-  if (frame.footer === '') return;
+  if (frame.footer === '') {
+    return;
+  }
   p.fillColour(PALETTE.muted);
   p.text(frame.margin, frame.height - frame.margin + LEGEND_FONT * 0.6, frame.footer, 'regular', LEGEND_FONT - 1);
 }
@@ -736,11 +773,15 @@ export function wrapValue(text: string, width: number, font: PdfFont, size: numb
     }
     const words = rest.split(' ');
     let n = 0;
-    while (n < words.length && textWidth(words.slice(0, n + 1).join(' '), font, size) <= width) n++;
+    while (n < words.length && textWidth(words.slice(0, n + 1).join(' '), font, size) <= width) {
+      n++;
+    }
     if (n === 0) {
       const chars = [...words[0]];
       let k = chars.length - 1;
-      while (k > 1 && textWidth(chars.slice(0, k).join(''), font, size) > width) k--;
+      while (k > 1 && textWidth(chars.slice(0, k).join(''), font, size) > width) {
+        k--;
+      }
       lines.push(chars.slice(0, k).join(''));
       rest = [chars.slice(k).join(''), ...words.slice(1)].join(' ');
     } else {
@@ -761,11 +802,21 @@ export interface TablePage {
 export function paginateTable(table: DocumentTable, layout: TableLayout, height: number, t = TABLE): TablePage[] {
   const pages: TablePage[] = [];
   layout.groups.forEach((g, gi) => {
-    const headingHeight = rowHeight(g.map((c) => table.headings[c]), layout.widths[gi], 'bold', t);
+    const headingHeight = rowHeight(
+      g.map((c) => table.headings[c]),
+      layout.widths[gi],
+      'bold',
+      t,
+    );
     let rows: number[] = [];
     let used = headingHeight;
     table.rows.forEach((row, r) => {
-      const h = rowHeight(g.map((c) => row[c] ?? ''), layout.widths[gi], 'regular', t);
+      const h = rowHeight(
+        g.map((c) => row[c] ?? ''),
+        layout.widths[gi],
+        'regular',
+        t,
+      );
       if (rows.length > 0 && used + h > height) {
         pages.push({ group: gi, rows });
         rows = [];
@@ -803,7 +854,12 @@ export function drawTablePage(p: Painter, table: DocumentTable, layout: TableLay
     if (shade) {
       p.fillColour(shade);
       p.beginPath();
-      p.rect(x, y, widths.reduce((s, w) => s + w, 0), h);
+      p.rect(
+        x,
+        y,
+        widths.reduce((s, w) => s + w, 0),
+        h,
+      );
       p.fill();
     }
     p.fillColour(PALETTE.fg);
@@ -819,8 +875,18 @@ export function drawTablePage(p: Painter, table: DocumentTable, layout: TableLay
     p.stroke();
     y += h;
   };
-  drawRow(g.map((c) => table.headings[c]), 'bold', PALETTE.shade);
-  page.rows.forEach((r, i) => drawRow(g.map((c) => table.rows[r][c] ?? ''), 'regular', i % 2 === 1 ? [0xf8, 0xf9, 0xfb] : null));
+  drawRow(
+    g.map((c) => table.headings[c]),
+    'bold',
+    PALETTE.shade,
+  );
+  page.rows.forEach((r, i) =>
+    drawRow(
+      g.map((c) => table.rows[r][c] ?? ''),
+      'regular',
+      i % 2 === 1 ? [0xf8, 0xf9, 0xfb] : null,
+    ),
+  );
   drawFooter(p, frame);
 }
 
@@ -865,10 +931,22 @@ function fillIn(template: string, values: Record<string, string | number>): stri
 // The PDF document (FR-12, FR-50 as amended in v1.13.0): the stage page, then
 // the extra page kinds (the timeline pages, the economics blocks), then the
 // table pages.
-export function buildPdf(scene: StageScene, table: DocumentTable, background: { jpeg: Uint8Array; width: number; height: number } | null, texts: DocumentTexts, created: Date, extraPages: DocumentExtraPage[] = []): PdfResult {
+export function buildPdf(
+  scene: StageScene,
+  table: DocumentTable,
+  background: { jpeg: Uint8Array; width: number; height: number } | null,
+  texts: DocumentTexts,
+  created: Date,
+  extraPages: DocumentExtraPage[] = [],
+): PdfResult {
   const doc = new PdfDocument({ title: texts.title, created });
   const img = background ? doc.addJpeg(background.jpeg, background.width, background.height) : null;
-  const frame = (page: number, pages: number): PageFrame => ({ width: PDF_PAGE.width, height: PDF_PAGE.height, margin: PDF_PAGE.margin, footer: fillIn(texts.footer, { page, pages }) });
+  const frame = (page: number, pages: number): PageFrame => ({
+    width: PDF_PAGE.width,
+    height: PDF_PAGE.height,
+    margin: PDF_PAGE.margin,
+    footer: fillIn(texts.footer, { page, pages }),
+  });
   const layout = layoutTable(table, PDF_PAGE.width - 2 * PDF_PAGE.margin);
   const tableHeight = PDF_PAGE.height - 2 * PDF_PAGE.margin - 20 - LEGEND_FONT * 2;
   const pages = table.rows.length > 0 ? paginateTable(table, layout, tableHeight) : [];
@@ -887,24 +965,15 @@ export function buildPdf(scene: StageScene, table: DocumentTable, background: { 
     });
     drawTablePage(new PdfPainter(doc.addPage(PDF_PAGE.width, PDF_PAGE.height), null), table, layout, page, frame(i + 2 + extraPages.length, total), title);
   });
-  return { bytes: doc.toBytes(), pages: total, tablePages: pages.length, columnGroups: layout.groups.length, replaced: doc.replacedCharacters, extraPages: extraPages.length };
+  return {
+    bytes: doc.toBytes(),
+    pages: total,
+    tablePages: pages.length,
+    columnGroups: layout.groups.length,
+    replaced: doc.replacedCharacters,
+    extraPages: extraPages.length,
+  };
 }
-
-// --- The inventory -----------------------------------------------------------
-
-// What a document will contain, for its dialog (FR-52).
-export interface DocumentInventory {
-  markersInView: number;
-  shownItems: number;
-  annotationsInView: number;
-  background: { width: number; height: number } | null;
-  columns: number;
-  hiddenColumns: number;
-  switchedOff: number;
-  removed: number;
-  annotationsOff: number;
-}
-
 
 // --- The PowerPoint document -------------------------------------------------
 
@@ -921,7 +990,9 @@ export interface PptxTables {
 // The table slides (FR-12, FR-51): the same layout rules as the PDF's table,
 // at the slide's size; each cell's lines as laid out.
 export function pptxTables(table: DocumentTable, texts: Pick<DocumentTexts, 'tableTitle' | 'tableTitleParts'>): PptxTables {
-  if (table.rows.length === 0) return { slides: [], columnGroups: 0 };
+  if (table.rows.length === 0) {
+    return { slides: [], columnGroups: 0 };
+  }
   const t = PPTX_TABLE;
   const width = PPTX_PAGE.width - 2 * PPTX_PAGE.margin;
   const layout = layoutTable(table, width, t);

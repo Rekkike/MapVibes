@@ -14,7 +14,17 @@ import { format } from './i18n';
 import type { LegendSection } from './legend';
 import { fitText, textWidth } from './pdfwriter';
 import type { MarkerSymbol } from './symbols';
-import { fitWindow, layoutEvents, type EventChip, type ScheduleEvent, type TimelineItem, type TimelineLine, type TimelineModel, type TimelineRow, type TimelineSpan } from './timeline';
+import {
+  fitWindow,
+  layoutEvents,
+  type EventChip,
+  type ScheduleEvent,
+  type TimelineItem,
+  type TimelineLine,
+  type TimelineModel,
+  type TimelineRow,
+  type TimelineSpan,
+} from './timeline';
 import { eventChipWidth, ticks } from './timelineview';
 
 // A timeline item as the figure needs it: the badge's symbol beside the name.
@@ -128,7 +138,9 @@ export interface TimelineLayout {
 // The height of one row of the model in page units: a heading's own height, a
 // line's full height (its lanes, every one a full row) plus its caption.
 export function timelineRowHeight(fig: TimelineFigure, row: TimelineRow, layout: Pick<TimelineLayout, 'plotWidth'>, f = FIGURE): number {
-  if (row.kind === 'heading') return f.headingHeight;
+  if (row.kind === 'heading') {
+    return f.headingHeight;
+  }
   const caption = captionOf(fig, row);
   const captionLines = caption === '' ? 0 : wrapValue(caption, layout.plotWidth, 'regular', f.captionFont, f.captionMaxLines).length;
   return row.lanes * f.lineHeight + (captionLines > 0 ? captionLines * f.captionLineHeight + 2 : 0) + f.rowGap;
@@ -140,8 +152,12 @@ export function timelineRowHeight(fig: TimelineFigure, row: TimelineRow, layout:
 export function captionOf(fig: TimelineFigure, line: TimelineLine): string {
   const labels = fig.labels;
   const parts: string[] = [];
-  if (line.start.kind === 'text') parts.push(`${labels.startHeader}: ${line.start.text}`);
-  if (line.end.kind === 'text') parts.push(`${labels.endHeader}: ${line.end.text}`);
+  if (line.start.kind === 'text') {
+    parts.push(`${labels.startHeader}: ${line.start.text}`);
+  }
+  if (line.end.kind === 'text') {
+    parts.push(`${labels.endHeader}: ${line.end.text}`);
+  }
   const acts = line.item.activities ?? [];
   if (acts.length > 0) {
     const list = acts.map((a) => {
@@ -197,8 +213,9 @@ export function layoutTimeline(fig: TimelineFigure, frame: PageFrame, f = FIGURE
   const units: Array<{ heading: number | null; line: number }> = [];
   let pending: number | null = null;
   fig.model.rows.forEach((row, i) => {
-    if (isHeading(row)) pending = i;
-    else {
+    if (isHeading(row)) {
+      pending = i;
+    } else {
       units.push({ heading: pending, line: i });
       pending = null;
     }
@@ -213,11 +230,15 @@ export function layoutTimeline(fig: TimelineFigure, frame: PageFrame, f = FIGURE
       page = [];
       used = 0;
     }
-    if (unit.heading !== null) page.push(unit.heading);
+    if (unit.heading !== null) {
+      page.push(unit.heading);
+    }
     page.push(unit.line);
     used += h;
   }
-  if (page.length > 0) pages.push(page);
+  if (page.length > 0) {
+    pages.push(page);
+  }
   return {
     window,
     plotX,
@@ -293,7 +314,9 @@ function roundedChip(p: Painter, x: number, y: number, w: number, h: number, lab
   p.stroke();
   p.fillColour(PALETTE.fg);
   const shown = fitText(label, 'regular', font, w - 2 * f.eventPad);
-  if (shown !== '') p.text(x + f.eventPad, y + h / 2 + 0.35 * font, shown, 'regular', font);
+  if (shown !== '') {
+    p.text(x + f.eventPad, y + h / 2 + 0.35 * font, shown, 'regular', font);
+  }
   p.restore();
 }
 
@@ -312,7 +335,9 @@ export function drawTimelinePage(p: Painter, fig: TimelineFigure, layout: Timeli
     // No item has a readable date: the notice the view shows, then the lines.
     p.fillColour(PALETTE.muted);
     const message = fig.labels.noRoles ?? (fig.model.lines.length === 0 ? fig.labels.empty : '');
-    if (message !== '') p.text(frame.margin, y + f.captionLineHeight, message, 'regular', f.captionFont);
+    if (message !== '') {
+      p.text(frame.margin, y + f.captionLineHeight, message, 'regular', f.captionFont);
+    }
     y += f.axisHeight;
   } else {
     // The axis and the gridlines.
@@ -320,8 +345,12 @@ export function drawTimelinePage(p: Painter, fig: TimelineFigure, layout: Timeli
     const locale = fig.labels.locale;
     const fmt = (t: { day: number; unit: string }) => {
       const d = new Date(t.day * 86_400_000);
-      if (t.unit === 'year') return String(d.getUTCFullYear());
-      if (t.unit === 'month') return new Intl.DateTimeFormat(locale, { month: 'short', year: 'numeric', timeZone: 'UTC' }).format(d);
+      if (t.unit === 'year') {
+        return String(d.getUTCFullYear());
+      }
+      if (t.unit === 'month') {
+        return new Intl.DateTimeFormat(locale, { month: 'short', year: 'numeric', timeZone: 'UTC' }).format(d);
+      }
       return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(d);
     };
     p.strokeColour(PALETTE.border);
@@ -366,22 +395,59 @@ export function drawTimelinePage(p: Painter, fig: TimelineFigure, layout: Timeli
     for (const chip of layout.chips) {
       roundedChip(p, layout.plotX + chip.left, stripTop + chip.row * f.eventRowHeight + 1, chip.width, f.eventRowHeight - 2, chip.event.label, f.eventFont, f);
       if (chip.more.length > 0) {
-        roundedChip(p, layout.plotX + chip.left + chip.width + f.eventGap, stripTop + chip.row * f.eventRowHeight + 1, f.eventMoreWidth * f.eventChipScale, f.eventRowHeight - 2, format(fig.labels.moreEvents, { count: chip.more.length }), f.eventFont, f);
+        roundedChip(
+          p,
+          layout.plotX + chip.left + chip.width + f.eventGap,
+          stripTop + chip.row * f.eventRowHeight + 1,
+          f.eventMoreWidth * f.eventChipScale,
+          f.eventRowHeight - 2,
+          format(fig.labels.moreEvents, { count: chip.more.length }),
+          f.eventFont,
+          f,
+        );
       }
     }
     if (layout.eventsBefore.length > 0) {
-      roundedChip(p, layout.plotX, stripTop + 1, f.eventEdgeWidth, f.eventRowHeight - 2, format(fig.labels.moreEvents, { count: layout.eventsBefore.length }), f.eventFont, f);
+      roundedChip(
+        p,
+        layout.plotX,
+        stripTop + 1,
+        f.eventEdgeWidth,
+        f.eventRowHeight - 2,
+        format(fig.labels.moreEvents, { count: layout.eventsBefore.length }),
+        f.eventFont,
+        f,
+      );
     }
     if (layout.eventsAfter.length > 0) {
-      roundedChip(p, layout.plotX + layout.plotWidth - f.eventEdgeWidth, stripTop + 1, f.eventEdgeWidth, f.eventRowHeight - 2, format(fig.labels.moreEvents, { count: layout.eventsAfter.length }), f.eventFont, f);
+      roundedChip(
+        p,
+        layout.plotX + layout.plotWidth - f.eventEdgeWidth,
+        stripTop + 1,
+        f.eventEdgeWidth,
+        f.eventRowHeight - 2,
+        format(fig.labels.moreEvents, { count: layout.eventsAfter.length }),
+        f.eventFont,
+        f,
+      );
     }
     if (layout.eventsBefore.length > 0 || layout.eventsAfter.length > 0) {
       const said = (e: ScheduleEvent) => `${e.date}: ${e.label}`;
       const note: string[] = [];
-      if (layout.eventsBefore.length > 0) note.push(format(fig.labels.eventsBefore, { events: layout.eventsBefore.map(said).join('; ') }));
-      if (layout.eventsAfter.length > 0) note.push(format(fig.labels.eventsAfter, { events: layout.eventsAfter.map(said).join('; ') }));
+      if (layout.eventsBefore.length > 0) {
+        note.push(format(fig.labels.eventsBefore, { events: layout.eventsBefore.map(said).join('; ') }));
+      }
+      if (layout.eventsAfter.length > 0) {
+        note.push(format(fig.labels.eventsAfter, { events: layout.eventsAfter.map(said).join('; ') }));
+      }
       p.fillColour(PALETTE.muted);
-      p.text(layout.plotX, stripTop + layout.stripRows * f.eventRowHeight + 2 + f.captionLineHeight - 2, fitText(note.join(' '), 'regular', f.captionFont, layout.plotWidth), 'regular', f.captionFont);
+      p.text(
+        layout.plotX,
+        stripTop + layout.stripRows * f.eventRowHeight + 2 + f.captionLineHeight - 2,
+        fitText(note.join(' '), 'regular', f.captionFont, layout.plotWidth),
+        'regular',
+        f.captionFont,
+      );
     }
     y += layout.stripHeight;
   }
@@ -392,7 +458,7 @@ export function drawTimelinePage(p: Painter, fig: TimelineFigure, layout: Timeli
     const row = fig.model.rows[rowIndex];
     if (isHeading(row)) {
       p.fillColour(PALETTE.muted);
-      const heading = row.heading === 'noDates' ? fig.labels.noDates : row.heading === 'area' ? row.area === '' ? fig.labels.noArea : row.area : '';
+      const heading = row.heading === 'noDates' ? fig.labels.noDates : row.heading === 'area' ? (row.area === '' ? fig.labels.noArea : row.area) : '';
       p.text(frame.margin, y + f.headingFont, heading, 'bold', f.headingFont);
       y += f.headingHeight;
       continue;
@@ -474,8 +540,10 @@ export function drawTimelinePage(p: Painter, fig: TimelineFigure, layout: Timeli
 // One span of a line, in its lane: the item's bar, a marked point, or an
 // activity segment with its progress fill and, where it is the work phase,
 // its hatch; the label inside the segment when it fits.
-function drawSpan(p: Painter, fig: TimelineFigure, layout: TimelineLayout, line: TimelineLine, span: TimelineSpan, rowTop: number, f: typeof FIGURE): void {
-  if (span.kind === 'amount') return; // the costs view's spans are not drawn here
+function drawSpan(p: Painter, _fig: TimelineFigure, layout: TimelineLayout, line: TimelineLine, span: TimelineSpan, rowTop: number, f: typeof FIGURE): void {
+  if (span.kind === 'amount') {
+    return;
+  } // the costs view's spans are not drawn here
   const colour = COLOUR_RGB[line.item.colour as RowColour];
   const x0 = dayX(layout, span.from);
   const x1 = dayX(layout, span.to + 1);
@@ -505,7 +573,9 @@ function drawSpan(p: Painter, fig: TimelineFigure, layout: TimelineLayout, line:
       p.fill();
       p.opacity(1);
     }
-    if (line.phase?.activity === a) hatchBand(p, x0, top, w, h);
+    if (line.phase?.activity === a) {
+      hatchBand(p, x0, top, w, h);
+    }
     const label = a.label;
     if (label !== '' && w >= 18) {
       const shown = fitText(label, 'bold', f.font - 0.5, w - 4);

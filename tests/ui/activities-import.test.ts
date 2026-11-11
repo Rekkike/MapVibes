@@ -21,7 +21,13 @@ function tablePdf(): File {
     ['15/03/2024 rad', '15/03/2024', '2024-06-30', '', '10 %'],
     ['Totalt', '', '', '17 v', ''],
   ];
-  rowsData.forEach((row, r) => row.forEach((cell, c) => { if (cell !== '') page.text(x[c], 780 - (r + 1) * 24, cell, 'regular', 10); }));
+  rowsData.forEach((row, r) =>
+    row.forEach((cell, c) => {
+      if (cell !== '') {
+        page.text(x[c], 780 - (r + 1) * 24, cell, 'regular', 10);
+      }
+    }),
+  );
   const bytes = doc.toBytes();
   return new File([bytes as unknown as BlobPart], 'plan.pdf', { type: 'application/pdf' });
 }
@@ -90,7 +96,11 @@ describe('the activities import (FR-76, FR-77, FR-78)', () => {
       { id: 'a2', label: 'Ledningar', start: '2024-02-12', end: '2024-04-30', progress: 60 },
       { id: 'a3', label: '15/03/2024 rad', start: '15/03/2024', end: '2024-06-30', progress: 10 },
     ]);
-    expect(ws.rows[0].activityImport).toEqual({ file: 'plan.pdf', page: 1, columns: { label: 'Post', start: 'Från', end: 'Till', progress: 'Klart', duration: 'Längd' } });
+    expect(ws.rows[0].activityImport).toEqual({
+      file: 'plan.pdf',
+      page: 1,
+      columns: { label: 'Post', start: 'Från', end: 'Till', progress: 'Klart', duration: 'Längd' },
+    });
     // Rendered in the timeline (FR-78): the segments are there.
     byId('tab-presentation').click();
     await flush();

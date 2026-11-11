@@ -148,7 +148,9 @@ function lineOf(item: TimelineItem): TimelineLine {
   for (const a of item.activities ?? []) {
     const s = readDate(a.start);
     const e = readDate(a.end);
-    if (s.kind !== 'date' || e.kind !== 'date') continue;
+    if (s.kind !== 'date' || e.kind !== 'date') {
+      continue;
+    }
     acts.push({ from: Math.min(s.start, e.end), to: Math.max(s.start, e.end), kind: 'activity', activity: a });
   }
   // All spans pack together; the item's own spans win lane ties, so the own
@@ -179,7 +181,13 @@ export function startDay(start: string): number | null {
 // order given, then any other area in alphabetical order, then the entries
 // without an area; by number within each), or by start date (the entries
 // without a start last; by number among equals). Stable.
-export function orderEntries<T>(entries: T[], order: PresentationOrder, keys: (entry: T) => { area: string; start: number | null }, areaOrder: string[] = [], locale = 'en'): T[] {
+export function orderEntries<T>(
+  entries: T[],
+  order: PresentationOrder,
+  keys: (entry: T) => { area: string; start: number | null },
+  areaOrder: string[] = [],
+  locale = 'en',
+): T[] {
   const indexed = entries.map((entry, index) => ({ entry, index, ...keys(entry) }));
   if (order === 'area') {
     const rank = areaRanks(
@@ -218,7 +226,9 @@ export function buildTimeline(items: TimelineItem[], order: PresentationOrder = 
     rows.push(line);
   }
   // "No dates" is always last, in number order.
-  if (undated.length > 0) rows.push({ kind: 'heading', heading: 'noDates' }, ...undated);
+  if (undated.length > 0) {
+    rows.push({ kind: 'heading', heading: 'noDates' }, ...undated);
+  }
   const days = dated.flatMap((l) => [...l.spans, ...l.activitySpans].flatMap((s) => [s.from, s.to]));
   const extent = days.length > 0 ? { from: Math.min(...days), to: Math.max(...days) } : null;
   return { rows, lines: [...ordered, ...undated], extent };
@@ -227,7 +237,9 @@ export function buildTimeline(items: TimelineItem[], order: PresentationOrder = 
 // The fitted window (FR-67): the full span of all items, with a margin on
 // either side, never shorter than a month; a year around nothing at all.
 export function fitWindow(extent: { from: number; to: number } | null): { from: number; to: number } {
-  if (extent === null) return { from: 0, to: 365 };
+  if (extent === null) {
+    return { from: 0, to: 365 };
+  }
   const length = Math.max(30, extent.to + 1 - extent.from);
   const margin = length * 0.03;
   const middle = (extent.from + extent.to + 1) / 2;
@@ -283,7 +295,15 @@ function amountSpans(amounts: CostsAmount[]): TimelineSpan[] {
 export function buildCosts(items: CostsItem[], years: number[], order: PresentationOrder = 'number', areaOrder: string[] = [], locale = 'en'): TimelineModel {
   const all: CostsLine[] = items.map((item) => {
     const spans = amountSpans(item.amounts);
-    return { kind: 'line', item, spans, activitySpans: [], lanes: Math.max(1, ...spans.map((s) => s.lane + 1)), start: readDate(item.start), end: readDate(item.end) };
+    return {
+      kind: 'line',
+      item,
+      spans,
+      activitySpans: [],
+      lanes: Math.max(1, ...spans.map((s) => s.lane + 1)),
+      start: readDate(item.start),
+      end: readDate(item.end),
+    };
   });
   const ordered = orderEntries(all, order, (l) => ({ area: l.item.area, start: l.start.kind === 'date' ? l.start.start : null }), areaOrder, locale);
   // The totals: per series and year, the sum of the lines' amounts, exact to
@@ -300,7 +320,9 @@ export function buildCosts(items: CostsItem[], years: number[], order: Presentat
   }
   const totals = amountSpans([...sums.values()]);
   const rows: TimelineRow[] = [];
-  if (totals.length > 0) rows.push({ kind: 'heading', heading: 'totals', spans: totals });
+  if (totals.length > 0) {
+    rows.push({ kind: 'heading', heading: 'totals', spans: totals });
+  }
   let area: string | null = null;
   for (const line of ordered) {
     if (order === 'area' && line.item.area !== area) {
@@ -379,7 +401,9 @@ export function layoutEvents(
       // Neither row has room: the event joins the "+n" of the chip that
       // blocks it in the last row, which then takes the room of its "+n".
       const blocker = last[rows - 1]!;
-      if (blocker.more.length === 0) ends[rows - 1] += moreWidth;
+      if (blocker.more.length === 0) {
+        ends[rows - 1] += moreWidth;
+      }
       blocker.more.push(e.event);
       continue;
     }

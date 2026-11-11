@@ -17,7 +17,9 @@ let browser: Browser;
 let exported: string;
 
 beforeAll(async () => {
-  if (!existsSync(BUILT)) throw new Error('dist/build/index.html is missing: run the build first');
+  if (!existsSync(BUILT)) {
+    throw new Error('dist/build/index.html is missing: run the build first');
+  }
   browser = await chromium.launch();
 }, 60_000);
 
@@ -69,7 +71,9 @@ describe('the timeline in the application (FR-66, FR-67, FR-70)', () => {
       ['Start', 'start'],
       ['End', 'end'],
       ['Group', 'area'],
-    ]) await page.selectOption(`.role-select[data-header="${h}"]`, r);
+    ]) {
+      await page.selectOption(`.role-select[data-header="${h}"]`, r);
+    }
     await page.click('#tab-presentation');
     await page.click('#pres-mode-timeline');
     const stage = (await page.locator('#presentation-stage').boundingBox())!;
@@ -78,7 +82,9 @@ describe('the timeline in the application (FR-66, FR-67, FR-70)', () => {
     // Desktop lines: 28 pixels, the name in its column beside the bar.
     for (const x of l.filter((x) => !x.heading)) {
       expect(x.height).toBe(28);
-      if (x.bar) expect(x.bar.left).toBeGreaterThanOrEqual(x.name!.right);
+      if (x.bar) {
+        expect(x.bar.left).toBeGreaterThanOrEqual(x.name!.right);
+      }
     }
     // Every bar within the stage at the fitted view; no bar for "No dates".
     for (const x of l.filter((x) => x.bar)) {
@@ -125,8 +131,25 @@ describe('the timeline in the application (FR-66, FR-67, FR-70)', () => {
     // The order: by area under the areas' names, by start date.
     await page.selectOption('#pres-order', 'area');
     l = await lines(page);
-    expect(l.map((x) => x.text)).toEqual(['North', 'Dated item', 'Month item', 'South', 'Timed item', 'Open item', 'No dates', 'Ambiguous item', 'Undated item']);
-    expect(await page.$$eval('#presentation-glance-list .glance-name', (n) => n.map((x) => x.textContent))).toEqual(['Dated item', 'Month item', 'Timed item', 'Open item', 'Ambiguous item', 'Undated item']);
+    expect(l.map((x) => x.text)).toEqual([
+      'North',
+      'Dated item',
+      'Month item',
+      'South',
+      'Timed item',
+      'Open item',
+      'No dates',
+      'Ambiguous item',
+      'Undated item',
+    ]);
+    expect(await page.$$eval('#presentation-glance-list .glance-name', (n) => n.map((x) => x.textContent))).toEqual([
+      'Dated item',
+      'Month item',
+      'Timed item',
+      'Open item',
+      'Ambiguous item',
+      'Undated item',
+    ]);
     await page.selectOption('#pres-order', 'start');
     expect((await lines(page)).map((x) => x.text).slice(0, 4)).toEqual(['Dated item', 'Timed item', 'Open item', 'Month item']);
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
@@ -179,9 +202,13 @@ describe('the timeline in the application (FR-66, FR-67, FR-70)', () => {
       const vw = await page.evaluate(() => innerWidth);
       if (narrow) {
         // The 48-pixel line (FR-58 as noted in v1.14.0): the chip row over the plot.
-        for (const x of l) expect(x.height).toBe(48);
+        for (const x of l) {
+          expect(x.height).toBe(48);
+        }
         // The name above the bar.
-        for (const x of l.filter((x) => x.bar && x.top >= 0)) expect(x.name!.bottom).toBeLessThanOrEqual(x.bar!.top + 0.5);
+        for (const x of l.filter((x) => x.bar && x.top >= 0)) {
+          expect(x.name!.bottom).toBeLessThanOrEqual(x.bar!.top + 0.5);
+        }
         // The switch on the row of the two toggles.
         const mode = (await page.locator('#pres-mode').boundingBox())!;
         const toggles = (await page.locator('#viewer-toggles').boundingBox())!;
@@ -201,8 +228,12 @@ describe('the timeline in the application (FR-66, FR-67, FR-70)', () => {
         // (FR-80) takes 42 pixels above the lines; the scroller is 440
         // pixels and the twelve lines (480 pixels) scroll in portrait too.
         // Since v1.14.0 the lines are 48 pixels (576 in all) and scroll.
-        if (name === 'phone portrait') expect(overflows).toBe(true);
-        if (name === 'phone landscape') expect(overflows).toBe(true);
+        if (name === 'phone portrait') {
+          expect(overflows).toBe(true);
+        }
+        if (name === 'phone landscape') {
+          expect(overflows).toBe(true);
+        }
         if (overflows) {
           const body = (await page.locator('#presentation-timeline .timeline-body').boundingBox())!;
           await page.mouse.move(body.x + body.width / 2, body.y + body.height / 2);
@@ -218,7 +249,9 @@ describe('the timeline in the application (FR-66, FR-67, FR-70)', () => {
         // Only the lines in view.
         const shown = await page.evaluate(() => {
           const s = document.querySelector<HTMLElement>('#presentation-timeline .timeline-scroll')!;
-          return [...s.querySelectorAll<HTMLElement>('.timeline-line')].filter((r) => r.offsetTop + r.offsetHeight > s.scrollTop && r.offsetTop < s.scrollTop + s.clientHeight).length;
+          return [...s.querySelectorAll<HTMLElement>('.timeline-line')].filter(
+            (r) => r.offsetTop + r.offsetHeight > s.scrollTop && r.offsetTop < s.scrollTop + s.clientHeight,
+          ).length;
         });
         expect(entries).toBe(shown);
         await page.tap('#presentation-glance-list .glance-entry');
@@ -233,7 +266,9 @@ describe('the timeline in the application (FR-66, FR-67, FR-70)', () => {
         await page.keyboard.press('Escape');
         await page.waitForTimeout(250);
       } else {
-        for (const x of l) expect(x.height).toBe(28);
+        for (const x of l) {
+          expect(x.height).toBe(28);
+        }
         expect(await page.evaluate(() => document.getElementById('presentation-toolbar')!.firstElementChild!.id)).toBe('pres-mode');
       }
       expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);

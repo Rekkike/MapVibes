@@ -56,10 +56,15 @@ function renderedBodyText(html: string): { scriptTextLength: number; bodyText: s
   expect(open).toBeGreaterThan(-1);
   const openTagEnd = html.indexOf('>', open) + 1;
   const close = browserScriptClose(html, openTagEnd);
-  if (close === -1) return { scriptTextLength: html.length - openTagEnd, bodyText: '', unterminated: true };
+  if (close === -1) {
+    return { scriptTextLength: html.length - openTagEnd, bodyText: '', unterminated: true };
+  }
   const closeTagEnd = html.indexOf('>', close);
   const bodyStart = closeTagEnd === -1 ? html.length : closeTagEnd + 1;
-  const bodyPart = html.slice(bodyStart).replace(/<style[\s\S]*?<\/style>/g, '').replace(/<[^>]*>/g, ' ');
+  const bodyPart = html
+    .slice(bodyStart)
+    .replace(/<style[\s\S]*?<\/style>/g, '')
+    .replace(/<[^>]*>/g, ' ');
   return { scriptTextLength: close - openTagEnd, bodyText: bodyPart, unterminated: false };
 }
 

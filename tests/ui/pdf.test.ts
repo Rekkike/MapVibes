@@ -11,22 +11,27 @@ let failRender = false;
 
 vi.mock('../../src/pdfbackground', () => ({
   isPdfFile: (file: File) => file.name.toLowerCase().endsWith('.pdf'),
-  openPdf: async (data: ArrayBuffer) => {
+  openPdf: (data: ArrayBuffer) => {
     const head = new TextDecoder().decode(new Uint8Array(data).slice(0, 5));
-    if (head !== '%PDF-') throw new Error('not a PDF');
+    if (head !== '%PDF-') {
+      return Promise.reject(new Error('not a PDF'));
+    }
     const pageCount = data.byteLength > 1000 ? 2 : 1;
-    return {
+    return Promise.resolve({
       pageCount,
-      pageSize: async () => ({ width: 842, height: 595 }),
-      renderPage: async (page: number) => {
-        if (failRender) throw new Error('render failed');
+      pageSize: () => Promise.resolve({ width: 842, height: 595 }),
+      renderPage: (page: number) => {
+        if (failRender) {
+          return Promise.reject(new Error('render failed'));
+        }
         rendered.push(page);
-        return `data:image/png;base64,UEFHRS${page}`;
+        return Promise.resolve(`data:image/png;base64,UEFHRS${page}`);
       },
-      close: async () => {
+      close: () => {
         closed.push(pageCount);
+        return Promise.resolve();
       },
-    };
+    });
   },
 }));
 
@@ -101,7 +106,7 @@ describe('PDF background import UI (FR-25)', () => {
 
   test('a single-page PDF is used directly', async () => {
     const onePage = new File(['%PDF-1.4 minimal'], 'one.pdf', { type: 'application/pdf' });
-    Object.defineProperty(onePage, 'arrayBuffer', { value: async () => new TextEncoder().encode('%PDF-1.4 minimal').buffer });
+    Object.defineProperty(onePage, 'arrayBuffer', { value: () => Promise.resolve(new TextEncoder().encode('%PDF-1.4 minimal').buffer) });
     pick(onePage);
     await flush();
     expect(rendered).toEqual([1]);
@@ -111,7 +116,7 @@ describe('PDF background import UI (FR-25)', () => {
 
   test('an unreadable PDF is reported clearly', async () => {
     const broken = new File(['broken'], 'broken.pdf', { type: 'application/pdf' });
-    Object.defineProperty(broken, 'arrayBuffer', { value: async () => new TextEncoder().encode('broken').buffer });
+    Object.defineProperty(broken, 'arrayBuffer', { value: () => Promise.resolve(new TextEncoder().encode('broken').buffer) });
     pick(broken);
     await flush();
     expect(byId('map-error').classList.contains('hidden')).toBe(false);

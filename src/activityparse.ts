@@ -76,7 +76,9 @@ function rowsOf(items: PdfTextItem[]): Row[] {
       rows.push({ y: it.y, items: [it] });
     }
   }
-  for (const row of rows) row.items.sort((a, b) => a.x - b.x);
+  for (const row of rows) {
+    row.items.sort((a, b) => a.x - b.x);
+  }
   return rows;
 }
 
@@ -90,7 +92,9 @@ function columnStartsOf(rows: Row[]): number[] {
   const starts = rows.flatMap((r) => r.items.map((i) => i.x)).sort((a, b) => a - b);
   const out: number[] = [];
   for (const x of starts) {
-    if (out.length === 0 || x - out[out.length - 1] > threshold) out.push(x);
+    if (out.length === 0 || x - out[out.length - 1] > threshold) {
+      out.push(x);
+    }
   }
   return out;
 }
@@ -112,7 +116,7 @@ function columnOf(starts: number[], it: PdfTextItem): number {
 // items in one cell (wrapped text) join with a space, in x order.
 function cellGrid(rows: Row[], starts: number[]): string[][] {
   return rows.map((r) => {
-    const cells = Array(starts.length).fill('');
+    const cells: string[] = Array.from({ length: starts.length }, () => '');
     for (const it of r.items) {
       const c = columnOf(starts, it);
       cells[c] = cells[c] === '' ? it.str.trim() : `${cells[c]} ${it.str.trim()}`;
@@ -125,23 +129,35 @@ function cellGrid(rows: Row[], starts: number[]): string[][] {
 // them is the header row. Prose lines hold one item and fall outside.
 function tableRegion(rows: Row[]): { header: Row; body: Row[] } | null {
   const multi = rows.map((r, i) => ({ r, i })).filter(({ r }) => r.items.length >= 2);
-  if (multi.length === 0) return null;
+  if (multi.length === 0) {
+    return null;
+  }
   const start = multi[0].i;
   const region = rows.slice(start).filter((r) => r.items.length >= 2);
-  if (region.length < 2) return null; // a header alone is no table
+  if (region.length < 2) {
+    return null;
+  } // a header alone is no table
   return { header: region[0], body: region.slice(1) };
 }
 
 // A column's kind from the shape of its body cells only.
 export function classifyColumn(cells: string[]): ColumnKind {
   const nonEmpty = cells.filter((c) => c.trim() !== '');
-  if (nonEmpty.length === 0) return 'text';
+  if (nonEmpty.length === 0) {
+    return 'text';
+  }
   const dates = nonEmpty.filter((c) => readDate(c).kind === 'date').length;
   const percents = nonEmpty.filter((c) => /^\d{1,3}\s?%$/.test(c.trim())).length;
   const numbers = nonEmpty.filter((c) => /^-?\d+([.,]\d+)?\s*(\p{L}{1,4})?$/u.test(c.trim())).length;
-  if (dates > 0 && dates >= nonEmpty.length * 0.6) return 'date';
-  if (percents > 0 && percents >= nonEmpty.length * 0.5) return 'percent';
-  if (numbers > 0 && numbers >= nonEmpty.length * 0.5) return 'number';
+  if (dates > 0 && dates >= nonEmpty.length * 0.6) {
+    return 'date';
+  }
+  if (percents > 0 && percents >= nonEmpty.length * 0.5) {
+    return 'percent';
+  }
+  if (numbers > 0 && numbers >= nonEmpty.length * 0.5) {
+    return 'number';
+  }
   return 'text';
 }
 
@@ -151,20 +167,32 @@ export function classifyColumn(cells: string[]): ColumnKind {
 export function proposeMapping(columns: TableColumn[]): Partial<Record<ActivityField, number>> {
   const mapping: Partial<Record<ActivityField, number>> = {};
   const label = columns.find((c) => c.kind === 'text');
-  if (label) mapping.label = label.index;
+  if (label) {
+    mapping.label = label.index;
+  }
   const dates = columns.filter((c) => c.kind === 'date');
-  if (dates[0]) mapping.start = dates[0].index;
-  if (dates[1]) mapping.end = dates[1].index;
+  if (dates[0]) {
+    mapping.start = dates[0].index;
+  }
+  if (dates[1]) {
+    mapping.end = dates[1].index;
+  }
   const progress = columns.find((c) => c.kind === 'percent');
-  if (progress) mapping.progress = progress.index;
+  if (progress) {
+    mapping.progress = progress.index;
+  }
   const number = columns.find((c) => c.kind === 'number' && c.index !== mapping.duration);
-  if (number && mapping.start !== number.index && mapping.end !== number.index) mapping.duration = number.index;
+  if (number && mapping.start !== number.index && mapping.end !== number.index) {
+    mapping.duration = number.index;
+  }
   return mapping;
 }
 
 function progressOf(cell: string): number | null {
   const m = /^(\d{1,3})\s?%$/.exec(cell.trim());
-  if (!m) return null;
+  if (!m) {
+    return null;
+  }
   const n = Number(m[1]);
   return n >= 0 && n <= 100 ? n : null;
 }
@@ -173,10 +201,12 @@ function progressOf(cell: string): number | null {
 // (column index per role). A row is a candidate when any of its cells is
 // non-empty; fully empty rows are not activities and are left out.
 export function parseRows(grid: string[][], mapping: Partial<Record<ActivityField, number>>): ActivityDraft[] {
-  const col = (row: string[], field: ActivityField) => (mapping[field] === undefined ? '' : (row[mapping[field]!] ?? ''));
+  const col = (row: string[], field: ActivityField) => (mapping[field] === undefined ? '' : (row[mapping[field]] ?? ''));
   const out: ActivityDraft[] = [];
   for (const cells of grid) {
-    if (cells.every((c) => c.trim() === '')) continue;
+    if (cells.every((c) => c.trim() === '')) {
+      continue;
+    }
     const start = col(cells, 'start').trim();
     const end = col(cells, 'end').trim();
     const startReading: DateReading = readDate(start);
@@ -200,10 +230,14 @@ export function parseRows(grid: string[][], mapping: Partial<Record<ActivityFiel
 export function recogniseTable(page: number, items: PdfTextItem[]): ActivityTable | null {
   const rows = rowsOf(textItems(items));
   const region = tableRegion(rows);
-  if (!region) return null;
+  if (!region) {
+    return null;
+  }
   const tableRows = [region.header, ...region.body];
   const starts = columnStartsOf(tableRows);
-  if (starts.length < 2) return null;
+  if (starts.length < 2) {
+    return null;
+  }
   const grid = cellGrid(tableRows, starts);
   const header = grid[0];
   const body = grid.slice(1);
@@ -225,7 +259,9 @@ export function parsePdfPages(pages: PdfTextPage[]): ActivityParseResult {
   const headerKeys: string[] = [];
   for (let p = 0; p < pages.length; p++) {
     const table = recogniseTable(p + 1, pages[p]);
-    if (!table) continue;
+    if (!table) {
+      continue;
+    }
     const key = table.columns.map((c) => c.header).join('|');
     if (headerKeys.includes(key)) {
       // A repeated header page: its body rows continue the earlier table.

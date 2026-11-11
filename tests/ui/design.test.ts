@@ -11,7 +11,9 @@ function block(selector: string): Record<string, string> {
   expect(start).toBeGreaterThan(-1);
   const body = css.slice(css.indexOf('{', start) + 1, css.indexOf('}', start));
   const out: Record<string, string> = {};
-  for (const m of body.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) out[m[1]] = m[2].trim();
+  for (const m of body.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) {
+    out[m[1]] = m[2].trim();
+  }
   return out;
 }
 
@@ -37,7 +39,9 @@ describe('design tokens and theming (FR-29)', () => {
       .filter(([, v]) => /^#|rgba?\(/.test(v))
       .map(([k]) => k);
     expect(colourTokens.length).toBeGreaterThan(10);
-    for (const token of colourTokens) expect(dark[token], token).toBeDefined();
+    for (const token of colourTokens) {
+      expect(dark[token], token).toBeDefined();
+    }
   });
 
   test('no literal colour values outside the theme token blocks', () => {
@@ -46,7 +50,9 @@ describe('design tokens and theming (FR-29)', () => {
   });
 
   test('spacing and radius come from shared tokens', () => {
-    for (const token of ['--space-1', '--space-2', '--space-3', '--radius', '--radius-pill']) expect(light[token]).toBeDefined();
+    for (const token of ['--space-1', '--space-2', '--space-3', '--radius', '--radius-pill']) {
+      expect(light[token]).toBeDefined();
+    }
     expect(css.match(/border-radius:\s*\d+px/g)).toBeNull();
   });
 

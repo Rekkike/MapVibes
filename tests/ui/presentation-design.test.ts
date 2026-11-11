@@ -9,18 +9,22 @@ function stripMedia(text: string): string {
   let i = 0;
   for (;;) {
     const start = text.indexOf('@media', i);
-    if (start < 0) return out + text.slice(i);
+    if (start < 0) {
+      return out + text.slice(i);
+    }
     out += text.slice(i, start);
     let depth = 0;
     let j = text.indexOf('{', start);
     for (; j < text.length; j++) {
-      if (text[j] === '{') depth++;
-      else if (text[j] === '}' && --depth === 0) break;
+      if (text[j] === '{') {
+        depth++;
+      } else if (text[j] === '}' && --depth === 0) {
+        break;
+      }
     }
     i = j + 1;
   }
 }
-
 
 // Presentation design bar (FR-37) and details typography (FR-7), pinned by
 // assertions over the stylesheet.
@@ -30,7 +34,9 @@ function tokens(selector: string): Record<string, string> {
   const start = css.indexOf(`${selector} {`);
   const body = css.slice(css.indexOf('{', start) + 1, css.indexOf('}', start));
   const out: Record<string, string> = {};
-  for (const m of body.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) out[m[1]] = m[2].trim();
+  for (const m of body.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) {
+    out[m[1]] = m[2].trim();
+  }
   return out;
 }
 
@@ -44,8 +50,12 @@ function declarations(selector: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const m of withoutMedia.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     const selectors = m[1].split(',').map((s) => s.trim());
-    if (!selectors.includes(selector)) continue;
-    for (const d of m[2].matchAll(/([\w-]+)\s*:\s*([^;]+);/g)) out[d[1]] = d[2].trim().replace(/\s+/g, ' ');
+    if (!selectors.includes(selector)) {
+      continue;
+    }
+    for (const d of m[2].matchAll(/([\w-]+)\s*:\s*([^;]+);/g)) {
+      out[d[1]] = d[2].trim().replace(/\s+/g, ' ');
+    }
   }
   return out;
 }
@@ -53,15 +63,21 @@ function declarations(selector: string): Record<string, string> {
 function rem(value: string | undefined): number {
   // A size token resolves to its value in the token block.
   const token = /^var\((--[\w-]+)\)$/.exec(value ?? '');
-  if (token) value = light[token[1]];
+  if (token) {
+    value = light[token[1]];
+  }
   const m = /^([\d.]+)rem$/.exec(value ?? '');
-  if (!m) throw new Error(`not a rem size: ${value}`);
+  if (!m) {
+    throw new Error(`not a rem size: ${value}`);
+  }
   return Number(m[1]);
 }
 
 function ms(value: string): number {
   const m = /^(\d+)ms$/.exec(value);
-  if (!m) throw new Error(`not a duration: ${value}`);
+  if (!m) {
+    throw new Error(`not a duration: ${value}`);
+  }
   return Number(m[1]);
 }
 
@@ -84,7 +100,9 @@ describe('presentation data card legibility (FR-37)', () => {
     expect(card.color).toBe('var(--fg)');
     expect(card.opacity).toBe('1');
     expect(card['backdrop-filter']).toBeUndefined();
-    for (const theme of [light, dark]) expect(theme['--panel']).toMatch(/^#[0-9a-f]{6}$/i);
+    for (const theme of [light, dark]) {
+      expect(theme['--panel']).toMatch(/^#[0-9a-f]{6}$/i);
+    }
   });
 
   test('its text keeps at least 4.5:1 contrast in both themes, whatever the background', () => {
@@ -114,7 +132,14 @@ describe('projection typography (FR-37) and details typography (FR-7)', () => {
     expect(title).toBeGreaterThan(1.125);
     expect(title).toBeLessThanOrEqual(1.5);
     expect(rem(declarations('.presentation-card .card-note')['font-size'])).toBe(1.125);
-    for (const selector of ['.presentation-card', '.presentation-card .card-label', '.presentation-card .card-value', '.presentation-card .details-comment-text', '.presentation-card .details-comment-date', '.presentation-card .footprint']) {
+    for (const selector of [
+      '.presentation-card',
+      '.presentation-card .card-label',
+      '.presentation-card .card-value',
+      '.presentation-card .details-comment-text',
+      '.presentation-card .details-comment-date',
+      '.presentation-card .footprint',
+    ]) {
       expect(rem(declarations(selector)['font-size']), selector).toBeGreaterThanOrEqual(1);
     }
   });

@@ -3,7 +3,11 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 // The minimum platform (FR-61): where the array method at is missing (before
 // Safari 15.4), the application supplies it before the PDF library loads.
 const TypedArray = Object.getPrototypeOf(Uint8Array.prototype) as { at?: unknown };
-const native = { array: Array.prototype.at, string: String.prototype.at, typed: TypedArray.at };
+const native = {
+  array: Object.getOwnPropertyDescriptor(Array.prototype, 'at')?.value,
+  string: Object.getOwnPropertyDescriptor(String.prototype, 'at')?.value,
+  typed: Object.getOwnPropertyDescriptor(TypedArray, 'at')?.value,
+};
 
 afterEach(() => {
   Object.defineProperty(Array.prototype, 'at', { value: native.array, writable: true, configurable: true, enumerable: false });
@@ -43,7 +47,10 @@ describe('the array method at, where the browser lacks it (FR-61)', () => {
     expect(new Uint8Array([1, 2, 3]).at(-2)).toBe(2);
     // Not enumerable: it never shows up in a for-in loop over an array.
     const keys: string[] = [];
-    for (const k in list) keys.push(k);
+    // eslint-disable-next-line @typescript-eslint/no-for-in-array -- the for-in is the point of the assertion
+    for (const k in list) {
+      keys.push(k);
+    }
     expect(keys).toEqual(['0', '1', '2']);
   });
 

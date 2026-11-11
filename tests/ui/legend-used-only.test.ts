@@ -35,7 +35,9 @@ function selectMarker(index: number, x: number, y: number): void {
 // Row colours cycle green -> blue -> yellow -> red with each chip click.
 function setColour(rowIndex: number, clicks: number): void {
   const chip = document.querySelectorAll<HTMLElement>('#row-table-body tr')[rowIndex].querySelector<HTMLElement>('.colour-chip')!;
-  for (let i = 0; i < clicks; i++) chip.click();
+  for (let i = 0; i < clicks; i++) {
+    chip.click();
+  }
 }
 
 async function mountWork(): Promise<typeof import('../../src/main')> {

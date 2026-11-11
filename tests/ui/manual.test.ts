@@ -75,7 +75,9 @@ describe('manual list (FR-9, FR-24, FR-30)', () => {
   test('manual rows receive colours and marker placement exactly like imported rows', async () => {
     byId('start-empty').click();
     addColumn('Label');
-    for (let i = 0; i < 3; i++) byId('add-row').click();
+    for (let i = 0; i < 3; i++) {
+      byId('add-row').click();
+    }
     ['Alpha', 'Beta', 'Gamma'].forEach((v, i) => editCell(i, 'Label', v));
     setRole(columnKeyOf('Label'), 'name');
     document.querySelectorAll<HTMLElement>('#row-table-body .colour-chip')[1].click();
@@ -93,7 +95,9 @@ describe('manual list (FR-9, FR-24, FR-30)', () => {
   test('deleting manual rows renumbers the list and the markers as for imported data', async () => {
     byId('start-empty').click();
     addColumn('Label');
-    for (let i = 0; i < 3; i++) byId('add-row').click();
+    for (let i = 0; i < 3; i++) {
+      byId('add-row').click();
+    }
     ['Alpha', 'Beta', 'Gamma'].forEach((v, i) => editCell(i, 'Label', v));
     byId('tab-map').click();
     await loadExampleBackground();

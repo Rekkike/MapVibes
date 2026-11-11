@@ -3,7 +3,22 @@ import { join } from 'node:path';
 import { describe, expect, test } from 'vitest';
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import * as pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.mjs';
-import { buildPdf, drawFooter, layoutLegend, layoutTable, paginateTable, PALETTE, PDF_PAGE, PdfPainter, sceneFromStage, TABLE, wrapValue, type DocumentExtraPage, type DocumentTable, type StageInput } from '../../src/documents';
+import {
+  buildPdf,
+  drawFooter,
+  layoutLegend,
+  layoutTable,
+  paginateTable,
+  PALETTE,
+  PDF_PAGE,
+  PdfPainter,
+  sceneFromStage,
+  TABLE,
+  wrapValue,
+  type DocumentExtraPage,
+  type DocumentTable,
+  type StageInput,
+} from '../../src/documents';
 import { legendModel, type SeriesLegend } from '../../src/legend';
 import { en } from '../../src/i18n';
 import { PdfDocument, textWidth } from '../../src/pdfwriter';
@@ -34,7 +49,26 @@ function input(): StageInput {
       // Far outside.
       { position: { x: 1150, y: 50 }, symbol: 'square', colour: 'blue', label: '3' },
     ],
-    annotations: [annotation('a', 'rectangle', [[300, 200], [500, 300]], 'Inside'), annotation('b', 'line', [[1100, 750], [1190, 790]], 'Outside')],
+    annotations: [
+      annotation(
+        'a',
+        'rectangle',
+        [
+          [300, 200],
+          [500, 300],
+        ],
+        'Inside',
+      ),
+      annotation(
+        'b',
+        'line',
+        [
+          [1100, 750],
+          [1190, 790],
+        ],
+        'Outside',
+      ),
+    ],
     legendTitle: 'Legend',
     legend: legendModel(en),
   };
@@ -100,11 +134,15 @@ describe('the table (FR-12)', () => {
     const long = table(14, 2, () => 'A fairly long value that needs room');
     const layout = layoutTable(long, width);
     expect(layout.groups.length).toBeGreaterThan(1);
-    for (const g of layout.groups) expect(g[0]).toBe(0);
+    for (const g of layout.groups) {
+      expect(g[0]).toBe(0);
+    }
     expect(layout.groups.flatMap((g) => g.slice(1))).toEqual(Array.from({ length: 14 }, (_, c) => c + 1));
     for (const widths of layout.widths) {
       expect(widths.reduce((s, w) => s + w, 0)).toBeLessThanOrEqual(width + 1e-6);
-      for (const w of widths.slice(1)) expect(w).toBeGreaterThanOrEqual(TABLE.minColumn);
+      for (const w of widths.slice(1)) {
+        expect(w).toBeGreaterThanOrEqual(TABLE.minColumn);
+      }
     }
   });
 
@@ -112,7 +150,9 @@ describe('the table (FR-12)', () => {
     const text = 'one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen';
     const lines = wrapValue(text, 60, 'regular', 8, 3);
     expect(lines).toHaveLength(3);
-    for (const line of lines) expect(textWidth(line, 'regular', 8)).toBeLessThanOrEqual(60);
+    for (const line of lines) {
+      expect(textWidth(line, 'regular', 8)).toBeLessThanOrEqual(60);
+    }
     expect(lines[2].endsWith('…')).toBe(true);
     expect(lines[0]).toBe('one two three');
     expect(wrapValue('short', 60, 'regular', 8, 3)).toEqual(['short']);
@@ -120,7 +160,9 @@ describe('the table (FR-12)', () => {
     // A word longer than a line is split.
     const split = wrapValue('Supercalifragilisticexpialidocious', 40, 'regular', 8, 3);
     expect(split.length).toBeGreaterThan(1);
-    for (const line of split) expect(textWidth(line, 'regular', 8)).toBeLessThanOrEqual(40);
+    for (const line of split) {
+      expect(textWidth(line, 'regular', 8)).toBeLessThanOrEqual(40);
+    }
   });
 
   test('rows are paginated under the repeated heading; every row appears once per part', () => {
@@ -133,14 +175,24 @@ describe('the table (FR-12)', () => {
 });
 
 describe('the PDF document (FR-12, FR-50)', () => {
-  const texts = { title: 'MapVibes presentation', footer: 'MapVibes · page {page} of {pages}', tableTitle: 'Items {from} to {to} of {total}', tableTitleParts: 'Items {from} to {to} of {total} (part {part} of {parts})' };
+  const texts = {
+    title: 'MapVibes presentation',
+    footer: 'MapVibes · page {page} of {pages}',
+    tableTitle: 'Items {from} to {to} of {total}',
+    tableTitleParts: 'Items {from} to {to} of {total} (part {part} of {parts})',
+  };
 
   async function read(bytes: Uint8Array) {
     const doc = await pdfjs.getDocument({ data: bytes.slice(), useSystemFonts: false }).promise;
     const pages: string[] = [];
     for (let i = 1; i <= doc.numPages; i++) {
       const content = await (await doc.getPage(i)).getTextContent();
-      pages.push(content.items.map((it) => ('str' in it ? it.str : '')).filter((s) => s.trim() !== '').join('|'));
+      pages.push(
+        content.items
+          .map((it) => ('str' in it ? it.str : ''))
+          .filter((s) => s.trim() !== '')
+          .join('|'),
+      );
     }
     return pages;
   }
@@ -176,7 +228,13 @@ describe('the PDF document (FR-12, FR-50)', () => {
   });
 
   test('characters the fonts cannot show are counted across the whole document', () => {
-    const result = buildPdf(sceneFromStage(input()), table(1, 2, (r) => (r === 0 ? 'Ωμέγα' : 'plain')), null, texts, new Date());
+    const result = buildPdf(
+      sceneFromStage(input()),
+      table(1, 2, (r) => (r === 0 ? 'Ωμέγα' : 'plain')),
+      null,
+      texts,
+      new Date(),
+    );
     expect(result.replaced).toBe(5);
   });
 

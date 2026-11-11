@@ -10,7 +10,9 @@ vi.mock('../../src/osmrender', () => ({
 type App = Awaited<ReturnType<typeof mountApp>>;
 
 async function settle(): Promise<void> {
-  for (let i = 0; i < 4; i++) await flush();
+  for (let i = 0; i < 4; i++) {
+    await flush();
+  }
 }
 
 describe('reset demo (FR-56)', () => {

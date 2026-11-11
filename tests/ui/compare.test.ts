@@ -173,7 +173,12 @@ describe('re-import and comparison (FR-14)', () => {
     editCell(3, 'ID', 'A-03');
     editCell(4, 'ID', '');
     await openExport(page);
-    expect(groups().unpairable).toEqual(['3. A-03 / in the current work', '4. A-03 / in the current work', '5. No. 5 / in the current work', 'file no. 3: A-03 / in the file']);
+    expect(groups().unpairable).toEqual([
+      '3. A-03 / in the current work',
+      '4. A-03 / in the current work',
+      '5. No. 5 / in the current work',
+      'file no. 3: A-03 / in the file',
+    ]);
   });
 
   test('without the identifier role nothing is paired, and the panel says why', async () => {
@@ -198,7 +203,9 @@ describe('re-import and comparison (FR-14)', () => {
     expect(byId('work-status').textContent).toBe('The file holds no MapVibes export data. Nothing was opened.');
     expect(byId('compare-panel').classList.contains('hidden')).toBe(true);
     await openExport(page.replace('"exportVersion": 2', '"exportVersion": 7'));
-    expect(byId('work-status').textContent).toBe('The exported file has export format version 7, which this version of MapVibes cannot read. Nothing was opened.');
+    expect(byId('work-status').textContent).toBe(
+      'The exported file has export format version 7, which this version of MapVibes cannot read. Nothing was opened.',
+    );
     await openExport(page.replace('"numbers": [', '"numbers": [0, '));
     expect(byId('work-status').textContent).toBe('The data embedded in the exported file could not be read. Nothing was opened.');
   });

@@ -15,7 +15,9 @@ export function isManualKey(key: string): boolean {
 // keys can never equal an imported key, which starts with header text.
 export function newManualKey(existing: string[]): string {
   let n = 1;
-  while (existing.includes(`${MANUAL_PREFIX}${n}`)) n += 1;
+  while (existing.includes(`${MANUAL_PREFIX}${n}`)) {
+    n += 1;
+  }
   return `${MANUAL_PREFIX}${n}`;
 }
 

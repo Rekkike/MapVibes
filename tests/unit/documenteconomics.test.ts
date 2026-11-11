@@ -1,7 +1,15 @@
 import { describe, expect, test } from 'vitest';
 import { PdfDocument } from '../../src/pdfwriter';
 import { PdfPainter, PDF_PAGE, type PageFrame, type Painter } from '../../src/documents';
-import { blockHeight, drawEconomicsPage, ECON, economicsBlock, layoutEconomics, type EconomicsBlock, type EconomicsPageLabels } from '../../src/documenteconomics';
+import {
+  blockHeight,
+  drawEconomicsPage,
+  ECON,
+  economicsBlock,
+  layoutEconomics,
+  type EconomicsBlock,
+  type EconomicsPageLabels,
+} from '../../src/documenteconomics';
 import type { SeriesAssignments } from '../../src/economics';
 import type { Rgb, Transform } from '../../src/pdfwriter';
 
@@ -10,28 +18,72 @@ class RecordingPainter implements Painter {
   private record(op: string, ...args: unknown[]): void {
     this.ops.push({ op, args });
   }
-  save(): void { this.record('save'); }
-  restore(): void { this.record('restore'); }
-  fillColour(c: Rgb): void { this.record('fillColour', c); }
-  strokeColour(c: Rgb): void { this.record('strokeColour', c); }
-  lineWidth(w: number): void { this.record('lineWidth', w); }
-  dash(pattern: readonly number[]): void { this.record('dash', pattern); }
-  opacity(a: number): void { this.record('opacity', a); }
-  roundLines(): void { this.record('roundLines'); }
-  beginPath(): void { this.record('beginPath'); }
-  moveTo(x: number, y: number): void { this.record('moveTo', x, y); }
-  lineTo(x: number, y: number): void { this.record('lineTo', x, y); }
-  curveTo(x1: number, y1: number, x2: number, y2: number, x: number, y: number): void { this.record('curveTo', x1, y1, x2, y2, x, y); }
-  close(): void { this.record('close'); }
-  rect(x: number, y: number, w: number, h: number): void { this.record('rect', x, y, w, h); }
-  circle(cx: number, cy: number, r: number): void { this.record('circle', cx, cy, r); }
-  svgPath(d: string, t: Transform): void { this.record('svgPath', d, t); }
-  fill(): void { this.record('fill'); }
-  stroke(): void { this.record('stroke'); }
-  clip(): void { this.record('clip'); }
-  text(x: number, y: number, text: string): void { this.record('text', x, y, text); }
-  image(): void { this.record('image'); }
-  texts(): string[] { return this.ops.filter((o) => o.op === 'text').map((o) => String(o.args[2])); }
+  save(): void {
+    this.record('save');
+  }
+  restore(): void {
+    this.record('restore');
+  }
+  fillColour(c: Rgb): void {
+    this.record('fillColour', c);
+  }
+  strokeColour(c: Rgb): void {
+    this.record('strokeColour', c);
+  }
+  lineWidth(w: number): void {
+    this.record('lineWidth', w);
+  }
+  dash(pattern: readonly number[]): void {
+    this.record('dash', pattern);
+  }
+  opacity(a: number): void {
+    this.record('opacity', a);
+  }
+  roundLines(): void {
+    this.record('roundLines');
+  }
+  beginPath(): void {
+    this.record('beginPath');
+  }
+  moveTo(x: number, y: number): void {
+    this.record('moveTo', x, y);
+  }
+  lineTo(x: number, y: number): void {
+    this.record('lineTo', x, y);
+  }
+  curveTo(x1: number, y1: number, x2: number, y2: number, x: number, y: number): void {
+    this.record('curveTo', x1, y1, x2, y2, x, y);
+  }
+  close(): void {
+    this.record('close');
+  }
+  rect(x: number, y: number, w: number, h: number): void {
+    this.record('rect', x, y, w, h);
+  }
+  circle(cx: number, cy: number, r: number): void {
+    this.record('circle', cx, cy, r);
+  }
+  svgPath(d: string, t: Transform): void {
+    this.record('svgPath', d, t);
+  }
+  fill(): void {
+    this.record('fill');
+  }
+  stroke(): void {
+    this.record('stroke');
+  }
+  clip(): void {
+    this.record('clip');
+  }
+  text(x: number, y: number, text: string): void {
+    this.record('text', x, y, text);
+  }
+  image(): void {
+    this.record('image');
+  }
+  texts(): string[] {
+    return this.ops.filter((o) => o.op === 'text').map((o) => String(o.args[2]));
+  }
 }
 
 const labels: EconomicsPageLabels = {
@@ -87,7 +139,7 @@ function blocks(): EconomicsBlock[] {
 
 const frame = (): PageFrame => ({ width: PDF_PAGE.width, height: PDF_PAGE.height, margin: PDF_PAGE.margin, footer: 'MapVibes · page 1 of 1' });
 
-describe("the economics blocks (FR-12 as amended in v1.13.0, FR-63 to FR-65)", () => {
+describe('the economics blocks (FR-12 as amended in v1.13.0, FR-63 to FR-65)', () => {
   test('an item without economics has no block; absence is never an error', () => {
     expect(economicsBlock('2', 'Beta', {}, series, { start: 2020, end: 2022 }, 'SEK')).toBeNull();
     expect(economicsBlock('2', 'Beta', { b2020: '  ' }, series, { start: 2020, end: 2022 }, 'SEK')).toBeNull();
@@ -95,7 +147,14 @@ describe("the economics blocks (FR-12 as amended in v1.13.0, FR-63 to FR-65)", (
 
   test('the blocks paginate whole, every block once, in order, within the body', () => {
     const many: EconomicsBlock[] = Array.from({ length: 12 }, (_, i) =>
-      economicsBlock(String(i + 1), `Item ${i + 1}`, { b2020: '1000', b2021: '2000', b2022: '500', o2020: '900', f2022: '100' }, series, { start: 2020, end: 2022 }, 'SEK')!,
+      economicsBlock(
+        String(i + 1),
+        `Item ${i + 1}`,
+        { b2020: '1000', b2021: '2000', b2022: '500', o2020: '900', f2022: '100' },
+        series,
+        { start: 2020, end: 2022 },
+        'SEK',
+      )!,
     );
     const layout = layoutEconomics(many, frame(), labels, fmt);
     expect(layout.pages.length).toBeGreaterThanOrEqual(1);

@@ -1,7 +1,19 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, test, vi } from 'vitest';
-import { byId, flush, mountApp, openWorkFile, placeExampleMarkers, pointer, presentationMarkers, STAGE, stubImageDecoding, stubStageLayout, textFile } from './harness';
+import {
+  byId,
+  flush,
+  mountApp,
+  openWorkFile,
+  placeExampleMarkers,
+  pointer,
+  presentationMarkers,
+  STAGE,
+  stubImageDecoding,
+  stubStageLayout,
+  textFile,
+} from './harness';
 import { NARROW_QUERY } from '../../src/narrowviewer';
 import { en, sv } from '../../src/i18n';
 
@@ -9,8 +21,10 @@ vi.mock('../../src/osmrender', () => ({
   renderPlanToDataUrl: (plan: { width: number; height: number }) => `data:image/png;base64,T1NN${plan.width}x${plan.height}`,
 }));
 vi.mock('../../src/raster', () => ({
-  backgroundJpeg: async () => ({ jpeg: new Uint8Array(readFileSync(join(process.cwd(), 'example-data', 'example-background.jpg'))), width: 1200, height: 800 }),
-  stagePagePng: async () => ({ png: new Uint8Array(readFileSync(join(process.cwd(), 'example-data', 'example-background.png'))), width: 1920, height: 1080 }),
+  backgroundJpeg: () =>
+    Promise.resolve({ jpeg: new Uint8Array(readFileSync(join(process.cwd(), 'example-data', 'example-background.jpg'))), width: 1200, height: 800 }),
+  stagePagePng: () =>
+    Promise.resolve({ png: new Uint8Array(readFileSync(join(process.cwd(), 'example-data', 'example-background.png'))), width: 1920, height: 1080 }),
 }));
 
 // Translation parity (FR-19 as amended in v1.3.0): every user-visible string
@@ -44,7 +58,11 @@ const SAME_IN_BOTH: Record<string, string> = {
 describe('translation parity: the string tables (FR-19)', () => {
   test('both languages have exactly the same entries, none empty', () => {
     expect(Object.keys(sv).sort()).toEqual(Object.keys(en).sort());
-    for (const table of [en, sv]) for (const [key, value] of Object.entries(table)) expect(String(value).trim(), key).not.toBe('');
+    for (const table of [en, sv]) {
+      for (const [key, value] of Object.entries(table)) {
+        expect(String(value).trim(), key).not.toBe('');
+      }
+    }
   });
 
   test('no entry is left untranslated: a Swedish entry equal to the English one is a listed exception', () => {
@@ -66,19 +84,33 @@ describe('translation parity: the string tables (FR-19)', () => {
 function englishTexts(): Set<string> {
   const out = new Set<string>();
   for (const [key, value] of Object.entries(en)) {
-    if (key in SAME_IN_BOTH || typeof value !== 'string') continue;
-    for (const part of value.split(/\{[^}]*\}/)) if (part.trim().length >= 4) out.add(part.trim());
+    if (key in SAME_IN_BOTH || typeof value !== 'string') {
+      continue;
+    }
+    for (const part of value.split(/\{[^}]*\}/)) {
+      if (part.trim().length >= 4) {
+        out.add(part.trim());
+      }
+    }
   }
   const doc = new DOMParser().parseFromString(readFileSync(join(process.cwd(), 'index.html'), 'utf8'), 'text/html');
   const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
-  for (let n = walker.nextNode(); n; n = walker.nextNode()) if ((n.textContent ?? '').trim().length >= 4) out.add(n.textContent!.trim());
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    if ((n.textContent ?? '').trim().length >= 4) {
+      out.add(n.textContent!.trim());
+    }
+  }
   for (const el of doc.body.querySelectorAll('[aria-label], [title], [placeholder]')) {
     for (const attr of ['aria-label', 'title', 'placeholder']) {
       const v = el.getAttribute(attr);
-      if (v && v.trim().length >= 4) out.add(v.trim());
+      if (v && v.trim().length >= 4) {
+        out.add(v.trim());
+      }
     }
   }
-  for (const k of Object.keys(SAME_IN_BOTH)) out.delete(String((en as Record<string, unknown>)[k]));
+  for (const k of Object.keys(SAME_IN_BOTH)) {
+    out.delete(String((en as Record<string, unknown>)[k]));
+  }
   return out;
 }
 
@@ -91,13 +123,19 @@ function shownTexts(): string[] {
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
     const text = (n.textContent ?? '').trim();
-    if (text !== '' && !skip(n.parentElement)) out.push(text);
+    if (text !== '' && !skip(n.parentElement)) {
+      out.push(text);
+    }
   }
   for (const el of document.body.querySelectorAll('[aria-label], [title], [placeholder]')) {
-    if (skip(el)) continue;
+    if (skip(el)) {
+      continue;
+    }
     for (const attr of ['aria-label', 'title', 'placeholder']) {
       const v = el.getAttribute(attr);
-      if (v && v.trim() !== '') out.push(v.trim());
+      if (v && v.trim() !== '') {
+        out.push(v.trim());
+      }
     }
   }
   return out;
@@ -135,7 +173,9 @@ function leaks(english: Set<string>): string[] {
 }
 
 async function settle(): Promise<void> {
-  for (let i = 0; i < 5; i++) await flush();
+  for (let i = 0; i < 5; i++) {
+    await flush();
+  }
 }
 
 describe('translation parity: the rendered interface in Swedish (FR-19)', () => {
@@ -163,7 +203,9 @@ describe('translation parity: the rendered interface in Swedish (FR-19)', () => 
       await settle();
       collectData(app);
       byId('tab-information').click();
-      for (const d of document.querySelectorAll('details')) d.open = true;
+      for (const d of document.querySelectorAll('details')) {
+        d.open = true;
+      }
       found.push(...leaks(english));
       // The Map segment, with an annotation selected and the details panel.
       byId('tab-map').click();
@@ -225,18 +267,18 @@ describe('translation parity: the narrow viewer in Swedish (FR-19, FR-58)', () =
       beforeMain: () => {
         stubStageLayout();
         stubImageDecoding(1200, 800);
-        const plain = window.matchMedia;
-        window.matchMedia = ((q: string) => (q === NARROW_QUERY ? { ...plain(q), matches: true } : plain(q))) as typeof window.matchMedia;
+        const plain = window.matchMedia.bind(window);
+        window.matchMedia = (q: string) => (q === NARROW_QUERY ? { ...plain(q), matches: true } : plain(q));
       },
     });
     await flush();
     const english = englishTexts();
     const bar = byId('viewer-toggles');
-    const texts = [bar.getAttribute('aria-label')!, ...[...bar.querySelectorAll('button')].map((b) => b.textContent!.trim())];
+    const texts = [bar.getAttribute('aria-label')!, ...[...bar.querySelectorAll('button')].map((b) => b.textContent.trim())];
     expect(texts).toEqual(['Paneler', 'I vyn', 'Teckenförklaring']);
     byId('toggle-legend').click();
     expect(byId('presentation-legend').dataset.state).toBe('open');
-    const shown = [...texts, byId('presentation-legend').textContent!, byId('presentation-glance').textContent!];
+    const shown = [...texts, byId('presentation-legend').textContent, byId('presentation-glance').textContent];
     expect(shown.filter((t) => [...english].some((e) => t === e || (e.length >= 12 && t.includes(e))))).toEqual([]);
   });
 });
@@ -252,7 +294,7 @@ describe('translation parity: the no-scripts notice in Swedish (FR-19, FR-59)', 
     lang.value = 'sv';
     lang.dispatchEvent(new Event('change'));
     const doc = new DOMParser().parseFromString(author.exportPage(new Date(2024, 7, 9, 10, 30))!, 'text/html');
-    const paragraphs = [...doc.getElementById('boot-notice')!.querySelectorAll('p')].map((p) => p.textContent!.trim());
+    const paragraphs = [...doc.getElementById('boot-notice')!.querySelectorAll('p')].map((p) => p.textContent.trim());
     expect(paragraphs).toHaveLength(4);
     const english = englishTexts();
     expect(paragraphs.filter((t) => [...english].some((e) => t === e || (e.length >= 12 && t.includes(e))))).toEqual([]);

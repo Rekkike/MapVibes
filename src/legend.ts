@@ -38,7 +38,9 @@ function entry(swatchClass: string, label: string, data: Record<string, string>,
   const swatch = document.createElement('span');
   swatch.className = `legend-swatch ${swatchClass}`;
   swatch.setAttribute('aria-hidden', 'true');
-  if (symbol) drawSymbol(swatch, symbol, '');
+  if (symbol) {
+    drawSymbol(swatch, symbol, '');
+  }
   const text = document.createElement('span');
   text.className = 'legend-label';
   text.textContent = label;
@@ -141,9 +143,7 @@ export function legendModel(
   if (statusItems.length > 0) {
     sections.push({ kind: 'statuses', label: t.legendStatuses, items: statusItems });
   }
-  const groupItems = numberGroups
-    .filter((g) => !used || used.groups.has(g.index))
-    .map((g) => ({ label: g.name, group: g.index }));
+  const groupItems = numberGroups.filter((g) => !used || used.groups.has(g.index)).map((g) => ({ label: g.name, group: g.index }));
   if (groupItems.length > 0) {
     sections.push({ kind: 'programs', label: t.legendProgramGroups, items: groupItems });
   }
@@ -151,10 +151,16 @@ export function legendModel(
   // present among the visible items, each with its meaning and its style.
   if (series) {
     const seriesItems = SERIES_ROLES.filter((role) => series.used.has(role)).map((role) => ({ label: series.names[role], series: role }));
-    if (seriesItems.length > 0) sections.push({ kind: 'series', label: t.legendSeries, items: seriesItems });
+    if (seriesItems.length > 0) {
+      sections.push({ kind: 'series', label: t.legendSeries, items: seriesItems });
+    }
   }
-  if (phase) sections.push({ kind: 'phase', label: t.legendWorkPhase, items: [{ label: t.legendWorkPhaseEntry, phase: true }] });
-  if (today !== undefined) sections.push({ kind: 'today', label: t.legendToday, items: [{ label: today, today: true }] });
+  if (phase) {
+    sections.push({ kind: 'phase', label: t.legendWorkPhase, items: [{ label: t.legendWorkPhaseEntry, phase: true }] });
+  }
+  if (today !== undefined) {
+    sections.push({ kind: 'today', label: t.legendToday, items: [{ label: today, today: true }] });
+  }
   // With a used-only filter, a section whose entries are all unused does not
   // appear (FR-75).
   return used ? sections.filter((section) => section.items.length > 0) : sections;
@@ -162,9 +168,13 @@ export function legendModel(
 
 function legendEntry(item: LegendItem): HTMLLIElement {
   // The work phase (FR-78): a swatch hatched like the timeline's band.
-  if (item.phase) return entry('legend-phase-swatch', item.label, { phase: 'true' });
+  if (item.phase) {
+    return entry('legend-phase-swatch', item.label, { phase: 'true' });
+  }
   // Today (FR-75 as noted): a dashed swatch like the mark.
-  if (item.today) return entry('legend-today-swatch', item.label, { today: 'true' });
+  if (item.today) {
+    return entry('legend-today-swatch', item.label, { today: 'true' });
+  }
   if (item.series !== undefined) {
     // A series of the costs view (FR-79): a swatch in the series' own style,
     // so the bars can be told apart at a glance. The swatch carries the
@@ -186,8 +196,12 @@ function legendEntry(item: LegendItem): HTMLLIElement {
     li.append(number, text);
     return li;
   }
-  if (item.colour) return entry(`marker-${item.colour} marker-shape-circle`, item.label, { colour: item.colour });
-  if (item.status !== undefined) return entry(symbolClasses(item.symbol!), item.label, { status: item.status, shape: item.symbol! }, item.symbol);
+  if (item.colour) {
+    return entry(`marker-${item.colour} marker-shape-circle`, item.label, { colour: item.colour });
+  }
+  if (item.status !== undefined) {
+    return entry(symbolClasses(item.symbol!), item.label, { status: item.status, shape: item.symbol! }, item.symbol);
+  }
   return entry(symbolClasses(item.symbol!), item.label, { shape: item.symbol! }, item.symbol);
 }
 

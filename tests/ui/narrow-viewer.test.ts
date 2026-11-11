@@ -26,7 +26,9 @@ function controllableQuery(initial: boolean) {
     list,
     set(matches: boolean) {
       list.matches = matches;
-      for (const l of listeners) l();
+      for (const l of listeners) {
+        l();
+      }
     },
   };
 }
@@ -53,7 +55,7 @@ async function mountViewer(narrow: boolean) {
     beforeMain: () => {
       stubStageLayout();
       stubImageDecoding(1200, 800);
-      const plain = window.matchMedia;
+      const plain = window.matchMedia.bind(window);
       window.matchMedia = ((q: string) => (q === NARROW_QUERY ? query.list : plain(q))) as typeof window.matchMedia;
     },
   });
@@ -189,13 +191,24 @@ describe('the narrow viewer layout (FR-58)', { timeout: 15_000 }, () => {
       expect(byId(id).dataset.state, id).toBeUndefined();
       expect(byId(id).inert, id).toBe(false);
     }
-    for (const id of ['toggle-items', 'toggle-map-glance', 'toggle-map-legend', 'toggle-visibility', 'toggle-glance', 'toggle-legend']) expect(byId(id).hasAttribute('aria-expanded'), id).toBe(false);
+    for (const id of ['toggle-items', 'toggle-map-glance', 'toggle-map-legend', 'toggle-visibility', 'toggle-glance', 'toggle-legend']) {
+      expect(byId(id).hasAttribute('aria-expanded'), id).toBe(false);
+    }
   });
 
   // The stage takes a new size, as after a rotation, before the event.
   function resizeStage(width: number, height: number): void {
-    byId('presentation-stage').getBoundingClientRect = () =>
-      ({ left: STAGE.left, top: STAGE.top, width, height, x: STAGE.left, y: STAGE.top, right: STAGE.left + width, bottom: STAGE.top + height, toJSON: () => ({}) }) as DOMRect;
+    byId('presentation-stage').getBoundingClientRect = () => ({
+      left: STAGE.left,
+      top: STAGE.top,
+      width,
+      height,
+      x: STAGE.left,
+      y: STAGE.top,
+      right: STAGE.left + width,
+      bottom: STAGE.top + height,
+      toJSON: () => ({}),
+    });
   }
 
   const transform = () => byId('presentation-content').style.transform;

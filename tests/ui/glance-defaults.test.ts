@@ -1,7 +1,18 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, test, vi } from 'vitest';
-import { byId, flush, importExampleWorkbook, mountApp, openWorkFile, placeExampleMarkers, setRole, stubImageDecoding, stubStageLayout, textFile } from './harness';
+import {
+  byId,
+  flush,
+  importExampleWorkbook,
+  mountApp,
+  openWorkFile,
+  placeExampleMarkers,
+  setRole,
+  stubImageDecoding,
+  stubStageLayout,
+  textFile,
+} from './harness';
 import { parseWorkState, serialiseWorkState } from '../../src/workstate';
 
 vi.mock('../../src/osmrender', () => ({
@@ -15,12 +26,16 @@ vi.mock('../../src/osmrender', () => ({
 type App = Awaited<ReturnType<typeof mountApp>>;
 
 async function settle(): Promise<void> {
-  for (let i = 0; i < 5; i++) await flush();
+  for (let i = 0; i < 5; i++) {
+    await flush();
+  }
 }
 
 // The columns the entries of a segment's panel show, per entry.
 function shownColumns(prefix: 'map' | 'presentation'): string[][] {
-  return [...byId(`${prefix}-glance-list`).querySelectorAll('.glance-entry')].map((e) => [...e.querySelectorAll<HTMLElement>('.glance-value')].map((v) => v.dataset.header!));
+  return [...byId(`${prefix}-glance-list`).querySelectorAll('.glance-entry')].map((e) =>
+    [...e.querySelectorAll<HTMLElement>('.glance-value')].map((v) => v.dataset.header!),
+  );
 }
 
 // Both segments' panels, fitted, show for the example's first item (every
@@ -128,7 +143,7 @@ describe('the choice of the demo does not outlive the demo (FR-41, FR-46)', () =
   });
 
   test('an empty list started after the demo has no choice and no demo colour labels', async () => {
-    const app = await demoThen(async () => byId('start-empty').click());
+    const app = await demoThen(() => Promise.resolve(byId('start-empty').click()));
     const ws = app.captureWorkState();
     expect(ws.glanceColumns).toBeNull();
     expect(ws.colourLabels).toEqual({});

@@ -19,14 +19,18 @@ let context: BrowserContext;
 const requests: string[] = [];
 
 beforeAll(async () => {
-  if (!existsSync(BUILT)) throw new Error('dist/build/index.html is missing: run the build first');
+  if (!existsSync(BUILT)) {
+    throw new Error('dist/build/index.html is missing: run the build first');
+  }
   browser = await chromium.launch();
   context = await browser.newContext({ viewport: { width: 1500, height: 950 }, acceptDownloads: true });
   await context.setOffline(true);
   await context.route('**/*', (route) => {
     const url = route.request().url();
     requests.push(url);
-    if (url.startsWith('file://') || url.startsWith('data:') || url.startsWith('blob:')) return route.continue();
+    if (url.startsWith('file://') || url.startsWith('data:') || url.startsWith('blob:')) {
+      return route.continue();
+    }
     return route.abort();
   });
 }, 60_000);
@@ -72,7 +76,18 @@ describe('the polish pass in a browser (v1.3.0)', () => {
     const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#export-go')]);
     const html = readFileSync(await dl.path(), 'utf8');
     const island = /<script type="application\/json" id="mapvibes-export-data">([\s\S]*?)<\/script>/.exec(html)![1];
-    for (const text of ['D-07', 'D-08', 'Lake jetty', 'Boathouse', 'Jetty footprint', 'Lakeside', 'On the lake shore.', 'Not carried out.', 'A remark only on the boathouse.', '"Note"']) {
+    for (const text of [
+      'D-07',
+      'D-08',
+      'Lake jetty',
+      'Boathouse',
+      'Jetty footprint',
+      'Lakeside',
+      'On the lake shore.',
+      'Not carried out.',
+      'A remark only on the boathouse.',
+      '"Note"',
+    ]) {
       expect(island, text).not.toContain(text);
     }
     // The user's own remark is nowhere in the file.
@@ -105,14 +120,20 @@ describe('the polish pass in a browser (v1.3.0)', () => {
     // the horizontal only.
     await page.click('#annotation-tools [data-tool="select"]');
     const rect = await box(page, '#map-annotations g.annotation-rectangle rect');
-    const before = { x: Number(await page.getAttribute('#map-annotations g.annotation-rectangle rect', 'x')), y: Number(await page.getAttribute('#map-annotations g.annotation-rectangle rect', 'y')) };
+    const before = {
+      x: Number(await page.getAttribute('#map-annotations g.annotation-rectangle rect', 'x')),
+      y: Number(await page.getAttribute('#map-annotations g.annotation-rectangle rect', 'y')),
+    };
     await page.mouse.move(rect.x + rect.width / 2, rect.y + rect.height / 2);
     await page.mouse.down();
     await page.keyboard.down('Control');
     await page.mouse.move(rect.x + rect.width / 2 + 80, rect.y + rect.height / 2 + 9, { steps: 8 });
     await page.mouse.up();
     await page.keyboard.up('Control');
-    const after = { x: Number(await page.getAttribute('#map-annotations g.annotation-rectangle rect', 'x')), y: Number(await page.getAttribute('#map-annotations g.annotation-rectangle rect', 'y')) };
+    const after = {
+      x: Number(await page.getAttribute('#map-annotations g.annotation-rectangle rect', 'x')),
+      y: Number(await page.getAttribute('#map-annotations g.annotation-rectangle rect', 'y')),
+    };
     expect(after.x).toBeGreaterThan(before.x + 50);
     expect(after.y).toBeCloseTo(before.y, 6);
     expect(errors).toEqual([]);

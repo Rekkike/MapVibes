@@ -18,7 +18,7 @@ function fields(): Array<[string, string]> {
   const labels = [...panel().querySelectorAll('.details-fields dt')].map((n) => n.textContent ?? '');
   const values = [...panel().querySelectorAll<HTMLElement>('.details-fields dd')].map((dd) => {
     const control = dd.querySelector<HTMLInputElement | HTMLSelectElement>('input, select, textarea');
-    return control ? control.value : (dd.classList.contains('is-empty') ? '' : (dd.textContent ?? ''));
+    return control ? control.value : dd.classList.contains('is-empty') ? '' : (dd.textContent ?? '');
   });
   return labels.map((l, i) => [l, values[i]]);
 }

@@ -41,7 +41,9 @@ export interface Comparison {
 const SAME_POSITION = 0.5;
 
 function samePosition(a: Point | null, b: Point | null): boolean {
-  if (!a || !b) return a === b;
+  if (!a || !b) {
+    return a === b;
+  }
   return Math.abs(a.x - b.x) < SAME_POSITION && Math.abs(a.y - b.y) < SAME_POSITION;
 }
 
@@ -49,7 +51,9 @@ function identifierCounts(items: CompareItem[]): Map<string, number> {
   const counts = new Map<string, number>();
   for (const item of items) {
     const id = item.identifier.trim();
-    if (id !== '') counts.set(id, (counts.get(id) ?? 0) + 1);
+    if (id !== '') {
+      counts.set(id, (counts.get(id) ?? 0) + 1);
+    }
   }
   return counts;
 }
@@ -75,14 +79,21 @@ export function compareItems(current: CompareItem[], file: CompareItem[]): Compa
       continue;
     }
     const other = fileCounts.has(id) ? fileById.get(id)! : undefined;
-    if (!other) result.currentOnly.push(item);
-    else if (other.position) result.matchedWithMarkers.push({ current: item, file: other, positionDiffers: !samePosition(item.position, other.position) });
-    else result.matchedWithoutMarkers.push({ current: item, file: other, positionDiffers: false });
+    if (!other) {
+      result.currentOnly.push(item);
+    } else if (other.position) {
+      result.matchedWithMarkers.push({ current: item, file: other, positionDiffers: !samePosition(item.position, other.position) });
+    } else {
+      result.matchedWithoutMarkers.push({ current: item, file: other, positionDiffers: false });
+    }
   }
   for (const item of file) {
     const id = item.identifier.trim();
-    if (!pairable(id)) result.unpairable.file.push(item);
-    else if (!curCounts.has(id)) result.fileOnly.push(item);
+    if (!pairable(id)) {
+      result.unpairable.file.push(item);
+    } else if (!curCounts.has(id)) {
+      result.fileOnly.push(item);
+    }
   }
   return result;
 }

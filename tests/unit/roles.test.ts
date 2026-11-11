@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { assignRole, displayName, listColumnOrder, pruneRoles, roleOfColumn } from '../../src/roles';
 
 describe('roles (FR-1)', () => {
-  test('assigning a role moves it from any other column and replaces the column\'s previous role', () => {
+  test("assigning a role moves it from any other column and replaces the column's previous role", () => {
     let roles = assignRole({}, 'A', 'identifier');
     roles = assignRole(roles, 'B', 'identifier');
     expect(roles).toEqual({ identifier: 'B' });

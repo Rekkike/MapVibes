@@ -46,7 +46,9 @@ export async function backgroundJpeg(src: string, crop: Rect): Promise<{ jpeg: U
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('no canvas');
+  if (!ctx) {
+    throw new Error('no canvas');
+  }
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, width, height);
   ctx.drawImage(img, crop.x, crop.y, crop.width, crop.height, 0, 0, width, height);
@@ -119,13 +121,19 @@ export class CanvasPainter implements Painter {
   }
   private pending: Path2D | null = null;
   fill(): void {
-    if (this.pending) this.ctx.fill(this.pending);
-    else this.ctx.fill();
+    if (this.pending) {
+      this.ctx.fill(this.pending);
+    } else {
+      this.ctx.fill();
+    }
     this.pending = null;
   }
   stroke(): void {
-    if (this.pending) this.ctx.stroke(this.pending);
-    else this.ctx.stroke();
+    if (this.pending) {
+      this.ctx.stroke(this.pending);
+    } else {
+      this.ctx.stroke();
+    }
     this.pending = null;
   }
   clip(): void {
@@ -138,7 +146,9 @@ export class CanvasPainter implements Painter {
     this.ctx.fillText(text, x, y);
   }
   image(x: number, y: number, w: number, h: number): void {
-    if (!this.background) return;
+    if (!this.background) {
+      return;
+    }
     const { img, crop } = this.background;
     this.ctx.drawImage(img, crop.x, crop.y, crop.width, crop.height, x, y, w, h);
   }
@@ -148,14 +158,21 @@ export class CanvasPainter implements Painter {
 // through the given function at the given pixels per unit, on white. Used for
 // the PowerPoint image slides — the stage page and, since v1.13.0, the
 // timeline pages and the economics blocks.
-export async function pagePng(frame: PageFrame, pixelsPerUnit: number, draw: (p: Painter) => void, background: { img: HTMLImageElement; crop: Rect } | null = null): Promise<{ png: Uint8Array; width: number; height: number }> {
+export async function pagePng(
+  frame: PageFrame,
+  pixelsPerUnit: number,
+  draw: (p: Painter) => void,
+  background: { img: HTMLImageElement; crop: Rect } | null = null,
+): Promise<{ png: Uint8Array; width: number; height: number }> {
   const width = Math.round(frame.width * pixelsPerUnit);
   const height = Math.round(frame.height * pixelsPerUnit);
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('no canvas');
+  if (!ctx) {
+    throw new Error('no canvas');
+  }
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, width, height);
   ctx.scale(pixelsPerUnit, pixelsPerUnit);
@@ -164,7 +181,12 @@ export async function pagePng(frame: PageFrame, pixelsPerUnit: number, draw: (p:
 }
 
 // The stage page rasterised as a PNG image.
-export async function stagePagePng(scene: StageScene, frame: PageFrame, pixelsPerUnit: number, backgroundSrc: string | null): Promise<{ png: Uint8Array; width: number; height: number }> {
+export async function stagePagePng(
+  scene: StageScene,
+  frame: PageFrame,
+  pixelsPerUnit: number,
+  backgroundSrc: string | null,
+): Promise<{ png: Uint8Array; width: number; height: number }> {
   const background = backgroundSrc && scene.background ? { img: await loadImage(backgroundSrc), crop: scene.background.image } : null;
   return pagePng(frame, pixelsPerUnit, (p) => drawStagePage(p, scene, frame), background);
 }

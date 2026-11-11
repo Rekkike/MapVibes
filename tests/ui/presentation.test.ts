@@ -115,7 +115,11 @@ describe('presentation mode (FR-27)', () => {
     expect(mapMarker.classList.contains('marker-excluded')).toBe(true);
     toggle(id).click();
     expect(presentationMarkers().map((m) => m.textContent)).toEqual(['1', '3', '5']);
-    expect(markers().find((m) => m.dataset.rowId === id)!.classList.contains('marker-excluded')).toBe(false);
+    expect(
+      markers()
+        .find((m) => m.dataset.rowId === id)!
+        .classList.contains('marker-excluded'),
+    ).toBe(false);
   });
 
   test('markers placed or moved in the Map segment appear on the stage', () => {

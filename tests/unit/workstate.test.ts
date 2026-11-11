@@ -10,7 +10,8 @@ import {
   WorkStateError,
   PROBLEM_KINDS,
   type WorkState,
- activityId } from '../../src/workstate';
+  activityId,
+} from '../../src/workstate';
 import { newManualKey } from '../../src/manual';
 import { en, sv } from '../../src/i18n';
 
@@ -24,7 +25,17 @@ function sample(): WorkState {
     manualColumns: [{ key: MK, label: 'Rank' }],
     hiddenHeaders: ['Note'],
     rows: [
-      { values: { ID: 'A-01', Start: '2024-01-05', Group: 'North', Note: 'Alpha item' }, colour: 'green', removed: false, manual: false, edited: { Start: '2024-01-04' }, comments: [{ date: '2024-02-01T09:00:00.000Z', text: 'First check.' }, { date: '2024-02-03T15:30:00.000Z', text: 'Second\nline.' }] },
+      {
+        values: { ID: 'A-01', Start: '2024-01-05', Group: 'North', Note: 'Alpha item' },
+        colour: 'green',
+        removed: false,
+        manual: false,
+        edited: { Start: '2024-01-04' },
+        comments: [
+          { date: '2024-02-01T09:00:00.000Z', text: 'First check.' },
+          { date: '2024-02-03T15:30:00.000Z', text: 'Second\nline.' },
+        ],
+      },
       { values: { ID: 'A-02', Start: '2024-01-10', Group: 'North', Note: '' }, colour: 'blue', removed: true, manual: false, edited: {}, comments: [] },
       { values: { ID: 'A-03', Start: '', Group: 'South', Note: 'Beta item' }, colour: 'yellow', removed: false, manual: false, edited: {}, comments: [] },
       { values: { ID: 'A-04', Start: '', Group: 'South', Note: '' }, colour: 'red', removed: false, manual: false, edited: {}, comments: [] },
@@ -42,17 +53,42 @@ function sample(): WorkState {
     symbolLabels: { bolt: 'Urgent', square: 'Depot' },
     glanceColumns: ['Group', 'Start'],
     annotations: [
-      { kind: 'polygon', points: [{ x: 100, y: 100 }, { x: 300, y: 120 }, { x: 200, y: 260.5 }], colour: 'blue', fillOpacity: 0.3, outline: 'black', lineStyle: 'solid', label: 'Footprint', link: 0, hidden: false },
-      { kind: 'line', points: [{ x: 10, y: 10 }, { x: 400, y: 50 }], colour: 'red', fillOpacity: 0, outline: 'white', lineStyle: 'dashed', label: '', link: null, hidden: true },
+      {
+        kind: 'polygon',
+        points: [
+          { x: 100, y: 100 },
+          { x: 300, y: 120 },
+          { x: 200, y: 260.5 },
+        ],
+        colour: 'blue',
+        fillOpacity: 0.3,
+        outline: 'black',
+        lineStyle: 'solid',
+        label: 'Footprint',
+        link: 0,
+        hidden: false,
+      },
+      {
+        kind: 'line',
+        points: [
+          { x: 10, y: 10 },
+          { x: 400, y: 50 },
+        ],
+        colour: 'red',
+        fillOpacity: 0,
+        outline: 'white',
+        lineStyle: 'dashed',
+        label: '',
+        link: null,
+        hidden: true,
+      },
     ],
     statuses: [
       { name: 'Open', symbol: 'pause' },
       { name: 'Done', symbol: 'check' },
     ],
     symbolsFromStatus: true,
-    presets: [
-      { name: 'Standard', headers: ['ID', 'Start', 'Group', 'Note'], hidden: ['Note'], roles: { identifier: 'ID', area: 'Group' } },
-    ],
+    presets: [{ name: 'Standard', headers: ['ID', 'Start', 'Group', 'Note'], hidden: ['Note'], roles: { identifier: 'ID', area: 'Group' } }],
     segment: 'map',
     viewport: { scale: 0.6666666666666666, x: 12.5, y: -33.25 },
     sort: { header: 'Group', direction: 'desc' },
@@ -105,13 +141,32 @@ describe('work-state file (FR-13)', () => {
     const restored = parseWorkState(serialiseWorkState(state, SAVED_AT));
     expect(restored).toEqual(state);
     expect(restored.background!.src).toBe(state.background!.src);
-    expect(restored.markers.map((m) => m.position)).toEqual([{ x: 125.25, y: 300.5 }, { x: 1000, y: 0.125 }]);
+    expect(restored.markers.map((m) => m.position)).toEqual([
+      { x: 125.25, y: 300.5 },
+      { x: 1000, y: 0.125 },
+    ]);
     // A second round trip is byte-identical.
     expect(serialiseWorkState(restored, SAVED_AT)).toBe(serialiseWorkState(state, SAVED_AT));
   });
 
   test('a state without background or markers round-trips too', () => {
-    const state = { ...sample(), background: null, markers: [], excluded: [], presets: [], manualColumns: [], areaValues: [], programValues: [], colourLabels: {}, symbolLabels: {}, glanceColumns: null, annotations: [], statuses: [], symbolsFromStatus: false, segment: 'information' as const };
+    const state = {
+      ...sample(),
+      background: null,
+      markers: [],
+      excluded: [],
+      presets: [],
+      manualColumns: [],
+      areaValues: [],
+      programValues: [],
+      colourLabels: {},
+      symbolLabels: {},
+      glanceColumns: null,
+      annotations: [],
+      statuses: [],
+      symbolsFromStatus: false,
+      segment: 'information' as const,
+    };
     expect(parseWorkState(serialiseWorkState(state, SAVED_AT))).toEqual(state);
   });
 
@@ -168,7 +223,14 @@ describe('work-state file (FR-13)', () => {
     const cases: Array<[unknown[], string, string]> = [
       [[{ row: 1, x: 0, y: 0, symbol: null }], 'removedRow', 'markers[0]'],
       [[{ row: 9, x: 0, y: 0, symbol: null }], 'noSuchRow', 'markers[0].row'],
-      [[{ row: 0, x: 0, y: 0, symbol: null }, { row: 0, x: 1, y: 1, symbol: null }], 'duplicateMarker', 'markers[1]'],
+      [
+        [
+          { row: 0, x: 0, y: 0, symbol: null },
+          { row: 0, x: 1, y: 1, symbol: null },
+        ],
+        'duplicateMarker',
+        'markers[1]',
+      ],
       [[{ row: 0, x: 'a', y: 0, symbol: null }], 'notNumber', 'markers[0].x'],
     ];
     for (const [markers, kind, field] of cases) {
@@ -290,7 +352,15 @@ describe('schema version 3: manual-list metadata (FR-9, FR-24, FR-13)', () => {
       [(f) => (f.columns.manual = [{ key: 'ID', label: 'x' }]), 'notAColumn', 'columns.manual[0].key'],
       [(f) => (f.columns.manual = [{ key: MK + 'x', label: 'x' }]), 'notAColumn', 'columns.manual[0].key'],
       [(f) => (f.columns.manual = [{ key: MK, label: ' ' }]), 'notText', 'columns.manual[0].label'],
-      [(f) => (f.columns.manual = [{ key: MK, label: 'a' }, { key: MK, label: 'b' }]), 'duplicateEntry', 'columns.manual[1]'],
+      [
+        (f) =>
+          (f.columns.manual = [
+            { key: MK, label: 'a' },
+            { key: MK, label: 'b' },
+          ]),
+        'duplicateEntry',
+        'columns.manual[1]',
+      ],
       [(f) => (f.rows[0].origin = 'pasted'), 'unknownValue', 'rows[0].origin'],
       [(f) => delete f.columns.manual, 'notList', 'columns.manual'],
     ];
@@ -338,7 +408,14 @@ describe('schema version 2 migration (FR-13)', () => {
 describe('schema version 4: vocabularies and the status-to-symbol toggle (FR-32 to FR-34, FR-13)', () => {
   test('the vocabularies, the toggle, and icon symbols round-trip', () => {
     const file = fileOf(sample()) as Record<string, any>;
-    expect(file.vocabularies).toEqual({ areas: ['North', 'South'], programs: ['First programme', 'Second programme'], statuses: [{ name: 'Open', symbol: 'pause' }, { name: 'Done', symbol: 'check' }] });
+    expect(file.vocabularies).toEqual({
+      areas: ['North', 'South'],
+      programs: ['First programme', 'Second programme'],
+      statuses: [
+        { name: 'Open', symbol: 'pause' },
+        { name: 'Done', symbol: 'check' },
+      ],
+    });
     expect(file.symbolsFromStatus).toBe(true);
     const back = parseWorkState(serialiseWorkState(sample(), SAVED_AT));
     expect([back.areaValues, back.statuses, back.symbolsFromStatus]).toEqual([sample().areaValues, sample().statuses, true]);
@@ -370,7 +447,6 @@ describe('schema version 4: vocabularies and the status-to-symbol toggle (FR-32 
     expect(expectError(JSON.stringify(v2), 'invalid').problem).toEqual({ kind: 'unknownValue', field: 'markers[0].shape' });
   });
 });
-
 
 describe('schema version 3 migration (FR-13)', () => {
   const v3Text = readFileSync(join(process.cwd(), 'example-data', 'example-work-state-v3.json'), 'utf8');
@@ -438,7 +514,10 @@ describe('schema version 5: edited values and comments (FR-10, FR-15, FR-13)', (
     for (const name of ['example-work-state-v1.json', 'example-work-state-v2.json', 'example-work-state-v3.json']) {
       const state = parseWorkState(readFileSync(join(process.cwd(), 'example-data', name), 'utf8'));
       expect(state.rows.length, name).toBeGreaterThan(0);
-      expect(state.rows.every((r) => Object.keys(r.edited).length === 0 && r.comments.length === 0), name).toBe(true);
+      expect(
+        state.rows.every((r) => Object.keys(r.edited).length === 0 && r.comments.length === 0),
+        name,
+      ).toBe(true);
     }
   });
 
@@ -698,9 +777,18 @@ describe('schema version 8: card fields, year series, and the currency unit (FR-
       mutate(file);
       return JSON.stringify(file);
     };
-    expectError(bad((f) => (f.economics.series.profit = f.economics.series.budget)), 'invalid');
-    expectError(bad((f) => (f.economics.series.budget.columns = { '24': 'Budget 2024' })), 'invalid');
-    expectError(bad((f) => (f.economics.unit = 5)), 'invalid');
+    expectError(
+      bad((f) => (f.economics.series.profit = f.economics.series.budget)),
+      'invalid',
+    );
+    expectError(
+      bad((f) => (f.economics.series.budget.columns = { '24': 'Budget 2024' })),
+      'invalid',
+    );
+    expectError(
+      bad((f) => (f.economics.unit = 5)),
+      'invalid',
+    );
   });
 });
 
@@ -709,7 +797,12 @@ describe('schema version 9: the presentation view, the timeline view, and the or
     const back = parseWorkState(serialiseWorkState(sample(), SAVED_AT));
     expect([back.presentationMode, back.timelineView, back.presentationOrder]).toEqual(['timeline', { from: 19000, to: 20100.5, firstLine: 3 }, 'area']);
     const file = JSON.parse(serialiseWorkState(sample(), SAVED_AT));
-    expect(file.view.presentation).toEqual({ mode: 'timeline', order: 'area', timeline: { from: 19000, to: 20100.5, firstLine: 3 }, costs: { from: 18000, to: 21000, firstLine: 1 } });
+    expect(file.view.presentation).toEqual({
+      mode: 'timeline',
+      order: 'area',
+      timeline: { from: 19000, to: 20100.5, firstLine: 3 },
+      costs: { from: 18000, to: 21000, firstLine: 1 },
+    });
     const fitted = parseWorkState(serialiseWorkState({ ...sample(), timelineView: null }, SAVED_AT));
     expect(fitted.timelineView).toBeNull();
   });
@@ -728,11 +821,26 @@ describe('schema version 9: the presentation view, the timeline view, and the or
       change(file);
       return JSON.stringify(file);
     };
-    expectError(bad((f) => (f.view.presentation.mode = 'gallery')), 'invalid');
-    expectError(bad((f) => (f.view.presentation.order = 'size')), 'invalid');
-    expectError(bad((f) => (f.view.presentation.timeline.to = f.view.presentation.timeline.from)), 'invalid');
-    expectError(bad((f) => (f.view.presentation.timeline.firstLine = -1)), 'invalid');
-    expectError(bad((f) => delete f.view.presentation), 'invalid');
+    expectError(
+      bad((f) => (f.view.presentation.mode = 'gallery')),
+      'invalid',
+    );
+    expectError(
+      bad((f) => (f.view.presentation.order = 'size')),
+      'invalid',
+    );
+    expectError(
+      bad((f) => (f.view.presentation.timeline.to = f.view.presentation.timeline.from)),
+      'invalid',
+    );
+    expectError(
+      bad((f) => (f.view.presentation.timeline.firstLine = -1)),
+      'invalid',
+    );
+    expectError(
+      bad((f) => delete f.view.presentation),
+      'invalid',
+    );
   });
 });
 
@@ -828,14 +936,38 @@ describe('schema version 11: the events and the costs view (FR-79, FR-80)', () =
       change(file);
       return JSON.stringify(file);
     };
-    expectError(bad((f) => delete f.events), 'invalid');
-    expectError(bad((f) => (f.events[0].date = 2025)), 'invalid');
-    expectError(bad((f) => delete f.events[1].label), 'invalid');
-    expectError(bad((f) => (f.events[1].id = 'e1')), 'invalid');
-    expectError(bad((f) => (f.events[0].id = '')), 'invalid');
-    expectError(bad((f) => delete f.view.presentation.costs), 'invalid');
-    expectError(bad((f) => (f.view.presentation.costs.to = f.view.presentation.costs.from)), 'invalid');
-    expectError(bad((f) => (f.view.presentation.costs.firstLine = 1.5)), 'invalid');
+    expectError(
+      bad((f) => delete f.events),
+      'invalid',
+    );
+    expectError(
+      bad((f) => (f.events[0].date = 2025)),
+      'invalid',
+    );
+    expectError(
+      bad((f) => delete f.events[1].label),
+      'invalid',
+    );
+    expectError(
+      bad((f) => (f.events[1].id = 'e1')),
+      'invalid',
+    );
+    expectError(
+      bad((f) => (f.events[0].id = '')),
+      'invalid',
+    );
+    expectError(
+      bad((f) => delete f.view.presentation.costs),
+      'invalid',
+    );
+    expectError(
+      bad((f) => (f.view.presentation.costs.to = f.view.presentation.costs.from)),
+      'invalid',
+    );
+    expectError(
+      bad((f) => (f.view.presentation.costs.firstLine = 1.5)),
+      'invalid',
+    );
   });
 });
 
@@ -911,20 +1043,63 @@ describe('schema version 12: activity ids, the edited mark, and the work phase (
   });
 
   test('a dangling work phase is refused with its field', () => {
-    expect(expectError(fileWith((rows) => (rows[0].workPhase = 'a9')), 'invalid').detail).toBe('rows[0].workPhase');
+    expect(
+      expectError(
+        fileWith((rows) => (rows[0].workPhase = 'a9')),
+        'invalid',
+      ).detail,
+    ).toBe('rows[0].workPhase');
     // A phase on a row without activities names nothing.
-    expect(expectError(fileWith((rows) => (rows[2].workPhase = 'a1')), 'invalid').detail).toBe('rows[2].workPhase');
-    expect(expectError(fileWith((rows) => (rows[0].workPhase = 1)), 'invalid').detail).toBe('rows[0].workPhase');
-    const e = expectError(fileWith((rows) => (rows[0].workPhase = 'a9')), 'invalid');
+    expect(
+      expectError(
+        fileWith((rows) => (rows[2].workPhase = 'a1')),
+        'invalid',
+      ).detail,
+    ).toBe('rows[2].workPhase');
+    expect(
+      expectError(
+        fileWith((rows) => (rows[0].workPhase = 1)),
+        'invalid',
+      ).detail,
+    ).toBe('rows[0].workPhase');
+    const e = expectError(
+      fileWith((rows) => (rows[0].workPhase = 'a9')),
+      'invalid',
+    );
     expect(e.problem).toEqual({ kind: 'noSuchActivity', field: 'rows[0].workPhase' });
   });
 
   test('a missing, empty, or repeated id, and an edited mark that is not true, are refused with their fields', () => {
-    expect(expectError(fileWith((rows) => delete rows[0].activities[1].id), 'invalid').detail).toBe('rows[0].activities[1].id');
-    expect(expectError(fileWith((rows) => (rows[0].activities[1].id = '')), 'invalid').detail).toBe('rows[0].activities[1].id');
-    expect(expectError(fileWith((rows) => (rows[0].activities[2].id = 'a1')), 'invalid').detail).toBe('rows[0].activities[2].id');
-    expect(expectError(fileWith((rows) => (rows[0].activities[0].edited = false)), 'invalid').detail).toBe('rows[0].activities[0].edited');
-    expect(expectError(fileWith((rows) => (rows[0].activities[0].edited = 'yes')), 'invalid').detail).toBe('rows[0].activities[0].edited');
+    expect(
+      expectError(
+        fileWith((rows) => delete rows[0].activities[1].id),
+        'invalid',
+      ).detail,
+    ).toBe('rows[0].activities[1].id');
+    expect(
+      expectError(
+        fileWith((rows) => (rows[0].activities[1].id = '')),
+        'invalid',
+      ).detail,
+    ).toBe('rows[0].activities[1].id');
+    expect(
+      expectError(
+        fileWith((rows) => (rows[0].activities[2].id = 'a1')),
+        'invalid',
+      ).detail,
+    ).toBe('rows[0].activities[2].id');
+    expect(
+      expectError(
+        fileWith((rows) => (rows[0].activities[0].edited = false)),
+        'invalid',
+      ).detail,
+    ).toBe('rows[0].activities[0].edited');
+    expect(
+      expectError(
+        fileWith((rows) => (rows[0].activities[0].edited = 'yes')),
+        'invalid',
+      ).detail,
+    ).toBe('rows[0].activities[0].edited');
   });
 
   test('ids are unique within a row only: two rows may both have a1', () => {

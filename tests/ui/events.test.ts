@@ -120,7 +120,7 @@ describe('the events panel (FR-80)', () => {
     add('2024-06', 'Decision');
     const page = app.exportPage(new Date(2026, 10, 9, 10, 0))!;
     const doc = new DOMParser().parseFromString(page, 'text/html');
-    const island = JSON.parse(doc.getElementById(DATA_ISLAND_ID)!.textContent!);
+    const island = JSON.parse(doc.getElementById(DATA_ISLAND_ID)!.textContent);
     expect(parseWorkState(JSON.stringify(island.workState)).events).toEqual([{ id: 'e1', date: '2024-06', label: 'Decision' }]);
     const viewer = await mountApp({
       body: doc.body.innerHTML,
@@ -271,7 +271,9 @@ describe('the events in the schedule views (FR-80)', () => {
       expect(labels().map((c) => c.textContent)).toEqual(['Review']);
       expect(hairlines(view).map((l) => l.dataset.eventId)).toEqual(['e1']);
       // Tapping the "after" edge chip pans the window to the nearest event beyond the right end.
-      edges().find((e) => e.dataset.side === 'after')!.click();
+      edges()
+        .find((e) => e.dataset.side === 'after')!
+        .click();
       const saved = app.captureWorkState();
       const window = view === 'timeline' ? saved.timelineView : saved.costsView;
       expect(window).not.toBeNull();

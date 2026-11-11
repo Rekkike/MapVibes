@@ -19,7 +19,9 @@ const BUILT = join(process.cwd(), 'dist', 'build', 'index.html');
 let browser: Browser;
 
 beforeAll(async () => {
-  if (!existsSync(BUILT)) throw new Error('dist/build/index.html is missing: run the build first');
+  if (!existsSync(BUILT)) {
+    throw new Error('dist/build/index.html is missing: run the build first');
+  }
   browser = await chromium.launch();
 }, 60_000);
 
@@ -67,11 +69,22 @@ async function overflowing(page: Page): Promise<string[]> {
   return page.evaluate(() => {
     const out: string[] = [];
     for (const el of document.body.querySelectorAll('*')) {
-      if (el.closest('.stage') && !el.classList.contains('stage')) continue;
-      if (el.closest('#map-toolbar, #annotation-toolbar, #presentation-toolbar, #list-scroll') && !['map-toolbar', 'annotation-toolbar', 'presentation-toolbar', 'list-scroll'].includes(el.id)) continue;
-      if (el.getClientRects().length === 0 || getComputedStyle(el).visibility === 'hidden') continue;
+      if (el.closest('.stage') && !el.classList.contains('stage')) {
+        continue;
+      }
+      if (
+        el.closest('#map-toolbar, #annotation-toolbar, #presentation-toolbar, #list-scroll') &&
+        !['map-toolbar', 'annotation-toolbar', 'presentation-toolbar', 'list-scroll'].includes(el.id)
+      ) {
+        continue;
+      }
+      if (el.getClientRects().length === 0 || getComputedStyle(el).visibility === 'hidden') {
+        continue;
+      }
       const r = el.getBoundingClientRect();
-      if (r.left < -0.5 || r.right > innerWidth + 0.5) out.push(`${el.tagName.toLowerCase()}#${el.id}.${el.className}`);
+      if (r.left < -0.5 || r.right > innerWidth + 0.5) {
+        out.push(`${el.tagName.toLowerCase()}#${el.id}.${el.className}`);
+      }
     }
     return out;
   });
@@ -121,7 +134,12 @@ async function freeCentre(page: Page, selector: string, d: number): Promise<{ x:
         const e = document.elementFromPoint(x, y);
         // Not a marker, a handle, or an annotation's shape, which the
         // Select tool would move.
-        return !!e && !e.closest('.marker, .annotation-handle') && !(e.closest('.annotation-layer') && !e.classList.contains('annotation-layer')) && !!e.closest('.stage');
+        return (
+          !!e &&
+          !e.closest('.marker, .annotation-handle') &&
+          !(e.closest('.annotation-layer') && !e.classList.contains('annotation-layer')) &&
+          !!e.closest('.stage')
+        );
       };
       // A touch has an area, and the browser adjusts it to an interactive
       // element nearby: the whole of a finger's width must be clear.
@@ -129,14 +147,18 @@ async function freeCentre(page: Page, selector: string, d: number): Promise<{ x:
       for (let fy = 0.15; fy <= 0.9; fy += 0.05) {
         for (let fx = 0.2; fx <= 0.8; fx += 0.02) {
           const [x, y] = [b.x + b.width * fx, b.y + b.height * fy];
-          if (free(x - d, y) && free(x + d, y)) return { x, y };
+          if (free(x - d, y) && free(x + d, y)) {
+            return { x, y };
+          }
         }
       }
       return null;
     },
     { b, d },
   );
-  if (!found) throw new Error('no free point for a pinch on the stage');
+  if (!found) {
+    throw new Error('no free point for a pinch on the stage');
+  }
   return found;
 }
 
@@ -149,7 +171,9 @@ async function pinch(page: Page, selector: string, from: number, to: number): Pr
   ];
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: fingers(from) });
   const step = (to - from) / 8;
-  for (let i = 1; i <= 8; i++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: fingers(from + step * i) });
+  for (let i = 1; i <= 8; i++) {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: fingers(from + step * i) });
+  }
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await cdp.detach();
   await page.waitForTimeout(300);
@@ -159,7 +183,9 @@ async function drag(page: Page, selector: string, dx: number, dy: number): Promi
   const { x, y } = await freeCentre(page, selector, 0);
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 0 }] });
-  for (let i = 1; i <= 8; i++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + (dx * i) / 8, y: y + (dy * i) / 8, id: 0 }] });
+  for (let i = 1; i <= 8; i++) {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + (dx * i) / 8, y: y + (dy * i) / 8, id: 0 }] });
+  }
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await cdp.detach();
   await page.waitForTimeout(300);
@@ -171,11 +197,16 @@ describe.each(PROFILES)('the narrow application on the %s (FR-71 to FR-74)', (na
   test('the header is a menu, the stage fills what the header and the toolbars leave, nothing overflows, every control reaches 44 pixels', async () => {
     const { page, errors } = await openDemo(profile);
     const v = page.viewportSize()!;
-    expect(await page.evaluate(() => matchMedia('(max-width: 56rem), (orientation: landscape) and (max-height: 30rem) and (pointer: coarse)').matches)).toBe(true);
+    expect(await page.evaluate(() => matchMedia('(max-width: 56rem), (orientation: landscape) and (max-height: 30rem) and (pointer: coarse)').matches)).toBe(
+      true,
+    );
     const header = await box(page, '#app-header');
     // About 52 pixels where one row fits, about 100 otherwise.
-    if (kind === 'portrait') expect(header.height).toBeLessThanOrEqual(110);
-    else expect(header.height).toBeLessThanOrEqual(60);
+    if (kind === 'portrait') {
+      expect(header.height).toBeLessThanOrEqual(110);
+    } else {
+      expect(header.height).toBeLessThanOrEqual(60);
+    }
     // No header control covers another: a tap lands on the control under it.
     expect(
       await page.evaluate(() =>
@@ -208,7 +239,9 @@ describe.each(PROFILES)('the narrow application on the %s (FR-71 to FR-74)', (na
         // The stage reaches the bottom of the viewport, less the margins.
         expect(v.height - (s.y + s.height), stage).toBeLessThanOrEqual(20);
         // One toolbar row in the Presentation segment.
-        if (stage === 'presentation-stage') expect((await box(page, '#presentation-toolbar')).height).toBeLessThanOrEqual(52);
+        if (stage === 'presentation-stage') {
+          expect((await box(page, '#presentation-toolbar')).height).toBeLessThanOrEqual(52);
+        }
       }
     }
     console.log(`stage heights, ${name} (${v.width} × ${v.height}): ${JSON.stringify(heights)}`);
@@ -226,7 +259,13 @@ describe.each(PROFILES)('the narrow application on the %s (FR-71 to FR-74)', (na
     const menu = await box(page, '#app-menu');
     const v = page.viewportSize()!;
     expect(menu.y + menu.height).toBeLessThanOrEqual(v.height + 0.5);
-    expect(await page.$$eval('#app-menu > *', (e) => e.map((x) => x.id || x.querySelector('select')!.id))).toEqual(['demo-badge', 'demo-reset', 'work-controls', 'select-language', 'select-theme']);
+    expect(await page.$$eval('#app-menu > *', (e) => e.map((x) => x.id || x.querySelector('select')!.id))).toEqual([
+      'demo-badge',
+      'demo-reset',
+      'work-controls',
+      'select-language',
+      'select-theme',
+    ]);
     // Another overlay closes the menu.
     await page.tap('#toggle-items');
     await page.waitForTimeout(300);
@@ -280,10 +319,15 @@ describe.each(PROFILES)('the narrow application on the %s (FR-71 to FR-74)', (na
       // An open sheet (the placed item's, then each item's) is closed by its
       // own button before the toolbar is used again: on a short screen it
       // covers the toolbar.
-      if (await page.$eval('#details-panel', (e) => !e.classList.contains('hidden'))) await page.tap('#details-panel .details-close');
+      if (await page.$eval('#details-panel', (e) => !e.classList.contains('hidden'))) {
+        await page.tap('#details-panel .details-close');
+      }
       await page.tap('#toggle-items');
       await page.waitForTimeout(250);
-      await page.locator('#placement-list .placement-item').nth(i).tap({ position: { x: 20, y: 20 } });
+      await page
+        .locator('#placement-list .placement-item')
+        .nth(i)
+        .tap({ position: { x: 20, y: 20 } });
       await page.waitForTimeout(250);
       const sheet = await box(page, '#details-panel');
       expect(sheet.x).toBeGreaterThanOrEqual(0);
@@ -291,7 +335,9 @@ describe.each(PROFILES)('the narrow application on the %s (FR-71 to FR-74)', (na
       expect(sheet.y).toBeGreaterThanOrEqual(0);
       expect(sheet.y + sheet.height).toBeLessThanOrEqual(v.height + 0.5);
       const cut = await page.$$eval('#details-panel .cell-input', (els) =>
-        els.filter((x) => x.scrollWidth > x.clientWidth + 1 || (x.tagName === 'TEXTAREA' && x.scrollHeight > x.clientHeight + 1)).map((x) => (x as HTMLElement).dataset.header),
+        els
+          .filter((x) => x.scrollWidth > x.clientWidth + 1 || (x.tagName === 'TEXTAREA' && x.scrollHeight > x.clientHeight + 1))
+          .map((x) => (x as HTMLElement).dataset.header),
       );
       expect(cut, `item ${i + 1}`).toEqual([]);
     }
@@ -320,8 +366,9 @@ describe.each(PROFILES)('the narrow application on the %s (FR-71 to FR-74)', (na
     const { page } = await openDemo(profile);
     await page.tap('#tab-presentation');
     await page.waitForTimeout(400);
-    const xs = await page.$$eval(['#pres-mode', '#pres-order-label', '#presentation-toggles', '#viewer-toggles', '#pres-fit', '#export-open'].join(','), (els) =>
-      els.map((e) => [e.id, Math.round(e.getBoundingClientRect().x)] as [string, number]),
+    const xs = await page.$$eval(
+      ['#pres-mode', '#pres-order-label', '#presentation-toggles', '#viewer-toggles', '#pres-fit', '#export-open'].join(','),
+      (els) => els.map((e) => [e.id, Math.round(e.getBoundingClientRect().x)] as [string, number]),
     );
     const at = Object.fromEntries(xs);
     expect(at['pres-mode']).toBeLessThan(at['pres-order-label']);
@@ -359,7 +406,9 @@ describe.each(PROFILES)('the narrow application on the %s (FR-71 to FR-74)', (na
     await page.waitForTimeout(400);
     const lines = await page.$$eval('#presentation-timeline .timeline-line', (ls) => ls.map((l) => l.getBoundingClientRect().height));
     expect(lines.length).toBe(12);
-    for (const h of lines) expect(h).toBe(48);
+    for (const h of lines) {
+      expect(h).toBe(48);
+    }
     await page.locator('#presentation-timeline .timeline-chip').nth(1).tap();
     await page.waitForTimeout(400);
     expect(await page.getAttribute('#presentation-card', 'data-dock')).toBe('bottom');

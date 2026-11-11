@@ -58,6 +58,10 @@ export function iconSvg(icon: MarkerIcon): SVGSVGElement {
 // by the text (the number; empty for a swatch).
 export function drawSymbol(node: HTMLElement, symbol: MarkerSymbol, text: string): void {
   node.replaceChildren();
-  if (isIcon(symbol)) node.appendChild(iconSvg(symbol));
-  if (text !== '') node.appendChild(document.createTextNode(text));
+  if (isIcon(symbol)) {
+    node.appendChild(iconSvg(symbol));
+  }
+  if (text !== '') {
+    node.appendChild(document.createTextNode(text));
+  }
 }

@@ -1,7 +1,17 @@
 import { describe, expect, test } from 'vitest';
-import { DATA_ISLAND_ID, embedDataIsland, NOTICE_DELAY_MS, NOTICE_ID, readDataIsland, sanitiseForInlineScript, sanitiseJsonForInlineScript, writeStaticViewerState } from '../../src/singlefile';
+import {
+  DATA_ISLAND_ID,
+  embedDataIsland,
+  NOTICE_DELAY_MS,
+  NOTICE_ID,
+  readDataIsland,
+  sanitiseForInlineScript,
+  sanitiseJsonForInlineScript,
+  writeStaticViewerState,
+} from '../../src/singlefile';
 
-const PAGE = '<!doctype html>\n<html><head><style>body{}</style></head><body><main id="app"></main><script type="module">\nconsole.log("app")\n</script></body></html>';
+const PAGE =
+  '<!doctype html>\n<html><head><style>body{}</style></head><body><main id="app"></main><script type="module">\nconsole.log("app")\n</script></body></html>';
 
 describe('single-file machinery (FR-11)', () => {
   test('the script sanitiser escapes the three tokenizer sequences', () => {
@@ -52,7 +62,8 @@ describe('single-file machinery (FR-11)', () => {
 describe('the exported static state and the no-scripts notice (FR-38 as amended in v1.5.0, FR-59)', () => {
   const NOTICE = ['Not started.', 'Because <of> "this" & that.', 'Open it elsewhere.'];
   // The built page: the application script in the head, the body after it.
-  const HEAD_PAGE = '<!doctype html>\n<html lang="en"><head><script type="module">\nconst s = "<body>";\n</script><style>body{}</style></head><body><main id="app"></main></body></html>';
+  const HEAD_PAGE =
+    '<!doctype html>\n<html lang="en"><head><script type="module">\nconst s = "<body>";\n</script><style>body{}</style></head><body><main id="app"></main></body></html>';
 
   for (const [where, page] of [
     ['the script in the head', HEAD_PAGE],

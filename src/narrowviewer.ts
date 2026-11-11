@@ -50,9 +50,14 @@ export class NarrowViewer {
   ) {
     for (const overlay of overlays) {
       overlay.toggle.addEventListener('click', () => {
-        if (!this.active()) return;
-        if (this.openPanel === overlay) this.close();
-        else this.open(overlay);
+        if (!this.active()) {
+          return;
+        }
+        if (this.openPanel === overlay) {
+          this.close();
+        } else {
+          this.open(overlay);
+        }
       });
     }
     document.addEventListener('keydown', (e) => {
@@ -67,8 +72,12 @@ export class NarrowViewer {
       (e) => {
         const open = this.openPanel;
         const target = e.target as Node | null;
-        if (!open || !target) return;
-        if (open.panel.contains(target) || open.toggle.contains(target)) return;
+        if (!open || !target) {
+          return;
+        }
+        if (open.panel.contains(target) || open.toggle.contains(target)) {
+          return;
+        }
         this.close({ returnFocus: false });
       },
       true,
@@ -78,7 +87,9 @@ export class NarrowViewer {
     // layout only: above the threshold the handler returns at once, so that
     // the desktop viewer behaves as before.
     const refit = () => {
-      if (this.active()) this.hooks.refit();
+      if (this.active()) {
+        this.hooks.refit();
+      }
     };
     window.addEventListener('resize', refit);
     window.addEventListener('orientationchange', refit);
@@ -100,7 +111,9 @@ export class NarrowViewer {
   }
 
   open(overlay: Overlay): void {
-    if (this.openPanel && this.openPanel !== overlay) this.close({ returnFocus: false });
+    if (this.openPanel && this.openPanel !== overlay) {
+      this.close({ returnFocus: false });
+    }
     this.hooks.closeCard();
     this.openPanel = overlay;
     this.setState(overlay, true);
@@ -109,20 +122,27 @@ export class NarrowViewer {
 
   close(options: { returnFocus?: boolean } = {}): void {
     const overlay = this.openPanel;
-    if (!overlay) return;
+    if (!overlay) {
+      return;
+    }
     const hadFocus = overlay.panel.contains(document.activeElement);
     this.openPanel = null;
     this.setState(overlay, false);
     // Focus returns to the toggle the overlay was opened from (on a tap
     // outside, only if it was inside the overlay).
-    if (hadFocus || options.returnFocus !== false) overlay.toggle.focus({ preventScroll: true });
+    if (hadFocus || options.returnFocus !== false) {
+      overlay.toggle.focus({ preventScroll: true });
+    }
   }
 
   private setState(overlay: Overlay, open: boolean): void {
     overlay.panel.dataset.state = open ? 'open' : 'closed';
     overlay.panel.inert = !open;
-    if (open) overlay.panel.removeAttribute('inert');
-    else overlay.panel.setAttribute('inert', '');
+    if (open) {
+      overlay.panel.removeAttribute('inert');
+    } else {
+      overlay.panel.setAttribute('inert', '');
+    }
     overlay.toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
   }
 
@@ -145,7 +165,9 @@ export class NarrowViewer {
     this.hooks.render();
     // Entering the narrow layout later changes the stage's size; on opening,
     // the viewer keeps the view the file carries (FR-38).
-    if (this.active() && !initial) this.hooks.refit();
+    if (this.active() && !initial) {
+      this.hooks.refit();
+    }
   }
 }
 
@@ -182,11 +204,17 @@ export class NarrowDialogs {
     // panels' own handlers run first when the focus is inside them, and the
     // hidden check keeps the close single.
     window.addEventListener('keydown', (e) => {
-      if (e.key !== 'Escape' || !this.active()) return;
+      if (e.key !== 'Escape' || !this.active()) {
+        return;
+      }
       const id = this.openId;
-      if (!id) return;
+      if (!id) {
+        return;
+      }
       const panel = document.getElementById(id);
-      if (!panel || panel.classList.contains('hidden')) return;
+      if (!panel || panel.classList.contains('hidden')) {
+        return;
+      }
       e.preventDefault();
       this.specs.find((s) => s.id === id)?.close();
     });
@@ -194,13 +222,21 @@ export class NarrowDialogs {
     window.addEventListener(
       'pointerdown',
       (e) => {
-        if (!this.active()) return;
+        if (!this.active()) {
+          return;
+        }
         const id = this.openId;
-        if (!id) return;
+        if (!id) {
+          return;
+        }
         const panel = document.getElementById(id);
-        if (!panel || panel.classList.contains('hidden')) return;
+        if (!panel || panel.classList.contains('hidden')) {
+          return;
+        }
         const target = e.target as Node | null;
-        if (!target || panel.contains(target)) return;
+        if (!target || panel.contains(target)) {
+          return;
+        }
         this.specs.find((s) => s.id === id)?.close();
       },
       true,
@@ -222,10 +258,16 @@ export class NarrowDialogs {
   // -- any other open dialog closes, focus moves into this one, and the
   // opener is remembered for the return.
   showing(id: string): void {
-    if (!this.active()) return;
-    if (this.openId && this.openId !== id) this.specs.find((s) => s.id === this.openId)?.close();
+    if (!this.active()) {
+      return;
+    }
+    if (this.openId && this.openId !== id) {
+      this.specs.find((s) => s.id === this.openId)?.close();
+    }
     const panel = document.getElementById(id);
-    if (!panel) return;
+    if (!panel) {
+      return;
+    }
     this.openId = id;
     this.opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     panel.dataset.state = 'open';
@@ -239,7 +281,9 @@ export class NarrowDialogs {
   // returns to the opener, if it was inside the dialog.
   hidden(id: string): void {
     const panel = document.getElementById(id);
-    if (!panel) return;
+    if (!panel) {
+      return;
+    }
     if (!this.active()) {
       delete panel.dataset.state;
       panel.inert = false;
@@ -248,7 +292,9 @@ export class NarrowDialogs {
       return;
     }
     const wasOpen = this.openId === id;
-    if (wasOpen) this.openId = null;
+    if (wasOpen) {
+      this.openId = null;
+    }
     panel.dataset.state = 'closed';
     panel.inert = true;
     panel.setAttribute('inert', '');
@@ -257,14 +303,18 @@ export class NarrowDialogs {
       const opener = this.opener;
       this.opener = null;
       panel.removeAttribute('tabindex');
-      if (hadFocus && opener?.isConnected) opener.focus({ preventScroll: true });
+      if (hadFocus && opener?.isConnected) {
+        opener.focus({ preventScroll: true });
+      }
     }
   }
 
   // Closes the open dialog, if any, through its own close routine.
   closeOpen(): void {
     const id = this.openId;
-    if (!id) return;
+    if (!id) {
+      return;
+    }
     this.specs.find((s) => s.id === id)?.close();
   }
 
@@ -274,10 +324,14 @@ export class NarrowDialogs {
   private apply(): void {
     for (const spec of this.specs) {
       const panel = document.getElementById(spec.id);
-      if (!panel) continue;
+      if (!panel) {
+        continue;
+      }
       if (this.active()) {
         if (!panel.classList.contains('hidden')) {
-          if (this.openId !== spec.id) this.openId = spec.id;
+          if (this.openId !== spec.id) {
+            this.openId = spec.id;
+          }
           panel.dataset.state = 'open';
           panel.inert = false;
           panel.removeAttribute('inert');

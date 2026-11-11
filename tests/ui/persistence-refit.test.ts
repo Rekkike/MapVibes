@@ -49,7 +49,15 @@ describe('opening the details panel refits the map view (FR-16)', () => {
       [2, 400, 300],
     ]);
     const stage = byId('map-stage');
-    stage.getBoundingClientRect = () => ({ ...STAGE, width: width(), x: STAGE.left, y: STAGE.top, right: STAGE.left + width(), bottom: STAGE.top + STAGE.height, toJSON: () => ({}) }) as DOMRect;
+    stage.getBoundingClientRect = () => ({
+      ...STAGE,
+      width: width(),
+      x: STAGE.left,
+      y: STAGE.top,
+      right: STAGE.left + width(),
+      bottom: STAGE.top + STAGE.height,
+      toJSON: () => ({}),
+    });
     byId('map-fit').click();
   });
 

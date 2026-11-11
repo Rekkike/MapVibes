@@ -21,7 +21,9 @@ let browser: Browser;
 let context: BrowserContext;
 
 beforeAll(async () => {
-  if (!existsSync(BUILT)) throw new Error('dist/build/index.html is missing: run the build first');
+  if (!existsSync(BUILT)) {
+    throw new Error('dist/build/index.html is missing: run the build first');
+  }
   browser = await chromium.launch();
   context = await browser.newContext({ viewport: { width: 1500, height: 950 }, acceptDownloads: true, hasTouch: true });
   await context.setOffline(true);
@@ -32,7 +34,14 @@ afterAll(async () => {
 });
 
 type Stage = { stage: string; labels: string; shapes: string; markers: string; zoomIn: string; fit: string };
-const MAP: Stage = { stage: '#map-stage', labels: '#map-annotation-labels', shapes: '#map-annotations', markers: '#marker-layer', zoomIn: '#map-zoom-in', fit: '#map-fit' };
+const MAP: Stage = {
+  stage: '#map-stage',
+  labels: '#map-annotation-labels',
+  shapes: '#map-annotations',
+  markers: '#marker-layer',
+  zoomIn: '#map-zoom-in',
+  fit: '#map-fit',
+};
 const PRESENTATION: Stage = {
   stage: '#presentation-stage',
   labels: '#presentation-annotation-labels',
@@ -66,7 +75,11 @@ async function measure(page: Page, s: Stage) {
       scale: Number(/scale\(([\d.]+)\)/.exec(content.style.transform)![1]),
       sheet: Math.max(image.naturalWidth, image.naturalHeight),
       lineHeight: parseFloat(getComputedStyle(document.querySelector(`${s.labels} .annotation-label`)!).lineHeight),
-      labels: [...document.querySelectorAll(`${s.labels} .annotation-label`)].map((l) => ({ text: l.textContent, ...size(l), font: getComputedStyle(l).fontSize })),
+      labels: [...document.querySelectorAll(`${s.labels} .annotation-label`)].map((l) => ({
+        text: l.textContent,
+        ...size(l),
+        font: getComputedStyle(l).fontSize,
+      })),
       marker: size(document.querySelector(`${s.markers} .marker`)),
       shape: size(document.querySelector(`${s.shapes} g.annotation-rectangle rect`)),
     };
@@ -88,7 +101,10 @@ function expectPrinted(m: Measured, where: string): void {
 // From one view to another, the labels scale by the ratio of the scales,
 // while the markers keep their size.
 function expectProportional(a: Measured, b: Measured, where: string): void {
-  expect(b.labels.map((l) => l.text), where).toEqual(a.labels.map((l) => l.text));
+  expect(
+    b.labels.map((l) => l.text),
+    where,
+  ).toEqual(a.labels.map((l) => l.text));
   const ratio = b.scale / a.scale;
   b.labels.forEach((l, i) => {
     expect(l.height / a.labels[i].height, `${where}: ${l.text}`).toBeCloseTo(ratio, 1);
@@ -122,7 +138,9 @@ async function expectScalingAcrossZoom(page: Page, s: Stage, where: string): Pro
       async () => {
         const box = (await page.locator(s.stage).boundingBox())!;
         await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-        for (let i = 0; i < 3; i++) await page.mouse.wheel(0, -200);
+        for (let i = 0; i < 3; i++) {
+          await page.mouse.wheel(0, -200);
+        }
       },
     ],
     [
@@ -136,7 +154,9 @@ async function expectScalingAcrossZoom(page: Page, s: Stage, where: string): Pro
           { x: cx + d, y: cy, id: 1 },
         ];
         await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: fingers(40) });
-        for (let d = 50; d <= 120; d += 10) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: fingers(d) });
+        for (let d = 50; d <= 120; d += 10) {
+          await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: fingers(d) });
+        }
         await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
         await cdp.detach();
       },

@@ -14,8 +14,8 @@ import { NARROW_QUERY } from '../../src/narrowviewer';
 async function mountNarrow() {
   const app = await mountApp({
     beforeMain: () => {
-      const plain = window.matchMedia;
-      window.matchMedia = ((q: string) => (q === NARROW_QUERY ? { ...plain(q), matches: true } : plain(q))) as typeof window.matchMedia;
+      const plain = window.matchMedia.bind(window);
+      window.matchMedia = (q: string) => (q === NARROW_QUERY ? { ...plain(q), matches: true } : plain(q));
     },
   });
   await placeExampleMarkers([
@@ -47,7 +47,7 @@ const MAP = [
 ] as const;
 
 describe('the narrow application overlays (FR-72)', () => {
-  test("the Map segment's toggle bar offers the item list, \"In view\", and the legend, all closed and inert at first", async () => {
+  test('the Map segment\'s toggle bar offers the item list, "In view", and the legend, all closed and inert at first', async () => {
     await mountNarrow();
     expect([...byId('map-toggles').querySelectorAll('button')].map((b) => [b.textContent, b.getAttribute('aria-controls')])).toEqual([
       ['Items', 'placement-area'],
@@ -55,7 +55,9 @@ describe('the narrow application overlays (FR-72)', () => {
       ['Legend', 'map-legend'],
     ]);
     expect(byId('map-toggles').getAttribute('aria-label')).toBe('Panels');
-    for (const [panel, toggle] of MAP) expectClosed(panel, toggle);
+    for (const [panel, toggle] of MAP) {
+      expectClosed(panel, toggle);
+    }
   });
 
   test('a toggle opens its overlay and moves focus into it; one is open at a time; the toggle closes it and focus returns', async () => {
@@ -96,7 +98,9 @@ describe('the narrow application overlays (FR-72)', () => {
     byId('toggle-items').click();
     byId('tab-presentation').click();
     expectClosed('placement-area', 'toggle-items');
-    expect([...byId('presentation-toggles').querySelectorAll('button')].map((b) => [b.textContent, b.getAttribute('aria-controls')])).toEqual([['Visibility', 'visibility-area']]);
+    expect([...byId('presentation-toggles').querySelectorAll('button')].map((b) => [b.textContent, b.getAttribute('aria-controls')])).toEqual([
+      ['Visibility', 'visibility-area'],
+    ]);
     byId('toggle-visibility').click();
     expectOpen('visibility-area', 'toggle-visibility');
     byId('toggle-glance').click();
@@ -109,7 +113,12 @@ describe('the narrow application overlays (FR-72)', () => {
     const lang = byId<HTMLSelectElement>('select-language');
     lang.value = 'sv';
     lang.dispatchEvent(new Event('change'));
-    expect([byId('map-toggles').getAttribute('aria-label'), ...[...byId('map-toggles').querySelectorAll('button')].map((b) => b.textContent)]).toEqual(['Paneler', 'Poster', 'I vyn', 'Teckenförklaring']);
+    expect([byId('map-toggles').getAttribute('aria-label'), ...[...byId('map-toggles').querySelectorAll('button')].map((b) => b.textContent)]).toEqual([
+      'Paneler',
+      'Poster',
+      'I vyn',
+      'Teckenförklaring',
+    ]);
     expect(byId('toggle-visibility').textContent).toBe('Synlighet');
   });
 });
@@ -264,18 +273,32 @@ describe('the header collapsed into a menu (FR-71 as amended)', () => {
 describe('leaving the narrow layout (FR-71)', () => {
   test('the moved controls return to their places in the header, in their order', async () => {
     const listeners: Array<() => void> = [];
-    const list = { matches: true, media: NARROW_QUERY, addEventListener: (_: string, l: () => void) => listeners.push(l), removeEventListener: () => undefined, addListener: () => undefined, removeListener: () => undefined, dispatchEvent: () => false, onchange: null };
+    const list = {
+      matches: true,
+      media: NARROW_QUERY,
+      addEventListener: (_: string, l: () => void) => listeners.push(l),
+      removeEventListener: () => undefined,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      dispatchEvent: () => false,
+      onchange: null,
+    };
     await mountApp({
       beforeMain: () => {
-        const plain = window.matchMedia;
+        const plain = window.matchMedia.bind(window);
         window.matchMedia = ((q: string) => (q === NARROW_QUERY ? list : plain(q))) as typeof window.matchMedia;
       },
     });
     await flush();
-    const order = () => [...byId('app-header').querySelectorAll('#demo-badge, #demo-reset, #work-controls, #select-language, #select-theme')].map((e) => `${e.id}<${e.closest('#app-menu') ? 'menu' : 'header'}`);
+    const order = () =>
+      [...byId('app-header').querySelectorAll('#demo-badge, #demo-reset, #work-controls, #select-language, #select-theme')].map(
+        (e) => `${e.id}<${e.closest('#app-menu') ? 'menu' : 'header'}`,
+      );
     expect(order().every((o) => o.endsWith('menu'))).toBe(true);
     list.matches = false;
-    for (const l of listeners) l();
+    for (const l of listeners) {
+      l();
+    }
     expect(order()).toEqual(['demo-badge<header', 'demo-reset<header', 'work-controls<header', 'select-language<header', 'select-theme<header']);
     expect(byId('work-controls').parentElement!.classList.contains('controls')).toBe(true);
     expect(byId('app-menu').children).toHaveLength(0);
@@ -284,8 +307,17 @@ describe('leaving the narrow layout (FR-71)', () => {
 
 describe('the resize and orientation refit (FR-71, unit 6)', () => {
   function resizeStage(id: string, width: number, height: number): void {
-    byId(id).getBoundingClientRect = () =>
-      ({ left: STAGE.left, top: STAGE.top, width, height, x: STAGE.left, y: STAGE.top, right: STAGE.left + width, bottom: STAGE.top + height, toJSON: () => ({}) }) as DOMRect;
+    byId(id).getBoundingClientRect = () => ({
+      left: STAGE.left,
+      top: STAGE.top,
+      width,
+      height,
+      x: STAGE.left,
+      y: STAGE.top,
+      right: STAGE.left + width,
+      bottom: STAGE.top + height,
+      toJSON: () => ({}),
+    });
   }
   const transform = () => byId('map-content').style.transform;
   const scale = () => Number(/scale\(([\d.]+)\)/.exec(transform())![1]);

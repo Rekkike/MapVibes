@@ -33,7 +33,6 @@ function stubDownload(): Blob[] {
     return 'blob:local-test';
   };
   URL.revokeObjectURL = () => undefined;
-  const original = HTMLAnchorElement.prototype.click;
   HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
     /* recorded through the blob; navigation is not jsdom's */
   };
@@ -56,7 +55,7 @@ function status(): string {
 async function blobText(blob: Blob): Promise<string> {
   return new Promise((resolve) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
+    reader.onload = () => resolve(reader.result as string);
     reader.readAsText(blob);
   });
 }
@@ -114,8 +113,8 @@ describe('the save status on the download path (FR-13 as noted in v1.15.0)', () 
   test('on a phone (narrow), the same download path runs from the Menu overlay', async () => {
     await mountApp({
       beforeMain: () => {
-        const plain = window.matchMedia;
-        window.matchMedia = ((q: string) => (q === NARROW_QUERY ? { ...plain(q), matches: true } : plain(q))) as typeof window.matchMedia;
+        const plain = window.matchMedia.bind(window);
+        window.matchMedia = (q: string) => (q === NARROW_QUERY ? { ...plain(q), matches: true } : plain(q));
       },
     });
     await placeExampleMarkers([[0, 60, 100]]);
@@ -142,7 +141,10 @@ describe('the share action (FR-13 as noted in v1.15.0)', () => {
 
   test('when the browser cannot share files, the action is disabled with a clear message', async () => {
     await mountWithWork();
-    installShare(async () => undefined, () => false);
+    installShare(
+      () => Promise.resolve(undefined),
+      () => false,
+    );
     renderAgain();
     expect(byId('work-share').classList.contains('hidden')).toBe(false);
     expect(byId<HTMLButtonElement>('work-share').disabled).toBe(true);
@@ -153,9 +155,13 @@ describe('the share action (FR-13 as noted in v1.15.0)', () => {
   test('where files can be shared, the work file goes to the OS share sheet, fully local; the unsaved mark is untouched', async () => {
     await mountWithWork();
     const calls: ShareData[] = [];
-    installShare(async (data) => {
-      calls.push(data);
-    }, () => true);
+    installShare(
+      (data) => {
+        calls.push(data);
+        return Promise.resolve();
+      },
+      () => true,
+    );
     renderAgain();
     expect(byId<HTMLButtonElement>('work-share').disabled).toBe(false);
     byId('work-share').click();
@@ -175,16 +181,18 @@ describe('the share action (FR-13 as noted in v1.15.0)', () => {
 
   test('closing the share sheet claims nothing; a failed share says so', async () => {
     await mountWithWork();
-    installShare(async () => {
-      throw new DOMException('Share canceled', 'AbortError');
-    }, () => true);
+    installShare(
+      () => Promise.reject(new DOMException('Share canceled', 'AbortError')),
+      () => true,
+    );
     renderAgain();
     byId('work-share').click();
     await flush();
     expect(status()).toBe('');
-    installShare(async () => {
-      throw new DOMException('nope', 'NotAllowedError');
-    }, () => true);
+    installShare(
+      () => Promise.reject(new DOMException('nope', 'NotAllowedError')),
+      () => true,
+    );
     renderAgain();
     byId('work-share').click();
     await flush();

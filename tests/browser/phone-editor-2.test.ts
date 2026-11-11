@@ -20,7 +20,9 @@ const EXAMPLE_PDF = join(process.cwd(), 'example-data', 'example-background.pdf'
 let browser: Browser;
 
 beforeAll(async () => {
-  if (!existsSync(BUILT)) throw new Error('dist/build/index.html is missing: run the build first');
+  if (!existsSync(BUILT)) {
+    throw new Error('dist/build/index.html is missing: run the build first');
+  }
   browser = await chromium.launch();
 }, 60_000);
 
@@ -72,18 +74,15 @@ async function touchDrag(page: Page, from: { x: number; y: number }, to: { x: nu
   const cdp = await page.context().newCDPSession(page);
   const point = (x: number, y: number) => (radius > 0 ? { x, y, id: 0, radiusX: radius, radiusY: radius, force: 1 } : { x, y, id: 0 });
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point(from.x, from.y)] });
-  for (let i = 1; i <= 8; i++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [point(from.x + ((to.x - from.x) * i) / 8, from.y + ((to.y - from.y) * i) / 8)] });
+  for (let i = 1; i <= 8; i++) {
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [point(from.x + ((to.x - from.x) * i) / 8, from.y + ((to.y - from.y) * i) / 8)],
+    });
+  }
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await cdp.detach();
   await page.waitForTimeout(300);
-}
-
-// The screen centre of the demo's rectangle annotation (the "Survey zone").
-async function rectangleCentre(page: Page): Promise<{ x: number; y: number }> {
-  return page.evaluate(() => {
-    const r = document.querySelector<SVGElement>('g.annotation-rectangle .annotation-shape')!.getBoundingClientRect();
-    return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
-  });
 }
 
 const stageBox = (page: Page) => box(page, '#map-stage');
@@ -93,26 +92,29 @@ const stageBox = (page: Page) => box(page, '#map-stage');
 // tap there is a tap on the map.
 async function freePoint(page: Page): Promise<{ x: number; y: number }> {
   const b = await stageBox(page);
-  const found = await page.evaluate(
-    (b) => {
-      const clear = (x: number, y: number) => {
-        const e = document.elementFromPoint(x, y);
-        if (!e || !e.closest('.stage')) return false;
-        return !e.closest('.marker, .annotation-handle, .annotation, .annotation-labels, #annotation-inspector, .annotation-layer');
-      };
-      const free = (x: number, y: number) => [-24, 0, 24].every((dx) => [-24, 0, 24].every((dy) => clear(x + dx, y + dy)));
-      for (let fy = 0.03; fy <= 0.9; fy += 0.02) {
-        const y0 = b.y + b.height * fy;
-        for (let fx = 0.1; fx <= 0.9; fx += 0.04) {
-          const x = b.x + b.width * fx;
-          if (free(x, y0)) return { x, y: y0 };
+  const found = await page.evaluate((b) => {
+    const clear = (x: number, y: number) => {
+      const e = document.elementFromPoint(x, y);
+      if (!e || !e.closest('.stage')) {
+        return false;
+      }
+      return !e.closest('.marker, .annotation-handle, .annotation, .annotation-labels, #annotation-inspector, .annotation-layer');
+    };
+    const free = (x: number, y: number) => [-24, 0, 24].every((dx) => [-24, 0, 24].every((dy) => clear(x + dx, y + dy)));
+    for (let fy = 0.03; fy <= 0.9; fy += 0.02) {
+      const y0 = b.y + b.height * fy;
+      for (let fx = 0.1; fx <= 0.9; fx += 0.04) {
+        const x = b.x + b.width * fx;
+        if (free(x, y0)) {
+          return { x, y: y0 };
         }
       }
-      return null;
-    },
-    b,
-  );
-  if (!found) throw new Error('no free point on the stage');
+    }
+    return null;
+  }, b);
+  if (!found) {
+    throw new Error('no free point on the stage');
+  }
   return found;
 }
 
@@ -124,24 +126,32 @@ async function freePointAbove(page: Page, yLimit: number, clearance = 24): Promi
     ({ b, yLimit, clearance }) => {
       const clear = (x: number, y: number) => {
         const e = document.elementFromPoint(x, y);
-        if (!e || !e.closest('.stage')) return false;
+        if (!e || !e.closest('.stage')) {
+          return false;
+        }
         return !e.closest('.marker, .annotation-handle, .annotation, .annotation-labels, #annotation-inspector, .annotation-layer');
       };
       const d = [-clearance, 0, clearance];
       const free = (x: number, y: number) => d.every((dx) => d.every((dy) => clear(x + dx, y + dy)));
       for (let fy = 0.03; fy <= 0.9; fy += 0.02) {
         const y = b.y + b.height * fy;
-        if (y > yLimit) continue;
+        if (y > yLimit) {
+          continue;
+        }
         for (let fx = 0.1; fx <= 0.9; fx += 0.04) {
           const x = b.x + b.width * fx;
-          if (free(x, y)) return { x, y };
+          if (free(x, y)) {
+            return { x, y };
+          }
         }
       }
       return null;
     },
     { b, yLimit, clearance },
   );
-  if (!found) throw new Error('no free point above the sheet');
+  if (!found) {
+    throw new Error('no free point above the sheet');
+  }
   return found;
 }
 
@@ -164,7 +174,7 @@ describe.each(PROFILES)('the inspector sheet and the touch editing on the %s (FR
         const r = inspector.getBoundingClientRect();
         return {
           state: inspector.dataset.state,
-          inert: (inspector as HTMLElement).inert,
+          inert: inspector.inert,
           handles: [...document.querySelectorAll<HTMLElement>('.annotation-handle')].map((h) => {
             const hr = h.getBoundingClientRect();
             const after = getComputedStyle(h, '::after');
@@ -215,7 +225,9 @@ describe.each(PROFILES)('the inspector sheet and the touch editing on the %s (FR
         sheetTop: document.getElementById('annotation-inspector')!.getBoundingClientRect().y,
         handleY: Math.min(...[...document.querySelectorAll<HTMLElement>('.annotation-handle')].map((h) => h.getBoundingClientRect().y)),
       }));
-      if (handleY < sheetTop - 10) break;
+      if (handleY < sheetTop - 10) {
+        break;
+      }
       let p: { x: number; y: number };
       try {
         p = await freePointAbove(page, sheetTop - 30, 12);
@@ -276,7 +288,11 @@ describe.each(PROFILES)('the inspector sheet and the touch editing on the %s (FR
     await page.waitForTimeout(300);
     const angle = await page.evaluate(() => {
       const g = [...document.querySelectorAll('#map-annotations g.annotation-line:not(.draft)')].pop()!;
-      const pts = g.querySelector('polyline')!.getAttribute('points')!.split(' ').map((p) => p.split(',').map(Number));
+      const pts = g
+        .querySelector('polyline')!
+        .getAttribute('points')!
+        .split(' ')
+        .map((p) => p.split(',').map(Number));
       const deg = (Math.atan2(pts[1][1] - pts[0][1], pts[1][0] - pts[0][0]) * 180) / Math.PI;
       return Math.round(((deg % 180) + 180) % 180);
     });
@@ -303,7 +319,13 @@ describe.each(PROFILES.slice(0, 2))('the six dialogs as overlays on the %s (FR-7
       const p = document.getElementById('fetch-panel')!;
       const r = p.getBoundingClientRect();
       const close = document.getElementById('fetch-close')!.getBoundingClientRect();
-      return { state: p.dataset.state, h: Math.round(r.height), bottom: Math.round(r.bottom), closeInView: close.bottom <= innerHeight && close.top >= 0, pos: getComputedStyle(p).position };
+      return {
+        state: p.dataset.state,
+        h: Math.round(r.height),
+        bottom: Math.round(r.bottom),
+        closeInView: close.bottom <= innerHeight && close.top >= 0,
+        pos: getComputedStyle(p).position,
+      };
     });
     expect(sheet.state).toBe('open');
     expect(sheet.pos).toBe('fixed');
@@ -323,7 +345,12 @@ describe.each(PROFILES.slice(0, 2))('the six dialogs as overlays on the %s (FR-7
       const r = p.getBoundingClientRect();
       const use = document.getElementById('pdf-use')!.getBoundingClientRect();
       const cancel = document.getElementById('pdf-cancel')!.getBoundingClientRect();
-      return { state: p.dataset.state, h: Math.round(r.height), useInView: use.bottom <= innerHeight, cancelInView: cancel.bottom <= innerHeight && cancel.top >= 0 };
+      return {
+        state: p.dataset.state,
+        h: Math.round(r.height),
+        useInView: use.bottom <= innerHeight,
+        cancelInView: cancel.bottom <= innerHeight && cancel.top >= 0,
+      };
     });
     expect(pdfSheet.state).toBe('open');
     expect(pdfSheet.h).toBeLessThanOrEqual(Math.round(vh * 0.75));
@@ -370,7 +397,16 @@ describe.each(PROFILES.slice(0, 2))('the six dialogs as overlays on the %s (FR-7
       const r = p.getBoundingClientRect();
       const close = document.getElementById('export-close')!.getBoundingClientRect();
       const cancel = document.getElementById('export-cancel')!.getBoundingClientRect();
-      return { state: p.dataset.state, x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height), closeInView: close.top >= 0 && close.bottom <= innerHeight, cancelInView: cancel.bottom <= innerHeight && cancel.top >= 0, focus: document.activeElement?.id };
+      return {
+        state: p.dataset.state,
+        x: Math.round(r.x),
+        y: Math.round(r.y),
+        w: Math.round(r.width),
+        h: Math.round(r.height),
+        closeInView: close.top >= 0 && close.bottom <= innerHeight,
+        cancelInView: cancel.bottom <= innerHeight && cancel.top >= 0,
+        focus: document.activeElement?.id,
+      };
     });
     expect(exportPageBox.state).toBe('open');
     expect(exportPageBox.h).toBe(vh);
@@ -419,7 +455,12 @@ describe.each(PROFILES.slice(0, 2))('the six dialogs as overlays on the %s (FR-7
       const r = p.getBoundingClientRect();
       const adopt = document.getElementById('compare-adopt')!.getBoundingClientRect();
       const close = document.getElementById('compare-close')!.getBoundingClientRect();
-      return { state: p.dataset.state, h: Math.round(r.height), adoptInView: adopt.bottom <= innerHeight && adopt.top >= 0, closeInView: close.top >= 0 && close.bottom <= innerHeight };
+      return {
+        state: p.dataset.state,
+        h: Math.round(r.height),
+        adoptInView: adopt.bottom <= innerHeight && adopt.top >= 0,
+        closeInView: close.top >= 0 && close.bottom <= innerHeight,
+      };
     });
     expect(compareBox.state).toBe('open');
     expect(compareBox.h).toBe(vh);
@@ -473,7 +514,9 @@ describe.each(PROFILES.slice(0, 2))('the six dialogs as overlays on the %s (FR-7
     } else {
       expect(share.hidden).toBe(false);
       expect(share.disabled).toBe(!share.filesOk);
-      if (!share.filesOk) expect(share.title).toContain('cannot share files');
+      if (!share.filesOk) {
+        expect(share.title).toContain('cannot share files');
+      }
     }
     console.log(`${name}: share gate hasApi=${share.hasApi} hidden=${share.hidden} disabled=${share.disabled}`);
     expect(errors).toEqual([]);

@@ -16,7 +16,11 @@ function luminance(rgb: number[]): number {
 }
 
 function contrast(a: string, b: string): number {
-  const parse = (s: string) => s.match(/[\d.]+/g)!.slice(0, 3).map(Number);
+  const parse = (s: string) =>
+    s
+      .match(/[\d.]+/g)!
+      .slice(0, 3)
+      .map(Number);
   const [x, y] = [luminance(parse(a)), luminance(parse(b))].sort((p, q) => q - p);
   return (x + 0.05) / (y + 0.05);
 }
@@ -34,7 +38,9 @@ async function demoPage(theme: 'light' | 'dark'): Promise<Page> {
 }
 
 beforeAll(async () => {
-  if (!existsSync(BUILT)) throw new Error('dist/build/index.html is missing: run the build first');
+  if (!existsSync(BUILT)) {
+    throw new Error('dist/build/index.html is missing: run the build first');
+  }
   browser = await chromium.launch();
 });
 
@@ -53,7 +59,9 @@ describe('dense operator surfaces in a real layout (FR-42)', () => {
         // The plain fields; the year series are one line each across the
         // panel (FR-7 as amended in v1.6.0), then the action rows: the
         // Economics action and the activities import (FR-76).
-        const fields = [...panel.querySelectorAll('.details-fields > .details-field:not(.details-series):not(.details-economics-row)')].map((f) => f.getBoundingClientRect());
+        const fields = [...panel.querySelectorAll('.details-fields > .details-field:not(.details-series):not(.details-economics-row)')].map((f) =>
+          f.getBoundingClientRect(),
+        );
         const series = panel.querySelectorAll('.details-fields > .details-series').length;
         const action = panel.querySelectorAll('.details-fields > .details-economics-row').length;
         const lefts = [...new Set(fields.map((r) => Math.round(r.left)))];
@@ -105,7 +113,9 @@ describe('dense operator surfaces in a real layout (FR-42)', () => {
       await expect.poll(() => page.getAttribute('#presentation-card', 'data-state')).toBe('open');
       const sizes = await page.evaluate(() => {
         const card = document.getElementById('presentation-card')!;
-        return [...card.querySelectorAll('.details-title, .card-note, .card-label, .card-value, .details-comment-text, .details-comment-date')].map((n) => parseFloat(getComputedStyle(n).fontSize));
+        return [...card.querySelectorAll('.details-title, .card-note, .card-label, .card-value, .details-comment-text, .details-comment-date')].map((n) =>
+          parseFloat(getComputedStyle(n).fontSize),
+        );
       });
       expect(sizes[0]).toBe(22);
       expect(sizes.length).toBeGreaterThan(3);

@@ -3,7 +3,21 @@ import { ICON_PATHS, ICONS, isIcon, isSymbol, symbolClasses, SYMBOLS } from '../
 
 describe('marker symbol library (FR-26)', () => {
   test('the library holds the five shapes and the eight icons', () => {
-    expect(SYMBOLS).toEqual(['circle', 'square', 'diamond', 'triangle', 'hexagon', 'bulb', 'magnifier', 'gear', 'pause', 'cross', 'check', 'hammer-shovel', 'bolt']);
+    expect(SYMBOLS).toEqual([
+      'circle',
+      'square',
+      'diamond',
+      'triangle',
+      'hexagon',
+      'bulb',
+      'magnifier',
+      'gear',
+      'pause',
+      'cross',
+      'check',
+      'hammer-shovel',
+      'bolt',
+    ]);
     expect(ICONS.every((i) => ICON_PATHS[i].startsWith('M'))).toBe(true);
     expect(isSymbol('gear')).toBe(true);
     expect(isSymbol('star')).toBe(false);

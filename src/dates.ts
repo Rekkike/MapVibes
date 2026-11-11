@@ -7,10 +7,7 @@
 
 export type DatePrecision = 'year' | 'month' | 'day';
 
-export type DateReading =
-  | { kind: 'date'; start: number; end: number; precision: DatePrecision }
-  | { kind: 'empty' }
-  | { kind: 'text'; text: string };
+export type DateReading = { kind: 'date'; start: number; end: number; precision: DatePrecision } | { kind: 'empty' } | { kind: 'text'; text: string };
 
 export const FIRST_DATE_YEAR = 1900;
 export const LAST_DATE_YEAR = 2199;
@@ -36,19 +33,35 @@ const FORM = /^(\d{4})(?:-(\d{1,2})(?:-(\d{1,2})(?:[T ](\d{1,2}):(\d{2})(?::(\d{
 
 export function readDate(value: string): DateReading {
   const text = value.trim();
-  if (text === '') return { kind: 'empty' };
+  if (text === '') {
+    return { kind: 'empty' };
+  }
   const m = FORM.exec(text);
   const unread: DateReading = { kind: 'text', text: value };
-  if (!m) return unread;
+  if (!m) {
+    return unread;
+  }
   const year = Number(m[1]);
-  if (year < FIRST_DATE_YEAR || year > LAST_DATE_YEAR) return unread;
-  if (m[2] === undefined) return { kind: 'date', start: dayNumber(year, 1, 1), end: dayNumber(year, 12, 31), precision: 'year' };
+  if (year < FIRST_DATE_YEAR || year > LAST_DATE_YEAR) {
+    return unread;
+  }
+  if (m[2] === undefined) {
+    return { kind: 'date', start: dayNumber(year, 1, 1), end: dayNumber(year, 12, 31), precision: 'year' };
+  }
   const month = Number(m[2]);
-  if (month < 1 || month > 12) return unread;
-  if (m[3] === undefined) return { kind: 'date', start: dayNumber(year, month, 1), end: dayNumber(year, month, daysInMonth(year, month)), precision: 'month' };
+  if (month < 1 || month > 12) {
+    return unread;
+  }
+  if (m[3] === undefined) {
+    return { kind: 'date', start: dayNumber(year, month, 1), end: dayNumber(year, month, daysInMonth(year, month)), precision: 'month' };
+  }
   const day = Number(m[3]);
-  if (day < 1 || day > daysInMonth(year, month)) return unread;
-  if (m[4] !== undefined && (Number(m[4]) > 23 || Number(m[5]) > 59 || Number(m[6] ?? 0) > 59)) return unread;
+  if (day < 1 || day > daysInMonth(year, month)) {
+    return unread;
+  }
+  if (m[4] !== undefined && (Number(m[4]) > 23 || Number(m[5]) > 59 || Number(m[6] ?? 0) > 59)) {
+    return unread;
+  }
   const n = dayNumber(year, month, day);
   return { kind: 'date', start: n, end: n, precision: 'day' };
 }
@@ -74,7 +87,11 @@ export function readSpan(start: string, end: string): DateSpan {
 export function formatDate(reading: Extract<DateReading, { kind: 'date' }>, which: 'start' | 'end' = 'start'): string {
   const d = dateOfDay(which === 'start' ? reading.start : reading.end);
   const two = (n: number) => String(n).padStart(2, '0');
-  if (reading.precision === 'year') return String(d.year);
-  if (reading.precision === 'month') return `${d.year}-${two(d.month)}`;
+  if (reading.precision === 'year') {
+    return String(d.year);
+  }
+  if (reading.precision === 'month') {
+    return `${d.year}-${two(d.month)}`;
+  }
   return `${d.year}-${two(d.month)}-${two(d.day)}`;
 }

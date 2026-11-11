@@ -1,36 +1,23 @@
 import { describe, expect, test, vi } from 'vitest';
-import {
-  byId,
-  exampleFile,
-  flush,
-  importExampleWorkbook,
-  loadExampleBackground,
-  mountApp,
-  openWorkFile,
-  placeExampleMarkers,
-  pointer,
-  setRole,
-  STAGE,
-  stubImageDecoding,
-  stubStageLayout,
-  textFile,
-} from './harness';
+import { byId, exampleFile, flush, importExampleWorkbook, mountApp, placeExampleMarkers, pointer, STAGE, stubImageDecoding, stubStageLayout } from './harness';
 import { NARROW_QUERY } from '../../src/narrowviewer';
 
 // jsdom has no canvas: the PDF library is replaced by the stand-in of
 // tests/ui/pdf.test.ts (the example document has two pages).
 vi.mock('../../src/pdfbackground', () => ({
   isPdfFile: (file: File) => file.name.toLowerCase().endsWith('.pdf'),
-  openPdf: async (data: ArrayBuffer) => {
+  openPdf: (data: ArrayBuffer) => {
     const head = new TextDecoder().decode(new Uint8Array(data).slice(0, 5));
-    if (head !== '%PDF-') throw new Error('not a PDF');
+    if (head !== '%PDF-') {
+      return Promise.reject(new Error('not a PDF'));
+    }
     const pageCount = data.byteLength > 1000 ? 2 : 1;
-    return {
+    return Promise.resolve({
       pageCount,
-      pageSize: async () => ({ width: 842, height: 595 }),
-      renderPage: async (page: number) => `data:image/png;base64,UEFHRS${page}`,
-      close: async () => undefined,
-    };
+      pageSize: () => Promise.resolve({ width: 842, height: 595 }),
+      renderPage: (page: number) => Promise.resolve(`data:image/png;base64,UEFHRS${page}`),
+      close: () => Promise.resolve(),
+    });
   },
 }));
 
@@ -49,8 +36,8 @@ vi.mock('../../src/pdfbackground', () => ({
 async function mountNarrow(): Promise<void> {
   await mountApp({
     beforeMain: () => {
-      const plain = window.matchMedia;
-      window.matchMedia = ((q: string) => (q === NARROW_QUERY ? { ...plain(q), matches: true } : plain(q))) as typeof window.matchMedia;
+      const plain = window.matchMedia.bind(window);
+      window.matchMedia = (q: string) => (q === NARROW_QUERY ? { ...plain(q), matches: true } : plain(q));
     },
   });
 }
@@ -60,8 +47,8 @@ async function mountNarrowWithWork(): Promise<void> {
   await mountApp({
     singleFile: true,
     beforeMain: () => {
-      const plain = window.matchMedia;
-      window.matchMedia = ((q: string) => (q === NARROW_QUERY ? { ...plain(q), matches: true } : plain(q))) as typeof window.matchMedia;
+      const plain = window.matchMedia.bind(window);
+      window.matchMedia = (q: string) => (q === NARROW_QUERY ? { ...plain(q), matches: true } : plain(q));
     },
   });
   await placeExampleMarkers([

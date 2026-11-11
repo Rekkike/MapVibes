@@ -39,11 +39,7 @@ describe('running counts (FR-2)', () => {
 });
 
 describe('sorting (FR-2)', () => {
-  const rows = [
-    makeRow({ ID: 'b', Note: 'zebra' }),
-    makeRow({ ID: 'a', Note: 'apple' }),
-    makeRow({ ID: 'c', Note: 'melon' }),
-  ];
+  const rows = [makeRow({ ID: 'b', Note: 'zebra' }), makeRow({ ID: 'a', Note: 'apple' }), makeRow({ ID: 'c', Note: 'melon' })];
 
   test('sorts ascending by a column', () => {
     expect(sortRows(rows, 'ID', 'asc').map((r) => r.values.ID)).toEqual(['a', 'b', 'c']);
@@ -60,11 +56,7 @@ describe('sorting (FR-2)', () => {
 });
 
 describe('filtering (FR-2)', () => {
-  const rows = numberRows([
-    makeRow({ ID: 'a', Note: 'alpha' }),
-    makeRow({ ID: 'b', Note: '' }),
-    makeRow({ ID: 'c', Note: 'beta' }),
-  ]);
+  const rows = numberRows([makeRow({ ID: 'a', Note: 'alpha' }), makeRow({ ID: 'b', Note: '' }), makeRow({ ID: 'c', Note: 'beta' })]);
 
   test('filter all keeps every row', () => {
     const f: ValueFilter = { kind: 'all', header: 'Note', text: '' };

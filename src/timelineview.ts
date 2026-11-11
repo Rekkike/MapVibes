@@ -7,12 +7,25 @@
 // neither pans nor zooms.
 
 import { dateOfDay, formatDate, readDate } from './dates';
-import { amountShare, clampWindow, EVENT_ROWS, fitWindow, layoutEvents, zoomWindow, type ScheduleEvent, type CostsAmount, type CostsLine, type TimelineLine, type TimelineModel, type TimelineSpan } from './timeline';
+import {
+  amountShare,
+  clampWindow,
+  EVENT_ROWS,
+  fitWindow,
+  layoutEvents,
+  zoomWindow,
+  type ScheduleEvent,
+  type CostsAmount,
+  type CostsLine,
+  type TimelineLine,
+  type TimelineModel,
+  type TimelineSpan,
+} from './timeline';
 import type { SeriesRole } from './economics';
 
 // {placeholder} substitution, as in i18n.
 function fill(template: string, values: Record<string, string | number>): string {
-  return template.replace(/\{(\w+)\}/g, (_, k) => String(values[k] ?? ''));
+  return template.replace(/\{(\w+)\}/g, (_match: string, k: string) => String(values[k] ?? ''));
 }
 
 export interface TimelineLabels {
@@ -142,7 +155,9 @@ const AMOUNT_GAP_PX = 3;
 export function amountLabelPlace(cellPx: number, share: number, characters: number): 'outside' | 'inside' | 'none' {
   const label = characters * AMOUNT_CHAR_PX;
   const fill = cellPx * share;
-  if (fill + AMOUNT_GAP_PX + label + AMOUNT_GAP_PX <= cellPx) return 'outside';
+  if (fill + AMOUNT_GAP_PX + label + AMOUNT_GAP_PX <= cellPx) {
+    return 'outside';
+  }
   return fill >= label + 2 * AMOUNT_GAP_PX ? 'inside' : 'none';
 }
 // The plot's width where the layout gives none (before the first layout).
@@ -151,8 +166,12 @@ const DRAG_THRESHOLD = 5;
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
+  if (className) {
+    node.className = className;
+  }
+  if (text !== undefined) {
+    node.textContent = text;
+  }
   return node;
 }
 
@@ -166,25 +185,41 @@ export function ticks(window: Window, width: number): Array<{ day: number; unit:
     let y = Math.ceil(first.year / step.n) * step.n;
     for (;;) {
       const day = Date.UTC(y, 0, 1) / 86_400_000;
-      if (day > window.to) break;
-      if (day >= window.from) out.push({ day, unit: 'year' });
+      if (day > window.to) {
+        break;
+      }
+      if (day >= window.from) {
+        out.push({ day, unit: 'year' });
+      }
       y += step.n;
-      if (out.length > 500) break;
+      if (out.length > 500) {
+        break;
+      }
     }
   } else if (step.unit === 'month') {
     let m = first.year * 12 + Math.floor((first.month - 1) / step.n) * step.n;
     for (;;) {
       const day = Date.UTC(Math.floor(m / 12), m % 12, 1) / 86_400_000;
-      if (day > window.to) break;
-      if (day >= window.from) out.push({ day, unit: 'month' });
+      if (day > window.to) {
+        break;
+      }
+      if (day >= window.from) {
+        out.push({ day, unit: 'month' });
+      }
       m += step.n;
-      if (out.length > 500) break;
+      if (out.length > 500) {
+        break;
+      }
     }
   } else {
     // Weeks start on Mondays (1970-01-01 was a Thursday).
     let day = Math.ceil(window.from);
-    if (step.n === 7) day += (((4 - day) % 7) + 7) % 7;
-    for (; day <= window.to && out.length <= 500; day += step.n) out.push({ day, unit: 'day' });
+    if (step.n === 7) {
+      day += (((4 - day) % 7) + 7) % 7;
+    }
+    for (; day <= window.to && out.length <= 500; day += step.n) {
+      out.push({ day, unit: 'day' });
+    }
   }
   return out;
 }
@@ -257,7 +292,9 @@ export class TimelineView {
     body.addEventListener(
       'click',
       (e) => {
-        if (!this.suppressClick) return;
+        if (!this.suppressClick) {
+          return;
+        }
         this.suppressClick = false;
         e.stopPropagation();
         e.preventDefault();
@@ -292,7 +329,9 @@ export class TimelineView {
       this.chosen = true;
       this.current = clampWindow(window, this.fitted);
     }
-    if (firstLine !== null) this.pendingLine = firstLine;
+    if (firstLine !== null) {
+      this.pendingLine = firstLine;
+    }
     this.position();
     this.applyPendingLine();
   }
@@ -328,7 +367,9 @@ export class TimelineView {
 
   // The index of the first row at least partly visible.
   firstLine(): number {
-    if (this.pendingLine !== null) return this.pendingLine;
+    if (this.pendingLine !== null) {
+      return this.pendingLine;
+    }
     const top = this.scroller.scrollTop;
     const rows = [...this.list.children] as HTMLElement[];
     const i = rows.findIndex((r) => r.offsetTop + r.offsetHeight > top);
@@ -336,7 +377,9 @@ export class TimelineView {
   }
 
   private applyPendingLine(): void {
-    if (this.pendingLine === null || this.scroller.clientHeight === 0) return;
+    if (this.pendingLine === null || this.scroller.clientHeight === 0) {
+      return;
+    }
     const row = this.list.children[this.pendingLine] as HTMLElement | undefined;
     this.scroller.scrollTop = row ? row.offsetTop : 0;
     this.pendingLine = null;
@@ -346,11 +389,15 @@ export class TimelineView {
   // them before the first layout.
   visibleLines(): TimelineLine[] {
     const height = this.scroller.clientHeight;
-    if (height === 0) return [...this.model.lines];
+    if (height === 0) {
+      return [...this.model.lines];
+    }
     const top = this.scroller.scrollTop;
     const shown = new Set<string>();
     for (const row of this.list.querySelectorAll<HTMLElement>('.timeline-line')) {
-      if (row.offsetTop + row.offsetHeight > top && row.offsetTop < top + height) shown.add(row.dataset.rowId!);
+      if (row.offsetTop + row.offsetHeight > top && row.offsetTop < top + height) {
+        shown.add(row.dataset.rowId!);
+      }
     }
     return this.model.lines.filter((l) => shown.has(l.item.id));
   }
@@ -360,7 +407,9 @@ export class TimelineView {
   // the given element.
   anchorOf(id: string, relativeTo: HTMLElement): { x: number; y: number } | null {
     const row = this.lineElement(id);
-    if (!row) return null;
+    if (!row) {
+      return null;
+    }
     const base = relativeTo.getBoundingClientRect();
     const chip = row.querySelector<HTMLElement>('.timeline-chip')!.getBoundingClientRect();
     return { x: chip.right - base.left, y: chip.top + chip.height / 2 - base.top };
@@ -373,10 +422,15 @@ export class TimelineView {
   // Scrolls a line into view, for an item chosen in the list.
   reveal(id: string): void {
     const row = this.lineElement(id);
-    if (!row || this.scroller.clientHeight === 0) return;
+    if (!row || this.scroller.clientHeight === 0) {
+      return;
+    }
     const top = this.scroller.scrollTop;
-    if (row.offsetTop < top) this.scroller.scrollTop = row.offsetTop;
-    else if (row.offsetTop + row.offsetHeight > top + this.scroller.clientHeight) this.scroller.scrollTop = row.offsetTop + row.offsetHeight - this.scroller.clientHeight;
+    if (row.offsetTop < top) {
+      this.scroller.scrollTop = row.offsetTop;
+    } else if (row.offsetTop + row.offsetHeight > top + this.scroller.clientHeight) {
+      this.scroller.scrollTop = row.offsetTop + row.offsetHeight - this.scroller.clientHeight;
+    }
   }
 
   render(model: TimelineModel, labels: TimelineLabels, selectedId: string | null, events: ScheduleEvent[] = [], today: number | null = null): void {
@@ -385,8 +439,11 @@ export class TimelineView {
     this.events = events;
     this.today = today;
     this.fitted = fitWindow(model.extent);
-    if (!this.chosen) this.current = { ...this.fitted };
-    else this.current = clampWindow(this.current, this.fitted);
+    if (!this.chosen) {
+      this.current = { ...this.fitted };
+    } else {
+      this.current = clampWindow(this.current, this.fitted);
+    }
     const rows: HTMLLIElement[] = [];
     for (const row of model.rows) {
       if (row.kind === 'heading' && row.heading === 'totals') {
@@ -414,7 +471,9 @@ export class TimelineView {
     li.dataset.rowId = line.item.id;
     li.dataset.lanes = String(line.lanes);
     li.dataset.expanded = this.expanded.has(line.item.id) ? 'true' : 'false';
-    if (selectedId === line.item.id) li.dataset.selected = 'true';
+    if (selectedId === line.item.id) {
+      li.dataset.selected = 'true';
+    }
     // Two real controls (FR-78 as amended): the number-and-name
     // chip opens the card; the plot expands and collapses the line. The
     // entry holding them is not itself a control.
@@ -427,9 +486,15 @@ export class TimelineView {
     name.appendChild(el('span', 'timeline-title', line.item.name));
     // A value that cannot be read is shown as typed (FR-67, FR-68).
     const typed: string[] = [];
-    if (line.start.kind === 'text') typed.push(`${labels.startHeader}: ${line.start.text}`);
-    if (line.end.kind === 'text') typed.push(`${labels.endHeader}: ${line.end.text}`);
-    if (typed.length > 0) name.appendChild(el('span', 'timeline-typed', typed.join(' · ')));
+    if (line.start.kind === 'text') {
+      typed.push(`${labels.startHeader}: ${line.start.text}`);
+    }
+    if (line.end.kind === 'text') {
+      typed.push(`${labels.endHeader}: ${line.end.text}`);
+    }
+    if (typed.length > 0) {
+      name.appendChild(el('span', 'timeline-typed', typed.join(' · ')));
+    }
     const plot = el('span', 'timeline-plot');
     plot.setAttribute('aria-hidden', 'true');
     if (line.phase) {
@@ -446,9 +511,15 @@ export class TimelineView {
     // the line shows its budget spine alone.
     if (labels.costs) {
       const years = new Map<number, TimelineSpan[]>();
-      for (const sp of line.spans) if (sp.kind === 'amount') years.set(sp.amount!.year, [...(years.get(sp.amount!.year) ?? []), sp]);
+      for (const sp of line.spans) {
+        if (sp.kind === 'amount') {
+          years.set(sp.amount!.year, [...(years.get(sp.amount!.year) ?? []), sp]);
+        }
+      }
       for (const [year, spans] of [...years].sort(([a], [b]) => a - b)) {
-        if (spans.some((sp) => sp.amount!.series === 'budget')) continue;
+        if (spans.some((sp) => sp.amount!.series === 'budget')) {
+          continue;
+        }
         const tick = el('span', 'timeline-year-tick');
         tick.dataset.from = String(spans[0].from);
         tick.dataset.to = String(spans[0].to + 1);
@@ -486,8 +557,12 @@ export class TimelineView {
         const when = s.kind === 'date' && e.kind === 'date' ? `${formatDate(s, 'start')} \u2013 ${formatDate(e, 'end')}` : `${a.start} \u2013 ${a.end}`;
         // The referenced segment is hatched where it is visible.
         const isPhase = line.phase?.activity === a;
-        if (isPhase) seg.dataset.phase = 'true';
-        if (a.edited) seg.dataset.edited = 'true';
+        if (isPhase) {
+          seg.dataset.phase = 'true';
+        }
+        if (a.edited) {
+          seg.dataset.edited = 'true';
+        }
         seg.title = `${a.label}: ${when}${a.progress === null ? '' : `, ${a.progress}%`}${a.edited ? `, ${labels.edited}` : ''}${isPhase ? `, ${labels.workPhase}` : ''}`;
         plot.append(seg, name);
         continue;
@@ -497,7 +572,9 @@ export class TimelineView {
       mark.dataset.from = String(span.from);
       mark.dataset.to = String(span.to + 1);
       mark.dataset.lane = String(span.lane);
-      if (span.kind !== 'span') mark.dataset.kind = span.kind;
+      if (span.kind !== 'span') {
+        mark.dataset.kind = span.kind;
+      }
       plot.appendChild(mark);
     }
     // The "+n" badge: a first-class control when spans do not all fit the
@@ -522,8 +599,11 @@ export class TimelineView {
       indicator.setAttribute('aria-hidden', 'true');
       control.append(indicator, plot);
       control.addEventListener('click', () => {
-        if (this.expanded.has(line.item.id)) this.expanded.delete(line.item.id);
-        else this.expanded.add(line.item.id);
+        if (this.expanded.has(line.item.id)) {
+          this.expanded.delete(line.item.id);
+        } else {
+          this.expanded.add(line.item.id);
+        }
         control.setAttribute('aria-expanded', this.expanded.has(line.item.id) ? 'true' : 'false');
         this.position();
         this.callbacks.onViewChanged();
@@ -551,7 +631,9 @@ export class TimelineView {
   private amountSeg(span: TimelineSpan, scale: number, labels: TimelineLabels, colourClass: string | null): HTMLElement {
     const a = span.amount!;
     const seg = el('span', 'timeline-seg');
-    if (colourClass) seg.classList.add(colourClass);
+    if (colourClass) {
+      seg.classList.add(colourClass);
+    }
     seg.dataset.from = String(span.from);
     seg.dataset.to = String(span.to + 1);
     seg.dataset.lane = String(span.lane);
@@ -563,7 +645,9 @@ export class TimelineView {
     const fill = el('span', 'timeline-seg-fill');
     fill.style.width = `${(share * 100).toFixed(2)}%`;
     seg.append(fill, el('span', 'timeline-seg-label', labels.costs?.thousands(a.value) ?? ''));
-    if (labels.costs) seg.title = `${labels.costs.series[a.series]} ${a.year}: ${labels.costs.exact(a)}`;
+    if (labels.costs) {
+      seg.title = `${labels.costs.series[a.series]} ${a.year}: ${labels.costs.exact(a)}`;
+    }
     return seg;
   }
 
@@ -578,11 +662,19 @@ export class TimelineView {
     name.appendChild(el('span', 'timeline-typed', labels.costs?.unitNote ?? ''));
     const plot = el('span', 'timeline-plot');
     plot.setAttribute('aria-hidden', 'true');
-    for (const span of spans) plot.appendChild(this.amountSeg(span, this.model.scale?.totals ?? 0, labels, null));
+    for (const span of spans) {
+      plot.appendChild(this.amountSeg(span, this.model.scale?.totals ?? 0, labels, null));
+    }
     li.append(name, plot);
     if (labels.costs) {
       li.setAttribute('role', 'group');
-      li.setAttribute('aria-label', `${labels.costs.totals}. ${labels.costs.totalsDescription} ${this.amountList(spans.map((s) => s.amount!), labels.costs)}`);
+      li.setAttribute(
+        'aria-label',
+        `${labels.costs.totals}. ${labels.costs.totalsDescription} ${this.amountList(
+          spans.map((s) => s.amount!),
+          labels.costs,
+        )}`,
+      );
     }
     return li;
   }
@@ -590,7 +682,15 @@ export class TimelineView {
   // Amounts spelled out by year: "2024: Budget 1 000 kr, Outcome 900 kr".
   private amountList(amounts: CostsAmount[], costs: CostsLabels): string {
     const years = [...new Set(amounts.map((a) => a.year))].sort((a, b) => a - b);
-    return years.map((year) => `${year}: ${amounts.filter((a) => a.year === year).map((a) => `${costs.series[a.series]} ${costs.exact(a)}`).join(', ')}`).join('; ');
+    return years
+      .map(
+        (year) =>
+          `${year}: ${amounts
+            .filter((a) => a.year === year)
+            .map((a) => `${costs.series[a.series]} ${costs.exact(a)}`)
+            .join(', ')}`,
+      )
+      .join('; ');
   }
 
   private describe(line: TimelineLine, labels: TimelineLabels): string {
@@ -600,7 +700,9 @@ export class TimelineView {
       const item = (line as CostsLine).item;
       const parts = [`${item.label}: ${item.name}`];
       parts.push(item.amounts.length > 0 ? this.amountList(item.amounts, labels.costs) : labels.costs.none);
-      if (item.typed.length > 0) parts.push(`${labels.costs.typed}: ${item.typed.map((v) => `${labels.costs!.series[v.series]} ${v.year}: ${v.text}`).join('; ')}`);
+      if (item.typed.length > 0) {
+        parts.push(`${labels.costs.typed}: ${item.typed.map((v) => `${labels.costs!.series[v.series]} ${v.year}: ${v.text}`).join('; ')}`);
+      }
       return parts.join('. ');
     }
     const date = (r: TimelineLine['start'], which: 'start' | 'end') => (r.kind === 'date' ? formatDate(r, which) : r.kind === 'text' ? r.text : '');
@@ -623,7 +725,6 @@ export class TimelineView {
     }
     return parts.join('. ');
   }
-
 
   // The plot's width in pixels.
   private plotWidth(): number {
@@ -669,7 +770,7 @@ export class TimelineView {
       const expanded = !!line && this.expanded.has(line.item.id);
       const isTotals = row.classList.contains('timeline-totals');
       if (!isTotals) {
-        row.style.setProperty('--timeline-plot-h', `${expanded ? (isCostsView ? costsOpen : line!.lanes * laneH) : laneH}px`);
+        row.style.setProperty('--timeline-plot-h', `${expanded ? (isCostsView ? costsOpen : line.lanes * laneH) : laneH}px`);
         row.dataset.expanded = expanded ? 'true' : 'false';
       }
       // The work-phase band: placed in time only; the stylesheet gives it
@@ -746,8 +847,12 @@ export class TimelineView {
     const all = ticks(this.current, this.plotWidth());
     const format = (t: { day: number; unit: string }) => {
       const d = new Date(t.day * 86_400_000);
-      if (t.unit === 'year') return String(d.getUTCFullYear());
-      if (t.unit === 'month') return new Intl.DateTimeFormat(locale, { month: 'short', year: 'numeric', timeZone: 'UTC' }).format(d);
+      if (t.unit === 'year') {
+        return String(d.getUTCFullYear());
+      }
+      if (t.unit === 'month') {
+        return new Intl.DateTimeFormat(locale, { month: 'short', year: 'numeric', timeZone: 'UTC' }).format(d);
+      }
       return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(d);
     };
     const plot = el('div', 'timeline-axis-plot');
@@ -816,7 +921,9 @@ export class TimelineView {
       ['before', before, labels.eventsBefore],
       ['after', after, labels.eventsAfter],
     ] as const) {
-      if (beyond.length === 0) continue;
+      if (beyond.length === 0) {
+        continue;
+      }
       const names = beyond.map(said).join('; ');
       const edge = el('button', 'timeline-event-chip timeline-event-edge', fill(labels.moreEvents, { count: beyond.length }));
       edge.type = 'button';
@@ -899,16 +1006,22 @@ export class TimelineView {
   // obstacles too, so two never overlap.
   private placeLaneLabels(row: HTMLElement, expanded: boolean, from: number, length: number, plotW: number, laneH: number): void {
     const labels = [...row.querySelectorAll<HTMLElement>('.timeline-lane-label')];
-    if (labels.length === 0) return;
+    if (labels.length === 0) {
+      return;
+    }
     if (!expanded) {
-      for (const label of labels) label.dataset.place = 'none';
+      for (const label of labels) {
+        label.dataset.place = 'none';
+      }
       return;
     }
     const px = (day: number) => ((day - from) / length) * plotW;
     const obstacles = new Map<string, Array<[number, number]>>();
     const lane = (key: string) => obstacles.get(key) ?? obstacles.set(key, []).get(key)!;
     for (const mark of row.querySelectorAll<HTMLElement>('.timeline-bar, .timeline-point, .timeline-seg')) {
-      if (mark.style.display === 'none') continue;
+      if (mark.style.display === 'none') {
+        continue;
+      }
       const a = px(Number(mark.dataset.from));
       const b = mark.classList.contains('timeline-point') ? a : px(Number(mark.dataset.to));
       lane(mark.dataset.lane ?? '0').push([a, b]);
@@ -930,8 +1043,11 @@ export class TimelineView {
       const next = Math.min(plotW, ...marks.filter(([x0]) => x0 >= b - 0.5).map(([x0]) => x0));
       const prev = Math.max(0, ...marks.filter(([, x1]) => x1 <= a + 0.5).map(([, x1]) => x1));
       let x: number | null = null;
-      if (b >= 0 && b < plotW && next - b >= need) x = b + LANE_LABEL_GAP;
-      else if (a > 0 && a <= plotW && a - prev >= need) x = a - LANE_LABEL_GAP - w;
+      if (b >= 0 && b < plotW && next - b >= need) {
+        x = b + LANE_LABEL_GAP;
+      } else if (a > 0 && a <= plotW && a - prev >= need) {
+        x = a - LANE_LABEL_GAP - w;
+      }
       label.style.top = `${Number(label.dataset.lane ?? 0) * laneH}px`;
       label.style.height = `${laneH}px`;
       if (x === null) {
@@ -983,7 +1099,9 @@ export class TimelineView {
   }
 
   private onPointerMove(e: PointerEvent): void {
-    if (!this.pointers.has(e.pointerId)) return;
+    if (!this.pointers.has(e.pointerId)) {
+      return;
+    }
     this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (this.pinch && this.pointers.size >= 2) {
       const [a, b] = [...this.pointers.values()];
@@ -996,12 +1114,16 @@ export class TimelineView {
       return;
     }
     const drag = this.drag;
-    if (!drag) return;
+    if (!drag) {
+      return;
+    }
     const dx = e.clientX - drag.x;
     const dy = e.clientY - drag.y;
     if (!drag.panning) {
       // A sideways drag pans; an upright one is the list's own scrolling.
-      if (Math.abs(dx) < DRAG_THRESHOLD || Math.abs(dx) <= Math.abs(dy)) return;
+      if (Math.abs(dx) < DRAG_THRESHOLD || Math.abs(dx) <= Math.abs(dy)) {
+        return;
+      }
       drag.panning = true;
       this.suppressClick = true;
       (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
@@ -1012,12 +1134,16 @@ export class TimelineView {
 
   private onPointerUp(e: PointerEvent): void {
     this.pointers.delete(e.pointerId);
-    if (this.pointers.size < 2) this.pinch = null;
+    if (this.pointers.size < 2) {
+      this.pinch = null;
+    }
     if (this.pointers.size === 0) {
       this.drag = null;
       // A click follows the pointer's release at once; a drag's is
       // suppressed only for that click.
-      if (this.suppressClick) setTimeout(() => (this.suppressClick = false), 0);
+      if (this.suppressClick) {
+        setTimeout(() => (this.suppressClick = false), 0);
+      }
     }
   }
 }

@@ -95,64 +95,124 @@ export function parseDemoScenarios(raw: unknown): DemoScenarios {
   const fail = (what: string): never => {
     throw new Error(`demo scenario: ${what}`);
   };
-  if (typeof raw !== 'object' || raw === null) return fail('not an object');
+  if (typeof raw !== 'object' || raw === null) {
+    return fail('not an object');
+  }
   const o = raw as Json;
-  if (o.format !== 'mapvibes-demo' || o.version !== 3) fail('format');
+  if (o.format !== 'mapvibes-demo' || o.version !== 3) {
+    fail('format');
+  }
   // A text in both languages, none empty unless allowed.
   const texts = (v: unknown, what: string, allowEmpty = false): Record<Lang, string> => {
-    if (typeof v !== 'object' || v === null) return fail(what);
+    if (typeof v !== 'object' || v === null) {
+      return fail(what);
+    }
     const t = v as Json;
-    for (const lang of LANGS) if (typeof t[lang] !== 'string' || (!allowEmpty && (t[lang] as string).trim() === '')) fail(`${what}.${lang}`);
+    for (const lang of LANGS) {
+      if (typeof t[lang] !== 'string' || (!allowEmpty && t[lang].trim() === '')) {
+        fail(`${what}.${lang}`);
+      }
+    }
     return { en: t.en as string, sv: t.sv as string };
   };
   const perLang = (v: unknown, what: string): Json => {
-    if (typeof v !== 'object' || v === null) return fail(what);
-    for (const lang of LANGS) if (!(lang in (v as Json))) fail(`${what}.${lang}`);
+    if (typeof v !== 'object' || v === null) {
+      return fail(what);
+    }
+    for (const lang of LANGS) {
+      if (!(lang in (v as Json))) {
+        fail(`${what}.${lang}`);
+      }
+    }
     return v as Json;
   };
   const presetsByLang = perLang(o.preset, 'preset');
   const presets = {} as Record<Lang, ColumnPreset>;
   for (const lang of LANGS) {
     const parsed = parsePresets([presetsByLang[lang]]);
-    if (parsed === null || parsed.length !== 1) return fail(`preset.${lang}`);
+    if (parsed === null || parsed.length !== 1) {
+      return fail(`preset.${lang}`);
+    }
     presets[lang] = parsed[0];
-    if (presets[lang].roles.identifier === undefined) fail(`the preset (${lang}) assigns no identifier`);
+    if (presets[lang].roles.identifier === undefined) {
+      fail(`the preset (${lang}) assigns no identifier`);
+    }
   }
   // The two languages correspond entry by entry.
   const [en, sv] = [presets.en, presets.sv];
   const same = (a: unknown[] | undefined, b: unknown[] | undefined) => (a?.length ?? 0) === (b?.length ?? 0);
-  if (!same(en.headers, sv.headers) || !same(en.areas, sv.areas) || !same(en.programs, sv.programs) || !same(en.statuses, sv.statuses)) fail('the languages do not correspond');
-  if ((en.statuses ?? []).some((s, i) => s.symbol !== sv.statuses![i].symbol)) fail('the status symbols differ between the languages');
-  for (const [role, key] of Object.entries(en.roles)) if (sv.roles[role as keyof typeof sv.roles] !== sv.headers[en.headers.indexOf(key as string)]) fail(`the role ${role} differs between the languages`);
-  if (typeof o.symbolsFromStatus !== 'boolean') fail('symbolsFromStatus');
-  if (!Array.isArray(o.items)) return fail('items');
+  if (!same(en.headers, sv.headers) || !same(en.areas, sv.areas) || !same(en.programs, sv.programs) || !same(en.statuses, sv.statuses)) {
+    fail('the languages do not correspond');
+  }
+  if ((en.statuses ?? []).some((s, i) => s.symbol !== sv.statuses![i].symbol)) {
+    fail('the status symbols differ between the languages');
+  }
+  for (const [role, key] of Object.entries(en.roles)) {
+    if (sv.roles[role as keyof typeof sv.roles] !== sv.headers[en.headers.indexOf(key)]) {
+      fail(`the role ${role} differs between the languages`);
+    }
+  }
+  if (typeof o.symbolsFromStatus !== 'boolean') {
+    fail('symbolsFromStatus');
+  }
+  if (!Array.isArray(o.items)) {
+    return fail('items');
+  }
   const items: ParsedDemoItem[] = o.items.map((entry, i) => {
     const it = entry as Json;
-    if (typeof it.item !== 'string' || it.item === '') fail(`items[${i}].item`);
-    if (!COLOURS.includes(it.colour as RowColour)) fail(`items[${i}].colour`);
+    if (typeof it.item !== 'string' || it.item === '') {
+      fail(`items[${i}].item`);
+    }
+    if (!COLOURS.includes(it.colour as RowColour)) {
+      fail(`items[${i}].colour`);
+    }
     const position = it.position;
-    if (position !== null && !(Array.isArray(position) && position.length === 2 && position.every(fraction))) fail(`items[${i}].position`);
-    if (it.symbol !== null && !isSymbol(it.symbol)) fail(`items[${i}].symbol`);
-    if (!Array.isArray(it.comments)) fail(`items[${i}].comments`);
+    if (position !== null && !(Array.isArray(position) && position.length === 2 && position.every(fraction))) {
+      fail(`items[${i}].position`);
+    }
+    if (it.symbol !== null && !isSymbol(it.symbol)) {
+      fail(`items[${i}].symbol`);
+    }
+    if (!Array.isArray(it.comments)) {
+      fail(`items[${i}].comments`);
+    }
     const comments = (it.comments as Json[]).map((c, j) => {
-      if (!isCommentDate(c.date)) fail(`items[${i}].comments[${j}]`);
+      if (!isCommentDate(c.date)) {
+        fail(`items[${i}].comments[${j}]`);
+      }
       return { date: c.date as string, text: texts(c.text, `items[${i}].comments[${j}].text`) };
     });
     // The activities, optional; the labels follow the interface language like
     // the comments' texts.
     let activities: ParsedDemoItem['activities'];
     if (it.activities !== undefined) {
-      if (!Array.isArray(it.activities)) fail(`items[${i}].activities`);
+      if (!Array.isArray(it.activities)) {
+        fail(`items[${i}].activities`);
+      }
       activities = (it.activities as Json[]).map((a, j) => {
-        if (typeof a.start !== 'string' || typeof a.end !== 'string') fail(`items[${i}].activities[${j}]`);
+        if (typeof a.start !== 'string' || typeof a.end !== 'string') {
+          fail(`items[${i}].activities[${j}]`);
+        }
         const progress = a.progress === null ? null : a.progress;
-        if (progress !== null && (typeof progress !== 'number' || progress < 0 || progress > 100)) fail(`items[${i}].activities[${j}].progress`);
-        if (a.edited !== undefined && a.edited !== true) fail(`items[${i}].activities[${j}].edited`);
-        return { label: texts(a.label, `items[${i}].activities[${j}].label`), start: a.start as string, end: a.end as string, progress: progress as number | null, ...(a.edited === true ? { edited: true as const } : {}) };
+        if (progress !== null && (typeof progress !== 'number' || progress < 0 || progress > 100)) {
+          fail(`items[${i}].activities[${j}].progress`);
+        }
+        if (a.edited !== undefined && a.edited !== true) {
+          fail(`items[${i}].activities[${j}].edited`);
+        }
+        return {
+          label: texts(a.label, `items[${i}].activities[${j}].label`),
+          start: a.start as string,
+          end: a.end as string,
+          progress: progress as number | null,
+          ...(a.edited === true ? { edited: true as const } : {}),
+        };
       });
     }
     // The work phase names one of the item's activities by its order.
-    if (it.workPhase !== undefined && !(typeof it.workPhase === 'string' && (activities ?? []).some((_, j) => activityId(j) === it.workPhase))) fail(`items[${i}].workPhase`);
+    if (it.workPhase !== undefined && !(typeof it.workPhase === 'string' && (activities ?? []).some((_, j) => activityId(j) === it.workPhase))) {
+      fail(`items[${i}].workPhase`);
+    }
     return {
       item: it.item as string,
       colour: it.colour as RowColour,
@@ -163,41 +223,67 @@ export function parseDemoScenarios(raw: unknown): DemoScenarios {
       ...(it.workPhase !== undefined ? { workPhase: it.workPhase as string } : {}),
     };
   });
-  if (new Set(items.map((i) => i.item)).size !== items.length) fail('repeated items');
+  if (new Set(items.map((i) => i.item)).size !== items.length) {
+    fail('repeated items');
+  }
   const labelsByLang = perLang(o.colourLabels, 'colourLabels');
   const colourLabels = {} as Record<Lang, Partial<Record<RowColour, string>>>;
   for (const lang of LANGS) {
     const labels = labelsByLang[lang];
-    if (typeof labels !== 'object' || labels === null) return fail(`colourLabels.${lang}`);
+    if (typeof labels !== 'object' || labels === null) {
+      return fail(`colourLabels.${lang}`);
+    }
     colourLabels[lang] = {};
     for (const [colour, label] of Object.entries(labels as Json)) {
-      if (!COLOURS.includes(colour as RowColour) || typeof label !== 'string' || label.trim() === '') fail(`colourLabels.${lang}.${colour}`);
+      if (!COLOURS.includes(colour as RowColour) || typeof label !== 'string' || label.trim() === '') {
+        fail(`colourLabels.${lang}.${colour}`);
+      }
       colourLabels[lang][colour as RowColour] = label as string;
     }
   }
-  if (Object.keys(colourLabels.en).sort().join() !== Object.keys(colourLabels.sv).sort().join()) fail('the colour labels do not correspond');
+  if (Object.keys(colourLabels.en).sort().join() !== Object.keys(colourLabels.sv).sort().join()) {
+    fail('the colour labels do not correspond');
+  }
   const glanceByLang = perLang(o.glanceColumns, 'glanceColumns');
   const glanceColumns = {} as Record<Lang, string[]>;
   for (const lang of LANGS) {
     const glance = glanceByLang[lang];
-    if (!Array.isArray(glance) || glance.some((h) => !presets[lang].headers.includes(h as string))) return fail(`glanceColumns.${lang}`);
+    if (!Array.isArray(glance) || glance.some((h) => !presets[lang].headers.includes(h as string))) {
+      return fail(`glanceColumns.${lang}`);
+    }
     glanceColumns[lang] = glance as string[];
   }
-  if (!Array.isArray(o.annotations)) return fail('annotations');
+  if (!Array.isArray(o.annotations)) {
+    return fail('annotations');
+  }
   const annotations = o.annotations.map((entry, i) => {
     const a = entry as Json;
     const kind = a.kind as AnnotationKind;
-    if (!ANNOTATION_KINDS.includes(kind)) fail(`annotations[${i}].kind`);
+    if (!ANNOTATION_KINDS.includes(kind)) {
+      fail(`annotations[${i}].kind`);
+    }
     const points = a.points;
     const count = Array.isArray(points) ? points.length : 0;
     const counted = kind === 'rectangle' || kind === 'circle' ? count === 2 : count >= (kind === 'polygon' ? 3 : 2);
-    if (!counted || !(points as unknown[]).every((p) => Array.isArray(p) && p.length === 2 && p.every(fraction))) fail(`annotations[${i}].points`);
-    if (!COLOURS.includes(a.colour as RowColour)) fail(`annotations[${i}].colour`);
-    if (!(typeof a.fillOpacity === 'number' && a.fillOpacity >= 0 && a.fillOpacity <= 1)) fail(`annotations[${i}].fillOpacity`);
-    if (!OUTLINES.includes(a.outline as Outline)) fail(`annotations[${i}].outline`);
-    if (!LINE_STYLES.includes(a.lineStyle as LineStyle)) fail(`annotations[${i}].lineStyle`);
+    if (!counted || !(points as unknown[]).every((p) => Array.isArray(p) && p.length === 2 && p.every(fraction))) {
+      fail(`annotations[${i}].points`);
+    }
+    if (!COLOURS.includes(a.colour as RowColour)) {
+      fail(`annotations[${i}].colour`);
+    }
+    if (!(typeof a.fillOpacity === 'number' && a.fillOpacity >= 0 && a.fillOpacity <= 1)) {
+      fail(`annotations[${i}].fillOpacity`);
+    }
+    if (!OUTLINES.includes(a.outline as Outline)) {
+      fail(`annotations[${i}].outline`);
+    }
+    if (!LINE_STYLES.includes(a.lineStyle as LineStyle)) {
+      fail(`annotations[${i}].lineStyle`);
+    }
     const label = texts(a.label, `annotations[${i}].label`, true);
-    if (a.link !== null && !items.some((it) => it.item === a.link)) fail(`annotations[${i}].link`);
+    if (a.link !== null && !items.some((it) => it.item === a.link)) {
+      fail(`annotations[${i}].link`);
+    }
     return {
       kind,
       points: (points as number[][]).map((p) => [p[0], p[1]] as [number, number]),
@@ -212,9 +298,13 @@ export function parseDemoScenarios(raw: unknown): DemoScenarios {
   // The events, optional; the labels follow the interface language.
   let events: Array<{ date: string; label: Record<Lang, string> }> = [];
   if (o.events !== undefined) {
-    if (!Array.isArray(o.events)) return fail('events');
+    if (!Array.isArray(o.events)) {
+      return fail('events');
+    }
     events = (o.events as Json[]).map((e, i) => {
-      if (typeof e.date !== 'string' || readDate(e.date).kind !== 'date') fail(`events[${i}].date`);
+      if (typeof e.date !== 'string' || readDate(e.date).kind !== 'date') {
+        fail(`events[${i}].date`);
+      }
       return { date: e.date as string, label: texts(e.label, `events[${i}].label`) };
     });
   }
@@ -223,7 +313,11 @@ export function parseDemoScenarios(raw: unknown): DemoScenarios {
     symbolsFromStatus: o.symbolsFromStatus as boolean,
     colourLabels: colourLabels[lang],
     glanceColumns: glanceColumns[lang],
-    items: items.map((it) => ({ ...it, comments: it.comments.map((c) => ({ date: c.date, text: c.text[lang] })), activities: it.activities?.map((a) => ({ ...a, label: a.label[lang] })) })),
+    items: items.map((it) => ({
+      ...it,
+      comments: it.comments.map((c) => ({ date: c.date, text: c.text[lang] })),
+      activities: it.activities?.map((a) => ({ ...a, label: a.label[lang] })),
+    })),
     annotations: annotations.map((a) => ({ ...a, label: a.label[lang] })),
     events: events.map((e) => ({ date: e.date, label: e.label[lang] })),
   });
@@ -255,9 +349,18 @@ export function demoCounterparts(from: Lang, to: Lang): DemoCounterparts {
     colourLabels: COLOURS.filter((c) => a.colourLabels[c] !== undefined).map((c) => ({ colour: c, from: a.colourLabels[c]!, to: b.colourLabels[c]! })),
     areas: pairs(a.preset.areas, b.preset.areas),
     programs: pairs(a.preset.programs, b.preset.programs),
-    statuses: pairs(a.preset.statuses?.map((s) => s.name), b.preset.statuses?.map((s) => s.name)),
-    annotationLabels: pairs(a.annotations.map((x) => x.label), b.annotations.map((x) => x.label)),
-    eventLabels: pairs(a.events.map((x) => x.label), b.events.map((x) => x.label)),
+    statuses: pairs(
+      a.preset.statuses?.map((s) => s.name),
+      b.preset.statuses?.map((s) => s.name),
+    ),
+    annotationLabels: pairs(
+      a.annotations.map((x) => x.label),
+      b.annotations.map((x) => x.label),
+    ),
+    eventLabels: pairs(
+      a.events.map((x) => x.label),
+      b.events.map((x) => x.label),
+    ),
   };
 }
 
@@ -266,5 +369,5 @@ export function demoCounterparts(from: Lang, to: Lang): DemoCounterparts {
 export function demoWorkbook(lang: Lang = 'en'): ArrayBuffer {
   // With the byte order mark, the spreadsheet reader reads the text as UTF-8
   // (without it, as a single-byte code page).
-  return new TextEncoder().encode(`\uFEFF${lang === 'sv' ? listTextSv : listText}`).buffer as ArrayBuffer;
+  return new TextEncoder().encode(`\uFEFF${lang === 'sv' ? listTextSv : listText}`).buffer;
 }

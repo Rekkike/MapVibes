@@ -1,5 +1,17 @@
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
-import { byId, dragItemToStage, flush, importExampleWorkbook, loadExampleBackground, markers, mountApp, placementItems, STAGE, stubSaveDialog, type Picker } from './harness';
+import {
+  byId,
+  dragItemToStage,
+  flush,
+  importExampleWorkbook,
+  loadExampleBackground,
+  markers,
+  mountApp,
+  placementItems,
+  STAGE,
+  stubSaveDialog,
+  type Picker,
+} from './harness';
 
 async function prepareWork(): Promise<void> {
   await importExampleWorkbook();
@@ -84,7 +96,7 @@ describe('Save work (FR-13)', () => {
       return 'blob:local-1';
     };
     URL.revokeObjectURL = () => undefined;
-    const original = HTMLAnchorElement.prototype.click;
+    const original = Object.getOwnPropertyDescriptor(HTMLAnchorElement.prototype, 'click')?.value as (this: HTMLAnchorElement) => void;
     HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
       clicked.push({ href: this.getAttribute('href') ?? '', download: this.download });
     };

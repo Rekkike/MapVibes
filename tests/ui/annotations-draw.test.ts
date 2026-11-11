@@ -20,7 +20,9 @@ function at(type: string, x: number, y: number): void {
 
 function drag(from: [number, number], to: [number, number], steps = 3): void {
   at('pointerdown', ...from);
-  for (let i = 1; i <= steps; i++) at('pointermove', from[0] + ((to[0] - from[0]) * i) / steps, from[1] + ((to[1] - from[1]) * i) / steps);
+  for (let i = 1; i <= steps; i++) {
+    at('pointermove', from[0] + ((to[0] - from[0]) * i) / steps, from[1] + ((to[1] - from[1]) * i) / steps);
+  }
   at('pointerup', ...to);
 }
 

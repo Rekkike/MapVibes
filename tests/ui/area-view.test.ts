@@ -97,7 +97,9 @@ describe('group-by-area view (FR-17)', () => {
   test('editing an area value moves the row to its section; the flat view returns unchanged', () => {
     setRole('Group', 'area');
     view('grouped');
-    const cell = document.querySelectorAll<HTMLElement>('#row-table-body tr:not(.group-row)')[4].querySelector<HTMLInputElement>('td[data-header="Group"] .cell-input')!;
+    const cell = document
+      .querySelectorAll<HTMLElement>('#row-table-body tr:not(.group-row)')[4]
+      .querySelector<HTMLInputElement>('td[data-header="Group"] .cell-input')!;
     cell.value = 'South';
     cell.dispatchEvent(new Event('change'));
     // The typed value joined the area list (FR-32), whose order comes first.

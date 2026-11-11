@@ -25,11 +25,7 @@ export function renumber(rows: RowData[]): void {
 
 export type SortDirection = 'asc' | 'desc';
 
-export function sortRows(
-  rows: RowData[],
-  header: string,
-  direction: SortDirection,
-): RowData[] {
+export function sortRows(rows: RowData[], header: string, direction: SortDirection): RowData[] {
   const copy = rows.slice();
   copy.sort((a, b) => {
     const av = a.values[header] ?? '';
@@ -62,7 +58,9 @@ export interface ValueFilter {
 export const NO_FILTER: ValueFilter = { kind: 'all', header: '', text: '' };
 
 export function applyFilter(rows: NumberedRow[], filter: ValueFilter): NumberedRow[] {
-  if (filter.kind === 'all' || filter.header === '') return rows;
+  if (filter.kind === 'all' || filter.header === '') {
+    return rows;
+  }
   const value = (r: RowData) => r.values[filter.header] ?? '';
   switch (filter.kind) {
     case 'empty':

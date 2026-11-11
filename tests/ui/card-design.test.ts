@@ -10,7 +10,9 @@ const css = readFileSync(join(process.cwd(), 'src', 'styles.css'), 'utf8').repla
 function rule(selector: string): string {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const m = new RegExp(`(?:^|\\n|,\\s*)${escaped}\\s*(?:,[^{]*)?\\{([^}]*)\\}`).exec(css);
-  if (!m) throw new Error(`no rule for ${selector}`);
+  if (!m) {
+    throw new Error(`no rule for ${selector}`);
+  }
   return m[1];
 }
 
@@ -61,7 +63,9 @@ for (const theme of ['light', 'dark'] as const) {
       expect(card().querySelector('.details-badge')).toBeNull();
       expect(card().querySelector('.details-facts')).toBeNull();
       const text = card().textContent ?? '';
-      for (const word of ['Number', 'Colour', 'Symbol', 'Green', 'Circle']) expect(text, word).not.toContain(word);
+      for (const word of ['Number', 'Colour', 'Symbol', 'Green', 'Circle']) {
+        expect(text, word).not.toContain(word);
+      }
       // The name (here the identifier, as no name is given) appears once, in
       // the header.
       expect(card().querySelector('.details-title')!.textContent).toBe('A-01');
@@ -75,7 +79,9 @@ for (const theme of ['light', 'dark'] as const) {
       const headliners = [...card().querySelector('.card-headliners')!.children].map((c) => c.className);
       expect(headliners).toEqual(['card-note', 'details-comments card-comments']);
       expect(card().querySelector('.card-note')!.textContent).toBe('Alpha item');
-      expect([...card().querySelectorAll('.card-fields .card-field')].map((f) => [f.querySelector('dt')!.textContent, f.querySelector('dd')!.textContent])).toEqual([
+      expect(
+        [...card().querySelectorAll('.card-fields .card-field')].map((f) => [f.querySelector('dt')!.textContent, f.querySelector('dd')!.textContent]),
+      ).toEqual([
         ['Group', 'North'],
         ['Start', '2024-01-05'],
         ['End', '2024-02-01'],
@@ -101,7 +107,13 @@ describe('content-first card (FR-37): stylesheet', () => {
   test('the type scale is compact with a 16 pixel floor', () => {
     const size = (selector: string) => Number(/font-size: ([\d.]+)rem;/.exec(rule(selector))![1]);
     expect(size('.presentation-card .details-title')).toBeLessThanOrEqual(1.5);
-    for (const selector of ['.presentation-card', '.presentation-card .card-note', '.presentation-card .card-label', '.presentation-card .card-value', '.presentation-card .details-comment-text']) {
+    for (const selector of [
+      '.presentation-card',
+      '.presentation-card .card-note',
+      '.presentation-card .card-label',
+      '.presentation-card .card-value',
+      '.presentation-card .details-comment-text',
+    ]) {
       expect(size(selector), selector).toBeGreaterThanOrEqual(1);
     }
   });

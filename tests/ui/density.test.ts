@@ -10,18 +10,22 @@ function stripMedia(text: string): string {
   let i = 0;
   for (;;) {
     const start = text.indexOf('@media', i);
-    if (start < 0) return out + text.slice(i);
+    if (start < 0) {
+      return out + text.slice(i);
+    }
     out += text.slice(i, start);
     let depth = 0;
     let j = text.indexOf('{', start);
     for (; j < text.length; j++) {
-      if (text[j] === '{') depth++;
-      else if (text[j] === '}' && --depth === 0) break;
+      if (text[j] === '{') {
+        depth++;
+      } else if (text[j] === '}' && --depth === 0) {
+        break;
+      }
     }
     i = j + 1;
   }
 }
-
 
 // Information density (FR-42), pinned over the stylesheet and the DOM.
 const css = readFileSync(join(process.cwd(), 'src', 'styles.css'), 'utf8');
@@ -30,7 +34,9 @@ function tokens(selector: string): Record<string, string> {
   const start = css.indexOf(`${selector} {`);
   const body = css.slice(css.indexOf('{', start) + 1, css.indexOf('}', start));
   const out: Record<string, string> = {};
-  for (const m of body.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) out[m[1]] = m[2].trim();
+  for (const m of body.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) {
+    out[m[1]] = m[2].trim();
+  }
   return out;
 }
 const root = tokens(':root');
@@ -45,8 +51,12 @@ const rules = [...plain.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({
 function declarations(selector: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const rule of rules) {
-    if (!rule.selectors.includes(selector)) continue;
-    for (const d of rule.body.matchAll(/([\w-]+)\s*:\s*([^;]+);/g)) out[d[1]] = d[2].trim().replace(/\s+/g, ' ');
+    if (!rule.selectors.includes(selector)) {
+      continue;
+    }
+    for (const d of rule.body.matchAll(/([\w-]+)\s*:\s*([^;]+);/g)) {
+      out[d[1]] = d[2].trim().replace(/\s+/g, ' ');
+    }
   }
   return out;
 }
@@ -54,10 +64,16 @@ function declarations(selector: string): Record<string, string> {
 // A length in rem, with tokens resolved; 0 is 0.
 function rem(value: string): number {
   const token = /^var\((--[\w-]+)\)$/.exec(value);
-  if (token) return rem(root[token[1]]);
-  if (value === '0') return 0;
+  if (token) {
+    return rem(root[token[1]]);
+  }
+  if (value === '0') {
+    return 0;
+  }
   const m = /^([\d.]+)rem$/.exec(value);
-  if (!m) throw new Error(`not a rem length: ${value}`);
+  if (!m) {
+    throw new Error(`not a rem length: ${value}`);
+  }
   return Number(m[1]);
 }
 
@@ -116,8 +132,12 @@ describe('information density (FR-42): stylesheet', () => {
     for (const selector of DENSE) {
       const d = declarations(selector);
       for (const property of SPACING) {
-        if (!d[property]) continue;
-        for (const part of d[property].split(' ')) expect(rem(part), `${selector} ${property}`).toBeLessThanOrEqual(0.5);
+        if (!d[property]) {
+          continue;
+        }
+        for (const part of d[property].split(' ')) {
+          expect(rem(part), `${selector} ${property}`).toBeLessThanOrEqual(0.5);
+        }
       }
     }
   });
@@ -126,7 +146,9 @@ describe('information density (FR-42): stylesheet', () => {
     for (const selector of DENSE) {
       const d = declarations(selector);
       const spacing = SPACING.filter((p) => d[p]).map((p) => d[p]);
-      if (spacing.length === 0) continue;
+      if (spacing.length === 0) {
+        continue;
+      }
       expect(spacing.join(' '), selector).toMatch(/var\(--dense-[123]\)|^0$/);
     }
   });
@@ -163,7 +185,11 @@ describe('information density (FR-42): stylesheet', () => {
   test('the presentation data card is the exception: no density rule applies to it', () => {
     for (const rule of rules) {
       const dense = /var\(--dense-/.test(rule.body);
-      if (dense) for (const s of rule.selectors) expect(s, s).not.toContain('presentation-card');
+      if (dense) {
+        for (const s of rule.selectors) {
+          expect(s, s).not.toContain('presentation-card');
+        }
+      }
     }
     // Its field wrappers take no part in its grid.
     expect(declarations('.presentation-card .card-field').display).toBe('contents');

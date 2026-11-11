@@ -4,24 +4,14 @@
 // Viewport arithmetic lives in viewport.ts.
 
 import type { MercatorProjection } from './osm';
-import {
-  BUTTON_ZOOM_FACTOR,
-  fitView,
-  IDENTITY,
-  panBy,
-  pinchStep,
-  resetView,
-  wheelZoomFactor,
-  zoomAt,
-  type Point,
-  type Size,
-  type Viewport,
-} from './viewport';
+import { fitView, IDENTITY, panBy, pinchStep, resetView, wheelZoomFactor, zoomAt, type Point, type Size, type Viewport } from './viewport';
 
 export const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'avif'];
 
 export function isImageFile(file: File): boolean {
-  if (file.type.startsWith('image/')) return true;
+  if (file.type.startsWith('image/')) {
+    return true;
+  }
   const ext = file.name.toLowerCase().split('.').pop() ?? '';
   return IMAGE_EXTENSIONS.includes(ext);
 }
@@ -48,8 +38,8 @@ export interface MapViewHooks {
 function readAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error ?? new Error('the file could not be read'));
     reader.readAsDataURL(file);
   });
 }
@@ -129,8 +119,11 @@ export class MapView {
           this.hooks.onBackgroundChanged();
         } else {
           this.hooks.onError('unreadable');
-          if (this.background) probe.src = this.background.src;
-          else probe.removeAttribute('src');
+          if (this.background) {
+            probe.src = this.background.src;
+          } else {
+            probe.removeAttribute('src');
+          }
         }
         this.render();
         resolve(ok);
@@ -160,21 +153,27 @@ export class MapView {
   }
 
   zoomBy(factor: number, anchor?: Point): void {
-    if (!this.background) return;
+    if (!this.background) {
+      return;
+    }
     const size = this.stageSize();
     this.ease();
     this.setViewport(zoomAt(this.viewport, factor, anchor ?? { x: size.width / 2, y: size.height / 2 }));
   }
 
   fit(animate = true): void {
-    if (!this.background) return;
+    if (!this.background) {
+      return;
+    }
     const size = this.stageSize();
     if (size.width <= 0 || size.height <= 0) {
       this.pendingFit = true;
       return;
     }
     this.pendingFit = false;
-    if (animate) this.ease();
+    if (animate) {
+      this.ease();
+    }
     this.setViewport(fitView(this.background, size));
   }
 
@@ -183,10 +182,16 @@ export class MapView {
   // other view keeps its centre and scales by how much the stage narrowed
   // (never up), so that it keeps showing what it showed.
   refit(before: Size): void {
-    if (!this.background || before.width <= 0 || before.height <= 0) return;
+    if (!this.background || before.width <= 0 || before.height <= 0) {
+      return;
+    }
     const after = this.stageSize();
-    if (after.width <= 0 || after.height <= 0) return;
-    if (after.width === before.width && after.height === before.height) return;
+    if (after.width <= 0 || after.height <= 0) {
+      return;
+    }
+    if (after.width === before.width && after.height === before.height) {
+      return;
+    }
     const v = this.viewport;
     // A fitted view becomes the fitted view of the new size.
     const fitted = fitView(this.background, before);
@@ -205,13 +210,17 @@ export class MapView {
 
   // Sets a saved view (the exported viewer's, FR-38).
   restoreView(v: Viewport): void {
-    if (!this.background) return;
+    if (!this.background) {
+      return;
+    }
     this.pendingFit = false;
     this.setViewport({ ...v });
   }
 
   reset(): void {
-    if (!this.background) return;
+    if (!this.background) {
+      return;
+    }
     this.ease();
     this.setViewport(resetView(this.background, this.stageSize()));
   }
@@ -220,13 +229,17 @@ export class MapView {
   // markers into place while the class is set.
   private ease(): void {
     this.stage.classList.add('easing');
-    if (this.easeTimer !== null) clearTimeout(this.easeTimer);
+    if (this.easeTimer !== null) {
+      clearTimeout(this.easeTimer);
+    }
     this.easeTimer = setTimeout(() => this.stopEasing(), EASE_MS);
   }
 
   // Dragging and pinching follow the pointer directly.
   private stopEasing(): void {
-    if (this.easeTimer !== null) clearTimeout(this.easeTimer);
+    if (this.easeTimer !== null) {
+      clearTimeout(this.easeTimer);
+    }
     this.easeTimer = null;
     this.stage.classList.remove('easing');
   }
@@ -234,8 +247,11 @@ export class MapView {
   // Called when the map segment becomes visible: a background loaded while
   // the stage had no layout size is fitted now.
   shown(): void {
-    if (this.pendingFit) this.fit(false);
-    else this.render();
+    if (this.pendingFit) {
+      this.fit(false);
+    } else {
+      this.render();
+    }
   }
 
   render(): void {
@@ -255,7 +271,9 @@ export class MapView {
     this.stage.addEventListener(
       'wheel',
       (e) => {
-        if (!this.background) return;
+        if (!this.background) {
+          return;
+        }
         e.preventDefault();
         this.zoomBy(wheelZoomFactor(e.deltaY), this.stagePoint(e.clientX, e.clientY));
       },
@@ -263,11 +281,19 @@ export class MapView {
     );
     this.stage.addEventListener('pointerdown', (e) => {
       this.stopEasing();
-      if (!this.background || e.button !== 0) return;
-      if ((e.target as HTMLElement).closest('.map-overlay-control')) return;
+      if (!this.background || e.button !== 0) {
+        return;
+      }
+      if ((e.target as HTMLElement).closest('.map-overlay-control')) {
+        return;
+      }
       const onMarker = (e.target as HTMLElement).closest('.marker') !== null;
-      if (onMarker && !this.options.panOverMarkers) return;
-      if (this.options.panFilter && !this.options.panFilter(e)) return;
+      if (onMarker && !this.options.panOverMarkers) {
+        return;
+      }
+      if (this.options.panFilter && !this.options.panFilter(e)) {
+        return;
+      }
       this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       // A press on a marker is not captured, so that its release still
       // reaches the marker when it is a tap.
@@ -294,7 +320,9 @@ export class MapView {
     });
     this.stage.addEventListener('pointermove', (e) => {
       const previous = this.pointers.get(e.pointerId);
-      if (previous) this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (previous) {
+        this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      }
       if (this.pinch && previous && this.pinch.includes(e.pointerId)) {
         const [a, b] = this.pinch;
         const other = this.pointers.get(e.pointerId === a ? b : a)!;
@@ -304,11 +332,15 @@ export class MapView {
         this.setViewport(pinchStep(this.viewport, from, to));
         return;
       }
-      if (!this.pan || e.pointerId !== this.pan.pointerId) return;
+      if (!this.pan || e.pointerId !== this.pan.pointerId) {
+        return;
+      }
       const dx = e.clientX - this.pan.last.x;
       const dy = e.clientY - this.pan.last.y;
       this.pan.last = { x: e.clientX, y: e.clientY };
-      if (dx !== 0 || dy !== 0) this.setViewport(panBy(this.viewport, dx, dy));
+      if (dx !== 0 || dy !== 0) {
+        this.setViewport(panBy(this.viewport, dx, dy));
+      }
     });
     const endPan = (e: PointerEvent) => {
       this.pointers.delete(e.pointerId);
@@ -323,7 +355,9 @@ export class MapView {
           return;
         }
       }
-      if (!this.pan || e.pointerId !== this.pan.pointerId) return;
+      if (!this.pan || e.pointerId !== this.pan.pointerId) {
+        return;
+      }
       this.pan = null;
       this.stage.classList.remove('panning');
     };

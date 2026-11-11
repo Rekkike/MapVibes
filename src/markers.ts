@@ -36,11 +36,18 @@ export interface PlacedMarker {
 
 // The numbers are the rows' sequential numbers, unless given (the exported
 // viewer shows the numbers of the presentation, FR-38).
-export function placedMarkers(rows: RowData[], positions: MarkerPositions, shapes: MarkerShapes = new Map(), numbered: NumberedRow[] = numberRows(rows)): PlacedMarker[] {
+export function placedMarkers(
+  rows: RowData[],
+  positions: MarkerPositions,
+  shapes: MarkerShapes = new Map(),
+  numbered: NumberedRow[] = numberRows(rows),
+): PlacedMarker[] {
   const out: PlacedMarker[] = [];
   for (const { row, number, label } of numbered) {
     const position = positions.get(row);
-    if (position) out.push({ row, number, label, colour: row.colour, shape: shapes.get(row) ?? DEFAULT_SHAPE, position: { ...position } });
+    if (position) {
+      out.push({ row, number, label, colour: row.colour, shape: shapes.get(row) ?? DEFAULT_SHAPE, position: { ...position } });
+    }
   }
   return out;
 }

@@ -12,7 +12,7 @@ describe('full-test demo fixtures (FR-41)', () => {
   test('the demo list is about a dozen items under the preset headers', () => {
     expect(list.rows.length).toBe(12);
     expect(list.headers).toEqual(scenario.preset.headers);
-    expect(list.rows[0]).toMatchObject({ Item: 'D-01', 'Start year': '2019', 'End year': '2021' });
+    expect(list.rows[0]).toMatchObject({ Item: 'D-01', 'Start year': '2026', 'End year': '2028' });
   });
 
   test('the preset assigns every role and carries the vocabularies', () => {
@@ -73,7 +73,15 @@ describe('full-test demo fixtures (FR-41)', () => {
     expect(bad((o) => (o.items[0].comments[0].text = 'One language only'))).toThrow();
     expect(bad((o) => (o.annotations[0].label = { en: 'Footprint' }))).toThrow();
     expect(bad((o) => (o.annotations[0].kind = 'star'))).toThrow();
-    expect(bad((o) => (o.annotations[0].points = [[0.1, 0.1], [0.2, 0.2]]))).toThrow();
+    expect(
+      bad(
+        (o) =>
+          (o.annotations[0].points = [
+            [0.1, 0.1],
+            [0.2, 0.2],
+          ]),
+      ),
+    ).toThrow();
     expect(bad((o) => (o.annotations[1].points[0] = [1.2, 0]))).toThrow();
     expect(bad((o) => (o.annotations[0].fillOpacity = 2))).toThrow();
     expect(bad((o) => (o.annotations[0].link = 'D-99'))).toThrow();
@@ -89,9 +97,15 @@ describe('full-test demo fixtures (FR-41)', () => {
 describe('the demo extension (FR-41 as amended in v1.1.0)', () => {
   test('invented programmes span areas, and some items have none', () => {
     const byProgram = new Map<string, Set<string>>();
-    for (const row of list.rows) if (row.Programme !== '') byProgram.set(row.Programme, (byProgram.get(row.Programme) ?? new Set()).add(row.Area));
+    for (const row of list.rows) {
+      if (row.Programme !== '') {
+        byProgram.set(row.Programme, (byProgram.get(row.Programme) ?? new Set()).add(row.Area));
+      }
+    }
     expect([...byProgram.keys()].sort()).toEqual(scenario.preset.programs);
-    for (const areas of byProgram.values()) expect(areas.size).toBeGreaterThanOrEqual(3);
+    for (const areas of byProgram.values()) {
+      expect(areas.size).toBeGreaterThanOrEqual(3);
+    }
     expect(list.rows.filter((r) => r.Programme === '').length).toBeGreaterThanOrEqual(3);
   });
 
@@ -124,7 +138,7 @@ describe('the demo in both interface languages (FR-41 as amended in v1.3.1)', ()
   test('the Swedish list is the same items under the Swedish preset headers', () => {
     expect(svList.headers).toEqual(sv.preset.headers);
     expect(svList.rows.map((r) => r.Objekt)).toEqual(list.rows.map((r) => r.Item));
-    expect(svList.rows[0]).toMatchObject({ Objekt: 'D-01', Startår: '2019', Slutår: '2021', Status: 'Klar' });
+    expect(svList.rows[0]).toMatchObject({ Objekt: 'D-01', Startår: '2026', Slutår: '2028', Status: 'Klar' });
     // The years and the empty cells are the same in both lists.
     list.rows.forEach((row, i) => {
       const other = svList.rows[i];
@@ -143,16 +157,29 @@ describe('the demo in both interface languages (FR-41 as amended in v1.3.1)', ()
     const c = demoCounterparts('en', 'sv');
     list.rows.forEach((row, i) => {
       expect(c.statuses.find(([from]) => from === row.Status)![1]).toBe(svList.rows[i].Status);
-      if (row.Area !== '') expect(c.areas.find(([from]) => from === row.Area)![1]).toBe(svList.rows[i].Område);
-      if (row.Programme !== '') expect(c.programs.find(([from]) => from === row.Programme)![1]).toBe(svList.rows[i].Program);
+      if (row.Area !== '') {
+        expect(c.areas.find(([from]) => from === row.Area)![1]).toBe(svList.rows[i].Område);
+      }
+      if (row.Programme !== '') {
+        expect(c.programs.find(([from]) => from === row.Programme)![1]).toBe(svList.rows[i].Program);
+      }
     });
   });
 
   test('every provided label has its own Swedish text', () => {
     const c = demoCounterparts('en', 'sv');
-    const labels = [...c.colourLabels.map((l) => [l.from, l.to]), ...c.areas, ...c.programs, ...c.statuses, ...c.annotationLabels, [scenario.preset.name, sv.preset.name]];
+    const labels = [
+      ...c.colourLabels.map((l) => [l.from, l.to]),
+      ...c.areas,
+      ...c.programs,
+      ...c.statuses,
+      ...c.annotationLabels,
+      [scenario.preset.name, sv.preset.name],
+    ];
     expect(labels.length).toBe(4 + 5 + 2 + 6 + 3 + 1);
-    for (const [en, svText] of labels) expect(svText, en).not.toBe(en);
+    for (const [en, svText] of labels) {
+      expect(svText, en).not.toBe(en);
+    }
     expect(sv.glanceColumns).toEqual(['Program', 'Status', 'Slutår']);
     expect(sv.items.flatMap((i) => i.comments.map((c) => c.text))).not.toContain(scenario.items[0].comments[0].text);
     // The language-free parts are the same.
@@ -169,12 +196,12 @@ describe('the demo in both interface languages (FR-41 as amended in v1.3.1)', ()
   // FR-41 as amended in v1.11.0, FR-80.
   test('the demo carries two fictional events, a review date and a decision date, in both languages', () => {
     expect(demoScenario('en').events).toEqual([
-      { date: '2024-06', label: 'Review' },
-      { date: '2026-03-15', label: 'Decision' },
+      { date: '2031-06', label: 'Review' },
+      { date: '2033-03-15', label: 'Decision' },
     ]);
     expect(demoScenario('sv').events).toEqual([
-      { date: '2024-06', label: 'Granskning' },
-      { date: '2026-03-15', label: 'Beslut' },
+      { date: '2031-06', label: 'Granskning' },
+      { date: '2033-03-15', label: 'Beslut' },
     ]);
     expect(demoCounterparts('en', 'sv').eventLabels).toEqual([
       ['Review', 'Granskning'],
@@ -188,26 +215,36 @@ describe('the demo in both interface languages (FR-41 as amended in v1.3.1)', ()
       change(raw.events);
       return raw;
     };
-    expect(() => parseDemoScenarios(damaged((e) => (e[0].date = '15/03/2024')))).toThrow(/events\[0\].date/);
+    expect(() => parseDemoScenarios(damaged((e) => (e[0].date = '15/03/2031')))).toThrow(/events\[0\].date/);
     expect(() => parseDemoScenarios(damaged((e) => (e[1].label = { en: 'Decision' })))).toThrow(/events\[1\].label.sv/);
   });
 
   // FR-41 as amended in v1.12.0: the refinement's fixtures.
   test('the project with eight activities has a work phase, its excavation, in both languages', () => {
-    for (const [lang, label] of [['en', 'Excavation'], ['sv', 'Schaktning']] as const) {
+    for (const [lang, label] of [
+      ['en', 'Excavation'],
+      ['sv', 'Schaktning'],
+    ] as const) {
       const item = demoScenario(lang).items.find((i) => i.item === 'D-05')!;
       expect(item.activities).toHaveLength(8);
       expect(item.workPhase).toBe('a3');
       expect(item.activities![2].label).toBe(label);
     }
     // No other item has one.
-    expect(demoScenario().items.filter((i) => i.workPhase !== undefined).map((i) => i.item)).toEqual(['D-05']);
+    expect(
+      demoScenario()
+        .items.filter((i) => i.workPhase !== undefined)
+        .map((i) => i.item),
+    ).toEqual(['D-05']);
   });
 
   test('one activity is corrected by hand: the review whose date could not be read is mended and marked; no activity has an unreadable date any more', () => {
-    for (const [lang, label] of [['en', 'Review'], ['sv', 'Granskning']] as const) {
+    for (const [lang, label] of [
+      ['en', 'Review'],
+      ['sv', 'Granskning'],
+    ] as const) {
       const review = demoScenario(lang).items.find((i) => i.item === 'D-11')!.activities![1];
-      expect(review).toEqual({ label, start: '2024-12-15', end: '2025-06-30', progress: 10, edited: true });
+      expect(review).toEqual({ label, start: '2031-12-15', end: '2032-06-30', progress: 10, edited: true });
     }
     const all = demoScenario().items.flatMap((i) => i.activities ?? []);
     expect(all.filter((a) => a.edited)).toHaveLength(1);

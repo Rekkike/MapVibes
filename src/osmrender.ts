@@ -6,7 +6,9 @@ import { AREA_CLASSES, LAND_COLOUR, OSM_STYLE, STYLE_REFERENCE_SIDE, type Planne
 function trace(ctx: CanvasRenderingContext2D, shape: PlannedShape): void {
   ctx.beginPath();
   shape.points.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
-  if (shape.closed) ctx.closePath();
+  if (shape.closed) {
+    ctx.closePath();
+  }
 }
 
 // The attribution, when given, is drawn into the image itself, so that it
@@ -16,7 +18,9 @@ export function renderPlanToDataUrl(plan: RenderPlan, attribution?: string): str
   canvas.width = plan.width;
   canvas.height = plan.height;
   const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('canvas 2d context unavailable');
+  if (!ctx) {
+    throw new Error('canvas 2d context unavailable');
+  }
   ctx.fillStyle = LAND_COLOUR;
   ctx.fillRect(0, 0, plan.width, plan.height);
   // Line widths and dashes are given for a 1000-pixel map; they scale with
@@ -44,7 +48,9 @@ export function renderPlanToDataUrl(plan: RenderPlan, attribution?: string): str
   // Then road casings, so that crossing roads join cleanly, then all lines.
   for (const shape of lines) {
     const style = OSM_STYLE[shape.feature];
-    if (!style.casing || !style.width) continue;
+    if (!style.casing || !style.width) {
+      continue;
+    }
     trace(ctx, shape);
     ctx.setLineDash([]);
     ctx.strokeStyle = style.casing;
@@ -53,7 +59,9 @@ export function renderPlanToDataUrl(plan: RenderPlan, attribution?: string): str
   }
   for (const shape of lines) {
     const style = OSM_STYLE[shape.feature];
-    if (!style.stroke || !style.width) continue;
+    if (!style.stroke || !style.width) {
+      continue;
+    }
     trace(ctx, shape);
     ctx.setLineDash((style.dash ?? []).map((d) => d * k));
     ctx.strokeStyle = style.stroke;

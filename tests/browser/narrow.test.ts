@@ -20,7 +20,9 @@ let browser: Browser;
 let exported: string;
 
 beforeAll(async () => {
-  if (!existsSync(BUILT)) throw new Error('dist/build/index.html is missing: run the build first');
+  if (!existsSync(BUILT)) {
+    throw new Error('dist/build/index.html is missing: run the build first');
+  }
   browser = await chromium.launch();
   const context = await browser.newContext({ viewport: { width: 1500, height: 950 }, acceptDownloads: true });
   await context.setOffline(true);
@@ -74,10 +76,16 @@ async function overflowing(page: Page): Promise<string[]> {
   return page.evaluate(() => {
     const out: string[] = [];
     for (const el of document.body.querySelectorAll('*')) {
-      if (el.closest('.stage') && !el.classList.contains('stage')) continue;
-      if (el.getClientRects().length === 0 || getComputedStyle(el).visibility === 'hidden') continue;
+      if (el.closest('.stage') && !el.classList.contains('stage')) {
+        continue;
+      }
+      if (el.getClientRects().length === 0 || getComputedStyle(el).visibility === 'hidden') {
+        continue;
+      }
       const r = el.getBoundingClientRect();
-      if (r.left < -0.5 || r.right > innerWidth + 0.5) out.push(`${el.tagName.toLowerCase()}#${el.id}.${el.className}`);
+      if (r.left < -0.5 || r.right > innerWidth + 0.5) {
+        out.push(`${el.tagName.toLowerCase()}#${el.id}.${el.className}`);
+      }
     }
     return out;
   });
@@ -101,7 +109,9 @@ async function pinch(page: Page, from: number, to: number): Promise<void> {
   ];
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: fingers(from) });
   const step = (to - from) / 8;
-  for (let i = 1; i <= 8; i++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: fingers(from + step * i) });
+  for (let i = 1; i <= 8; i++) {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: fingers(from + step * i) });
+  }
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await cdp.detach();
   await page.waitForTimeout(300);
@@ -112,7 +122,9 @@ async function drag(page: Page, dx: number, dy: number): Promise<void> {
   const [x, y] = [b.x + b.width / 2, b.y + b.height / 3];
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 0 }] });
-  for (let i = 1; i <= 8; i++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + (dx * i) / 8, y: y + (dy * i) / 8, id: 0 }] });
+  for (let i = 1; i <= 8; i++) {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + (dx * i) / 8, y: y + (dy * i) / 8, id: 0 }] });
+  }
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await cdp.detach();
   await page.waitForTimeout(300);
@@ -122,7 +134,9 @@ describe.each(PROFILES)('the narrow viewer on a %s (FR-58)', (name, profile) => 
   test('the query matches, the stage occupies the viewport, and nothing overflows', async () => {
     const { page, errors } = await openViewer(profile);
     const v = viewport(page);
-    expect(await page.evaluate(() => matchMedia("(max-width: 56rem), (orientation: landscape) and (max-height: 30rem) and (pointer: coarse)").matches)).toBe(true);
+    expect(await page.evaluate(() => matchMedia('(max-width: 56rem), (orientation: landscape) and (max-height: 30rem) and (pointer: coarse)').matches)).toBe(
+      true,
+    );
     // No page scroll in either direction.
     expect(await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.scrollHeight])).toEqual([v.width, v.height]);
     expect(await overflowing(page)).toEqual([]);
@@ -207,14 +221,23 @@ describe.each(PROFILES)('the narrow viewer on a %s (FR-58)', (name, profile) => 
           // The entry's values are shortened together, with an ellipsis at
           // the edge of their row: a value reaching past it is cut.
           const row = e.querySelector<HTMLElement>('.glance-values');
-          if (!row || row.scrollWidth <= row.clientWidth + 1) return { index, values: [] as string[] };
+          if (!row || row.scrollWidth <= row.clientWidth + 1) {
+            return { index, values: [] as string[] };
+          }
           const edge = row.getBoundingClientRect().right;
-          return { index, values: [...row.querySelectorAll<HTMLElement>('.glance-value')].filter((v) => v.getBoundingClientRect().right > edge + 1).map((v) => v.textContent ?? '') };
+          return {
+            index,
+            values: [...row.querySelectorAll<HTMLElement>('.glance-value')]
+              .filter((v) => v.getBoundingClientRect().right > edge + 1)
+              .map((v) => v.textContent ?? ''),
+          };
         })
         .find((e) => e.values.length > 0),
     );
     // A phone in portrait is narrow enough to shorten some value.
-    if (name === 'phone portrait') expect(shortened?.values.length ?? 0).toBeGreaterThan(0);
+    if (name === 'phone portrait') {
+      expect(shortened?.values.length ?? 0).toBeGreaterThan(0);
+    }
     console.log(`${name}: shortened ${JSON.stringify(shortened?.values ?? [])}`);
     const entries = page.locator('#presentation-glance-list .glance-entry');
     await entries.nth(shortened?.index ?? 0).tap();
@@ -233,7 +256,9 @@ describe.each(PROFILES)('the narrow viewer on a %s (FR-58)', (name, profile) => 
     // Touch has no tooltips: what the entry shortens, the card shows whole.
     if (shortened) {
       const values = await page.locator('#presentation-card .card-value').allTextContents();
-      for (const text of shortened.values) expect(values).toContain(text);
+      for (const text of shortened.values) {
+        expect(values).toContain(text);
+      }
     }
     await page.context().close();
   }, 60_000);
@@ -270,7 +295,10 @@ describe('the landscape clause (FR-58)', () => {
     const page = await context.newPage();
     await page.goto(`file://${exported}`);
     await page.waitForFunction(() => document.documentElement.dataset.mode === 'viewer');
-    const [width, landscape] = await page.evaluate(() => [matchMedia('(max-width: 56rem)').matches, matchMedia('(orientation: landscape) and (max-height: 30rem) and (pointer: coarse)').matches]);
+    const [width, landscape] = await page.evaluate(() => [
+      matchMedia('(max-width: 56rem)').matches,
+      matchMedia('(orientation: landscape) and (max-height: 30rem) and (pointer: coarse)').matches,
+    ]);
     expect([width, landscape]).toEqual([false, true]);
     expect(await visibility(page, '#presentation-glance')).toBe('hidden/closed');
     expect(await page.isVisible('#toggle-glance')).toBe(true);

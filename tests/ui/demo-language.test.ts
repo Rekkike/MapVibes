@@ -18,7 +18,9 @@ vi.mock('../../src/osmrender', () => ({
 type App = Awaited<ReturnType<typeof mountApp>>;
 
 async function settle(): Promise<void> {
-  for (let i = 0; i < 5; i++) await flush();
+  for (let i = 0; i < 5; i++) {
+    await flush();
+  }
 }
 
 function setLanguage(lang: Lang): void {
@@ -75,16 +77,24 @@ function shown(): string[] {
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
     const text = (n.textContent ?? '').trim();
-    if (text !== '' && !n.parentElement?.closest('script, style, #select-language')) out.push(text);
+    if (text !== '' && !n.parentElement?.closest('script, style, #select-language')) {
+      out.push(text);
+    }
   }
   for (const input of document.querySelectorAll<HTMLInputElement>('input[type="text"], textarea')) {
-    if (input.value.trim() !== '') out.push(input.value.trim());
-    if (input.placeholder.trim() !== '') out.push(input.placeholder.trim());
+    if (input.value.trim() !== '') {
+      out.push(input.value.trim());
+    }
+    if (input.placeholder.trim() !== '') {
+      out.push(input.placeholder.trim());
+    }
   }
   for (const el of document.querySelectorAll('[aria-label], [title]')) {
     for (const attr of ['aria-label', 'title']) {
       const v = el.getAttribute(attr);
-      if (v && v.trim() !== '') out.push(v.trim());
+      if (v && v.trim() !== '') {
+        out.push(v.trim());
+      }
     }
   }
   return out;
@@ -108,7 +118,9 @@ async function visitEverySurface(): Promise<string[]> {
   const lang = byId<HTMLSelectElement>('select-language').value as Lang;
   const found: string[] = [];
   byId('tab-information').click();
-  for (const d of document.querySelectorAll('details')) d.open = true;
+  for (const d of document.querySelectorAll('details')) {
+    d.open = true;
+  }
   found.push(...foreignShown(lang));
   byId('tab-map').click();
   document.querySelector<HTMLButtonElement>('#annotation-tools [data-tool="select"]')!.click();
@@ -155,7 +167,9 @@ function expectProvided(lang: Lang, loadedIn: Lang = lang): void {
   for (const kind of ['shape', 'status'] as const) {
     const shown = legendLabels('presentation-legend', kind);
     expect(shown.length).toBeGreaterThan(0);
-    for (const label of shown) expect(kind === 'shape' ? symbols : statuses).toContain(label);
+    for (const label of shown) {
+      expect(kind === 'shape' ? symbols : statuses).toContain(label);
+    }
   }
   expect(options('#annotation-colour')).toEqual(colours);
   expect(options('#marker-shape')).toEqual(symbols);
@@ -260,8 +274,8 @@ describe('a change of language while the demo is loaded (FR-41)', () => {
   test('the demo loads its two events in the interface language; unrenamed, they follow a change of language', async () => {
     const app = await mountDemo('sv');
     expect(app.captureWorkState().events).toEqual([
-      { id: 'e1', date: '2024-06', label: 'Granskning' },
-      { id: 'e2', date: '2026-03-15', label: 'Beslut' },
+      { id: 'e1', date: '2031-06', label: 'Granskning' },
+      { id: 'e2', date: '2033-03-15', label: 'Beslut' },
     ]);
     setLanguage('en');
     expect(app.captureWorkState().events.map((e) => e.label)).toEqual(['Review', 'Decision']);
@@ -273,7 +287,7 @@ describe('a change of language while the demo is loaded (FR-41)', () => {
     expect(app.captureWorkState().events.map((e) => e.label)).toEqual(['My own review', 'Beslut']);
   }, 30_000);
 
-  test('the demo\'s events are drawn in both schedule views, and discarded with the demo', async () => {
+  test("the demo's events are drawn in both schedule views, and discarded with the demo", async () => {
     const app = await mountDemo('en');
     byId('tab-presentation').click();
     for (const view of ['timeline', 'costs']) {
@@ -289,14 +303,17 @@ describe('a change of language while the demo is loaded (FR-41)', () => {
 
   // FR-41 as amended in v1.12.0: the work phase and the hand correction.
   test('the demo loads its work phase and its hand-corrected activity, in both languages; the timeline and its legend show the phase', async () => {
-    for (const [lang, excavation, review, entry] of [['en', 'Excavation', 'Review', 'Work phase'], ['sv', 'Schaktning', 'Granskning', 'Arbetsfas']] as const) {
+    for (const [lang, excavation, review, entry] of [
+      ['en', 'Excavation', 'Review', 'Work phase'],
+      ['sv', 'Schaktning', 'Granskning', 'Arbetsfas'],
+    ] as const) {
       const app = await mountDemo(lang);
       const ws = app.captureWorkState();
       const id = ws.roles.identifier!;
       const row = (item: string) => ws.rows.find((r) => r.values[id] === item)!;
       expect(row('D-05').workPhase).toBe('a3');
       expect(row('D-05').activities![2]).toMatchObject({ id: 'a3', label: excavation });
-      expect(row('D-11').activities![1]).toEqual({ id: 'a2', edited: true, label: review, start: '2024-12-15', end: '2025-06-30', progress: 10 });
+      expect(row('D-11').activities![1]).toEqual({ id: 'a2', edited: true, label: review, start: '2031-12-15', end: '2032-06-30', progress: 10 });
       expect(ws.rows.filter((r) => r.workPhase !== undefined)).toHaveLength(1);
       byId('tab-presentation').click();
       byId('pres-mode-timeline').click();

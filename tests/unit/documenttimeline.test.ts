@@ -14,28 +14,72 @@ class RecordingPainter implements Painter {
   private record(op: string, ...args: unknown[]): void {
     this.ops.push({ op, args });
   }
-  save(): void { this.record('save'); }
-  restore(): void { this.record('restore'); }
-  fillColour(c: Rgb): void { this.record('fillColour', c); }
-  strokeColour(c: Rgb): void { this.record('strokeColour', c); }
-  lineWidth(w: number): void { this.record('lineWidth', w); }
-  dash(pattern: readonly number[]): void { this.record('dash', pattern); }
-  opacity(a: number): void { this.record('opacity', a); }
-  roundLines(): void { this.record('roundLines'); }
-  beginPath(): void { this.record('beginPath'); }
-  moveTo(x: number, y: number): void { this.record('moveTo', x, y); }
-  lineTo(x: number, y: number): void { this.record('lineTo', x, y); }
-  curveTo(x1: number, y1: number, x2: number, y2: number, x: number, y: number): void { this.record('curveTo', x1, y1, x2, y2, x, y); }
-  close(): void { this.record('close'); }
-  rect(x: number, y: number, w: number, h: number): void { this.record('rect', x, y, w, h); }
-  circle(cx: number, cy: number, r: number): void { this.record('circle', cx, cy, r); }
-  svgPath(d: string, t: Transform): void { this.record('svgPath', d, t); }
-  fill(): void { this.record('fill'); }
-  stroke(): void { this.record('stroke'); }
-  clip(): void { this.record('clip'); }
-  text(x: number, y: number, text: string): void { this.record('text', x, y, text); }
-  image(): void { this.record('image'); }
-  texts(): string[] { return this.ops.filter((o) => o.op === 'text').map((o) => String(o.args[2])); }
+  save(): void {
+    this.record('save');
+  }
+  restore(): void {
+    this.record('restore');
+  }
+  fillColour(c: Rgb): void {
+    this.record('fillColour', c);
+  }
+  strokeColour(c: Rgb): void {
+    this.record('strokeColour', c);
+  }
+  lineWidth(w: number): void {
+    this.record('lineWidth', w);
+  }
+  dash(pattern: readonly number[]): void {
+    this.record('dash', pattern);
+  }
+  opacity(a: number): void {
+    this.record('opacity', a);
+  }
+  roundLines(): void {
+    this.record('roundLines');
+  }
+  beginPath(): void {
+    this.record('beginPath');
+  }
+  moveTo(x: number, y: number): void {
+    this.record('moveTo', x, y);
+  }
+  lineTo(x: number, y: number): void {
+    this.record('lineTo', x, y);
+  }
+  curveTo(x1: number, y1: number, x2: number, y2: number, x: number, y: number): void {
+    this.record('curveTo', x1, y1, x2, y2, x, y);
+  }
+  close(): void {
+    this.record('close');
+  }
+  rect(x: number, y: number, w: number, h: number): void {
+    this.record('rect', x, y, w, h);
+  }
+  circle(cx: number, cy: number, r: number): void {
+    this.record('circle', cx, cy, r);
+  }
+  svgPath(d: string, t: Transform): void {
+    this.record('svgPath', d, t);
+  }
+  fill(): void {
+    this.record('fill');
+  }
+  stroke(): void {
+    this.record('stroke');
+  }
+  clip(): void {
+    this.record('clip');
+  }
+  text(x: number, y: number, text: string): void {
+    this.record('text', x, y, text);
+  }
+  image(): void {
+    this.record('image');
+  }
+  texts(): string[] {
+    return this.ops.filter((o) => o.op === 'text').map((o) => String(o.args[2]));
+  }
 }
 
 const day = (iso: string): number => Math.round(Date.parse(`${iso}T00:00:00Z`) / 86_400_000);
@@ -50,7 +94,7 @@ function item(partial: Partial<FigureItem> & { id: string }): FigureItem {
     end: '',
     symbol: 'circle',
     ...partial,
-  } as FigureItem;
+  };
 }
 
 // A small fictional schedule: one item with activities and a work phase, one
@@ -136,7 +180,14 @@ describe("the timeline page's layout (FR-12 as amended in v1.13.0)", () => {
 
   test('long schedules paginate; no page exceeds the body, no line is split, no heading is orphaned', () => {
     const items: FigureItem[] = Array.from({ length: 60 }, (_, i) =>
-      item({ id: `r${i}`, label: String(i + 1), name: `Item ${i + 1}`, colour: ['green', 'blue', 'red', 'yellow'][i % 4], start: `${2000 + i}-01-01`, end: `${2001 + i}-12-31` }),
+      item({
+        id: `r${i}`,
+        label: String(i + 1),
+        name: `Item ${i + 1}`,
+        colour: ['green', 'blue', 'red', 'yellow'][i % 4],
+        start: `${2000 + i}-01-01`,
+        end: `${2001 + i}-12-31`,
+      }),
     );
     const fig: TimelineFigure = { ...figure(), model: buildTimeline(items, 'number', [], 'en') };
     const layout = layoutTimeline(fig, frame());
@@ -206,7 +257,9 @@ describe('the timeline page drawn through the Painter', () => {
     expect(p.texts()).toContain(en.legend);
     expect(p.texts()).toContain('MapVibes · page 1 of 1');
     // The item names are drawn.
-    for (const name of ['Alpha', 'Beta', 'Gamma', 'Delta']) expect(p.texts()).toContain(name);
+    for (const name of ['Alpha', 'Beta', 'Gamma', 'Delta']) {
+      expect(p.texts()).toContain(name);
+    }
   });
 
   test('the events: a hairline per in-window event, its chip, and static "+n" end chips naming the off-window events', () => {
@@ -254,7 +307,9 @@ describe("the timeline page's today line (FR-12 as noted in v1.14.0)", () => {
   const dashedLines = (p: RecordingPainter) => {
     const out: Array<{ pattern: unknown; x: number; y0: number; y1: number; width: unknown }> = [];
     p.ops.forEach((o, i) => {
-      if (o.op !== 'dash' || (o.args[0] as number[]).length === 0) return;
+      if (o.op !== 'dash' || (o.args[0] as number[]).length === 0) {
+        return;
+      }
       const move = p.ops.slice(i).find((x) => x.op === 'moveTo')!;
       const line = p.ops.slice(i).find((x) => x.op === 'lineTo')!;
       const width = [...p.ops.slice(0, i)].reverse().find((x) => x.op === 'lineWidth')!.args[0];

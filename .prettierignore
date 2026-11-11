@@ -1,0 +1,11 @@
+dist/
+node_modules/
+coverage/
+package-lock.json
+example-data/
+docs/
+.github/
+*.md
+*.png
+*.css
+*.html

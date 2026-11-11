@@ -86,19 +86,18 @@ export interface DetailLabels {
   importActivities: string | null;
   // The hand-correction action's label (FR-76 as amended), or null.
   correctActivities: string | null;
-
 }
 
 export interface DetailHandlers {
   close(): void;
   // The series groups' opening and closing, and the Economics action.
   toggleSeries?(role: string, open: boolean): void;
-  openEconomics?(opener: HTMLElement): void;
+  openEconomics?: (opener: HTMLElement) => void;
   // The activities import (FR-76), present only when the details are
   // editable (never on the viewer's card).
-  importActivities?(opener: HTMLElement): void;
+  importActivities?: (opener: HTMLElement) => void;
   // The correction of the item's activities, present only when it has some.
-  correctActivities?(opener: HTMLElement): void;
+  correctActivities?: (opener: HTMLElement) => void;
   // Present only when the details are editable.
   edit?: {
     renderField(field: DetailField): HTMLElement;
@@ -112,7 +111,9 @@ export interface DetailHandlers {
 
 // The footprints as a short list; nothing when the item has none.
 function footprintList(model: DetailModel, heading: string, className: string): HTMLElement | null {
-  if (model.footprints.length === 0) return null;
+  if (model.footprints.length === 0) {
+    return null;
+  }
   const section = el('section', className);
   section.appendChild(el('h3', 'details-subheading', heading));
   const list = el('ul', 'footprint-list');
@@ -120,7 +121,9 @@ function footprintList(model: DetailModel, heading: string, className: string): 
     const li = el('li', 'footprint');
     li.dataset.annotationId = footprint.id;
     li.appendChild(el('span', 'footprint-name', footprint.name));
-    if (footprint.area !== null) li.appendChild(el('span', 'footprint-area', footprint.area));
+    if (footprint.area !== null) {
+      li.appendChild(el('span', 'footprint-area', footprint.area));
+    }
     list.appendChild(li);
   }
   section.appendChild(list);
@@ -136,8 +139,12 @@ function editedMark(comment: DetailComment): HTMLElement {
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
+  if (className) {
+    node.className = className;
+  }
+  if (text !== undefined) {
+    node.textContent = text;
+  }
   return node;
 }
 
@@ -171,7 +178,11 @@ export function renderDetails(container: HTMLElement, model: DetailModel, labels
   // A series' columns go into its group, placed where its first column
   // would be; the year values stay editable inside it.
   const groupOf = new Map<string, DetailSeriesGroup>();
-  for (const group of model.seriesGroups) for (const key of group.keys) groupOf.set(key, group);
+  for (const group of model.seriesGroups) {
+    for (const key of group.keys) {
+      groupOf.set(key, group);
+    }
+  }
   const groupLists = new Map<DetailSeriesGroup, HTMLElement>();
   for (const field of model.fields) {
     const group = groupOf.get(field.key);
@@ -200,7 +211,9 @@ export function renderDetails(container: HTMLElement, model: DetailModel, labels
       dd.appendChild(handlers.edit.renderField(field));
     } else {
       dd.textContent = field.value === '' ? labels.empty : field.value;
-      if (field.value === '') dd.classList.add('is-empty');
+      if (field.value === '') {
+        dd.classList.add('is-empty');
+      }
     }
     // Each field in its own wrapper, so that the panel can lay the fields out
     // in a grid (FR-42); on the presentation card the wrapper takes no part
@@ -248,7 +261,9 @@ export function renderDetails(container: HTMLElement, model: DetailModel, labels
     time.setAttribute('datetime', comment.date);
     const text = el('p', 'details-comment-text', comment.text);
     li.append(time);
-    if (comment.editedText) li.appendChild(editedMark(comment));
+    if (comment.editedText) {
+      li.appendChild(editedMark(comment));
+    }
     li.appendChild(text);
     if (handlers.edit) {
       const edit = handlers.edit;
@@ -297,13 +312,19 @@ export function renderDetails(container: HTMLElement, model: DetailModel, labels
     }
     list.appendChild(li);
   }
-  if (model.comments.length === 0) list.appendChild(el('li', 'details-no-comments notice', labels.noComments));
+  if (model.comments.length === 0) {
+    list.appendChild(el('li', 'details-no-comments notice', labels.noComments));
+  }
   commentsSection.append(commentsHeading, list);
-  if (handlers.edit) commentsSection.appendChild(handlers.edit.commentForm());
+  if (handlers.edit) {
+    commentsSection.appendChild(handlers.edit.commentForm());
+  }
 
   container.append(header, facts, fields);
   const footprints = footprintList(model, labels.footprints, 'details-footprints');
-  if (footprints) container.appendChild(footprints);
+  if (footprints) {
+    container.appendChild(footprints);
+  }
   container.appendChild(commentsSection);
 }
 
@@ -335,7 +356,9 @@ export function renderCard(
   container.appendChild(header);
 
   const headliners = el('div', 'card-headliners');
-  if (model.note.trim() !== '') headliners.appendChild(el('p', 'card-note', model.note.trim()));
+  if (model.note.trim() !== '') {
+    headliners.appendChild(el('p', 'card-note', model.note.trim()));
+  }
   if (model.comments.length > 0) {
     const section = el('section', 'details-comments card-comments');
     section.setAttribute('aria-label', labels.comments);
@@ -346,14 +369,18 @@ export function renderCard(
       const time = el('time', 'details-comment-date', comment.dateText);
       time.setAttribute('datetime', comment.date);
       li.append(time);
-      if (comment.editedText) li.appendChild(editedMark(comment));
+      if (comment.editedText) {
+        li.appendChild(editedMark(comment));
+      }
       li.appendChild(el('p', 'details-comment-text', comment.text));
       list.appendChild(li);
     }
     section.appendChild(list);
     headliners.appendChild(section);
   }
-  if (headliners.childElementCount > 0) container.appendChild(headliners);
+  if (headliners.childElementCount > 0) {
+    container.appendChild(headliners);
+  }
 
   if (model.cardFields.length > 0) {
     const grid = el('dl', 'card-fields');
@@ -362,7 +389,9 @@ export function renderCard(
       const wrapper = el('div', 'card-field');
       // A chosen field without a value says so (FR-62).
       const dd = field.value === '' ? el('dd', 'card-value is-empty', '–') : el('dd', 'card-value', field.value);
-      if (field.value === '') dd.setAttribute('aria-label', labels.noData);
+      if (field.value === '') {
+        dd.setAttribute('aria-label', labels.noData);
+      }
       dd.dataset.header = field.key;
       wrapper.append(el('dt', 'card-label', field.label), dd);
       grid.appendChild(wrapper);
@@ -370,7 +399,9 @@ export function renderCard(
     container.appendChild(grid);
   }
   const footprints = footprintList(model, labels.footprints, 'card-footprints');
-  if (footprints) container.appendChild(footprints);
+  if (footprints) {
+    container.appendChild(footprints);
+  }
   if (economics) {
     const action = el('button', 'card-economics', economics.label);
     action.type = 'button';

@@ -11,14 +11,16 @@ import { byId, editCell, flush, mountApp, placeExampleMarkers, pointer, removeSa
 // example JPEG image and records the part of the image asked for.
 const crops: Array<{ x: number; y: number; width: number; height: number }> = [];
 vi.mock('../../src/raster', () => ({
-  backgroundJpeg: async (_src: string, crop: { x: number; y: number; width: number; height: number }) => {
+  backgroundJpeg: (_src: string, crop: { x: number; y: number; width: number; height: number }) => {
     crops.push(crop);
-    return { jpeg: new Uint8Array(readFileSync(join(process.cwd(), 'example-data', 'example-background.jpg'))), width: 1200, height: 800 };
+    return Promise.resolve({ jpeg: new Uint8Array(readFileSync(join(process.cwd(), 'example-data', 'example-background.jpg'))), width: 1200, height: 800 });
   },
 }));
 
 async function settle(): Promise<void> {
-  for (let i = 0; i < 5; i++) await flush();
+  for (let i = 0; i < 5; i++) {
+    await flush();
+  }
 }
 
 async function openPdf(): Promise<void> {
@@ -45,7 +47,12 @@ async function pageTexts(bytes: Uint8Array): Promise<string[]> {
   const out: string[] = [];
   for (let i = 1; i <= doc.numPages; i++) {
     const content = await (await doc.getPage(i)).getTextContent();
-    out.push(content.items.map((it) => ('str' in it ? it.str : '')).filter((s) => s.trim() !== '').join('|'));
+    out.push(
+      content.items
+        .map((it) => ('str' in it ? it.str : ''))
+        .filter((s) => s.trim() !== '')
+        .join('|'),
+    );
   }
   return out;
 }
@@ -114,21 +121,27 @@ describe('PDF export (FR-12, FR-50, FR-52)', () => {
     // The stage page: the markers' numbers, the annotation label, the used-only
     // legend (FR-75 as amended in v1.13.0: only Green and Circle are used here).
     // The placed items are the first, third, and fifth.
-    for (const text of ['1', '3', '5', 'Survey area', 'Legend', 'Green', 'Circle']) expect(stage.split('|')).toContain(text);
+    for (const text of ['1', '3', '5', 'Survey area', 'Legend', 'Green', 'Circle']) {
+      expect(stage.split('|')).toContain(text);
+    }
     expect(stage).not.toContain('Lightning bolt');
     // The timeline page: the title, the notice (no start or end role is
     // assigned in this fixture), and the "No dates" section with every item.
     expect(timeline).toContain('Timeline');
     expect(timeline).toContain('Assign the start and end roles');
     expect(timeline).toContain('No dates');
-    for (const id of ['A-01', 'A-05']) expect(timeline).toContain(id);
+    for (const id of ['A-01', 'A-05']) {
+      expect(timeline).toContain(id);
+    }
     expect(stage).toMatch(/MapVibes v\d+\.\d+\.\d+ · .+ · page 1 of 3$/);
     expect(timeline).toMatch(/page 2 of 3$/);
     expect(table).toMatch(/page 3 of 3$/);
     // The table: the number, the shown columns, every shown item.
     // The reader may split a short bold word into pieces; the text is whole.
     expect(table.replace(/\|/g, '').startsWith('Items 1 to 5 of 5No.IDStartEndGroupNote1A-012024-01-05')).toBe(true);
-    for (const id of ['A-01', 'A-02', 'A-03', 'A-04', 'A-05']) expect(table).toContain(`|${id}|`);
+    for (const id of ['A-01', 'A-02', 'A-03', 'A-04', 'A-05']) {
+      expect(table).toContain(`|${id}|`);
+    }
     expect(byId('document-status').textContent).toBe('The document was exported.');
     expect(byId('document-panel').classList.contains('hidden')).toBe(true);
   });
@@ -204,10 +217,12 @@ describe('PDF export (FR-12, FR-50, FR-52)', () => {
     expect(byId('document-heading').textContent).toBe('Exportera PDF');
     expect(lines('document-contains')[3]).toMatch(/^tidslinjen f.r de 5 visade objekten, anpassad till hela spannet, p. 1 sida$/);
     expect(lines('document-contains')[2]).toBe('teckenförklaringen');
-    const [stage, timeline, table] = await pageTexts(await (async () => {
-      byId('document-cancel').click();
-      return exportPdf();
-    })());
+    const [stage, timeline, table] = await pageTexts(
+      await (async () => {
+        byId('document-cancel').click();
+        return exportPdf();
+      })(),
+    );
     expect(timeline).toContain('Tidslinje');
     expect(stage.split('|')).toContain('Teckenförklaring');
     // The reader may split a short bold word into letters; the text is whole.

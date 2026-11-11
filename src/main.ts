@@ -1,11 +1,50 @@
 import './polyfills';
 import { selfPage } from './selfsource';
-import { applyFilter, counters, COLOURS, makeRow, numberRows, NO_FILTER, sortRows, type NumberedRow, type RowColour, type RowData, type SortDirection, type ValueFilter } from './dataset';
+import {
+  applyFilter,
+  counters,
+  COLOURS,
+  makeRow,
+  numberRows,
+  NO_FILTER,
+  sortRows,
+  type NumberedRow,
+  type RowColour,
+  type RowData,
+  type SortDirection,
+  type ValueFilter,
+} from './dataset';
 import { importColumns, parseWorkbook, ParseError, type ParseResult } from './ingest';
 import { columnLabel } from './columns';
 import { emptyValues, newManualKey } from './manual';
-import { addStatus, normalise, statusSymbol, addValue, collectValues, hasValue, mergeValues, moveStatus, removeStatus, removeValue, renameStatus, renameValue, setStatusSymbol, statusNames, type StatusEntry } from './vocab';
-import { clonePreset, findMatchingPreset, loadStoredPresets, presetConfiguration, presetMatches, removePreset, storePresets, upsertPreset, type ColumnPreset } from './presets';
+import {
+  addStatus,
+  normalise,
+  statusSymbol,
+  addValue,
+  collectValues,
+  hasValue,
+  mergeValues,
+  moveStatus,
+  removeStatus,
+  removeValue,
+  renameStatus,
+  renameValue,
+  setStatusSymbol,
+  statusNames,
+  type StatusEntry,
+} from './vocab';
+import {
+  clonePreset,
+  findMatchingPreset,
+  loadStoredPresets,
+  presetConfiguration,
+  presetMatches,
+  removePreset,
+  storePresets,
+  upsertPreset,
+  type ColumnPreset,
+} from './presets';
 import { assignRole, displayName, isRole, listColumnOrder, roleOfColumn, ROLES, type Role, type RoleAssignments } from './roles';
 import { format, strings, type Lang, type Strings } from './i18n';
 import { loadPreferences, savePreferences, type Preferences, type ThemeChoice } from './preferences';
@@ -13,10 +52,42 @@ import { MapView } from './mapview';
 import { isPdfFile, openPdf, type PdfDocument } from './pdfbackground';
 import { isOsmFile, MAX_OSM_BYTES, OsmError, parseOsm, planRender, type MercatorProjection, type OsmBounds } from './osm';
 import { renderPlanToDataUrl } from './osmrender';
-import { fetchableBounds, FetchError, fetchMapData, isOnline, parseBounds, searchPlace, type BoundsField, type FetchErrorCode, type PlaceResult } from './openmap';
+import {
+  fetchableBounds,
+  FetchError,
+  fetchMapData,
+  isOnline,
+  parseBounds,
+  searchPlace,
+  type BoundsField,
+  type FetchErrorCode,
+  type PlaceResult,
+} from './openmap';
 import { MarkerLayer } from './markerlayer';
-import { colourName, legendModel, renderLegend, shapeName, type ColourLabels, type LegendGroup, type LegendUse, type SeriesLegend, type SymbolLabels } from './legend';
-import { buildPdf, buildPptxDocument, PDF_PAGE, PPTX_PAGE, pptxTables, sceneFromStage, type DocumentExtraPage, type DocumentTable, type PageFrame, type PptxImage, type StageScene } from './documents';
+import {
+  colourName,
+  legendModel,
+  renderLegend,
+  shapeName,
+  type ColourLabels,
+  type LegendGroup,
+  type LegendUse,
+  type SeriesLegend,
+  type SymbolLabels,
+} from './legend';
+import {
+  buildPdf,
+  buildPptxDocument,
+  PDF_PAGE,
+  PPTX_PAGE,
+  pptxTables,
+  sceneFromStage,
+  type DocumentExtraPage,
+  type DocumentTable,
+  type PageFrame,
+  type PptxImage,
+  type StageScene,
+} from './documents';
 import { drawTimelinePage, layoutTimeline, type FigureItem, type TimelineFigure } from './documenttimeline';
 import { drawEconomicsPage, economicsBlock, layoutEconomics, type EconomicsBlock, type EconomicsPageLabels } from './documenteconomics';
 import { backgroundJpeg, pagePng, stagePagePng } from './raster';
@@ -27,8 +98,34 @@ import { markersInView } from './glance';
 import { DEFAULT_SHAPE, placedMarkers, placeMarker, pruneMarkers, removeMarker, type MarkerPositions, type MarkerShapes, type PlacedMarker } from './markers';
 import { BUTTON_ZOOM_FACTOR, imageToScreen, screenToImage, type Point, type Viewport } from './viewport';
 import { isSegment, SEGMENTS, showSegment, type Segment } from './segments';
-import { type Problem, parseWorkState, rowNumbers, serialiseWorkState, SUGGESTED_FILE_NAME, WorkStateError, type ActivityImport, activityId, type PresentationMode, type PresentationOrder, type StoredEvent, type StoredActivity, type TimelineWindow, type WorkState } from './workstate';
-import { buildCosts, buildTimeline, fitWindow, inThousands, orderEntries, startDay, type CostsItem, type ScheduleEvent, type TimelineItem, type TimelineLine } from './timeline';
+import {
+  type Problem,
+  parseWorkState,
+  rowNumbers,
+  serialiseWorkState,
+  SUGGESTED_FILE_NAME,
+  WorkStateError,
+  type ActivityImport,
+  activityId,
+  type PresentationMode,
+  type PresentationOrder,
+  type StoredEvent,
+  type StoredActivity,
+  type TimelineWindow,
+  type WorkState,
+} from './workstate';
+import {
+  buildCosts,
+  buildTimeline,
+  fitWindow,
+  inThousands,
+  orderEntries,
+  startDay,
+  type CostsItem,
+  type ScheduleEvent,
+  type TimelineItem,
+  type TimelineLine,
+} from './timeline';
 import { parsePdfPages, parseRows, type ActivityDraft, type ActivityField, type ActivityTable } from './activityparse';
 import { readPdfText } from './pdftext';
 import { TimelineView, type TimelineLabels } from './timelineview';
@@ -42,11 +139,35 @@ import { NARROW_QUERY, NarrowDialogs, NarrowViewer, type NarrowDialogSpec } from
 import { formatAmount, renderEconomics } from './economicsview';
 import { formatDate, readDate } from './dates';
 import { todayDay } from './clock';
-import { DEFAULT_CURRENCY_UNIT, readAmount, economicsOf, informationTotals, proposeSeries, SERIES_ROLES, seriesKey, yearOfValue, type Economics, type SeriesAssignment, type SeriesAssignments, type SeriesProposal, type SeriesRole } from './economics';
-import { DEFAULT_STYLE, formatArea, newAnnotationId, LINE_STYLES, OUTLINES, trueArea, type Annotation, type AnnotationKind, type AnnotationStyle, type LineStyle, type Outline } from './annotations';
+import {
+  DEFAULT_CURRENCY_UNIT,
+  readAmount,
+  economicsOf,
+  informationTotals,
+  proposeSeries,
+  SERIES_ROLES,
+  seriesKey,
+  yearOfValue,
+  type Economics,
+  type SeriesAssignment,
+  type SeriesAssignments,
+  type SeriesProposal,
+  type SeriesRole,
+} from './economics';
+import {
+  DEFAULT_STYLE,
+  formatArea,
+  newAnnotationId,
+  LINE_STYLES,
+  OUTLINES,
+  trueArea,
+  type Annotation,
+  type AnnotationKind,
+  type AnnotationStyle,
+  type LineStyle,
+  type Outline,
+} from './annotations';
 import { AnnotationLayer, DrawingTools, type DrawingTool } from './annotationlayer';
-
-const DEFAULT_COLOUR: RowColour = 'green';
 
 interface AppState {
   prefs: Preferences;
@@ -226,7 +347,9 @@ function rowById(id: string): RowData | undefined {
 
 function el<T extends HTMLElement>(id: string): T {
   const e = document.getElementById(id);
-  if (!e) throw new Error(`missing element #${id}`);
+  if (!e) {
+    throw new Error(`missing element #${id}`);
+  }
   return e as T;
 }
 
@@ -245,7 +368,10 @@ function renderStaticText(): void {
   el('list-heading').textContent = t.listArea;
   el('map-heading').textContent = t.mapArea;
   el('map-load').textContent = t.mapLoad;
-  for (const [id, label] of [['map-zoom-in', t.mapZoomIn], ['map-zoom-out', t.mapZoomOut]] as const) {
+  for (const [id, label] of [
+    ['map-zoom-in', t.mapZoomIn],
+    ['map-zoom-out', t.mapZoomOut],
+  ] as const) {
     el(id).setAttribute('aria-label', label);
     el(id).title = label;
   }
@@ -335,7 +461,9 @@ function renderStaticText(): void {
   el('pres-order-text').textContent = t.presentationOrder;
   const orderOptions = el<HTMLSelectElement>('pres-order').options;
   const orderLabels: Record<string, string> = { number: t.presentationOrderNumber, area: t.presentationOrderArea, start: t.presentationOrderStart };
-  for (const option of orderOptions) option.textContent = orderLabels[option.value] ?? option.textContent;
+  for (const option of orderOptions) {
+    option.textContent = orderLabels[option.value] ?? option.textContent;
+  }
   el('open-presentation').textContent = t.openPresentation;
   el('presentation-close').textContent = t.closePresentation;
   // The narrow viewer's toggle bar (FR-58).
@@ -362,7 +490,10 @@ function renderStaticText(): void {
   el('export-cancel').textContent = t.exportCancel;
   el('export-close').textContent = t.close;
   el('pres-reset').textContent = t.mapReset;
-  for (const [id, label] of [['pres-zoom-in', t.mapZoomIn], ['pres-zoom-out', t.mapZoomOut]] as const) {
+  for (const [id, label] of [
+    ['pres-zoom-in', t.mapZoomIn],
+    ['pres-zoom-out', t.mapZoomOut],
+  ] as const) {
     el(id).setAttribute('aria-label', label);
     el(id).title = label;
   }
@@ -396,7 +527,9 @@ function renderStaticText(): void {
   renderInformationTotals();
   const themeOptions = el<HTMLSelectElement>('select-theme').options;
   const themeLabels: Record<string, string> = { system: t.themeSystem, light: t.themeLight, dark: t.themeDark };
-  for (const option of themeOptions) option.textContent = themeLabels[option.value] ?? option.textContent;
+  for (const option of themeOptions) {
+    option.textContent = themeLabels[option.value] ?? option.textContent;
+  }
   const filterKind = el<HTMLSelectElement>('select-filter-kind');
   const options = filterKind.options;
   options[0].textContent = t.filterAll;
@@ -413,7 +546,9 @@ function setLanguage(lang: Lang): void {
   state.prefs.lang = lang;
   followDemoLanguage(lang);
   // Choices made in the exported viewer are not remembered (FR-20).
-  if (!state.viewOnly) savePreferences(state.prefs);
+  if (!state.viewOnly) {
+    savePreferences(state.prefs);
+  }
   el<HTMLSelectElement>('select-language').value = lang;
   renderStaticText();
   renderList();
@@ -423,7 +558,9 @@ function setLanguage(lang: Lang): void {
 
 function setTheme(theme: ThemeChoice): void {
   state.prefs.theme = theme;
-  if (!state.viewOnly) savePreferences(state.prefs);
+  if (!state.viewOnly) {
+    savePreferences(state.prefs);
+  }
   el<HTMLSelectElement>('select-theme').value = theme;
   applyTheme(theme);
 }
@@ -433,9 +570,16 @@ function initialisePreferences(): void {
   el<HTMLSelectElement>('select-theme').value = state.prefs.theme;
   applyTheme(state.prefs.theme);
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-    if (state.prefs.theme === 'system') applyTheme('system');
+    if (state.prefs.theme === 'system') {
+      applyTheme('system');
+    }
   });
 }
+
+// Import cap (FR-1 and FR-25): a spreadsheet or PDF file larger than this is
+// refused before it is read, mirroring the OpenStreetMap and presentation-open
+// caps.
+export const MAX_IMPORT_BYTES = 50 * 1024 * 1024;
 
 // Direct import (FR-1): the list is populated immediately with every column
 // of the file. Importing over unsaved work asks for confirmation first, as
@@ -443,6 +587,11 @@ function initialisePreferences(): void {
 async function handleFile(file: File): Promise<void> {
   const errorEl = el('ingest-error');
   errorEl.classList.add('hidden');
+  if (file.size > MAX_IMPORT_BYTES) {
+    errorEl.textContent = strings(state.prefs.lang).spreadsheetTooLarge;
+    errorEl.classList.remove('hidden');
+    return;
+  }
   let parse: ParseResult;
   try {
     parse = parseWorkbook(await file.arrayBuffer());
@@ -453,7 +602,9 @@ async function handleFile(file: File): Promise<void> {
     errorEl.classList.remove('hidden');
     return;
   }
-  if (state.dirty && !window.confirm(strings(state.prefs.lang).importConfirmReplace)) return;
+  if (state.dirty && !window.confirm(strings(state.prefs.lang).importConfirmReplace)) {
+    return;
+  }
   applyImport(parse);
 }
 
@@ -461,7 +612,9 @@ function applyImport(parse: ParseResult): void {
   const { headers, rows } = importColumns(parse);
   resetList(headers, rows);
   const preset = findMatchingPreset(state.presets, headers);
-  if (preset) applyPreset(preset, 'auto');
+  if (preset) {
+    applyPreset(preset, 'auto');
+  }
   renderList();
 }
 
@@ -491,7 +644,9 @@ function samePreset(a: ColumnPreset, b: ColumnPreset): boolean {
 
 export async function loadDemo(options: { confirmed?: boolean } = {}): Promise<boolean> {
   const t = strings(state.prefs.lang);
-  if (!options.confirmed && state.dirty && !window.confirm(t.demoConfirmReplace)) return false;
+  if (!options.confirmed && state.dirty && !window.confirm(t.demoConfirmReplace)) {
+    return false;
+  }
   // The demo loads in the interface language (FR-41 as amended).
   const lang = state.prefs.lang;
   const scenario = demoScenario(lang);
@@ -524,20 +679,35 @@ export async function loadDemo(options: { confirmed?: boolean } = {}): Promise<b
   const rowOf = (item: string) => (idKey === undefined ? undefined : state.rows.find((r) => r.values[idKey] === item));
   for (const item of scenario.items) {
     const row = rowOf(item.item);
-    if (!row) continue;
+    if (!row) {
+      continue;
+    }
     row.colour = item.colour;
-    if (item.comments.length > 0) state.comments.set(row, restoreComments(item.comments));
-    if (item.activities && item.activities.length > 0) state.activities.set(row, item.activities.map((a, j) => ({ id: activityId(j), ...a })));
-    if (item.workPhase !== undefined) state.workPhases.set(row, item.workPhase);
+    if (item.comments.length > 0) {
+      state.comments.set(row, restoreComments(item.comments));
+    }
+    if (item.activities && item.activities.length > 0) {
+      state.activities.set(
+        row,
+        item.activities.map((a, j) => ({ id: activityId(j), ...a })),
+      );
+    }
+    if (item.workPhase !== undefined) {
+      state.workPhases.set(row, item.workPhase);
+    }
   }
   const outcome = await useOsmText(DEMO_MAP_TEXT);
   const bg = mapView?.background;
   if (outcome === 'ok' && bg) {
     for (const item of scenario.items) {
       const row = rowOf(item.item);
-      if (!row || !item.position) continue;
+      if (!row || !item.position) {
+        continue;
+      }
       placeMarker(state.positions, row, { x: item.position[0] * bg.width, y: item.position[1] * bg.height });
-      if (item.symbol) state.shapes.set(row, item.symbol);
+      if (item.symbol) {
+        state.shapes.set(row, item.symbol);
+      }
     }
   }
   // The demo's own colour labels, at-a-glance columns, and annotations
@@ -564,7 +734,9 @@ export async function loadDemo(options: { confirmed?: boolean } = {}): Promise<b
       state.annotations.push(annotation);
       demoAnnotationIds.push(annotation.id);
       const row = a.link === null ? undefined : rowOf(a.link);
-      if (row) state.annotationLinks.set(annotation.id, row);
+      if (row) {
+        state.annotationLinks.set(annotation.id, row);
+      }
     }
   }
   // The demo's two fictional events (FR-41 as amended, FR-80).
@@ -586,26 +758,38 @@ export async function loadDemo(options: { confirmed?: boolean } = {}): Promise<b
 // cells that hold them, and the annotation labels. What the user typed is kept as typed; the list's own headers and
 // texts stay as loaded, and so does the preset, which matches the headers.
 function followDemoLanguage(to: Lang): void {
-  if (!demoLoaded || demoLang === null || demoLang === to) return;
+  if (!demoLoaded || demoLang === null || demoLang === to) {
+    return;
+  }
   const c = demoCounterparts(demoLang, to);
   demoLang = to;
   let changed = false;
   for (const { colour, from, to: next } of c.colourLabels) {
-    if (state.colourLabels[colour] !== from) continue;
+    if (state.colourLabels[colour] !== from) {
+      continue;
+    }
     state.colourLabels[colour] = next;
     changed = true;
   }
   // A value follows unless its counterpart is already taken.
   const follow = (values: string[], pairs: Array<[string, string]>, key: string | undefined): Map<string, string> => {
     const renamed = new Map<string, string>();
-    for (const [from, next] of pairs) if (values.includes(from) && !values.includes(next)) renamed.set(from, next);
+    for (const [from, next] of pairs) {
+      if (values.includes(from) && !values.includes(next)) {
+        renamed.set(from, next);
+      }
+    }
     if (key !== undefined) {
       for (const row of state.ingested) {
         const next = renamed.get((row.values[key] ?? '').trim());
-        if (next !== undefined) row.values[key] = next;
+        if (next !== undefined) {
+          row.values[key] = next;
+        }
       }
     }
-    if (renamed.size > 0) changed = true;
+    if (renamed.size > 0) {
+      changed = true;
+    }
     return renamed;
   };
   const areas = follow(state.areaValues, c.areas, state.roles.area);
@@ -630,7 +814,9 @@ function followDemoLanguage(to: Lang): void {
       changed = true;
     }
   });
-  if (!changed) return;
+  if (!changed) {
+    return;
+  }
   // The demo is as untouched as before: following the language is not a
   // change of the user's.
   const pristine = changeCount === demoBaseline;
@@ -638,7 +824,9 @@ function followDemoLanguage(to: Lang): void {
   markDirty();
   if (pristine) {
     demoBaseline = changeCount;
-    if (message === 'demo-loaded') workMessage = message;
+    if (message === 'demo-loaded') {
+      workMessage = message;
+    }
   }
 }
 
@@ -646,8 +834,12 @@ function followDemoLanguage(to: Lang): void {
 // the demo was changed), the session is discarded and the pristine demo is
 // loaded in one step.
 export async function resetDemo(): Promise<boolean> {
-  if (!demoLoaded) return false;
-  if (changeCount !== demoBaseline && !window.confirm(strings(state.prefs.lang).demoResetConfirm)) return false;
+  if (!demoLoaded) {
+    return false;
+  }
+  if (changeCount !== demoBaseline && !window.confirm(strings(state.prefs.lang).demoResetConfirm)) {
+    return false;
+  }
   return loadDemo({ confirmed: true });
 }
 
@@ -659,7 +851,9 @@ export async function resetDemo(): Promise<boolean> {
 // the columns are ordinary manual columns, freely renamed or removed).
 function startEmptyList(): void {
   const t = strings(state.prefs.lang);
-  if (state.dirty && !window.confirm(t.manualConfirmReplace)) return;
+  if (state.dirty && !window.confirm(t.manualConfirmReplace)) {
+    return;
+  }
   el('ingest-error').classList.add('hidden');
   resetList([], []);
   const starters: Array<[string, Role]> = [
@@ -682,14 +876,18 @@ function resetList(headers: string[], rows: Record<string, string>[]): void {
   // A new list discards the demo's provided colour labels along with the demo
   // (FR-41 as amended), and starts with no at-a-glance choice: a
   // choice belongs to the list it was made on (FR-46 as amended).
-  if (demoLoaded) state.colourLabels = {};
+  if (demoLoaded) {
+    state.colourLabels = {};
+  }
   state.glanceColumns = null;
   // A new list opens the timeline and the costs view at their fitted views
   // (FR-67, FR-79), and discards the demo's provided events with the demo
   // (FR-80); events the user authored are the work's own and stay.
   restoreTimelineView(null);
   restoreCostsView(null);
-  if (demoLoaded) state.events = [];
+  if (demoLoaded) {
+    state.events = [];
+  }
   demoEventIds = [];
   // The card fields and the series name columns of the list they were made
   // on, and the unit belongs to that work (FR-62 to FR-64).
@@ -726,7 +924,9 @@ function resetList(headers: string[], rows: Record<string, string>[]): void {
 function labelOf(key: string): string {
   const t = strings(state.prefs.lang);
   const manual = state.manualColumns.get(key);
-  if (manual !== undefined) return manual.trim() === '' ? t.untitledHeader : manual;
+  if (manual !== undefined) {
+    return manual.trim() === '' ? t.untitledHeader : manual;
+  }
   return columnLabel(key, t.untitledHeader);
 }
 
@@ -749,19 +949,25 @@ function addManualRow(): void {
 function addManualColumn(): void {
   const input = el<HTMLInputElement>('new-column-name');
   const label = input.value.trim();
-  if (label === '') return;
+  if (label === '') {
+    return;
+  }
   const key = newManualKey(state.headers);
   state.manualColumns.set(key, label);
   state.headers = [...state.headers, key];
   state.visibleHeaders = [...state.headers];
-  for (const row of state.ingested) row.values[key] = '';
+  for (const row of state.ingested) {
+    row.values[key] = '';
+  }
   input.value = '';
   markDirty();
   renderList();
 }
 
 function renameManualColumn(key: string, label: string): void {
-  if (!state.manualColumns.has(key) || label.trim() === '') return;
+  if (!state.manualColumns.has(key) || label.trim() === '') {
+    return;
+  }
   state.manualColumns.set(key, label.trim());
   markDirty();
   renderList();
@@ -772,12 +978,20 @@ function renameManualColumn(key: string, label: string): void {
 // the area column are choose-from comboboxes and those of the status column
 // choose from the status list (FR-32, FR-33).
 function setCellValue(row: RowData, key: string, value: string): void {
-  if (key === state.roles.area || key === state.roles.program) value = value.trim();
-  if (row.values[key] === value) return;
+  if (key === state.roles.area || key === state.roles.program) {
+    value = value.trim();
+  }
+  if (row.values[key] === value) {
+    return;
+  }
   noteEdit(row, key, value);
   // A new value typed into the area column joins the area vocabulary.
-  if (key === state.roles.area) state.areaValues = addValue(state.areaValues, value);
-  if (key === state.roles.program) state.programValues = addValue(state.programValues, value);
+  if (key === state.roles.area) {
+    state.areaValues = addValue(state.areaValues, value);
+  }
+  if (key === state.roles.program) {
+    state.programValues = addValue(state.programValues, value);
+  }
   row.values[key] = value;
   markDirty();
   renderList();
@@ -803,7 +1017,9 @@ function numbered(): NumberedRow[] {
     });
   }
   const rows = numberRows(state.rows);
-  if (!groupedNumbering()) return rows;
+  if (!groupedNumbering()) {
+    return rows;
+  }
   const labels = programLabels(state.rows, state.roles.program!, state.programValues);
   return rows.map((n) => ({ ...n, label: labels.get(n.row) ?? n.label }));
 }
@@ -840,7 +1056,9 @@ function groupedView(): boolean {
 
 function listSections(): ListSection[] {
   const rows = displayedRows();
-  if (!groupedView()) return [{ area: null, index: 0, rows, collapsed: false }];
+  if (!groupedView()) {
+    return [{ area: null, index: 0, rows, collapsed: false }];
+  }
   return areaGroups(state.rows, state.roles.area!, state.areaValues)
     .map((group) => {
       const members = new Set(group.rows);
@@ -873,8 +1091,11 @@ function sectionRow(section: ListSection, span: number, t: Strings): HTMLTableRo
   toggle.setAttribute('aria-label', `${section.collapsed ? t.listGroupExpand : t.listGroupCollapse}: ${name}`);
   toggle.addEventListener('click', () => {
     const area = section.area ?? '';
-    if (state.collapsedAreas.has(area)) state.collapsedAreas.delete(area);
-    else state.collapsedAreas.add(area);
+    if (state.collapsedAreas.has(area)) {
+      state.collapsedAreas.delete(area);
+    } else {
+      state.collapsedAreas.add(area);
+    }
     renderList();
   });
   th.appendChild(toggle);
@@ -890,7 +1111,16 @@ function setListView(view: 'flat' | 'grouped'): void {
 // The role explanation (FR-55): what each role feeds, and which column holds
 // it now, so that a role left unassigned explains itself.
 function roleLabel(t: Strings, role: Role): string {
-  return { identifier: t.roleIdentifier, name: t.roleName, start: t.roleStart, end: t.roleEnd, area: t.roleArea, status: t.roleStatus, program: t.roleProgram, note: t.roleNote }[role];
+  return {
+    identifier: t.roleIdentifier,
+    name: t.roleName,
+    start: t.roleStart,
+    end: t.roleEnd,
+    area: t.roleArea,
+    status: t.roleStatus,
+    program: t.roleProgram,
+    note: t.roleNote,
+  }[role];
 }
 
 const ROLE_HELP: Record<Role, keyof Strings> = {
@@ -916,7 +1146,7 @@ function renderRoleHelp(): void {
       name.textContent = roleLabel(t, role);
       const what = document.createElement('span');
       what.className = 'role-help-text';
-      what.textContent = ` ${t[ROLE_HELP[role]] as string}`;
+      what.textContent = ` ${t[ROLE_HELP[role]]}`;
       const key = state.roles[role];
       const status = document.createElement('span');
       status.className = `role-help-status${key === undefined ? ' is-missing' : ''}`;
@@ -940,17 +1170,21 @@ function effectiveSeries(): SeriesAssignments {
   const out: SeriesAssignments = {};
   for (const role of SERIES_ROLES) {
     const a = state.series[role];
-    if (!a) continue;
+    if (!a) {
+      continue;
+    }
     const proposal = proposals.find((p) => p.key === seriesKey(a.name));
     const columns = proposal ? { ...proposal.columns } : Object.fromEntries(Object.entries(a.columns).filter(([, k]) => state.headers.includes(k)));
     const total = a.total !== null && state.headers.includes(a.total) ? a.total : null;
-    if (Object.keys(columns).length > 0 || total !== null) out[role] = { name: proposal?.name ?? a.name, columns, total };
+    if (Object.keys(columns).length > 0 || total !== null) {
+      out[role] = { name: proposal?.name ?? a.name, columns, total };
+    }
   }
   return out;
 }
 
 function seriesRoleOf(proposalKey: string): SeriesRole | null {
-  return SERIES_ROLES.find((r) => state.series[r] && seriesKey(state.series[r]!.name) === proposalKey) ?? null;
+  return SERIES_ROLES.find((r) => state.series[r] && seriesKey(state.series[r].name) === proposalKey) ?? null;
 }
 
 // One series per role: assigning a role moves it from any other series.
@@ -958,9 +1192,13 @@ function setSeriesRole(proposal: SeriesProposal, role: SeriesRole | null): void 
   const next: SeriesAssignments = {};
   for (const r of SERIES_ROLES) {
     const a = state.series[r];
-    if (a && seriesKey(a.name) !== proposal.key && r !== role) next[r] = a;
+    if (a && seriesKey(a.name) !== proposal.key && r !== role) {
+      next[r] = a;
+    }
   }
-  if (role) next[role] = { name: proposal.name, columns: { ...proposal.columns }, total: null };
+  if (role) {
+    next[role] = { name: proposal.name, columns: { ...proposal.columns }, total: null };
+  }
   state.series = next;
   markDirty();
   renderList();
@@ -968,7 +1206,9 @@ function setSeriesRole(proposal: SeriesProposal, role: SeriesRole | null): void 
 
 function setSeriesTotal(role: SeriesRole, key: string | null): void {
   const a = state.series[role];
-  if (!a) return;
+  if (!a) {
+    return;
+  }
   state.series = { ...state.series, [role]: { ...a, total: key } };
   markDirty();
   renderList();
@@ -985,7 +1225,9 @@ function renderSeriesPanel(): void {
   el('currency-unit-label').textContent = t.currencyUnit;
   el('currency-unit-hint').textContent = t.currencyUnitHint;
   const unit = el<HTMLInputElement>('currency-unit');
-  if (document.activeElement !== unit) unit.value = state.currencyUnit;
+  if (document.activeElement !== unit) {
+    unit.value = state.currencyUnit;
+  }
   const proposals = seriesProposals();
   el('series-none').textContent = t.seriesNone;
   el('series-none').classList.toggle('hidden', proposals.length > 0);
@@ -998,7 +1240,9 @@ function renderSeriesPanel(): void {
       const name = document.createElement('strong');
       name.className = 'series-name';
       name.textContent = proposal.name;
-      const years = Object.keys(proposal.columns).map(Number).sort((a, b) => a - b);
+      const years = Object.keys(proposal.columns)
+        .map(Number)
+        .sort((a, b) => a - b);
       const span = document.createElement('span');
       span.className = 'series-years';
       span.textContent = fill(t.seriesYears, { first: years[0], last: years[years.length - 1], count: years.length });
@@ -1071,8 +1315,12 @@ function renderList(): void {
     const role = roleOfColumn(state.roles, header);
     th.className = 'sortable';
     th.dataset.header = header;
-    if (state.hiddenHeaders.has(header)) th.classList.add('hidden');
-    if (role) th.dataset.role = role;
+    if (state.hiddenHeaders.has(header)) {
+      th.classList.add('hidden');
+    }
+    if (role) {
+      th.dataset.role = role;
+    }
     if (state.sort.header === header) {
       th.dataset.sort = state.sort.direction;
     }
@@ -1138,8 +1386,12 @@ function renderList(): void {
     const tr = document.createElement('tr');
     const id = rowId(row);
     tr.dataset.rowId = id;
-    if (state.manualRows.has(row)) tr.dataset.manual = 'true';
-    if (state.selected.has(id)) tr.dataset.selected = 'true';
+    if (state.manualRows.has(row)) {
+      tr.dataset.manual = 'true';
+    }
+    if (state.selected.has(id)) {
+      tr.dataset.selected = 'true';
+    }
 
     const selectTd = document.createElement('td');
     const selectInput = document.createElement('input');
@@ -1148,8 +1400,11 @@ function renderList(): void {
     selectInput.dataset.rowId = id;
     selectInput.checked = state.selected.has(id);
     selectInput.addEventListener('change', () => {
-      if (selectInput.checked) state.selected.add(id);
-      else state.selected.delete(id);
+      if (selectInput.checked) {
+        state.selected.add(id);
+      } else {
+        state.selected.delete(id);
+      }
       el('counter-selected').textContent = `${strings(state.prefs.lang).selected}: ${state.selected.size}`;
     });
     selectTd.appendChild(selectInput);
@@ -1165,16 +1420,24 @@ function renderList(): void {
     detailsButton.addEventListener('click', () => openDetails(id, true));
     numTd.appendChild(detailsButton);
     tr.append(selectTd, numTd);
-    if (state.detailsId === id) tr.dataset.details = 'true';
+    if (state.detailsId === id) {
+      tr.dataset.details = 'true';
+    }
     // A click on a line, away from its controls, selects it for the
     // details panel (FR-16).
     tr.addEventListener('click', (e) => {
-      if ((e.target as HTMLElement).closest('.row-select, .row-details, .colour-chip')) return;
-      if (state.detailsId !== id) openDetails(id);
+      if ((e.target as HTMLElement).closest('.row-select, .row-details, .colour-chip')) {
+        return;
+      }
+      if (state.detailsId !== id) {
+        openDetails(id);
+      }
     });
     // Moving through the cells by keyboard keeps an open panel on the line.
     tr.addEventListener('focusin', (e) => {
-      if (state.detailsId !== null && state.detailsId !== id && (e.target as HTMLElement).classList.contains('cell-input')) openDetails(id);
+      if (state.detailsId !== null && state.detailsId !== id && (e.target as HTMLElement).classList.contains('cell-input')) {
+        openDetails(id);
+      }
     });
 
     columns.forEach((header) => {
@@ -1187,8 +1450,12 @@ function renderList(): void {
         td.classList.add('editable');
       }
       td.dataset.header = header;
-      if (header === state.roles.name) td.classList.add('primary-label');
-      if (state.hiddenHeaders.has(header)) td.classList.add('hidden');
+      if (header === state.roles.name) {
+        td.classList.add('primary-label');
+      }
+      if (state.hiddenHeaders.has(header)) {
+        td.classList.add('hidden');
+      }
       tr.appendChild(td);
     });
 
@@ -1209,8 +1476,12 @@ function renderList(): void {
     body.appendChild(tr);
   };
   for (const section of sections) {
-    if (section.area !== null) body.appendChild(sectionRow(section, columns.length + 3, t));
-    if (!section.collapsed) section.rows.forEach(renderRow);
+    if (section.area !== null) {
+      body.appendChild(sectionRow(section, columns.length + 3, t));
+    }
+    if (!section.collapsed) {
+      section.rows.forEach(renderRow);
+    }
   }
 
   const allSelected = rows.length > 0 && rows.every(({ row }) => state.selected.has(rowId(row)));
@@ -1223,7 +1494,10 @@ function renderList(): void {
   renderWorkStatus();
 
   // A collapsed section is still a shown section.
-  el('empty-list').classList.toggle('hidden', sections.some((section) => section.rows.length > 0));
+  el('empty-list').classList.toggle(
+    'hidden',
+    sections.some((section) => section.rows.length > 0),
+  );
   el('counter-selected').textContent = `${t.selected}: ${state.selected.size}`;
   el('counter-retained').textContent = `${t.retained}: ${currentCounters().retained}`;
   el('counter-removed').textContent = `${t.removed}: ${currentCounters().removed}`;
@@ -1232,7 +1506,9 @@ function renderList(): void {
   renderFilterColumnSelect();
   renderColumnVisibility();
   renderPresets();
-  for (const kind of VALUE_VOCABULARIES) renderVocabPanel(kind);
+  for (const kind of VALUE_VOCABULARIES) {
+    renderVocabPanel(kind);
+  }
   renderEventPanel();
   renderColourPanel();
   renderSymbolPanel();
@@ -1268,7 +1544,6 @@ function renderFilterColumnSelect(): void {
 function renderColumnVisibility(): void {
   const container = el('column-visibility');
   container.innerHTML = '';
-  const t = strings(state.prefs.lang);
   state.headers.forEach((header) => {
     const label = document.createElement('label');
     const input = document.createElement('input');
@@ -1277,8 +1552,11 @@ function renderColumnVisibility(): void {
     input.dataset.header = header;
     input.checked = !state.hiddenHeaders.has(header);
     input.addEventListener('change', () => {
-      if (input.checked) state.hiddenHeaders.delete(header);
-      else state.hiddenHeaders.add(header);
+      if (input.checked) {
+        state.hiddenHeaders.delete(header);
+      } else {
+        state.hiddenHeaders.add(header);
+      }
       renderList();
     });
     label.append(input, document.createTextNode(labelOf(header)));
@@ -1291,7 +1569,9 @@ function deleteSelected(): void {
   const before = state.rows.length;
   state.rows = state.rows.filter((r) => !toRemove.has(rowId(r)));
   state.selected = new Set();
-  if (state.rows.length !== before) markDirty();
+  if (state.rows.length !== before) {
+    markDirty();
+  }
   renderList();
 }
 
@@ -1329,11 +1609,16 @@ export function captureWorkState(): WorkState {
       comments: commentsOf(state.comments, row).map((c) => ({ date: c.date, text: c.text, ...(c.edited ? { edited: c.edited } : {}) })),
       ...(state.activities.get(row)?.length ? { activities: state.activities.get(row)!.map((a) => ({ ...a })) } : {}),
       ...(workPhaseOf(row) !== undefined ? { workPhase: workPhaseOf(row) } : {}),
-      ...(state.activityImports.has(row) ? { activityImport: { ...state.activityImports.get(row)!, columns: { ...state.activityImports.get(row)!.columns } } } : {}),
+      ...(state.activityImports.has(row)
+        ? { activityImport: { ...state.activityImports.get(row)!, columns: { ...state.activityImports.get(row)!.columns } } }
+        : {}),
     })),
     background: bg ? { ...bg } : null,
     markers,
-    excluded: [...state.excluded].filter((row) => retained.has(row)).map((row) => index.get(row)!).sort((a, b) => a - b),
+    excluded: [...state.excluded]
+      .filter((row) => retained.has(row))
+      .map((row) => index.get(row)!)
+      .sort((a, b) => a - b),
     presets: state.presets.map(clonePreset),
     areaValues: [...state.areaValues],
     programValues: [...state.programValues],
@@ -1496,17 +1781,23 @@ function keptSeries(series: SeriesAssignments, keep: (key: string) => boolean): 
   const out: SeriesAssignments = {};
   for (const role of SERIES_ROLES) {
     const a = series[role];
-    if (!a) continue;
+    if (!a) {
+      continue;
+    }
     const columns = Object.fromEntries(Object.entries(a.columns).filter(([, key]) => keep(key)));
     const total = a.total !== null && keep(a.total) ? a.total : null;
-    if (Object.keys(columns).length > 0 || total !== null) out[role] = { name: a.name, columns, total } satisfies SeriesAssignment;
+    if (Object.keys(columns).length > 0 || total !== null) {
+      out[role] = { name: a.name, columns, total } satisfies SeriesAssignment;
+    }
   }
   return out;
 }
 
 export function exportPage(now: Date = new Date()): string | null {
   const page = selfPage();
-  if (page === null) return null;
+  if (page === null) {
+    return null;
+  }
   // The static state and the notice in the export's language (FR-38 as
   // amended, FR-59).
   const t = strings(state.prefs.lang);
@@ -1522,7 +1813,9 @@ let preparedExport: string | null = null;
 function formatSize(bytes: number): string {
   const locale = state.prefs.lang === 'sv' ? 'sv-SE' : 'en-GB';
   const mb = bytes / (1024 * 1024);
-  if (mb >= 1) return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(mb)} MB`;
+  if (mb >= 1) {
+    return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(mb)} MB`;
+  }
   return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(Math.max(1, Math.round(bytes / 1024)))} kB`;
 }
 
@@ -1577,7 +1870,9 @@ function activityRoleLabel(t: Strings, field: ActivityField): string {
 }
 
 function openActivityDialog(id: string): void {
-  if (state.viewOnly) return;
+  if (state.viewOnly) {
+    return;
+  }
   activityDialog = { mode: 'import', edits: [], phase: '', rowId: id, file: '', tables: [], tableIndex: 0, grid: [], mapping: {}, drafts: [] };
   el('activity-status').textContent = '';
   renderActivityDialog();
@@ -1588,13 +1883,24 @@ function openActivityDialog(id: string): void {
 // The edit mode (FR-76 as amended): the activities an import gave, each to
 // be repaired or removed. Nothing here creates an activity.
 function openActivityCorrection(id: string): void {
-  if (state.viewOnly) return;
+  if (state.viewOnly) {
+    return;
+  }
   const row = rowById(id);
   const activities = row ? (state.activities.get(row) ?? []) : [];
-  if (!row || activities.length === 0) return;
+  if (!row || activities.length === 0) {
+    return;
+  }
   activityDialog = {
     mode: 'edit',
-    edits: activities.map((a) => ({ id: a.id, label: a.label, start: a.start, end: a.end, progress: a.progress === null ? '' : String(a.progress), removed: false })),
+    edits: activities.map((a) => ({
+      id: a.id,
+      label: a.label,
+      start: a.start,
+      end: a.end,
+      progress: a.progress === null ? '' : String(a.progress),
+      removed: false,
+    })),
     phase: workPhaseOf(row) ?? '',
     rowId: id,
     file: '',
@@ -1614,8 +1920,12 @@ function openActivityCorrection(id: string): void {
 // none, or undefined when it is neither.
 function readProgress(text: string): number | null | undefined {
   const s = text.trim();
-  if (s === '') return null;
-  if (!/^\d+([.,]\d+)?$/.test(s)) return undefined;
+  if (s === '') {
+    return null;
+  }
+  if (!/^\d+([.,]\d+)?$/.test(s)) {
+    return undefined;
+  }
   const n = Number(s.replace(',', '.'));
   return n >= 0 && n <= 100 ? n : undefined;
 }
@@ -1643,76 +1953,112 @@ function renderActivityCorrection(): void {
   const none = document.createElement('option');
   none.value = '';
   none.textContent = t.activityPhaseNone;
-  phase.replaceChildren(none, ...d.edits.filter((e) => !e.removed).map((e) => {
-    const option = document.createElement('option');
-    option.value = e.id;
-    option.textContent = e.label.trim() === '' ? `${e.start} \u2013 ${e.end}` : e.label.trim();
-    return option;
-  }));
+  phase.replaceChildren(
+    none,
+    ...d.edits
+      .filter((e) => !e.removed)
+      .map((e) => {
+        const option = document.createElement('option');
+        option.value = e.id;
+        option.textContent = e.label.trim() === '' ? `${e.start} \u2013 ${e.end}` : e.label.trim();
+        return option;
+      }),
+  );
   phase.value = d.phase;
   const rows = el('activity-rows');
-  rows.replaceChildren(...d.edits.map((edit) => {
-    const original = before.get(edit.id);
-    const li = document.createElement('li');
-    li.className = 'vocab-item activity-row activity-edit';
-    li.dataset.activityId = edit.id;
-    li.dataset.dropped = String(edit.removed);
-    const name = original?.label || edit.id;
-    const note = document.createElement('span');
-    note.className = 'activity-edit-note notice';
-    // What the row is: edited by hand (before or now), and a date that
-    // cannot be read, kept as typed.
-    const describe = () => {
-      const changed = !!original && (edit.label.trim() !== original.label || edit.start.trim() !== original.start || edit.end.trim() !== original.end || readProgress(edit.progress) !== original.progress);
-      const notes: string[] = [];
-      if (original?.edited || changed) notes.push(t.activityEdited);
-      for (const [value, label] of [[edit.start, t.activityRoleStart], [edit.end, t.activityRoleEnd]] as const) {
-        if (value.trim() !== '' && readDate(value).kind !== 'date') notes.push(`${label}: ${value.trim()} (${t.activityAsTyped})`);
-      }
-      if (readProgress(edit.progress) === undefined) notes.push(t.activityProgressInvalid);
-      note.textContent = notes.join(' \u00b7 ');
-      li.dataset.edited = String(!!original?.edited || changed);
-    };
-    const input = (field: 'label' | 'start' | 'end' | 'progress', label: string) => {
-      const node = document.createElement('input');
-      node.type = 'text';
-      node.className = `activity-edit-${field}`;
-      node.value = edit[field];
-      node.disabled = edit.removed;
-      node.setAttribute('aria-label', `${label}: ${name}`);
-      node.placeholder = label;
-      if (field === 'progress') node.inputMode = 'decimal';
-      node.addEventListener('input', () => {
-        edit[field] = node.value;
-        describe();
+  rows.replaceChildren(
+    ...d.edits.map((edit) => {
+      const original = before.get(edit.id);
+      const li = document.createElement('li');
+      li.className = 'vocab-item activity-row activity-edit';
+      li.dataset.activityId = edit.id;
+      li.dataset.dropped = String(edit.removed);
+      const name = original?.label || edit.id;
+      const note = document.createElement('span');
+      note.className = 'activity-edit-note notice';
+      // What the row is: edited by hand (before or now), and a date that
+      // cannot be read, kept as typed.
+      const describe = () => {
+        const changed =
+          !!original &&
+          (edit.label.trim() !== original.label ||
+            edit.start.trim() !== original.start ||
+            edit.end.trim() !== original.end ||
+            readProgress(edit.progress) !== original.progress);
+        const notes: string[] = [];
+        if (original?.edited || changed) {
+          notes.push(t.activityEdited);
+        }
+        for (const [value, label] of [
+          [edit.start, t.activityRoleStart],
+          [edit.end, t.activityRoleEnd],
+        ] as const) {
+          if (value.trim() !== '' && readDate(value).kind !== 'date') {
+            notes.push(`${label}: ${value.trim()} (${t.activityAsTyped})`);
+          }
+        }
+        if (readProgress(edit.progress) === undefined) {
+          notes.push(t.activityProgressInvalid);
+        }
+        note.textContent = notes.join(' \u00b7 ');
+        li.dataset.edited = String(!!original?.edited || changed);
+      };
+      const input = (field: 'label' | 'start' | 'end' | 'progress', label: string) => {
+        const node = document.createElement('input');
+        node.type = 'text';
+        node.className = `activity-edit-${field}`;
+        node.value = edit[field];
+        node.disabled = edit.removed;
+        node.setAttribute('aria-label', `${label}: ${name}`);
+        node.placeholder = label;
+        if (field === 'progress') {
+          node.inputMode = 'decimal';
+        }
+        node.addEventListener('input', () => {
+          edit[field] = node.value;
+          describe();
+        });
+        return node;
+      };
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'vocab-remove activity-edit-remove';
+      remove.textContent = edit.removed ? t.activityRestore : t.vocabRemove;
+      remove.setAttribute('aria-label', `${edit.removed ? t.activityRestore : t.vocabRemove}: ${name}`);
+      remove.setAttribute('aria-pressed', String(edit.removed));
+      remove.addEventListener('click', () => {
+        edit.removed = !edit.removed;
+        // A removed activity cannot be the work phase.
+        if (edit.removed && d.phase === edit.id) {
+          d.phase = '';
+        }
+        renderActivityDialog();
       });
-      return node;
-    };
-    const remove = document.createElement('button');
-    remove.type = 'button';
-    remove.className = 'vocab-remove activity-edit-remove';
-    remove.textContent = edit.removed ? t.activityRestore : t.vocabRemove;
-    remove.setAttribute('aria-label', `${edit.removed ? t.activityRestore : t.vocabRemove}: ${name}`);
-    remove.setAttribute('aria-pressed', String(edit.removed));
-    remove.addEventListener('click', () => {
-      edit.removed = !edit.removed;
-      // A removed activity cannot be the work phase.
-      if (edit.removed && d.phase === edit.id) d.phase = '';
-      renderActivityDialog();
-    });
-    li.append(input('label', t.activityRoleLabel), input('start', t.activityRoleStart), input('end', t.activityRoleEnd), input('progress', t.activityRoleProgress), remove, note);
-    describe();
-    return li;
-  }));
+      li.append(
+        input('label', t.activityRoleLabel),
+        input('start', t.activityRoleStart),
+        input('end', t.activityRoleEnd),
+        input('progress', t.activityRoleProgress),
+        remove,
+        note,
+      );
+      describe();
+      return li;
+    }),
+  );
   el<HTMLButtonElement>('activity-go').disabled = false;
 }
 
 function confirmActivityCorrection(): void {
   const d = activityDialog;
-  if (!d) return;
+  if (!d) {
+    return;
+  }
   const t = strings(state.prefs.lang);
   const row = rowById(d.rowId);
-  if (!row) return;
+  if (!row) {
+    return;
+  }
   const kept = d.edits.filter((e) => !e.removed);
   if (kept.some((e) => readProgress(e.progress) === undefined)) {
     el('activity-status').textContent = t.activityProgressRefused;
@@ -1724,18 +2070,28 @@ function confirmActivityCorrection(): void {
     const original = before.get(e.id)!;
     const fixed = { label: e.label.trim(), start: e.start.trim(), end: e.end.trim(), progress: readProgress(e.progress) as number | null };
     const differs = fixed.label !== original.label || fixed.start !== original.start || fixed.end !== original.end || fixed.progress !== original.progress;
-    if (differs) changed++;
+    if (differs) {
+      changed++;
+    }
     // Every correction marks the activity as edited by hand.
     return { id: original.id, ...(original.edited || differs ? { edited: true as const } : {}), ...fixed };
   });
   const removed = d.edits.length - kept.length;
-  if (next.length > 0) state.activities.set(row, next);
-  else state.activities.delete(row);
+  if (next.length > 0) {
+    state.activities.set(row, next);
+  } else {
+    state.activities.delete(row);
+  }
   const phaseBefore = workPhaseOf(row) ?? '';
   const phase = next.some((a) => a.id === d.phase) ? d.phase : '';
-  if (phase === '') state.workPhases.delete(row);
-  else state.workPhases.set(row, phase);
-  if (changed > 0 || removed > 0 || phase !== phaseBefore) markDirty();
+  if (phase === '') {
+    state.workPhases.delete(row);
+  } else {
+    state.workPhases.set(row, phase);
+  }
+  if (changed > 0 || removed > 0 || phase !== phaseBefore) {
+    markDirty();
+  }
   renderMapItems();
   closeActivityDialog();
   el('work-status').textContent = fill(t.activityCorrectDone, { changed, removed });
@@ -1767,7 +2123,9 @@ function renderActivityDialog(): void {
   const propose = el('activity-propose');
   if (!d || d.tables.length === 0) {
     propose.classList.add('hidden');
-    if (d && d.file !== '' && d.tables.length === 0 && el('activity-status').textContent === '') el('activity-status').textContent = t.activityNoTable;
+    if (d && d.file !== '' && d.tables.length === 0 && el('activity-status').textContent === '') {
+      el('activity-status').textContent = t.activityNoTable;
+    }
     return;
   }
   propose.classList.remove('hidden');
@@ -1778,41 +2136,43 @@ function renderActivityDialog(): void {
   // The assign step: one select per role, the options being the PDF's own
   // header words.
   const roles = el('activity-roles');
-  roles.replaceChildren(...ACTIVITY_FIELDS.map((field) => {
-    const li = document.createElement('li');
-    li.className = 'vocab-item';
-    const label = document.createElement('label');
-    label.className = 'visibility-control';
-    const name = document.createElement('span');
-    name.textContent = activityRoleLabel(t, field);
-    const select = document.createElement('select');
-    select.className = 'activity-role';
-    select.dataset.field = field;
-    select.setAttribute('aria-label', `${activityRoleLabel(t, field)} (${table.columns.map((c) => c.header).join(', ')})`);
-    const none = document.createElement('option');
-    none.value = '';
-    none.textContent = t.activityRoleNone;
-    select.appendChild(none);
-    for (const col of table.columns) {
-      const opt = document.createElement('option');
-      opt.value = String(col.index);
-      opt.textContent = col.header === '' ? `#${col.index + 1}` : col.header;
-      select.appendChild(opt);
-    }
-    select.value = d.mapping[field] === undefined ? '' : String(d.mapping[field]);
-    select.addEventListener('change', () => {
-      const v = select.value === '' ? undefined : Number(select.value);
-      d.mapping = { ...d.mapping, [field]: v };
-      // A re-parse keeps the review's drop decisions, row by row.
-      const dropped = d.drafts.map((r) => r.dropped);
-      d.drafts = parseRows(d.grid, d.mapping);
-      d.drafts.forEach((r, i) => (r.dropped = dropped[i] ?? false));
-      renderActivityDialog();
-    });
-    label.append(name, select);
-    li.appendChild(label);
-    return li;
-  }));
+  roles.replaceChildren(
+    ...ACTIVITY_FIELDS.map((field) => {
+      const li = document.createElement('li');
+      li.className = 'vocab-item';
+      const label = document.createElement('label');
+      label.className = 'visibility-control';
+      const name = document.createElement('span');
+      name.textContent = activityRoleLabel(t, field);
+      const select = document.createElement('select');
+      select.className = 'activity-role';
+      select.dataset.field = field;
+      select.setAttribute('aria-label', `${activityRoleLabel(t, field)} (${table.columns.map((c) => c.header).join(', ')})`);
+      const none = document.createElement('option');
+      none.value = '';
+      none.textContent = t.activityRoleNone;
+      select.appendChild(none);
+      for (const col of table.columns) {
+        const opt = document.createElement('option');
+        opt.value = String(col.index);
+        opt.textContent = col.header === '' ? `#${col.index + 1}` : col.header;
+        select.appendChild(opt);
+      }
+      select.value = d.mapping[field] === undefined ? '' : String(d.mapping[field]);
+      select.addEventListener('change', () => {
+        const v = select.value === '' ? undefined : Number(select.value);
+        d.mapping = { ...d.mapping, [field]: v };
+        // A re-parse keeps the review's drop decisions, row by row.
+        const dropped = d.drafts.map((r) => r.dropped);
+        d.drafts = parseRows(d.grid, d.mapping);
+        d.drafts.forEach((r, i) => (r.dropped = dropped[i] ?? false));
+        renderActivityDialog();
+      });
+      label.append(name, select);
+      li.appendChild(label);
+      return li;
+    }),
+  );
   // A re-import (FR-76 as amended). The same file and page: a hand-corrected
   // activity is matched by its row position and keeps its values and mark.
   // A different file or page replaces the activities, said with its count.
@@ -1824,54 +2184,68 @@ function renderActivityDialog(): void {
   const replaces = existing.length > 0 && !same;
   notice.classList.toggle('hidden', !replaces);
   notice.textContent = replaces
-    ? fill(last ? t.activityReplaceNotice : t.activityReplaceNoticeUnknown, { file: last?.file ?? '', page: last?.page ?? '', count: existing.length, edited: existing.filter((a) => a.edited).length }) +
-      (target && workPhaseOf(target) !== undefined ? ` ${t.activityReplacePhase}` : '')
+    ? fill(last ? t.activityReplaceNotice : t.activityReplaceNoticeUnknown, {
+        file: last?.file ?? '',
+        page: last?.page ?? '',
+        count: existing.length,
+        edited: existing.filter((a) => a.edited).length,
+      }) + (target && workPhaseOf(target) !== undefined ? ` ${t.activityReplacePhase}` : '')
     : '';
   // The review: each parsed row with its cells, its read results, and a drop.
   const rows = el('activity-rows');
-  rows.replaceChildren(...d.drafts.map((draft, i) => {
-    const li = document.createElement('li');
-    li.className = 'vocab-item activity-row';
-    li.dataset.dropped = String(draft.dropped);
-    const check = document.createElement('input');
-    check.type = 'checkbox';
-    check.checked = !draft.dropped;
-    check.setAttribute('aria-label', t.activityRowDrop);
-    check.addEventListener('change', () => {
-      draft.dropped = !check.checked;
+  rows.replaceChildren(
+    ...d.drafts.map((draft, i) => {
+      const li = document.createElement('li');
+      li.className = 'vocab-item activity-row';
       li.dataset.dropped = String(draft.dropped);
-    });
-    const text = document.createElement('span');
-    text.className = 'placement-label';
-    const cells = draft.cells.map((c, cIndex) => {
-      const col = table.columns[cIndex];
-      const role = ACTIVITY_FIELDS.find((f) => d.mapping[f] === cIndex);
-      let cell = c === '' ? '\u2013' : c;
-      if (role === 'start' && draft.startText !== null) cell = `${c} (${t.activityAsTyped})`;
-      if (role === 'end' && draft.endText !== null) cell = `${c} (${t.activityAsTyped})`;
-      return col ? `${col.header}: ${cell}` : cell;
-    });
-    text.textContent = cells.join(' \u00b7 ');
-    li.append(check, text);
-    // A row whose activity was corrected by hand: shown as edited by hand,
-    // with the values that are kept, beside the source's cells.
-    const kept = same ? existing.find((a) => a.id === activityId(i) && a.edited) : undefined;
-    if (kept) {
-      li.dataset.edited = 'true';
-      const mark = document.createElement('span');
-      mark.className = 'activity-edit-note notice';
-      mark.textContent = fill(t.activityKeptEdit, { values: [kept.label, `${kept.start} \u2013 ${kept.end}`, ...(kept.progress === null ? [] : [`${kept.progress} %`])].join(' \u00b7 ') });
-      li.appendChild(mark);
-    }
-    return li;
-  }));
+      const check = document.createElement('input');
+      check.type = 'checkbox';
+      check.checked = !draft.dropped;
+      check.setAttribute('aria-label', t.activityRowDrop);
+      check.addEventListener('change', () => {
+        draft.dropped = !check.checked;
+        li.dataset.dropped = String(draft.dropped);
+      });
+      const text = document.createElement('span');
+      text.className = 'placement-label';
+      const cells = draft.cells.map((c, cIndex) => {
+        const col = table.columns[cIndex];
+        const role = ACTIVITY_FIELDS.find((f) => d.mapping[f] === cIndex);
+        let cell = c === '' ? '\u2013' : c;
+        if (role === 'start' && draft.startText !== null) {
+          cell = `${c} (${t.activityAsTyped})`;
+        }
+        if (role === 'end' && draft.endText !== null) {
+          cell = `${c} (${t.activityAsTyped})`;
+        }
+        return col ? `${col.header}: ${cell}` : cell;
+      });
+      text.textContent = cells.join(' \u00b7 ');
+      li.append(check, text);
+      // A row whose activity was corrected by hand: shown as edited by hand,
+      // with the values that are kept, beside the source's cells.
+      const kept = same ? existing.find((a) => a.id === activityId(i) && a.edited) : undefined;
+      if (kept) {
+        li.dataset.edited = 'true';
+        const mark = document.createElement('span');
+        mark.className = 'activity-edit-note notice';
+        mark.textContent = fill(t.activityKeptEdit, {
+          values: [kept.label, `${kept.start} \u2013 ${kept.end}`, ...(kept.progress === null ? [] : [`${kept.progress} %`])].join(' \u00b7 '),
+        });
+        li.appendChild(mark);
+      }
+      return li;
+    }),
+  );
   el<HTMLButtonElement>('activity-go').disabled = d.drafts.every((r) => r.dropped) || d.drafts.length === 0;
 }
 
 async function onActivityFile(file: File): Promise<void> {
   const t = strings(state.prefs.lang);
   const d = activityDialog;
-  if (!d) return;
+  if (!d) {
+    return;
+  }
   el('activity-status').textContent = '';
   let data: ArrayBuffer;
   try {
@@ -1908,8 +2282,12 @@ async function onActivityFile(file: File): Promise<void> {
   // The raw body grid, kept so a changed assignment re-parses without re-reading.
   d.grid = table.rows.map((r) => r.cells);
   d.drafts = table.rows;
-  if (result.tables.length > 1) el('activity-status').textContent = fill(t.activityPages, { count: result.tables.length });
-  if (d.drafts.length === 0) el('activity-status').textContent = t.activityEmpty;
+  if (result.tables.length > 1) {
+    el('activity-status').textContent = fill(t.activityPages, { count: result.tables.length });
+  }
+  if (d.drafts.length === 0) {
+    el('activity-status').textContent = t.activityEmpty;
+  }
   renderActivityDialog();
 }
 
@@ -1920,14 +2298,18 @@ function sameImport(last: ActivityImport | undefined, file: string, page: number
 
 function confirmActivityImport(): void {
   const d = activityDialog;
-  if (!d) return;
+  if (!d) {
+    return;
+  }
   if (d.mode === 'edit') {
     confirmActivityCorrection();
     return;
   }
   const t = strings(state.prefs.lang);
   const row = rowById(d.rowId);
-  if (!row) return;
+  if (!row) {
+    return;
+  }
   const table = d.tables[d.tableIndex];
   // An imported activity's id is its row position in the source table.
   const kept = d.drafts.map((r, position) => ({ r, position })).filter(({ r }) => !r.dropped);
@@ -1937,7 +2319,9 @@ function confirmActivityImport(): void {
     // The same file and page again: a hand-corrected activity at this row
     // position keeps its values and its mark (FR-76 as amended).
     const corrected = same ? existing.find((a) => a.id === activityId(position) && a.edited) : undefined;
-    if (corrected) return { ...corrected };
+    if (corrected) {
+      return { ...corrected };
+    }
     return {
       id: activityId(position),
       label: d.mapping.label === undefined ? '' : (r.cells[d.mapping.label] ?? '').trim(),
@@ -1949,10 +2333,16 @@ function confirmActivityImport(): void {
   // A different file or page replaces the activities: the ids name other
   // rows now, so the work phase goes with what it referred to. The same
   // file keeps it while its activity is still there.
-  if (!same || !activities.some((a) => a.id === state.workPhases.get(row))) state.workPhases.delete(row);
+  if (!same || !activities.some((a) => a.id === state.workPhases.get(row))) {
+    state.workPhases.delete(row);
+  }
   state.activities.set(row, activities);
   const columns: Record<string, string> = {};
-  for (const field of ACTIVITY_FIELDS) if (d.mapping[field] !== undefined) columns[field] = table.columns[d.mapping[field]!].header;
+  for (const field of ACTIVITY_FIELDS) {
+    if (d.mapping[field] !== undefined) {
+      columns[field] = table.columns[d.mapping[field]].header;
+    }
+  }
   state.activityImports.set(row, { file: d.file, page: table.page, columns });
   markDirty();
   renderMapItems();
@@ -1961,7 +2351,9 @@ function confirmActivityImport(): void {
 }
 
 function openExportDialog(): void {
-  if (state.viewOnly) return;
+  if (state.viewOnly) {
+    return;
+  }
   exportChoice = defaultExportChoice();
   preparedExport = exportPage();
   if (preparedExport === null) {
@@ -2000,7 +2392,9 @@ function exportGroups(): Array<{ area: string; rows: RowData[] }> {
 function buildExportSelection(): void {
   const t = strings(state.prefs.lang);
   const choice = exportChoice;
-  if (!choice) return;
+  if (!choice) {
+    return;
+  }
   el('export-select-heading').textContent = t.exportSelectHeading;
   el('export-select-hint').textContent = t.exportSelectHint;
   el('export-columns-heading').textContent = t.exportColumnsHeading;
@@ -2017,8 +2411,11 @@ function buildExportSelection(): void {
       box.dataset.area = area;
       box.addEventListener('change', () => {
         for (const row of rows) {
-          if (box.checked) choice.items.add(row);
-          else choice.items.delete(row);
+          if (box.checked) {
+            choice.items.add(row);
+          } else {
+            choice.items.delete(row);
+          }
         }
         exportChoiceChanged();
       });
@@ -2035,8 +2432,11 @@ function buildExportSelection(): void {
       box.className = 'export-item-toggle';
       box.dataset.rowId = rowId(row);
       box.addEventListener('change', () => {
-        if (box.checked) choice.items.add(row);
-        else choice.items.delete(row);
+        if (box.checked) {
+          choice.items.add(row);
+        } else {
+          choice.items.delete(row);
+        }
         exportChoiceChanged();
       });
       const number = numberLabel(row);
@@ -2057,8 +2457,11 @@ function buildExportSelection(): void {
       box.className = 'export-column-toggle';
       box.dataset.header = key;
       box.addEventListener('change', () => {
-        if (box.checked) choice.columns.add(key);
-        else choice.columns.delete(key);
+        if (box.checked) {
+          choice.columns.add(key);
+        } else {
+          choice.columns.delete(key);
+        }
         exportChoiceChanged();
       });
       label.append(box, document.createTextNode(labelOf(key)));
@@ -2071,19 +2474,25 @@ function buildExportSelection(): void {
 
 function syncExportSelection(): void {
   const choice = exportChoice;
-  if (!choice) return;
+  if (!choice) {
+    return;
+  }
   for (const box of document.querySelectorAll<HTMLInputElement>('.export-item-toggle')) {
     const row = rowById(box.dataset.rowId ?? '');
     box.checked = row !== undefined && choice.items.has(row);
   }
   for (const { area, rows } of exportGroups()) {
     const box = [...document.querySelectorAll<HTMLInputElement>('.export-area-toggle')].find((b) => b.dataset.area === area);
-    if (!box) continue;
+    if (!box) {
+      continue;
+    }
     const chosen = rows.filter((r) => choice.items.has(r)).length;
     box.checked = chosen === rows.length;
     box.indeterminate = chosen > 0 && chosen < rows.length;
   }
-  for (const box of document.querySelectorAll<HTMLInputElement>('.export-column-toggle')) box.checked = choice.columns.has(box.dataset.header ?? '');
+  for (const box of document.querySelectorAll<HTMLInputElement>('.export-column-toggle')) {
+    box.checked = choice.columns.has(box.dataset.header ?? '');
+  }
 }
 
 function exportChoiceChanged(): void {
@@ -2102,14 +2511,19 @@ function renderExport(): void {
   const messages = { done: t.exportDone, cancelled: t.exportCancelled, failed: t.exportFailed, unavailable: t.exportUnavailable };
   status.textContent = exportMessage ? messages[exportMessage] : '';
   status.classList.toggle('error', exportMessage === 'failed' || exportMessage === 'unavailable');
-  if (el('export-panel').classList.contains('hidden') || preparedExport === null) return;
+  if (el('export-panel').classList.contains('hidden') || preparedExport === null) {
+    return;
+  }
   const s = captureExport().summary;
   const item = (text: string) => {
     const li = document.createElement('li');
     li.textContent = text;
     return li;
   };
-  const items = s.columns === s.allColumns ? fill(t.exportItems, { items: s.items, columns: s.columns }) : fill(t.exportItemsSome, { items: s.items, columns: s.columns, all: s.allColumns });
+  const items =
+    s.columns === s.allColumns
+      ? fill(t.exportItems, { items: s.items, columns: s.columns })
+      : fill(t.exportItemsSome, { items: s.items, columns: s.columns, all: s.allColumns });
   el('export-contains').replaceChildren(
     item(s.hidden > 0 ? `${items}, ${fill(t.exportHiddenColumns, { hidden: s.hidden })}` : items),
     item(fill(t.exportPlaced, { placed: s.placed })),
@@ -2130,7 +2544,9 @@ function renderExport(): void {
 
 async function runExport(): Promise<void> {
   const page = preparedExport;
-  if (page === null) return;
+  if (page === null) {
+    return;
+  }
   const { outcome } = await writeFile(page, EXPORT_FILE);
   exportMessage = outcome === 'saved' ? 'done' : outcome;
   closeExportDialog();
@@ -2180,7 +2596,9 @@ export function documentTable(): DocumentTable {
   // the table (FR-12 as amended in the documents' chapter, the explicit reversal of Pass
   // 15's ruling D9).
   const series = effectiveSeries();
-  const inSeries = new Set(SERIES_ROLES.flatMap((r) => (series[r] ? [...Object.values(series[r]!.columns), ...(series[r]!.total ? [series[r]!.total!] : [])] : [])));
+  const inSeries = new Set(
+    SERIES_ROLES.flatMap((r) => (series[r] ? [...Object.values(series[r].columns), ...(series[r].total ? [series[r].total] : [])] : [])),
+  );
   const columns = listColumnOrder(state.headers, state.roles).filter((h) => !state.hiddenHeaders.has(h) && !inSeries.has(h));
   const rows = numbered()
     .filter((n) => !state.excluded.has(n.row))
@@ -2191,7 +2609,9 @@ export function documentTable(): DocumentTable {
 export function documentScene(): StageScene | null {
   const view = presentationView;
   const bg = view?.background;
-  if (!view || !bg) return null;
+  if (!view || !bg) {
+    return null;
+  }
   const t = strings(state.prefs.lang);
   const markers = placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered())
     .filter((m) => !state.excluded.has(m.row))
@@ -2214,7 +2634,9 @@ export function documentScene(): StageScene | null {
 // phase entry then.
 function documentPhaseShown(): boolean {
   return state.rows.some((row) => {
-    if (state.excluded.has(row)) return false;
+    if (state.excluded.has(row)) {
+      return false;
+    }
     const id = workPhaseOf(row);
     const activity = id === undefined ? undefined : state.activities.get(row)!.find((a) => a.id === id);
     return activity !== undefined && readDate(activity.start).kind === 'date' && readDate(activity.end).kind === 'date';
@@ -2229,7 +2651,9 @@ function documentFigure(): TimelineFigure | null {
   const { start, end } = state.roles;
   const symbols = effectiveSymbols();
   const items: FigureItem[] = timelineItems().map((item) => ({ ...item, symbol: symbols.get(rowById(item.id)!) ?? DEFAULT_SHAPE }));
-  if (items.length === 0) return null;
+  if (items.length === 0) {
+    return null;
+  }
   return {
     model: buildTimeline(items, state.presentationOrder, state.areaValues, areaLocale()),
     events: scheduleEvents(),
@@ -2256,7 +2680,17 @@ function documentFigure(): TimelineFigure | null {
       today: t.todayMark,
     },
     legendTitle: t.legend,
-    legend: legendModel(t, state.statuses, shownProgramGroups(), colourLabels(), symbolLabels(), presentationLegendUse(), undefined, documentPhaseShown(), documentToday()),
+    legend: legendModel(
+      t,
+      state.statuses,
+      shownProgramGroups(),
+      colourLabels(),
+      symbolLabels(),
+      presentationLegendUse(),
+      undefined,
+      documentPhaseShown(),
+      documentToday(),
+    ),
   };
 }
 
@@ -2266,9 +2700,13 @@ function documentToday(): string | undefined {
   const day = todayDay();
   const items = timelineItems();
   const extent = buildTimeline(items).extent;
-  if (extent === null) return undefined;
+  if (extent === null) {
+    return undefined;
+  }
   const window = fitWindow(extent);
-  if (day < window.from || day > window.to) return undefined;
+  if (day < window.from || day > window.to) {
+    return undefined;
+  }
   return formatDate({ kind: 'date', start: day, end: day, precision: 'day' });
 }
 
@@ -2281,9 +2719,13 @@ function documentEconomics(): { blocks: EconomicsBlock[]; labels: EconomicsPageL
   const forecast = series.forecast?.name ?? '';
   const blocks: EconomicsBlock[] = [];
   for (const n of numbered()) {
-    if (state.excluded.has(n.row)) continue;
+    if (state.excluded.has(n.row)) {
+      continue;
+    }
     const block = economicsBlock(n.label, itemLabel(n.row, n.label), n.row.values, series, itemSpan(n.row), state.currencyUnit);
-    if (block) blocks.push(block);
+    if (block) {
+      blocks.push(block);
+    }
   }
   return {
     blocks,
@@ -2321,7 +2763,9 @@ function documentTexts(t: Strings) {
 
 async function prepareDocument(kind: DocumentKind, scene: StageScene, table: DocumentTable): Promise<PreparedDocument | null> {
   const src = presentationView?.background?.src;
-  if (!src) return null;
+  if (!src) {
+    return null;
+  }
   const t = strings(state.prefs.lang);
   const texts = documentTexts(t);
   const fig = documentFigure();
@@ -2354,7 +2798,18 @@ async function prepareDocument(kind: DocumentKind, scene: StageScene, table: Doc
     }
     const tables = pptxTables(table, texts);
     const bytes = buildPptxDocument(images, tables, texts.title, documentLocale(), new Date());
-    return { kind, bytes, scene, table, pages: images.length + tables.slides.length, columnGroups: tables.columnGroups, replaced: 0, timelinePages, economicsPages, economicsItems: blocks.length };
+    return {
+      kind,
+      bytes,
+      scene,
+      table,
+      pages: images.length + tables.slides.length,
+      columnGroups: tables.columnGroups,
+      replaced: 0,
+      timelinePages,
+      economicsPages,
+      economicsItems: blocks.length,
+    };
   }
   const background = scene.background ? await backgroundJpeg(src, scene.background.image) : null;
   // The extra page kinds between the stage page and the table pages: the
@@ -2366,20 +2821,37 @@ async function prepareDocument(kind: DocumentKind, scene: StageScene, table: Doc
   if (fig) {
     const layout = layoutTimeline(fig, frame);
     timelinePages = layout.pages.length;
-    for (const rows of layout.pages) extras.push({ draw: (p, f) => drawTimelinePage(p, fig, layout, rows, f) });
+    for (const rows of layout.pages) {
+      extras.push({ draw: (p, f) => drawTimelinePage(p, fig, layout, rows, f) });
+    }
   }
   let economicsPages = 0;
   if (blocks.length > 0) {
     const layout = layoutEconomics(blocks, frame, econLabels, fmt);
     economicsPages = layout.pages.length;
-    for (const page of layout.pages) extras.push({ draw: (p, f) => drawEconomicsPage(p, blocks, econLabels, fmt, layout, page, f) });
+    for (const page of layout.pages) {
+      extras.push({ draw: (p, f) => drawEconomicsPage(p, blocks, econLabels, fmt, layout, page, f) });
+    }
   }
   const pdf = buildPdf(scene, table, background, texts, new Date(), extras);
-  return { kind, bytes: pdf.bytes, scene, table, pages: pdf.pages, columnGroups: pdf.columnGroups, replaced: pdf.replaced, timelinePages, economicsPages, economicsItems: blocks.length };
+  return {
+    kind,
+    bytes: pdf.bytes,
+    scene,
+    table,
+    pages: pdf.pages,
+    columnGroups: pdf.columnGroups,
+    replaced: pdf.replaced,
+    timelinePages,
+    economicsPages,
+    economicsItems: blocks.length,
+  };
 }
 
 async function openDocumentDialog(kind: DocumentKind): Promise<void> {
-  if (state.viewOnly) return;
+  if (state.viewOnly) {
+    return;
+  }
   const token = ++documentToken;
   documentKind = kind;
   preparedDocument = null;
@@ -2402,19 +2874,27 @@ async function openDocumentDialog(kind: DocumentKind): Promise<void> {
   } catch {
     prepared = null;
   }
-  if (token !== documentToken) return;
+  if (token !== documentToken) {
+    return;
+  }
   preparedDocument = prepared;
   documentMessage = prepared ? null : 'failed';
-  if (!prepared) hideDialog('document-panel');
+  if (!prepared) {
+    hideDialog('document-panel');
+  }
   renderDocument();
-  if (prepared) el('document-go').focus();
+  if (prepared) {
+    el('document-go').focus();
+  }
 }
 
 function closeDocumentDialog(): void {
   documentToken++;
   preparedDocument = null;
   hideDialog('document-panel');
-  if (documentKind) el(`${documentKind}-open`).focus();
+  if (documentKind) {
+    el(`${documentKind}-open`).focus();
+  }
 }
 
 // The dialog states what the document holds and what it leaves out (FR-52).
@@ -2439,7 +2919,9 @@ function renderDocument(): void {
   el('document-cancel').textContent = t.exportCancel;
   const doc = preparedDocument;
   el<HTMLButtonElement>('document-go').disabled = doc === null;
-  if (el('document-panel').classList.contains('hidden')) return;
+  if (el('document-panel').classList.contains('hidden')) {
+    return;
+  }
   if (!doc) {
     el('document-contains').replaceChildren();
     el('document-omitted').replaceChildren();
@@ -2457,13 +2939,25 @@ function renderDocument(): void {
   const bg = presentationView?.background;
   const contains = [
     item(fill(t.documentStage, { markers: doc.scene.markers.length, annotations: doc.scene.annotations.length })),
-    item(doc.scene.background && bg ? fill(t.documentBackground, { width: Math.round(doc.scene.background.image.width), height: Math.round(doc.scene.background.image.height) }) : t.documentNoBackground),
+    item(
+      doc.scene.background && bg
+        ? fill(t.documentBackground, { width: Math.round(doc.scene.background.image.width), height: Math.round(doc.scene.background.image.height) })
+        : t.documentNoBackground,
+    ),
     item(t.documentLegend),
   ];
-  if (doc.timelinePages > 0) contains.push(item(fill(pptx ? t.documentTimelineSlides : t.documentTimeline, { items: shownItems, pages: doc.timelinePages })));
-  if (doc.economicsPages > 0) contains.push(item(fill(pptx ? t.documentEconomicsSlides : t.documentEconomics, { items: doc.economicsItems, pages: doc.economicsPages })));
-  contains.push(item(fill(pptx ? t.documentTableSlides : t.documentTable, { items: shownItems, columns, pages: doc.pages - 1 - doc.timelinePages - doc.economicsPages })));
-  if (doc.columnGroups > 1) contains.push(item(fill(t.documentColumnGroups, { groups: doc.columnGroups })));
+  if (doc.timelinePages > 0) {
+    contains.push(item(fill(pptx ? t.documentTimelineSlides : t.documentTimeline, { items: shownItems, pages: doc.timelinePages })));
+  }
+  if (doc.economicsPages > 0) {
+    contains.push(item(fill(pptx ? t.documentEconomicsSlides : t.documentEconomics, { items: doc.economicsItems, pages: doc.economicsPages })));
+  }
+  contains.push(
+    item(fill(pptx ? t.documentTableSlides : t.documentTable, { items: shownItems, columns, pages: doc.pages - 1 - doc.timelinePages - doc.economicsPages })),
+  );
+  if (doc.columnGroups > 1) {
+    contains.push(item(fill(t.documentColumnGroups, { groups: doc.columnGroups })));
+  }
   el('document-contains').replaceChildren(...contains);
   const hiddenColumns = state.headers.filter((h) => state.hiddenHeaders.has(h)).length;
   const removed = state.ingested.length - state.rows.length;
@@ -2484,7 +2978,9 @@ function renderDocument(): void {
 
 async function runDocumentExport(): Promise<void> {
   const doc = preparedDocument;
-  if (!doc) return;
+  if (!doc) {
+    return;
+  }
   const { outcome } = await writeFile(doc.bytes, doc.kind === 'pptx' ? PPTX_FILE : PDF_FILE);
   documentMessage = outcome === 'saved' ? 'done' : outcome;
   closeDocumentDialog();
@@ -2492,7 +2988,7 @@ async function runDocumentExport(): Promise<void> {
 }
 
 function hasWork(): boolean {
-  return state.ingested.length > 0 || mapView?.background != null;
+  return state.ingested.length > 0 || (mapView?.background !== null && mapView?.background !== undefined);
 }
 
 type WriteOutcome = 'saved' | 'cancelled' | 'failed';
@@ -2570,10 +3066,14 @@ let workErrorText = '';
 // but do not by themselves count as unsaved changes.
 function markDirty(): void {
   // Nothing in the exported viewer is work to save.
-  if (state.viewOnly) return;
+  if (state.viewOnly) {
+    return;
+  }
   state.dirty = true;
   changeCount++;
-  if (workMessage === 'saved' || workMessage === 'download-started' || workMessage === 'shared' || workMessage === 'opened' || workMessage === 'demo-loaded') workMessage = null;
+  if (workMessage === 'saved' || workMessage === 'download-started' || workMessage === 'shared' || workMessage === 'opened' || workMessage === 'demo-loaded') {
+    workMessage = null;
+  }
   renderWorkStatus();
 }
 
@@ -2635,7 +3135,9 @@ function renderWorkStatus(): void {
 }
 
 export async function saveWork(): Promise<WriteOutcome> {
-  if (state.viewOnly) return 'cancelled';
+  if (state.viewOnly) {
+    return 'cancelled';
+  }
   const text = serialiseWorkState(captureWorkState(), new Date());
   const { outcome, via } = await writeFile(text, WORK_STATE_FILE);
   if (outcome === 'saved' && via === 'picker') {
@@ -2664,9 +3166,13 @@ export async function saveWork(): Promise<WriteOutcome> {
 // network call by the application. Sharing is not saving: the unsaved mark
 // is untouched.
 async function shareWork(): Promise<void> {
-  if (state.viewOnly) return;
+  if (state.viewOnly) {
+    return;
+  }
   const nav = navigator as Navigator & { share?: (data: ShareData) => Promise<void> };
-  if (typeof nav.share !== 'function') return;
+  if (typeof nav.share !== 'function') {
+    return;
+  }
   const text = serialiseWorkState(captureWorkState(), new Date());
   const file = new File([text], WORK_STATE_FILE.name, { type: WORK_STATE_FILE.mime });
   try {
@@ -2674,7 +3180,9 @@ async function shareWork(): Promise<void> {
     workMessage = 'shared';
   } catch (e) {
     // The user closed the share sheet: nothing happened, nothing is claimed.
-    if (e instanceof DOMException && e.name === 'AbortError') return;
+    if (e instanceof DOMException && e.name === 'AbortError') {
+      return;
+    }
     workMessage = 'share-failed';
   }
   renderWorkStatus();
@@ -2683,8 +3191,8 @@ async function shareWork(): Promise<void> {
 function readText(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error ?? new Error('the file could not be read'));
     reader.readAsText(file);
   });
 }
@@ -2698,8 +3206,12 @@ function problemText(problem: Problem): string {
 function openErrorText(e: unknown): string {
   const t = strings(state.prefs.lang);
   if (e instanceof WorkStateError) {
-    if (e.code === 'unknown-version') return t.workOpenUnknownVersion.replace('{version}', e.detail);
-    if (e.code === 'invalid' && e.problem) return `${t.workOpenInvalid} ${problemText(e.problem)}.`;
+    if (e.code === 'unknown-version') {
+      return t.workOpenUnknownVersion.replace('{version}', e.detail);
+    }
+    if (e.code === 'invalid' && e.problem) {
+      return `${t.workOpenInvalid} ${problemText(e.problem)}.`;
+    }
     return t.workOpenNotWorkState;
   }
   return t.workOpenUnreadable;
@@ -2714,7 +3226,9 @@ function reportOpenFailure(text: string): void {
 // Restores a complete work state. The background is decoded first; if that
 // fails, nothing else is changed.
 async function applyWorkState(ws: WorkState): Promise<boolean> {
-  if (!mapView) return false;
+  if (!mapView) {
+    return false;
+  }
   await closePdf();
   showMapError(null);
   if (ws.background) {
@@ -2738,9 +3252,17 @@ async function applyWorkState(ws: WorkState): Promise<boolean> {
   state.manualRows = new Set(state.ingested.filter((_, i) => ws.rows[i].manual));
   demoLoaded = false;
   state.edited = new Map(state.ingested.flatMap((row, i) => (Object.keys(ws.rows[i].edited).length > 0 ? [[row, { ...ws.rows[i].edited }]] : [])));
-  state.activities = new Map(state.ingested.flatMap((row, i) => (ws.rows[i].activities && ws.rows[i].activities.length > 0 ? [[row, ws.rows[i].activities!.map((a) => ({ ...a }))]] : [])));
-  state.workPhases = new Map(state.ingested.flatMap((row, i) => (ws.rows[i].workPhase !== undefined ? [[row, ws.rows[i].workPhase!]] : [])));
-  state.activityImports = new Map(state.ingested.flatMap((row, i) => (ws.rows[i].activityImport ? [[row, { ...ws.rows[i].activityImport!, columns: { ...ws.rows[i].activityImport!.columns } }]] : [])));
+  state.activities = new Map(
+    state.ingested.flatMap((row, i) =>
+      ws.rows[i].activities && ws.rows[i].activities.length > 0 ? [[row, ws.rows[i].activities.map((a) => ({ ...a }))]] : [],
+    ),
+  );
+  state.workPhases = new Map(state.ingested.flatMap((row, i) => (ws.rows[i].workPhase !== undefined ? [[row, ws.rows[i].workPhase]] : [])));
+  state.activityImports = new Map(
+    state.ingested.flatMap((row, i) =>
+      ws.rows[i].activityImport ? [[row, { ...ws.rows[i].activityImport, columns: { ...ws.rows[i].activityImport.columns } }]] : [],
+    ),
+  );
   state.comments = new Map(state.ingested.flatMap((row, i) => (ws.rows[i].comments.length > 0 ? [[row, restoreComments(ws.rows[i].comments)]] : [])));
   state.detailsId = null;
   state.rowIds = new Map();
@@ -2763,10 +3285,22 @@ async function applyWorkState(ws: WorkState): Promise<boolean> {
   state.hiddenAnnotations = new Set();
   state.selectedAnnotation = null;
   for (const a of ws.annotations) {
-    const annotation: Annotation = { id: newAnnotationId(), kind: a.kind, points: a.points.map((p) => ({ ...p })), colour: a.colour, fillOpacity: a.fillOpacity, outline: a.outline, lineStyle: a.lineStyle, label: a.label };
+    const annotation: Annotation = {
+      id: newAnnotationId(),
+      kind: a.kind,
+      points: a.points.map((p) => ({ ...p })),
+      colour: a.colour,
+      fillOpacity: a.fillOpacity,
+      outline: a.outline,
+      lineStyle: a.lineStyle,
+      label: a.label,
+    };
     state.annotations.push(annotation);
-    if (a.link !== null) state.annotationLinks.set(annotation.id, state.ingested[a.link]);
-    else if (a.hidden) state.hiddenAnnotations.add(annotation.id);
+    if (a.link !== null) {
+      state.annotationLinks.set(annotation.id, state.ingested[a.link]);
+    } else if (a.hidden) {
+      state.hiddenAnnotations.add(annotation.id);
+    }
   }
   state.statuses = ws.statuses.map((x) => ({ ...x }));
   state.symbolsFromStatus = ws.symbolsFromStatus;
@@ -2774,7 +3308,9 @@ async function applyWorkState(ws: WorkState): Promise<boolean> {
   // file replaces a saved preset of the same name (FR-23). A presentation
   // shown in the viewer writes nothing to the device (FR-38, FR-60).
   if (ws.presets.length > 0 && !state.viewOnly) {
-    for (const preset of ws.presets) state.presets = upsertPreset(state.presets, preset);
+    for (const preset of ws.presets) {
+      state.presets = upsertPreset(state.presets, preset);
+    }
     storePresets(state.presets);
   }
   state.sort = { ...ws.sort };
@@ -2805,7 +3341,9 @@ async function applyWorkState(ws: WorkState): Promise<boolean> {
 }
 
 export async function openWorkFile(file: File): Promise<boolean> {
-  if (state.viewOnly) return false;
+  if (state.viewOnly) {
+    return false;
+  }
   let text: string;
   try {
     text = await readText(file);
@@ -2815,7 +3353,9 @@ export async function openWorkFile(file: File): Promise<boolean> {
   }
   // An exported file (FR-14) is opened for comparison; it never replaces
   // the current work.
-  if (isHtmlFile(file, text)) return openExportForComparison(text);
+  if (isHtmlFile(file, text)) {
+    return openExportForComparison(text);
+  }
   let ws: WorkState;
   try {
     ws = parseWorkState(text);
@@ -2823,9 +3363,13 @@ export async function openWorkFile(file: File): Promise<boolean> {
     reportOpenFailure(openErrorText(e));
     return false;
   }
-  if (state.dirty && !window.confirm(strings(state.prefs.lang).workConfirmReplace)) return false;
+  if (state.dirty && !window.confirm(strings(state.prefs.lang).workConfirmReplace)) {
+    return false;
+  }
   const ok = await applyWorkState(ws);
-  if (!ok) reportOpenFailure(strings(state.prefs.lang).workOpenBackgroundFailed);
+  if (!ok) {
+    reportOpenFailure(strings(state.prefs.lang).workOpenBackgroundFailed);
+  }
   return ok;
 }
 
@@ -2857,10 +3401,16 @@ function openExportForComparison(text: string): boolean {
   try {
     data = parseExport(island);
   } catch (e) {
-    if (!(e instanceof ExportError)) throw e;
-    if (e.code === 'unknown-version') reportOpenFailure(fill(t.compareUnknownVersion, { version: e.detail }));
-    else if (e.code === 'not-export') reportOpenFailure(t.compareNoData);
-    else reportOpenFailure(t.compareDamaged);
+    if (!(e instanceof ExportError)) {
+      throw e;
+    }
+    if (e.code === 'unknown-version') {
+      reportOpenFailure(fill(t.compareUnknownVersion, { version: e.detail }));
+    } else if (e.code === 'not-export') {
+      reportOpenFailure(t.compareNoData);
+    } else {
+      reportOpenFailure(t.compareDamaged);
+    }
     return false;
   }
   comparison = { data, selected: new Set(), message: null };
@@ -2880,7 +3430,9 @@ function openExportForComparison(text: string): boolean {
 export const MAX_PRESENTATION_BYTES = 50 * 1024 * 1024;
 
 export async function openPresentationFile(file: File): Promise<boolean> {
-  if (state.viewOnly) return false;
+  if (state.viewOnly) {
+    return false;
+  }
   const t = strings(state.prefs.lang);
   if (file.size > MAX_PRESENTATION_BYTES) {
     reportOpenFailure(t.presentationTooLarge);
@@ -2901,13 +3453,21 @@ export async function openPresentationFile(file: File): Promise<boolean> {
   try {
     parseExport(island);
   } catch (e) {
-    if (!(e instanceof ExportError)) throw e;
-    if (e.code === 'unknown-version') reportOpenFailure(fill(t.compareUnknownVersion, { version: e.detail }));
-    else if (e.code === 'not-export') reportOpenFailure(t.compareNoData);
-    else reportOpenFailure(t.compareDamaged);
+    if (!(e instanceof ExportError)) {
+      throw e;
+    }
+    if (e.code === 'unknown-version') {
+      reportOpenFailure(fill(t.compareUnknownVersion, { version: e.detail }));
+    } else if (e.code === 'not-export') {
+      reportOpenFailure(t.compareNoData);
+    } else {
+      reportOpenFailure(t.compareDamaged);
+    }
     return false;
   }
-  if (state.dirty && !window.confirm(t.presentationConfirmReplace)) return false;
+  if (state.dirty && !window.confirm(t.presentationConfirmReplace)) {
+    return false;
+  }
   // What was on screen is given up: nothing is left to guard.
   state.dirty = false;
   state.viewOnly = true;
@@ -2929,7 +3489,9 @@ function closeComparison(): void {
 function comparisonSides(data: ExportData): { current: CompareItem[]; file: CompareItem[] } | null {
   const currentKey = state.roles.identifier;
   const fileKey = data.workState.roles.identifier;
-  if (currentKey === undefined || fileKey === undefined) return null;
+  if (currentKey === undefined || fileKey === undefined) {
+    return null;
+  }
   const current = numbered().map(({ row, label: number }) => ({
     key: rowId(row),
     identifier: row.values[currentKey] ?? '',
@@ -2954,19 +3516,22 @@ function comparisonSides(data: ExportData): { current: CompareItem[]; file: Comp
 }
 
 function fileColumnLabel(data: ExportData, key: string | undefined): string {
-  if (key === undefined) return '';
+  if (key === undefined) {
+    return '';
+  }
   const manual = data.workState.manualColumns.find((c) => c.key === key);
   return manual ? manual.label : columnLabel(key, strings(state.prefs.lang).untitledHeader);
 }
 
 function currentComparison(): Comparison | null {
-  if (!comparison) return null;
+  if (!comparison) {
+    return null;
+  }
   const sides = comparisonSides(comparison.data);
   return sides ? compareItems(sides.current, sides.file) : null;
 }
 
 function renderComparison(): void {
-  const panel = el('compare-panel');
   if (!comparison) {
     hideDialog('compare-panel');
     return;
@@ -2990,10 +3555,16 @@ function renderComparison(): void {
   const groups = el('compare-groups');
   groups.replaceChildren();
   let warningText = '';
-  if (state.roles.identifier === undefined) warningText = t.compareNoIdentifierCurrent;
-  else if (data.workState.roles.identifier === undefined) warningText = t.compareNoIdentifierFile;
-  else if (!mapView?.background) warningText = t.compareNoBackground;
-  else if (data.workState.background && (data.workState.background.width !== mapView.background.width || data.workState.background.height !== mapView.background.height)) {
+  if (state.roles.identifier === undefined) {
+    warningText = t.compareNoIdentifierCurrent;
+  } else if (data.workState.roles.identifier === undefined) {
+    warningText = t.compareNoIdentifierFile;
+  } else if (!mapView?.background) {
+    warningText = t.compareNoBackground;
+  } else if (
+    data.workState.background &&
+    (data.workState.background.width !== mapView.background.width || data.workState.background.height !== mapView.background.height)
+  ) {
     warningText = fill(t.compareBackgroundDiffers, {
       fileWidth: data.workState.background.width,
       fileHeight: data.workState.background.height,
@@ -3003,10 +3574,14 @@ function renderComparison(): void {
   }
   warning.textContent = warningText;
   warning.classList.toggle('hidden', warningText === '');
-  const canAdopt = result !== null && mapView?.background != null;
+  const canAdopt = result !== null && mapView?.background !== null && mapView?.background !== undefined;
   // Drop choices that are no longer adoptable.
   const adoptable = new Set((result?.matchedWithMarkers ?? []).map((m) => m.current.key));
-  for (const key of [...comparison.selected]) if (!adoptable.has(key)) comparison.selected.delete(key);
+  for (const key of [...comparison.selected]) {
+    if (!adoptable.has(key)) {
+      comparison.selected.delete(key);
+    }
+  }
   if (result) {
     // An entry of the file alone shows the file's number, named as such, so
     // that it is not taken for a current number.
@@ -3058,8 +3633,11 @@ function renderComparison(): void {
           box.checked = comparison!.selected.has(m.current.key);
           box.setAttribute('aria-label', fill(t.compareSelectItem, { label: m.current.label }));
           box.addEventListener('change', () => {
-            if (box.checked) comparison!.selected.add(m.current.key);
-            else comparison!.selected.delete(m.current.key);
+            if (box.checked) {
+              comparison!.selected.add(m.current.key);
+            } else {
+              comparison!.selected.delete(m.current.key);
+            }
             comparison!.message = null;
             renderComparison();
           });
@@ -3073,8 +3651,16 @@ function renderComparison(): void {
       t.compareMatchedNoMarkers,
       result.matchedWithoutMarkers.map((m) => entry(m.current, m.current.position ? [t.compareHasCurrentMarker] : [])),
     );
-    group('file-only', t.compareFileOnly, result.fileOnly.map((item) => entry(item, [], 'file')));
-    group('current-only', t.compareCurrentOnly, result.currentOnly.map((item) => entry(item)));
+    group(
+      'file-only',
+      t.compareFileOnly,
+      result.fileOnly.map((item) => entry(item, [], 'file')),
+    );
+    group(
+      'current-only',
+      t.compareCurrentOnly,
+      result.currentOnly.map((item) => entry(item)),
+    );
     group('unpairable', t.compareUnpairable, [
       ...result.unpairable.current.map((item) => entry(item, [t.compareInCurrent])),
       ...result.unpairable.file.map((item) => entry(item, [t.compareInFile], 'file')),
@@ -3088,8 +3674,14 @@ function renderComparison(): void {
 
 function selectAllDiffering(): void {
   const result = currentComparison();
-  if (!comparison || !result) return;
-  for (const m of result.matchedWithMarkers) if (m.positionDiffers) comparison.selected.add(m.current.key);
+  if (!comparison || !result) {
+    return;
+  }
+  for (const m of result.matchedWithMarkers) {
+    if (m.positionDiffers) {
+      comparison.selected.add(m.current.key);
+    }
+  }
   comparison.message = null;
   renderComparison();
 }
@@ -3098,35 +3690,53 @@ function selectAllDiffering(): void {
 // of the file. It is an unsaved change, like any placement.
 function adoptPositions(): void {
   const result = currentComparison();
-  if (!comparison || !result || !mapView?.background) return;
+  if (!comparison || !result || !mapView?.background) {
+    return;
+  }
   let count = 0;
   for (const m of result.matchedWithMarkers) {
-    if (!comparison.selected.has(m.current.key) || !m.file.position) continue;
+    if (!comparison.selected.has(m.current.key) || !m.file.position) {
+      continue;
+    }
     const row = rowById(m.current.key);
-    if (!row) continue;
+    if (!row) {
+      continue;
+    }
     placeMarker(state.positions, row, { ...m.file.position });
     count += 1;
   }
   comparison.selected.clear();
   comparison.message = { count };
-  if (count > 0) markDirty();
+  if (count > 0) {
+    markDirty();
+  }
   renderMapItems();
   renderComparison();
 }
 
 export function setSegment(segment: Segment): void {
   // Drawing happens in the Map segment only (FR-47).
-  if (segment !== 'map' && drawingTools && drawingTools.tool !== 'select') setDrawingTool('select');
+  if (segment !== 'map' && drawingTools && drawingTools.tool !== 'select') {
+    setDrawingTool('select');
+  }
   state.segment = segment;
   // An overlay of the narrow layout belongs to the segment it was opened in,
   // and so does a placement waiting for a tap.
   appNarrow?.close({ returnFocus: false });
-  if (segment !== 'map') stopPlacing();
+  if (segment !== 'map') {
+    stopPlacing();
+  }
   showSegment(document, segment);
-  if (segment === 'map') mapView?.shown();
-  if (segment === 'presentation') presentationView?.shown();
+  if (segment === 'map') {
+    mapView?.shown();
+  }
+  if (segment === 'presentation') {
+    presentationView?.shown();
+  }
   // A stage that changed size while hidden is refitted once shown (FR-71).
-  if (narrowApplication()) refitNarrowStages();
+  if (narrowApplication()) {
+    refitNarrowStages();
+  }
   // Panels depend on the stage size, which is known only while it is shown.
   renderMapItems();
   renderDetailsPanel();
@@ -3134,16 +3744,13 @@ export function setSegment(segment: Segment): void {
 
 let mapView: MapView | null = null;
 
-export function getMapView(): MapView | null {
-  return mapView;
-}
-
 type MapError =
   | 'unsupported'
   | 'unreadable'
   | 'needs-background'
   | 'pdf-unreadable'
   | 'pdf-render'
+  | 'pdf-too-large'
   | 'osm-malformed'
   | 'osm-empty'
   | 'osm-too-large'
@@ -3157,6 +3764,7 @@ function showMapError(kind: MapError | null): void {
     'needs-background': t.markerNeedsBackground,
     'pdf-unreadable': t.pdfUnreadable,
     'pdf-render': t.pdfRenderFailed,
+    'pdf-too-large': t.pdfTooLarge,
     'osm-malformed': t.osmMalformed,
     'osm-empty': t.osmEmpty,
     'osm-too-large': t.osmTooLarge,
@@ -3178,19 +3786,33 @@ function applyPreset(preset: ColumnPreset, kind: 'auto' | 'applied'): void {
   const config = presetConfiguration(preset, state.headers);
   state.hiddenHeaders = new Set(config.hidden);
   state.roles = config.roles;
-  if (preset.areas) state.areaValues = [...preset.areas];
-  if (preset.programs) state.programValues = [...preset.programs];
-  if (preset.statuses) state.statuses = preset.statuses.map((s) => ({ ...s }));
-  if (preset.cardColumns) state.cardColumns = preset.cardColumns.filter((k) => state.headers.includes(k));
-  if (preset.series) state.series = keptSeries(preset.series, (k) => state.headers.includes(k));
-  if (preset.currencyUnit !== undefined) state.currencyUnit = preset.currencyUnit;
+  if (preset.areas) {
+    state.areaValues = [...preset.areas];
+  }
+  if (preset.programs) {
+    state.programValues = [...preset.programs];
+  }
+  if (preset.statuses) {
+    state.statuses = preset.statuses.map((s) => ({ ...s }));
+  }
+  if (preset.cardColumns) {
+    state.cardColumns = preset.cardColumns.filter((k) => state.headers.includes(k));
+  }
+  if (preset.series) {
+    state.series = keptSeries(preset.series, (k) => state.headers.includes(k));
+  }
+  if (preset.currencyUnit !== undefined) {
+    state.currencyUnit = preset.currencyUnit;
+  }
   state.activePreset = preset.name;
   presetMessage = { kind, name: preset.name };
 }
 
 function applySelectedPreset(): void {
   const preset = state.presets.find((p) => p.name === el<HTMLSelectElement>('preset-select').value);
-  if (!preset) return;
+  if (!preset) {
+    return;
+  }
   applyPreset(preset, 'applied');
   markDirty();
   renderList();
@@ -3200,8 +3822,12 @@ function saveCurrentPreset(): void {
   const t = strings(state.prefs.lang);
   const input = el<HTMLInputElement>('preset-name');
   const name = input.value.trim();
-  if (name === '' || state.headers.length === 0) return;
-  if (state.presets.some((p) => p.name === name) && !window.confirm(t.presetConfirmReplace.replace('{name}', name))) return;
+  if (name === '' || state.headers.length === 0) {
+    return;
+  }
+  if (state.presets.some((p) => p.name === name) && !window.confirm(t.presetConfirmReplace.replace('{name}', name))) {
+    return;
+  }
   state.presets = upsertPreset(state.presets, {
     name,
     headers: [...state.headers],
@@ -3225,11 +3851,17 @@ function saveCurrentPreset(): void {
 function removeSelectedPreset(): void {
   const t = strings(state.prefs.lang);
   const name = el<HTMLSelectElement>('preset-select').value;
-  if (!state.presets.some((p) => p.name === name)) return;
-  if (!window.confirm(t.presetConfirmRemove.replace('{name}', name))) return;
+  if (!state.presets.some((p) => p.name === name)) {
+    return;
+  }
+  if (!window.confirm(t.presetConfirmRemove.replace('{name}', name))) {
+    return;
+  }
   state.presets = removePreset(state.presets, name);
   storePresets(state.presets);
-  if (state.activePreset === name) state.activePreset = null;
+  if (state.activePreset === name) {
+    state.activePreset = null;
+  }
   presetMessage = { kind: 'removed', name };
   markDirty();
   renderList();
@@ -3266,19 +3898,29 @@ function renderPresets(): void {
 // (FR-10); changing it back clears the record. Values of rows or columns
 // added by hand were never imported.
 function noteEdit(row: RowData, key: string, value: string): void {
-  if (state.manualRows.has(row) || state.manualColumns.has(key)) return;
+  if (state.manualRows.has(row) || state.manualColumns.has(key)) {
+    return;
+  }
   const record = { ...(state.edited.get(row) ?? {}) };
   const imported = key in record ? record[key] : (row.values[key] ?? '');
-  if (value === imported) delete record[key];
-  else record[key] = imported;
-  if (Object.keys(record).length === 0) state.edited.delete(row);
-  else state.edited.set(row, record);
+  if (value === imported) {
+    delete record[key];
+  } else {
+    record[key] = imported;
+  }
+  if (Object.keys(record).length === 0) {
+    state.edited.delete(row);
+  } else {
+    state.edited.set(row, record);
+  }
 }
 
 // Marks a control whose imported value was edited by hand.
 function markEdited(control: HTMLElement, row: RowData, key: string, t: Strings): void {
   const record = state.edited.get(row);
-  if (!record || !(key in record)) return;
+  if (!record || !(key in record)) {
+    return;
+  }
   control.classList.add('edited');
   control.dataset.edited = 'true';
   control.title = record[key] === '' ? t.valueEditedEmpty : t.valueEdited.replace('{value}', record[key]);
@@ -3316,7 +3958,9 @@ function valueInput(row: RowData, key: string, number: string): HTMLInputElement
 // pasted into it become spaces. A value with a list of its own keeps the
 // list's field.
 function detailValueInput(row: RowData, key: string, number: string): HTMLElement {
-  if (!narrowApplication() || vocabularyOfColumn(key) !== null) return valueInput(row, key, number);
+  if (!narrowApplication() || vocabularyOfColumn(key) !== null) {
+    return valueInput(row, key, number);
+  }
   const t = strings(state.prefs.lang);
   const area = document.createElement('textarea');
   area.className = 'cell-input wraps';
@@ -3325,7 +3969,9 @@ function detailValueInput(row: RowData, key: string, number: string): HTMLElemen
   area.dataset.header = key;
   area.setAttribute('aria-label', `${labelOf(key)}, ${t.numberColumn} ${number}`);
   area.addEventListener('input', () => {
-    if (/[\r\n]/.test(area.value)) area.value = area.value.replace(/\s*[\r\n]+\s*/g, ' ');
+    if (/[\r\n]/.test(area.value)) {
+      area.value = area.value.replace(/\s*[\r\n]+\s*/g, ' ');
+    }
     fitToContent(area);
   });
   area.addEventListener('keydown', (e) => {
@@ -3343,7 +3989,9 @@ function detailValueInput(row: RowData, key: string, number: string): HTMLElemen
 function fitToContent(area: HTMLTextAreaElement): void {
   area.style.height = 'auto';
   // The content's height and the borders around it.
-  if (area.scrollHeight > 0) area.style.height = `${area.scrollHeight + area.offsetHeight - area.clientHeight}px`;
+  if (area.scrollHeight > 0) {
+    area.style.height = `${area.scrollHeight + area.offsetHeight - area.clientHeight}px`;
+  }
 }
 
 // A cell of the status column (FR-33): chosen from the status list. A value
@@ -3384,13 +4032,17 @@ function statusCell(row: RowData, key: string, number: string): HTMLSelectElemen
 // switched on "assign marker symbols from status", the symbol of the item's
 // status applies; else the default symbol.
 function symbolSource(row: RowData): 'manual' | 'status' | 'default' {
-  if (state.shapes.has(row)) return 'manual';
+  if (state.shapes.has(row)) {
+    return 'manual';
+  }
   return statusSymbolOf(row) !== null ? 'status' : 'default';
 }
 
 function statusSymbolOf(row: RowData): MarkerSymbol | null {
   const key = state.roles.status;
-  if (!state.symbolsFromStatus || key === undefined) return null;
+  if (!state.symbolsFromStatus || key === undefined) {
+    return null;
+  }
   const symbol = statusSymbol(state.statuses, row.values[key] ?? '');
   return symbol !== null && isSymbol(symbol) ? symbol : null;
 }
@@ -3419,9 +4071,13 @@ function presentationLegendUse(): LegendUse {
   const groups = new Set<number>();
   if (groupedNumbering()) {
     for (const { row, label } of numbered()) {
-      if (state.excluded.has(row)) continue;
+      if (state.excluded.has(row)) {
+        continue;
+      }
       const match = /^(\d+)\.\d+$/.exec(label);
-      if (match) groups.add(Number(match[1]));
+      if (match) {
+        groups.add(Number(match[1]));
+      }
     }
   }
   return {
@@ -3438,7 +4094,9 @@ function presentationLegendUse(): LegendUse {
 // the visible items, each with its meaning (the series' name, the user's own
 // words per FR-63). Undefined in the other views.
 function costsSeriesLegend(): SeriesLegend | undefined {
-  if (state.presentationMode !== 'costs') return undefined;
+  if (state.presentationMode !== 'costs') {
+    return undefined;
+  }
   const t = strings(state.prefs.lang);
   const series = effectiveSeries();
   const roleNames: Record<SeriesRole, string> = { budget: t.seriesRoleBudget, forecast: t.seriesRoleForecast, outcome: t.seriesRoleOutcome };
@@ -3462,9 +4120,13 @@ function costsSeriesLegend(): SeriesLegend | undefined {
 // timeline view, and only when at least one visible item has a work phase
 // that is drawn -- its activity's dates read.
 function workPhaseShown(): boolean {
-  if (state.presentationMode !== 'timeline') return false;
+  if (state.presentationMode !== 'timeline') {
+    return false;
+  }
   return state.rows.some((row) => {
-    if (state.excluded.has(row)) return false;
+    if (state.excluded.has(row)) {
+      return false;
+    }
     const id = workPhaseOf(row);
     const activity = id === undefined ? undefined : state.activities.get(row)!.find((a) => a.id === id);
     return activity !== undefined && readDate(activity.start).kind === 'date' && readDate(activity.end).kind === 'date';
@@ -3474,7 +4136,9 @@ function workPhaseShown(): boolean {
 // The legend's today entry (FR-75 as noted): today's date while a
 // schedule view is shown, its mark drawn or counted at an edge.
 function scheduleToday(): string | undefined {
-  if (state.presentationMode === 'map') return undefined;
+  if (state.presentationMode === 'map') {
+    return undefined;
+  }
   const day = todayDay();
   return formatDate({ kind: 'date', start: day, end: day, precision: 'day' });
 }
@@ -3488,7 +4152,18 @@ function renderLegends(): void {
   // the presentation's is used-only (FR-75), with the costs view's series
   // key when the costs view is shown (FR-79 as amended).
   renderLegend(el('map-legend'), t, state.statuses, groups, labels, names);
-  renderLegend(el('presentation-legend'), t, state.statuses, groups, labels, names, presentationLegendUse(), costsSeriesLegend(), workPhaseShown(), scheduleToday());
+  renderLegend(
+    el('presentation-legend'),
+    t,
+    state.statuses,
+    groups,
+    labels,
+    names,
+    presentationLegendUse(),
+    costsSeriesLegend(),
+    workPhaseShown(),
+    scheduleToday(),
+  );
 }
 
 // Editable colour labels (FR-45): the user's name for a colour, or the
@@ -3515,9 +4190,14 @@ function symbolLabels(): SymbolLabels {
 
 function setSymbolLabel(symbol: MarkerSymbol, label: string): void {
   const value = label.trim();
-  if ((state.symbolLabels[symbol] ?? '') === value) return;
-  if (value === '') delete state.symbolLabels[symbol];
-  else state.symbolLabels[symbol] = value;
+  if ((state.symbolLabels[symbol] ?? '') === value) {
+    return;
+  }
+  if (value === '') {
+    delete state.symbolLabels[symbol];
+  } else {
+    state.symbolLabels[symbol] = value;
+  }
   markDirty();
   renderList();
 }
@@ -3527,7 +4207,8 @@ function renderSymbolPanel(): void {
   el('symbol-panel-summary').textContent = t.symbolPanel;
   el('symbol-panel-hint').textContent = t.symbolPanelHint;
   const list = el('symbol-label-list');
-  const focused = document.activeElement instanceof HTMLInputElement && list.contains(document.activeElement) ? document.activeElement.dataset.symbol : undefined;
+  const focused =
+    document.activeElement instanceof HTMLInputElement && list.contains(document.activeElement) ? document.activeElement.dataset.symbol : undefined;
   list.innerHTML = '';
   for (const symbol of SYMBOLS) {
     const li = document.createElement('li');
@@ -3548,14 +4229,21 @@ function renderSymbolPanel(): void {
     li.append(swatch, input);
     list.appendChild(li);
   }
-  if (focused) list.querySelector<HTMLInputElement>(`input[data-symbol="${focused}"]`)?.focus();
+  if (focused) {
+    list.querySelector<HTMLInputElement>(`input[data-symbol="${focused}"]`)?.focus();
+  }
 }
 
 function setColourLabel(colour: RowColour, label: string): void {
   const value = label.trim();
-  if ((state.colourLabels[colour] ?? '') === value) return;
-  if (value === '') delete state.colourLabels[colour];
-  else state.colourLabels[colour] = value;
+  if ((state.colourLabels[colour] ?? '') === value) {
+    return;
+  }
+  if (value === '') {
+    delete state.colourLabels[colour];
+  } else {
+    state.colourLabels[colour] = value;
+  }
   markDirty();
   renderList();
 }
@@ -3565,7 +4253,8 @@ function renderColourPanel(): void {
   el('colour-panel-summary').textContent = t.colourPanel;
   el('colour-panel-hint').textContent = t.colourPanelHint;
   const list = el('colour-label-list');
-  const focused = document.activeElement instanceof HTMLInputElement && list.contains(document.activeElement) ? document.activeElement.dataset.colour : undefined;
+  const focused =
+    document.activeElement instanceof HTMLInputElement && list.contains(document.activeElement) ? document.activeElement.dataset.colour : undefined;
   list.innerHTML = '';
   for (const colour of COLOURS) {
     const li = document.createElement('li');
@@ -3585,19 +4274,27 @@ function renderColourPanel(): void {
     li.append(swatch, input);
     list.appendChild(li);
   }
-  if (focused) list.querySelector<HTMLInputElement>(`input[data-colour="${focused}"]`)?.focus();
+  if (focused) {
+    list.querySelector<HTMLInputElement>(`input[data-colour="${focused}"]`)?.focus();
+  }
 }
 
 // The programs behind the grouped numbers shown (FR-17), read from the labels
 // themselves, so that the exported viewer shows them as well.
 function shownProgramGroups(): LegendGroup[] {
-  if (state.viewerProgramGroups) return state.viewerProgramGroups.map((g) => ({ ...g }));
+  if (state.viewerProgramGroups) {
+    return state.viewerProgramGroups.map((g) => ({ ...g }));
+  }
   const programKey = state.roles.program;
-  if (programKey === undefined) return [];
+  if (programKey === undefined) {
+    return [];
+  }
   const groups = new Map<number, string>();
   for (const { row, label } of numbered()) {
     const match = /^(\d+)\.\d+$/.exec(label);
-    if (match && !groups.has(Number(match[1]))) groups.set(Number(match[1]), (row.values[programKey] ?? '').trim());
+    if (match && !groups.has(Number(match[1]))) {
+      groups.set(Number(match[1]), (row.values[programKey] ?? '').trim());
+    }
   }
   return [...groups.entries()].sort((a, b) => a[0] - b[0]).map(([index, name]) => ({ index, name }));
 }
@@ -3622,8 +4319,12 @@ function renderNumbering(): void {
   // The grouped numbering needs the program role; the grouped view, the area
   // role (FR-17).
   const notices: string[] = [];
-  if (state.numbering === 'grouped' && state.roles.program === undefined) notices.push(t.numberingNeedsProgram);
-  if (state.listView === 'grouped' && state.roles.area === undefined) notices.push(t.listViewNeedsArea);
+  if (state.numbering === 'grouped' && state.roles.program === undefined) {
+    notices.push(t.numberingNeedsProgram);
+  }
+  if (state.listView === 'grouped' && state.roles.area === undefined) {
+    notices.push(t.listViewNeedsArea);
+  }
   el('numbering-notice').textContent = notices.join(' ');
   el('numbering-notice').classList.toggle('hidden', notices.length === 0);
   const groups = groupedNumbering() ? shownProgramGroups() : [];
@@ -3648,13 +4349,16 @@ function renameStatusValue(from: string, to: string): void {
   // Cells holding the old status follow the rename.
   const key = state.roles.status;
   if (key !== undefined) {
-    for (const row of state.ingested) if ((row.values[key] ?? '').trim() === from) row.values[key] = result.name;
+    for (const row of state.ingested) {
+      if ((row.values[key] ?? '').trim() === from) {
+        row.values[key] = result.name;
+      }
+    }
   }
   setStatuses(result.statuses);
 }
 
 function symbolSelect(value: string, label: string, onChange: (symbol: string) => void): HTMLSelectElement {
-  const t = strings(state.prefs.lang);
   const select = document.createElement('select');
   select.className = 'status-symbol';
   select.setAttribute('aria-label', label);
@@ -3733,8 +4437,11 @@ function vocabularyOfColumn(key: string): ValueVocabulary | null {
 }
 
 function setVocabValues(kind: ValueVocabulary, next: string[], message = ''): void {
-  if (kind === 'area') state.areaValues = next;
-  else state.programValues = next;
+  if (kind === 'area') {
+    state.areaValues = next;
+  } else {
+    state.programValues = next;
+  }
   vocabMessages[kind] = message;
   markDirty();
   renderList();
@@ -3750,7 +4457,11 @@ function renameVocabValue(kind: ValueVocabulary, from: string, to: string): void
   // Cells holding the old value follow the rename.
   const key = state.roles[kind];
   if (key !== undefined) {
-    for (const row of state.ingested) if ((row.values[key] ?? '').trim() === from) row.values[key] = list[before.indexOf(from)];
+    for (const row of state.ingested) {
+      if ((row.values[key] ?? '').trim() === from) {
+        row.values[key] = list[before.indexOf(from)];
+      }
+    }
   }
   setVocabValues(kind, list);
 }
@@ -3758,7 +4469,9 @@ function renameVocabValue(kind: ValueVocabulary, from: string, to: string): void
 function collectVocabValues(kind: ValueVocabulary): void {
   const t = strings(state.prefs.lang);
   const key = state.roles[kind];
-  if (key === undefined) return;
+  if (key === undefined) {
+    return;
+  }
   const before = vocabValues(kind).length;
   const next = mergeValues(vocabValues(kind), collectValues(state.rows, key));
   setVocabValues(kind, next, fill(t.vocabCollected, { count: next.length - before }));
@@ -3769,7 +4482,9 @@ function addVocabValue(kind: ValueVocabulary): void {
   const before = vocabValues(kind);
   const next = addValue(before, input.value);
   input.value = '';
-  if (next !== before) setVocabValues(kind, next);
+  if (next !== before) {
+    setVocabValues(kind, next);
+  }
 }
 
 function renderVocabPanel(kind: ValueVocabulary): void {
@@ -3816,7 +4531,9 @@ let eventMessage = '';
 function newEventId(): string {
   const used = new Set(state.events.map((e) => e.id));
   let n = state.events.length + 1;
-  while (used.has(`e${n}`)) n++;
+  while (used.has(`e${n}`)) {
+    n++;
+  }
   return `e${n}`;
 }
 
@@ -3825,7 +4542,9 @@ function setEvents(next: StoredEvent[], message = ''): void {
   eventMessage = message;
   markDirty();
   renderList();
-  if (state.segment === 'presentation') renderPresentation();
+  if (state.segment === 'presentation') {
+    renderPresentation();
+  }
 }
 
 function addEvent(): void {
@@ -3865,8 +4584,13 @@ function renderEventPanel(): void {
     date.addEventListener('change', () => {
       const next = date.value.trim();
       // An emptied date is not a date: the entry keeps the one it had.
-      if (next === '' || next === event.date) return renderEventPanel();
-      setEvents(state.events.map((e) => (e.id === event.id ? { ...e, date: next } : e)), readDate(next).kind === 'date' ? '' : t.eventUnreadable);
+      if (next === '' || next === event.date) {
+        return renderEventPanel();
+      }
+      setEvents(
+        state.events.map((e) => (e.id === event.id ? { ...e, date: next } : e)),
+        readDate(next).kind === 'date' ? '' : t.eventUnreadable,
+      );
     });
     const name = document.createElement('input');
     name.type = 'text';
@@ -3875,7 +4599,9 @@ function renderEventPanel(): void {
     name.setAttribute('aria-label', `${t.vocabRename}: ${event.label}`);
     name.addEventListener('change', () => {
       const next = name.value.trim();
-      if (next === '' || next === event.label) return renderEventPanel();
+      if (next === '' || next === event.label) {
+        return renderEventPanel();
+      }
       setEvents(state.events.map((e) => (e.id === event.id ? { ...e, label: next } : e)));
     });
     const remove = document.createElement('button');
@@ -3910,7 +4636,9 @@ function selectMarker(id: string | null): void {
   state.selectedMarker = id;
   renderMapItems();
   // Selecting a marker opens its details; the panel follows the selection.
-  if (id !== null) openDetails(id);
+  if (id !== null) {
+    openDetails(id);
+  }
 }
 
 // Details panel (FR-7): the complete data of one item, open in the
@@ -3920,17 +4648,26 @@ let detailsReturnFocus: HTMLElement | null = null;
 function openDetails(id: string | null, focus = false): void {
   const previous = state.detailsId;
   state.detailsId = id;
-  if (id !== null && focus) detailsReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  if (id !== null && focus) {
+    detailsReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  }
   renderDetailsPanel();
   document.querySelectorAll<HTMLElement>('#row-table-body tr[data-row-id]').forEach((tr) => {
-    if (tr.dataset.rowId === state.detailsId) tr.dataset.details = 'true';
-    else delete tr.dataset.details;
+    if (tr.dataset.rowId === state.detailsId) {
+      tr.dataset.details = 'true';
+    } else {
+      delete tr.dataset.details;
+    }
   });
-  if (id !== null && focus) document.querySelector<HTMLElement>('#details-panel .details-close')?.focus();
+  if (id !== null && focus) {
+    document.querySelector<HTMLElement>('#details-panel .details-close')?.focus();
+  }
   if (id === null && previous !== null) {
     const target = detailsReturnFocus;
     detailsReturnFocus = null;
-    if (target?.isConnected) target.focus();
+    if (target?.isConnected) {
+      target.focus();
+    }
   }
 }
 
@@ -4013,9 +4750,13 @@ function seriesGroups(): DetailModel['seriesGroups'] {
   const series = effectiveSeries();
   return SERIES_ROLES.filter((r) => series[r]).map((role) => {
     const a = series[role]!;
-    const years = Object.keys(a.columns).map(Number).sort((x, y) => x - y);
+    const years = Object.keys(a.columns)
+      .map(Number)
+      .sort((x, y) => x - y);
     const keys = years.map((y) => a.columns[y]);
-    if (a.total !== null) keys.push(a.total);
+    if (a.total !== null) {
+      keys.push(a.total);
+    }
     const span = years.length === 0 ? '' : years.length === 1 ? ` · ${years[0]}` : ` · ${years[0]}–${years[years.length - 1]}`;
     return { role, label: `${a.name}${span}`, keys, open: openSeriesGroups.has(role) };
   });
@@ -4057,12 +4798,17 @@ function renderDetailsPanel(): void {
     (state.activities.get(row)?.length ?? 0) > 0,
   ]);
   const target = sameRow && panel.dataset.structure === structure ? document.createElement('div') : panel;
-  if (target !== panel) target.id = panel.id;
+  if (target !== panel) {
+    target.id = panel.id;
+  }
   renderDetails(target, model, detailLabels(t), {
     close: () => openDetails(null),
     toggleSeries: (role, open) => {
-      if (open) openSeriesGroups.add(role);
-      else openSeriesGroups.delete(role);
+      if (open) {
+        openSeriesGroups.add(role);
+      } else {
+        openSeriesGroups.delete(role);
+      }
     },
     openEconomics: (opener) => openEconomics(rowId(row), opener),
     importActivities: state.viewOnly ? undefined : () => openActivityDialog(rowId(row)),
@@ -4070,25 +4816,33 @@ function renderDetailsPanel(): void {
     edit: {
       renderField: (field) => (field.kind === 'status' ? statusCell(row, field.key, model.number) : detailValueInput(row, field.key, model.number)),
       removeComment: (id) => {
-        if (!removeComment(state.comments, row, id)) return;
+        if (!removeComment(state.comments, row, id)) {
+          return;
+        }
         markDirty();
         renderDetailsPanel();
         panel.querySelector<HTMLElement>('.details-comment-input')?.focus();
       },
       editComment: (id, text) => {
-        if (editComment(state.comments, row, id, text)) markDirty();
+        if (editComment(state.comments, row, id, text)) {
+          markDirty();
+        }
         renderDetailsPanel();
         panel.querySelector<HTMLElement>(`.details-comment[data-comment-id="${id}"] .details-comment-edit`)?.focus();
       },
       commentForm: () => commentForm(row, t, draft),
     },
   });
-  if (target !== panel) patchDetails(panel, target);
+  if (target !== panel) {
+    patchDetails(panel, target);
+  }
   panel.dataset.structure = structure;
   panel.classList.toggle('hidden', state.segment === 'presentation');
   setDetailsLayout(true);
   // Sized once shown, as a hidden field has no height.
-  for (const area of panel.querySelectorAll<HTMLTextAreaElement>('textarea.cell-input')) fitToContent(area);
+  for (const area of panel.querySelectorAll<HTMLTextAreaElement>('textarea.cell-input')) {
+    fitToContent(area);
+  }
 }
 
 // Brings an open panel up to date from a fresh rendering of the same item
@@ -4099,7 +4853,9 @@ function patchDetails(panel: HTMLElement, fresh: HTMLElement): void {
   const swap = (selector: string) => {
     const now = panel.querySelector(selector);
     const next = fresh.querySelector(selector);
-    if (now && next) now.replaceWith(next);
+    if (now && next) {
+      now.replaceWith(next);
+    }
   };
   swap('.details-badge');
   swap('.details-title');
@@ -4108,15 +4864,22 @@ function patchDetails(panel: HTMLElement, fresh: HTMLElement): void {
   const nextValues = [...fresh.querySelectorAll<HTMLElement>('.details-fields dd')];
   panel.querySelectorAll<HTMLElement>('.details-fields dd').forEach((dd, i) => {
     const next = nextValues[i];
-    if (!next) return;
+    if (!next) {
+      return;
+    }
     const control = dd.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('.cell-input');
     const replacement = next.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('.cell-input');
     if (control && replacement && control === document.activeElement) {
       control.className = replacement.className;
       control.title = replacement.title;
-      if (replacement.dataset.edited) control.dataset.edited = replacement.dataset.edited;
-      else delete control.dataset.edited;
-      if (control.value !== replacement.value) control.value = replacement.value;
+      if (replacement.dataset.edited) {
+        control.dataset.edited = replacement.dataset.edited;
+      } else {
+        delete control.dataset.edited;
+      }
+      if (control.value !== replacement.value) {
+        control.value = replacement.value;
+      }
     } else {
       dd.replaceChildren(...next.childNodes);
     }
@@ -4138,7 +4901,9 @@ function commentForm(row: RowData, t: Strings, draft: string): HTMLElement {
   add.className = 'details-comment-add';
   add.textContent = t.commentAdd;
   const submit = () => {
-    if (!addComment(state.comments, row, input.value)) return;
+    if (!addComment(state.comments, row, input.value)) {
+      return;
+    }
     input.value = '';
     markDirty();
     renderDetailsPanel();
@@ -4159,18 +4924,26 @@ function commentForm(row: RowData, t: Strings, draft: string): HTMLElement {
 // instead of covering it.
 function setDetailsLayout(open: boolean): void {
   const value = open ? 'open' : 'closed';
-  if (document.documentElement.dataset.details === value) return;
+  if (document.documentElement.dataset.details === value) {
+    return;
+  }
   const before = state.segment === 'map' ? mapView?.stageSize() : undefined;
   document.documentElement.dataset.details = value;
   // The Map stage changes size: its view is refitted, so that the map stays
   // in view (FR-16 as amended); the at-a-glance panels follow.
-  if (before) mapView?.refit(before);
-  if (state.segment !== 'information') renderMapItems();
+  if (before) {
+    mapView?.refit(before);
+  }
+  if (state.segment !== 'information') {
+    renderMapItems();
+  }
 }
 
 function moveMarker(id: string, position: Point): void {
   const row = rowById(id);
-  if (!row) return;
+  if (!row) {
+    return;
+  }
   placeMarker(state.positions, row, position);
   markDirty();
   renderMapItems();
@@ -4178,8 +4951,12 @@ function moveMarker(id: string, position: Point): void {
 
 function deleteMarker(id: string): void {
   const row = rowById(id);
-  if (row && removeMarker(state.positions, row)) markDirty();
-  if (state.selectedMarker === id) state.selectedMarker = null;
+  if (row && removeMarker(state.positions, row)) {
+    markDirty();
+  }
+  if (state.selectedMarker === id) {
+    state.selectedMarker = null;
+  }
   renderMapItems();
 }
 
@@ -4196,7 +4973,9 @@ function startPlacing(id: string): void {
 }
 
 function stopPlacing(): void {
-  if (placingId === null) return;
+  if (placingId === null) {
+    return;
+  }
   placingId = null;
   placingDown = null;
   renderPlacing();
@@ -4219,7 +4998,9 @@ function renderPlacing(): void {
 
 function dropRowOnMap(id: string, clientX: number, clientY: number): void {
   const row = rowById(id);
-  if (!row || !mapView) return;
+  if (!row || !mapView) {
+    return;
+  }
   if (!mapView.background) {
     showMapError('needs-background');
     return;
@@ -4244,7 +5025,9 @@ function renderPlacementList(): void {
     li.draggable = true;
     li.dataset.rowId = id;
     li.dataset.placed = placed ? 'true' : 'false';
-    if (state.selectedMarker === id) li.dataset.selected = 'true';
+    if (state.selectedMarker === id) {
+      li.dataset.selected = 'true';
+    }
     const badge = document.createElement('span');
     const symbol = symbolOf(row);
     badge.className = `marker-badge marker-${row.colour} ${symbolClasses(symbol)}`;
@@ -4273,14 +5056,21 @@ function renderPlacementList(): void {
     li.addEventListener('dragstart', (e) => {
       e.dataTransfer?.setData(ROW_DRAG_TYPE, id);
       e.dataTransfer?.setData('text/plain', itemLabel(row, number));
-      if (e.dataTransfer) e.dataTransfer.effectAllowed = 'copyMove';
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'copyMove';
+      }
     });
     li.addEventListener('click', () => {
       // In the narrow layout, choosing an entry closes the overlay and opens
       // the details (FR-72, FR-74).
-      if (narrowApplication()) closeNarrowOverlay();
-      if (state.positions.has(row)) selectMarker(id);
-      else openDetails(id);
+      if (narrowApplication()) {
+        closeNarrowOverlay();
+      }
+      if (state.positions.has(row)) {
+        selectMarker(id);
+      } else {
+        openDetails(id);
+      }
     });
     list.appendChild(li);
   });
@@ -4295,19 +5085,35 @@ function renderMapItems(): void {
   pruneMarkers(state.positions, state.rows);
   if (state.selectedMarker) {
     const row = rowById(state.selectedMarker);
-    if (!row || !state.positions.has(row)) state.selectedMarker = null;
+    if (!row || !state.positions.has(row)) {
+      state.selectedMarker = null;
+    }
   }
-  for (const row of [...state.excluded]) if (!state.rows.includes(row)) state.excluded.delete(row);
-  for (const row of [...state.shapes.keys()]) if (!state.rows.includes(row)) state.shapes.delete(row);
+  for (const row of [...state.excluded]) {
+    if (!state.rows.includes(row)) {
+      state.excluded.delete(row);
+    }
+  }
+  for (const row of [...state.shapes.keys()]) {
+    if (!state.rows.includes(row)) {
+      state.shapes.delete(row);
+    }
+  }
   // A footprint whose item is no longer in the data (a new import) becomes a
   // free annotation.
-  for (const [id, row] of [...state.annotationLinks]) if (!state.ingested.includes(row)) state.annotationLinks.delete(id);
+  for (const [id, row] of [...state.annotationLinks]) {
+    if (!state.ingested.includes(row)) {
+      state.annotationLinks.delete(id);
+    }
+  }
   const markers = placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered());
   markerLayer?.render(markers, state.selectedMarker);
   renderAnnotations();
   renderGlance('map', mapView, state.selectedMarker, (id) => {
     // In the narrow layout, choosing an entry closes the overlay (FR-72).
-    if (narrowApplication()) closeNarrowOverlay();
+    if (narrowApplication()) {
+      closeNarrowOverlay();
+    }
     selectMarker(id);
   });
   renderPresentation();
@@ -4318,7 +5124,9 @@ function renderMapItems(): void {
   const selected = markers.find((m) => rowId(m.row) === state.selectedMarker);
   el('marker-selection').textContent = selected ? `${t.markerSelected}: ${selected.label}` : t.markerNoSelection;
   // The details panel names the item's footprints (FR-48).
-  if (state.detailsId) renderDetailsPanel();
+  if (state.detailsId) {
+    renderDetailsPanel();
+  }
   el<HTMLButtonElement>('marker-remove').disabled = !selected;
   const shapeSelect = el<HTMLSelectElement>('marker-shape');
   shapeSelect.disabled = !selected;
@@ -4330,7 +5138,9 @@ function renderMapItems(): void {
       shapeSelect.appendChild(opt);
     }
   }
-  for (const opt of shapeSelect.options) opt.textContent = symbolLabel(opt.value as MarkerSymbol);
+  for (const opt of shapeSelect.options) {
+    opt.textContent = symbolLabel(opt.value as MarkerSymbol);
+  }
   shapeSelect.value = selected?.shape ?? 'circle';
   // The presentation's legend follows the visibility (FR-75): recomputed on
   // every change of the items, including every visibility toggle (FR-27).
@@ -4353,7 +5163,9 @@ function linkedRow(a: Annotation): RowData | undefined {
 
 function annotationShown(a: Annotation): boolean {
   const row = linkedRow(a);
-  if (row) return state.rows.includes(row) && !state.excluded.has(row);
+  if (row) {
+    return state.rows.includes(row) && !state.excluded.has(row);
+  }
   return !state.hiddenAnnotations.has(a.id);
 }
 
@@ -4414,7 +5226,9 @@ function deleteAnnotation(id: string): void {
   state.annotations = state.annotations.filter((a) => a.id !== id);
   state.annotationLinks.delete(id);
   state.hiddenAnnotations.delete(id);
-  if (state.selectedAnnotation === id) state.selectedAnnotation = null;
+  if (state.selectedAnnotation === id) {
+    state.selectedAnnotation = null;
+  }
   markDirty();
   renderMapItems();
   renderAnnotationInspector();
@@ -4422,7 +5236,9 @@ function deleteAnnotation(id: string): void {
 
 function updateSelectedAnnotation(change: Partial<Annotation>): void {
   const a = state.annotations.find((x) => x.id === state.selectedAnnotation);
-  if (!a) return;
+  if (!a) {
+    return;
+  }
   replaceAnnotation({ ...a, ...change });
   markDirty();
   renderMapItems();
@@ -4442,8 +5258,11 @@ function setAnnotationLink(id: string, row: RowData | null): void {
 }
 
 function setAnnotationHidden(id: string, hidden: boolean): void {
-  if (hidden) state.hiddenAnnotations.add(id);
-  else state.hiddenAnnotations.delete(id);
+  if (hidden) {
+    state.hiddenAnnotations.add(id);
+  } else {
+    state.hiddenAnnotations.delete(id);
+  }
   markDirty();
   renderMapItems();
 }
@@ -4458,7 +5277,9 @@ function kindName(kind: AnnotationKind, t: Strings): string {
 
 // The name of an annotation in lists: its label, else its kind and position.
 function annotationName(a: Annotation, t: Strings): string {
-  if (a.label.trim() !== '') return a.label.trim();
+  if (a.label.trim() !== '') {
+    return a.label.trim();
+  }
   const sameKind = state.annotations.filter((x) => x.kind === a.kind);
   return `${kindName(a.kind, t)} ${sameKind.indexOf(a) + 1}`;
 }
@@ -4477,8 +5298,11 @@ function setAnnotationInspectorSheet(open: boolean): void {
   inspector.classList.remove('hidden');
   inspector.dataset.state = open ? 'open' : 'closed';
   inspector.inert = !open;
-  if (open) inspector.removeAttribute('inert');
-  else inspector.setAttribute('inert', '');
+  if (open) {
+    inspector.removeAttribute('inert');
+  } else {
+    inspector.setAttribute('inert', '');
+  }
   inspector.tabIndex = -1;
   if (open && !was) {
     annotationInspectorReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -4486,7 +5310,9 @@ function setAnnotationInspectorSheet(open: boolean): void {
   } else if (!open && was) {
     const target = annotationInspectorReturnFocus;
     annotationInspectorReturnFocus = null;
-    if (target?.isConnected) target.focus({ preventScroll: true });
+    if (target?.isConnected) {
+      target.focus({ preventScroll: true });
+    }
   }
 }
 
@@ -4497,8 +5323,9 @@ function renderAnnotationInspector(): void {
   const t = strings(state.prefs.lang);
   const inspector = el('annotation-inspector');
   const a = state.annotations.find((x) => x.id === state.selectedAnnotation) ?? null;
-  if (narrowApplication()) setAnnotationInspectorSheet(a !== null);
-  else {
+  if (narrowApplication()) {
+    setAnnotationInspectorSheet(a !== null);
+  } else {
     // Above the threshold (or leaving the narrow layout): the inspector
     // keeps its place in the flow, and nothing of the sheet remains.
     inspector.classList.toggle('hidden', !a);
@@ -4508,12 +5335,16 @@ function renderAnnotationInspector(): void {
     inspector.removeAttribute('tabindex');
     annotationInspectorReturnFocus = null;
   }
-  if (!a) return;
+  if (!a) {
+    return;
+  }
   inspector.dataset.annotationId = a.id;
   el('annotation-inspector-heading').textContent = annotationName(a, t);
   el('annotation-label-text').textContent = t.annotationLabel;
   const label = el<HTMLInputElement>('annotation-label');
-  if (document.activeElement !== label) label.value = a.label;
+  if (document.activeElement !== label) {
+    label.value = a.label;
+  }
   el('annotation-link-text').textContent = t.annotationLink;
   const link = el<HTMLSelectElement>('annotation-link');
   link.innerHTML = '';
@@ -4585,13 +5416,15 @@ function setDrawingTool(tool: DrawingTool): void {
 // annotation is selected, its style too.
 function setAnnotationStyle(change: Partial<AnnotationStyle>): void {
   state.annotationStyle = { ...state.annotationStyle, ...change };
-  if (state.selectedAnnotation) updateSelectedAnnotation(change);
+  if (state.selectedAnnotation) {
+    updateSelectedAnnotation(change);
+  }
   renderAnnotationToolbar();
 }
 
 function renderAnnotationToolbar(): void {
   const t = strings(state.prefs.lang);
-  const has = mapView?.background != null;
+  const has = mapView?.background !== null && mapView?.background !== undefined;
   const tool = drawingTools?.tool ?? 'select';
   el('annotation-heading').textContent = t.annotationHeading;
   const toolNames: Record<DrawingTool, string> = {
@@ -4620,7 +5453,9 @@ function renderAnnotationToolbar(): void {
       colour.appendChild(opt);
     }
   }
-  for (const opt of colour.options) opt.textContent = colourLabel(opt.value as RowColour);
+  for (const opt of colour.options) {
+    opt.textContent = colourLabel(opt.value as RowColour);
+  }
   // While an annotation is selected, the controls show its style.
   const style = state.annotations.find((a) => a.id === state.selectedAnnotation) ?? state.annotationStyle;
   colour.value = style.colour;
@@ -4630,11 +5465,15 @@ function renderAnnotationToolbar(): void {
   el('annotation-fill-value').textContent = `${fillInput.value} %`;
   const outline = el<HTMLSelectElement>('annotation-outline');
   const outlineNames: Record<Outline, string> = { black: t.outlineBlack, white: t.outlineWhite };
-  for (const opt of outline.options) opt.textContent = outlineNames[opt.value as Outline];
+  for (const opt of outline.options) {
+    opt.textContent = outlineNames[opt.value as Outline];
+  }
   outline.value = style.outline;
   const line = el<HTMLSelectElement>('annotation-line-style');
   const lineNames: Record<LineStyle, string> = { solid: t.lineSolid, dotted: t.lineDotted, dashed: t.lineDashed };
-  for (const opt of line.options) opt.textContent = lineNames[opt.value as LineStyle];
+  for (const opt of line.options) {
+    opt.textContent = lineNames[opt.value as LineStyle];
+  }
   line.value = style.lineStyle;
   const hints: Record<DrawingTool, string> = {
     select: t.hintSelect,
@@ -4666,34 +5505,51 @@ function wireAnnotationToolbar(): void {
   // The Straight toggle (FR-47 as amended): one transient state
   // flag on the drawing tools, reset on tool change, never saved.
   el<HTMLButtonElement>('annotation-straight').addEventListener('click', () => {
-    if (drawingTools) drawingTools.straight = !drawingTools.straight;
+    if (drawingTools) {
+      drawingTools.straight = !drawingTools.straight;
+    }
     renderAnnotationToolbar();
   });
   // Done and Cancel in the hint row finish or abandon a drawing.
   el('annotation-done').addEventListener('click', () => drawingTools?.finish());
   el('annotation-cancel').addEventListener('click', () => drawingTools?.cancel());
-  el<HTMLSelectElement>('annotation-colour').addEventListener('change', (e) => setAnnotationStyle({ colour: (e.target as HTMLSelectElement).value as RowColour }));
-  el<HTMLInputElement>('annotation-fill').addEventListener('input', (e) => setAnnotationStyle({ fillOpacity: Number((e.target as HTMLInputElement).value) / 100 }));
+  el<HTMLSelectElement>('annotation-colour').addEventListener('change', (e) =>
+    setAnnotationStyle({ colour: (e.target as HTMLSelectElement).value as RowColour }),
+  );
+  el<HTMLInputElement>('annotation-fill').addEventListener('input', (e) =>
+    setAnnotationStyle({ fillOpacity: Number((e.target as HTMLInputElement).value) / 100 }),
+  );
   el<HTMLSelectElement>('annotation-outline').addEventListener('change', (e) => {
     const value = (e.target as HTMLSelectElement).value as Outline;
-    if (OUTLINES.includes(value)) setAnnotationStyle({ outline: value });
+    if (OUTLINES.includes(value)) {
+      setAnnotationStyle({ outline: value });
+    }
   });
   el<HTMLSelectElement>('annotation-line-style').addEventListener('change', (e) => {
     const value = (e.target as HTMLSelectElement).value as LineStyle;
-    if (LINE_STYLES.includes(value)) setAnnotationStyle({ lineStyle: value });
+    if (LINE_STYLES.includes(value)) {
+      setAnnotationStyle({ lineStyle: value });
+    }
   });
   // Enter finishes a polygon or a line being drawn; Escape cancels it.
   // With an annotation selected (and no text field in use), Delete removes
   // it and Escape deselects it.
   window.addEventListener('keydown', (e) => {
-    if (state.segment !== 'map' || !drawingTools) return;
+    if (state.segment !== 'map' || !drawingTools) {
+      return;
+    }
     if (drawingTools.drawing) {
-      if (e.key === 'Escape') drawingTools.cancel();
-      else if (e.key === 'Enter') drawingTools.finish();
+      if (e.key === 'Escape') {
+        drawingTools.cancel();
+      } else if (e.key === 'Enter') {
+        drawingTools.finish();
+      }
       return;
     }
     const typing = (e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable]');
-    if (!state.selectedAnnotation || typing) return;
+    if (!state.selectedAnnotation || typing) {
+      return;
+    }
     if (e.key === 'Delete' || e.key === 'Backspace') {
       e.preventDefault();
       deleteAnnotation(state.selectedAnnotation);
@@ -4705,12 +5561,16 @@ function wireAnnotationToolbar(): void {
   label.addEventListener('input', () => updateSelectedAnnotation({ label: label.value }));
   el<HTMLSelectElement>('annotation-link').addEventListener('change', (e) => {
     const id = state.selectedAnnotation;
-    if (!id) return;
+    if (!id) {
+      return;
+    }
     const value = (e.target as HTMLSelectElement).value;
     setAnnotationLink(id, value === '' ? null : (rowById(value) ?? null));
   });
   el('annotation-delete').addEventListener('click', () => {
-    if (state.selectedAnnotation) deleteAnnotation(state.selectedAnnotation);
+    if (state.selectedAnnotation) {
+      deleteAnnotation(state.selectedAnnotation);
+    }
   });
   el('annotation-inspector-close').addEventListener('click', () => selectAnnotation(null));
   // In the narrow layout, a tap outside the stage and the open inspector
@@ -4720,12 +5580,20 @@ function wireAnnotationToolbar(): void {
   window.addEventListener(
     'pointerdown',
     (e) => {
-      if (!narrowApplication()) return;
+      if (!narrowApplication()) {
+        return;
+      }
       const inspector = el('annotation-inspector');
-      if (inspector.dataset.state !== 'open') return;
+      if (inspector.dataset.state !== 'open') {
+        return;
+      }
       const target = e.target as HTMLElement | null;
-      if (!target) return;
-      if (inspector.contains(target) || target.closest('#map-stage')) return;
+      if (!target) {
+        return;
+      }
+      if (inspector.contains(target) || target.closest('#map-stage')) {
+        return;
+      }
       selectAnnotation(null);
     },
     true,
@@ -4743,10 +5611,14 @@ let presentationLayer: MarkerLayer | null = null;
 let viewerView: { viewport: Viewport; stage?: { width: number; height: number } } | null = null;
 
 function syncPresentationBackground(): void {
-  if (!presentationView || !mapView) return;
+  if (!presentationView || !mapView) {
+    return;
+  }
   const bg = mapView.background;
   if (!bg) {
-    if (presentationView.background) presentationView.clearBackground({ scale: 1, x: 0, y: 0 });
+    if (presentationView.background) {
+      presentationView.clearBackground({ scale: 1, x: 0, y: 0 });
+    }
   } else if (presentationView.background?.src !== bg.src) {
     const view = presentationView;
     const saved = viewerView;
@@ -4754,7 +5626,9 @@ function syncPresentationBackground(): void {
     // The saved view, centred on the stage as it is when applied.
     const centred = (): Viewport | undefined => {
       const now = view.stageSize();
-      if (!saved || now.width <= 0 || now.height <= 0) return undefined;
+      if (!saved || now.width <= 0 || now.height <= 0) {
+        return undefined;
+      }
       const v = saved.viewport;
       const then = saved.stage ?? now;
       return { scale: v.scale, x: v.x + (now.width - then.width) / 2, y: v.y + (now.height - then.height) / 2 };
@@ -4762,11 +5636,15 @@ function syncPresentationBackground(): void {
     void view.setBackgroundSource(bg.src, centred()).then((ok) => {
       // The viewer's layout settles once its list and legend are drawn: the
       // view is centred again on the settled stage.
-      if (!ok || !saved) return;
+      if (!ok || !saved) {
+        return;
+      }
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
           const v = centred();
-          if (v) view.restoreView(v);
+          if (v) {
+            view.restoreView(v);
+          }
         }),
       );
     });
@@ -4774,8 +5652,11 @@ function syncPresentationBackground(): void {
 }
 
 function setExcluded(row: RowData, excluded: boolean): void {
-  if (excluded) state.excluded.add(row);
-  else state.excluded.delete(row);
+  if (excluded) {
+    state.excluded.add(row);
+  } else {
+    state.excluded.delete(row);
+  }
   markDirty();
   renderMapItems();
 }
@@ -4787,7 +5668,9 @@ function renderVisibilityList(): void {
   const t = strings(state.prefs.lang);
   const list = el('visibility-list');
   list.innerHTML = '';
-  if (state.viewOnly) return;
+  if (state.viewOnly) {
+    return;
+  }
   const entries = placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered());
   for (const entry of entries) {
     const id = rowId(entry.row);
@@ -4796,7 +5679,9 @@ function renderVisibilityList(): void {
     li.className = 'visibility-item';
     li.dataset.rowId = id;
     li.dataset.shown = shown ? 'true' : 'false';
-    if (state.presentationSelected === id) li.dataset.selected = 'true';
+    if (state.presentationSelected === id) {
+      li.dataset.selected = 'true';
+    }
     const name = itemLabel(entry.row, entry.label);
     const badge = document.createElement('span');
     badge.className = `marker-badge marker-${entry.colour} ${symbolClasses(entry.shape)}`;
@@ -4855,7 +5740,9 @@ function glanceEntry(marker: PlacedMarker, selectedId: string | null, onSelect: 
   entry.type = 'button';
   entry.className = 'glance-entry';
   entry.dataset.rowId = id;
-  if (selectedId === id) entry.dataset.selected = 'true';
+  if (selectedId === id) {
+    entry.dataset.selected = 'true';
+  }
   const badge = document.createElement('span');
   badge.className = `marker-badge marker-${marker.colour} ${symbolClasses(marker.shape)}`;
   drawSymbol(badge, marker.shape, marker.label);
@@ -4870,7 +5757,9 @@ function glanceEntry(marker: PlacedMarker, selectedId: string | null, onSelect: 
   values.className = 'glance-values';
   for (const key of shownGlanceColumns()) {
     const value = (marker.row.values[key] ?? '').trim();
-    if (value === '') continue;
+    if (value === '') {
+      continue;
+    }
     const valueEl = document.createElement('span');
     valueEl.className = key === areaKey ? 'glance-value glance-area' : 'glance-value';
     valueEl.dataset.header = key;
@@ -5027,7 +5916,9 @@ function programGroupItem(
   header.dataset.rowIds = ids.join(' ');
   header.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
   header.setAttribute('aria-label', `${collapsed ? t.glanceGroupExpand : t.glanceGroupCollapse}: ${program}`);
-  if (selectedId !== null && ids.includes(selectedId)) header.dataset.selected = 'true';
+  if (selectedId !== null && ids.includes(selectedId)) {
+    header.dataset.selected = 'true';
+  }
   const name = document.createElement('span');
   name.className = 'glance-group-name';
   name.textContent = program;
@@ -5036,16 +5927,23 @@ function programGroupItem(
   count.textContent = String(members.length);
   header.append(name, count);
   header.addEventListener('click', () => {
-    if (collapsedPrograms[prefix].has(program)) collapsedPrograms[prefix].delete(program);
-    else collapsedPrograms[prefix].add(program);
+    if (collapsedPrograms[prefix].has(program)) {
+      collapsedPrograms[prefix].delete(program);
+    } else {
+      collapsedPrograms[prefix].add(program);
+    }
     renderMapItems();
-    document.querySelector<HTMLElement>(`#${prefix}-glance-list .glance-group[data-program="${program.replace(/["\\]/g, '\\$&')}"] .glance-group-toggle`)?.focus();
+    document
+      .querySelector<HTMLElement>(`#${prefix}-glance-list .glance-group[data-program="${program.replace(/["\\]/g, '\\$&')}"] .glance-group-toggle`)
+      ?.focus();
   });
   li.appendChild(header);
   if (!collapsed) {
     const nested = document.createElement('ul');
     nested.className = 'glance-group-list';
-    for (const marker of members) nested.appendChild(glanceEntry(marker, selectedId, onSelect));
+    for (const marker of members) {
+      nested.appendChild(glanceEntry(marker, selectedId, onSelect));
+    }
     li.appendChild(nested);
   }
   return li;
@@ -5085,7 +5983,15 @@ function renderGlanceEntries(prefix: 'map' | 'presentation', inView: PlacedMarke
       list.appendChild(glanceEntry(marker, selectedId, onSelect));
     } else if (!placedGroups.has(program)) {
       placedGroups.add(program);
-      list.appendChild(programGroupItem(prefix, program, inView.filter((m) => programOf(m) === program), selectedId, onSelect));
+      list.appendChild(
+        programGroupItem(
+          prefix,
+          program,
+          inView.filter((m) => programOf(m) === program),
+          selectedId,
+          onSelect,
+        ),
+      );
     }
   }
   const heading = el(`${prefix}-glance-heading`);
@@ -5126,7 +6032,9 @@ function closeEconomics(): void {
   const hadFocus = overlay.contains(document.activeElement);
   economicsRow = null;
   renderEconomicsOverlay();
-  if (hadFocus && economicsOpener?.isConnected) economicsOpener.focus({ preventScroll: true });
+  if (hadFocus && economicsOpener?.isConnected) {
+    economicsOpener.focus({ preventScroll: true });
+  }
   economicsOpener = null;
 }
 
@@ -5149,16 +6057,22 @@ function renderInformationTotals(): void {
     const span = document.createElement('span');
     span.className = className;
     span.textContent = text;
-    if (role) span.dataset.role = role;
+    if (role) {
+      span.dataset.role = role;
+    }
     return span;
   };
   const parts: HTMLElement[] = [part('list-totals-label', t.informationTotals)];
-  if (totals.budget) parts.push(part('list-total', `${series.budget!.name}: ${amount(totals.budget)}`, 'budget'));
+  if (totals.budget) {
+    parts.push(part('list-total', `${series.budget!.name}: ${amount(totals.budget)}`, 'budget'));
+  }
   if (totals.track) {
     const [outcome, forecast] = [series.outcome?.name ?? '', series.forecast?.name ?? ''];
     parts.push(part('list-total', `${outcome && forecast ? `${outcome} / ${forecast}` : outcome || forecast}: ${amount(totals.track)}`, 'track'));
   }
-  if (totals.texts > 0) parts.push(part('list-totals-note', format(t.informationTotalsTexts, { count: totals.texts })));
+  if (totals.texts > 0) {
+    parts.push(part('list-totals-note', format(t.informationTotalsTexts, { count: totals.texts })));
+  }
   line.replaceChildren(...parts);
   line.classList.remove('hidden');
 }
@@ -5222,10 +6136,13 @@ function openCard(id: string | null): void {
   cardId = id;
   state.presentationSelected = id;
   renderMapItems();
-  if (id !== null) el('presentation-card').querySelector<HTMLElement>('.details-close')?.focus({ preventScroll: true });
-  else if (previous !== null && hadFocus) {
+  if (id !== null) {
+    el('presentation-card').querySelector<HTMLElement>('.details-close')?.focus({ preventScroll: true });
+  } else if (previous !== null && hadFocus) {
     // Focus returns to the marker the card belonged to.
-    const opener = timelineMode() ? `#presentation-${state.presentationMode} .timeline-chip[data-row-id="${previous}"]` : `#presentation-marker-layer .marker[data-row-id="${previous}"]`;
+    const opener = timelineMode()
+      ? `#presentation-${state.presentationMode} .timeline-chip[data-row-id="${previous}"]`
+      : `#presentation-marker-layer .marker[data-row-id="${previous}"]`;
     document.querySelector<HTMLElement>(opener)?.focus({ preventScroll: true });
   }
 }
@@ -5276,7 +6193,9 @@ function renderCard(): void {
       closeCard,
       hasEconomics ? { label: t.economicsAction, open: (opener) => openEconomics(rowId(row), opener) } : null,
     );
-    if (refocus) card.querySelector<HTMLElement>('.details-close')?.focus({ preventScroll: true });
+    if (refocus) {
+      card.querySelector<HTMLElement>('.details-close')?.focus({ preventScroll: true });
+    }
   }
   // In the narrow viewer, the card docks at the bottom of the stage, in the
   // stylesheet's place (FR-58).
@@ -5333,11 +6252,15 @@ function renderPresentation(): void {
   for (const button of document.querySelectorAll<HTMLButtonElement>('.pres-mode-button')) {
     button.setAttribute('aria-pressed', button.dataset.mode === state.presentationMode ? 'true' : 'false');
   }
-  if (state.presentationMode === 'timeline') renderTimeline();
-  if (state.presentationMode === 'costs') renderCosts();
+  if (state.presentationMode === 'timeline') {
+    renderTimeline();
+  }
+  if (state.presentationMode === 'costs') {
+    renderCosts();
+  }
   renderPresentationGlance();
   renderCard();
-  const has = onTimeline ? (schedule()?.hasLines() ?? false) : presentationView?.background != null;
+  const has = onTimeline ? (schedule()?.hasLines() ?? false) : presentationView?.background !== null && presentationView?.background !== undefined;
   for (const id of ['pres-zoom-in', 'pres-zoom-out', 'pres-fit', 'pres-reset']) {
     el<HTMLButtonElement>(id).disabled = !has;
   }
@@ -5354,8 +6277,12 @@ function renderZoomLevel(): void {
 // Choosing an entry of the "In view" list opens the item's card; in the
 // narrow viewer, it first closes the overlay (FR-58).
 function choosePresentationEntry(id: string): void {
-  if (narrowViewer()) closeNarrowOverlay();
-  if (timelineMode()) schedule()?.reveal(id);
+  if (narrowViewer()) {
+    closeNarrowOverlay();
+  }
+  if (timelineMode()) {
+    schedule()?.reveal(id);
+  }
   openCard(id);
 }
 
@@ -5370,8 +6297,19 @@ function renderPresentationGlance(): void {
   const symbols = effectiveSymbols();
   const entries: PlacedMarker[] = lines.flatMap((line) => {
     const row = rowById(line.item.id);
-    if (!row) return [];
-    return [{ row, number: state.rows.indexOf(row) + 1, label: line.item.label, colour: row.colour, shape: symbols.get(row) ?? DEFAULT_SHAPE, position: { x: 0, y: 0 } }];
+    if (!row) {
+      return [];
+    }
+    return [
+      {
+        row,
+        number: state.rows.indexOf(row) + 1,
+        label: line.item.label,
+        colour: row.colour,
+        shape: symbols.get(row) ?? DEFAULT_SHAPE,
+        position: { x: 0, y: 0 },
+      },
+    ];
   });
   renderGlanceEntries('presentation', entries, state.presentationSelected, choosePresentationEntry);
 }
@@ -5393,16 +6331,22 @@ function schedule(): TimelineView | null {
 }
 
 function setPresentationOrder(order: PresentationOrder): void {
-  if (state.presentationOrder === order) return;
+  if (state.presentationOrder === order) {
+    return;
+  }
   state.presentationOrder = order;
   markDirty();
   renderPresentation();
 }
 
 function setPresentationMode(mode: PresentationMode): void {
-  if (state.presentationMode === mode) return;
+  if (state.presentationMode === mode) {
+    return;
+  }
   state.presentationMode = mode;
-  if (cardId !== null) closeCard();
+  if (cardId !== null) {
+    closeCard();
+  }
   markDirty();
   renderPresentation();
   // The legend follows the view: the costs view's series key appears only
@@ -5422,9 +6366,13 @@ function restoreCostsView(view: TimelineWindow | null): void {
 // The costs view's view to save, like the timeline's: its own window and
 // first visible line, or null while it is the fitted view at the top.
 function currentCostsView(): TimelineWindow | null {
-  if (costsPending || !costs) return state.costsRestore ? { ...state.costsRestore } : null;
+  if (costsPending || !costs) {
+    return state.costsRestore ? { ...state.costsRestore } : null;
+  }
   const firstLine = costs.firstLine();
-  if (!costs.isChosen() && firstLine === 0) return null;
+  if (!costs.isChosen() && firstLine === 0) {
+    return null;
+  }
   return { ...costs.window, firstLine };
 }
 
@@ -5436,9 +6384,13 @@ function restoreTimelineView(view: TimelineWindow | null): void {
 // The timeline's view to save: the time window and the first visible line,
 // or null while it is the fitted view at the top.
 function currentTimelineView(): TimelineWindow | null {
-  if (timelinePending || !timeline) return state.timelineRestore ? { ...state.timelineRestore } : null;
+  if (timelinePending || !timeline) {
+    return state.timelineRestore ? { ...state.timelineRestore } : null;
+  }
   const firstLine = timeline.firstLine();
-  if (!timeline.isChosen() && firstLine === 0) return null;
+  if (!timeline.isChosen() && firstLine === 0) {
+    return null;
+  }
   return { ...timeline.window, firstLine };
 }
 
@@ -5489,7 +6441,9 @@ function newScheduleView(id: string, kind: 'timeline' | 'costs'): TimelineView {
   );
   // A click on the view outside a line closes the card.
   el(id).addEventListener('click', (e) => {
-    if (!(e.target as HTMLElement).closest('.timeline-entry') && cardId !== null) closeCard();
+    if (!(e.target as HTMLElement).closest('.timeline-entry') && cardId !== null) {
+      closeCard();
+    }
   });
   return view;
 }
@@ -5531,11 +6485,19 @@ function scheduleEvents(): ScheduleEvent[] {
 }
 
 function renderTimeline(): void {
-  if (!timeline) timeline = newScheduleView('presentation-timeline', 'timeline');
+  if (!timeline) {
+    timeline = newScheduleView('presentation-timeline', 'timeline');
+  }
   const t = strings(state.prefs.lang);
   const { start, end } = state.roles;
   const model = buildTimeline(timelineItems(), state.presentationOrder, state.areaValues, areaLocale());
-  timeline.render(model, { ...scheduleLabels(), noRoles: start === undefined && end === undefined && model.lines.length > 0 ? t.timelineNoRoles : null }, state.presentationSelected, scheduleEvents(), todayDay());
+  timeline.render(
+    model,
+    { ...scheduleLabels(), noRoles: start === undefined && end === undefined && model.lines.length > 0 ? t.timelineNoRoles : null },
+    state.presentationSelected,
+    scheduleEvents(),
+    todayDay(),
+  );
   if (timelinePending) {
     timelinePending = false;
     const saved = state.timelineRestore;
@@ -5555,8 +6517,11 @@ function costsItems(series: SeriesAssignments): CostsItem[] {
     for (const role of SERIES_ROLES) {
       for (const [year, key] of Object.entries(series[role]?.columns ?? {})) {
         const reading = readAmount(row.values[key] ?? '', state.currencyUnit);
-        if (reading.kind === 'number') amounts.push({ series: role, year: Number(year), value: reading.value, decimals: reading.decimals });
-        else if (reading.kind === 'text') typed.push({ series: role, year: Number(year), text: reading.text });
+        if (reading.kind === 'number') {
+          amounts.push({ series: role, year: Number(year), value: reading.value, decimals: reading.decimals });
+        } else if (reading.kind === 'text') {
+          typed.push({ series: role, year: Number(year), text: reading.text });
+        }
       }
     }
     return { ...item, amounts, typed };
@@ -5564,7 +6529,9 @@ function costsItems(series: SeriesAssignments): CostsItem[] {
 }
 
 function renderCosts(): void {
-  if (!costs) costs = newScheduleView('presentation-costs', 'costs');
+  if (!costs) {
+    costs = newScheduleView('presentation-costs', 'costs');
+  }
   const t = strings(state.prefs.lang);
   const series = effectiveSeries();
   const years = [...new Set(SERIES_ROLES.flatMap((role) => Object.keys(series[role]?.columns ?? {}).map(Number)))];
@@ -5603,17 +6570,23 @@ function renderCosts(): void {
 }
 
 function initialisePresentation(): void {
-  presentationView = new MapView(el('presentation-stage'), el('presentation-content'), el<HTMLImageElement>('presentation-image'), {
-    onError: () => undefined,
-    onBackgroundChanged: () => {
-      renderPresentation();
-      renderPresentationAnnotations();
+  presentationView = new MapView(
+    el('presentation-stage'),
+    el('presentation-content'),
+    el<HTMLImageElement>('presentation-image'),
+    {
+      onError: () => undefined,
+      onBackgroundChanged: () => {
+        renderPresentation();
+        renderPresentationAnnotations();
+      },
+      onViewportChanged: () => {
+        renderPresentation();
+        renderPresentationAnnotations();
+      },
     },
-    onViewportChanged: () => {
-      renderPresentation();
-      renderPresentationAnnotations();
-    },
-  }, { panOverMarkers: true });
+    { panOverMarkers: true },
+  );
   presentationAnnotations = new AnnotationLayer(
     el('presentation-annotations') as unknown as SVGSVGElement,
     el('presentation-annotation-labels'),
@@ -5636,12 +6609,16 @@ function initialisePresentation(): void {
   card.addEventListener('pointerdown', (e) => e.stopPropagation());
   card.addEventListener('wheel', (e) => e.stopPropagation());
   el('presentation-stage').addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && cardId !== null) closeCard();
+    if (e.key === 'Escape' && cardId !== null) {
+      closeCard();
+    }
   });
   // The toolbar acts on the view shown (FR-66); on the timeline, Reset is
   // Fit (FR-67).
   el('pres-zoom-in').addEventListener('click', () => (timelineMode() ? schedule()?.zoomBy(BUTTON_ZOOM_FACTOR) : presentationView?.zoomBy(BUTTON_ZOOM_FACTOR)));
-  el('pres-zoom-out').addEventListener('click', () => (timelineMode() ? schedule()?.zoomBy(1 / BUTTON_ZOOM_FACTOR) : presentationView?.zoomBy(1 / BUTTON_ZOOM_FACTOR)));
+  el('pres-zoom-out').addEventListener('click', () =>
+    timelineMode() ? schedule()?.zoomBy(1 / BUTTON_ZOOM_FACTOR) : presentationView?.zoomBy(1 / BUTTON_ZOOM_FACTOR),
+  );
   el('pres-fit').addEventListener('click', () => (timelineMode() ? schedule()?.fit() : presentationView?.fit()));
   el('pres-reset').addEventListener('click', () => (timelineMode() ? schedule()?.fit() : presentationView?.reset()));
   for (const button of document.querySelectorAll<HTMLButtonElement>('.pres-mode-button')) {
@@ -5653,17 +6630,23 @@ function initialisePresentation(): void {
   el('activity-file-input').addEventListener('change', (e) => {
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0];
-    if (file) void onActivityFile(file);
+    if (file) {
+      void onActivityFile(file);
+    }
     input.value = '';
   });
   el('activity-close').addEventListener('click', closeActivityDialog);
   el('activity-cancel').addEventListener('click', closeActivityDialog);
   el('activity-go').addEventListener('click', confirmActivityImport);
   el('activity-phase').addEventListener('change', (e) => {
-    if (activityDialog) activityDialog.phase = (e.target as HTMLSelectElement).value;
+    if (activityDialog) {
+      activityDialog.phase = (e.target as HTMLSelectElement).value;
+    }
   });
   el('activity-panel').addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeActivityDialog();
+    if (e.key === 'Escape') {
+      closeActivityDialog();
+    }
   });
   el('pdf-open').addEventListener('click', () => void openDocumentDialog('pdf'));
   el('pptx-open').addEventListener('click', () => void openDocumentDialog('pptx'));
@@ -5673,12 +6656,18 @@ function initialisePresentation(): void {
   el('export-close').addEventListener('click', closeExportDialog);
   el('export-go').addEventListener('click', () => void runExport());
   el('export-panel').addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeExportDialog();
+    if (e.key === 'Escape') {
+      closeExportDialog();
+    }
   });
   const stage = el('presentation-stage');
   stage.addEventListener('pointerdown', (e) => {
-    if ((e.target as HTMLElement).closest('.marker')) return;
-    if (cardId !== null || state.presentationSelected !== null) closeCard();
+    if ((e.target as HTMLElement).closest('.marker')) {
+      return;
+    }
+    if (cardId !== null || state.presentationSelected !== null) {
+      closeCard();
+    }
   });
   // A stage, not an editor: nothing can be dropped here. Default handling is
   // prevented so that a dropped file is not opened by the browser either.
@@ -5689,7 +6678,7 @@ function initialisePresentation(): void {
 function renderMapControls(): void {
   renderAnnotationToolbar();
   const view = mapView;
-  const has = view?.background != null;
+  const has = view?.background !== null && view?.background !== undefined;
   for (const id of ['map-zoom-in', 'map-zoom-out', 'map-fit', 'map-reset']) {
     el<HTMLButtonElement>(id).disabled = !has;
   }
@@ -5704,7 +6693,9 @@ async function closePdf(): Promise<void> {
   pdfDocument = null;
   hideDialog('pdf-panel');
   el('pdf-status').textContent = '';
-  if (doc) await doc.close().catch(() => undefined);
+  if (doc) {
+    await doc.close().catch(() => undefined);
+  }
 }
 
 function setPdfBusy(busy: boolean): void {
@@ -5717,7 +6708,9 @@ function setPdfBusy(busy: boolean): void {
 // image, on the same viewport machinery as an image file (FR-25).
 async function usePdfPage(page: number): Promise<void> {
   const doc = pdfDocument;
-  if (!doc || !mapView) return;
+  if (!doc || !mapView) {
+    return;
+  }
   setPdfBusy(true);
   let src: string;
   try {
@@ -5733,6 +6726,10 @@ async function usePdfPage(page: number): Promise<void> {
 }
 
 async function loadPdfFile(file: File): Promise<void> {
+  if (file.size > MAX_IMPORT_BYTES) {
+    showMapError('pdf-too-large');
+    return;
+  }
   await closePdf();
   let doc: PdfDocument;
   try {
@@ -5778,13 +6775,17 @@ export async function useOsmText(text: string, fetched?: { bounds: OsmBounds; at
   try {
     const data = parseOsm(text);
     // Fetched data carries no bounds element: the requested area is the extent.
-    if (fetched) data.bounds = fetched.bounds;
+    if (fetched) {
+      data.bounds = fetched.bounds;
+    }
     const plan = planRender(data);
     projection = plan.projection;
     src = renderPlanToDataUrl(plan, fetched?.attribution);
   } catch (e) {
     const outcome: OsmOutcome = e instanceof OsmError ? (e.code === 'empty' ? 'empty' : 'malformed') : 'render';
-    if (!fetched) showMapError(outcome === 'empty' ? 'osm-empty' : outcome === 'malformed' ? 'osm-malformed' : 'osm-render');
+    if (!fetched) {
+      showMapError(outcome === 'empty' ? 'osm-empty' : outcome === 'malformed' ? 'osm-malformed' : 'osm-render');
+    }
     return outcome;
   }
   await closePdf();
@@ -5833,8 +6834,12 @@ function formatBounds(b: OsmBounds): string {
 // The service's answer, named in the message rather than swallowed.
 function serviceStatus(e: FetchError): string {
   const t = strings(state.prefs.lang);
-  if (e.detail.status !== undefined) return ` ${t.fetchServiceSaid} HTTP ${e.detail.status}${httpReason(e.detail.status)}.`;
-  if (e.detail.message) return ` ${t.fetchServiceSaid} "${e.detail.message}".`;
+  if (e.detail.status !== undefined) {
+    return ` ${t.fetchServiceSaid} HTTP ${e.detail.status}${httpReason(e.detail.status)}.`;
+  }
+  if (e.detail.message) {
+    return ` ${t.fetchServiceSaid} "${e.detail.message}".`;
+  }
   return '';
 }
 
@@ -5898,7 +6903,9 @@ function renderFetchState(): void {
   el('fetch-place-row').classList.toggle('hidden', mode !== 'place');
   el('fetch-results').classList.toggle('hidden', mode !== 'place');
   el('fetch-bbox-row').classList.toggle('hidden', mode !== 'bbox');
-  for (const id of ['fetch-mode-place', 'fetch-mode-bbox', 'fetch-place']) el<HTMLInputElement>(id).disabled = busy;
+  for (const id of ['fetch-mode-place', 'fetch-mode-bbox', 'fetch-place']) {
+    el<HTMLInputElement>(id).disabled = busy;
+  }
   for (const field of EDGES) {
     const input = edgeInput(field);
     input.disabled = busy;
@@ -5978,7 +6985,9 @@ async function fetchOpenMap(): Promise<void> {
     fetchInvalidField = err.detail.field ?? null;
     fetchMessage = { text: fetchErrorText(err, 'data'), kind: 'error' };
     renderFetchState();
-    if (fetchInvalidField) edgeInput(fetchInvalidField).focus();
+    if (fetchInvalidField) {
+      edgeInput(fetchInvalidField).focus();
+    }
     return;
   }
   // A larger area is reduced about its centre; the reduction is stated.
@@ -5990,9 +6999,13 @@ async function fetchOpenMap(): Promise<void> {
   try {
     const text = await fetchMapData(bounds, signal);
     const outcome = await useOsmText(text, { bounds, attribution: t.fetchAttribution });
-    if (outcome === 'ok') fetchMessage = { text: reduced ? `${reduction} ${t.fetchDone}` : t.fetchDone, kind: 'info' };
-    else if (outcome === 'empty') fetchMessage = { text: fetchErrorText(new FetchError('no-results'), 'data'), kind: 'error' };
-    else fetchMessage = { text: fetchErrorText(new FetchError('service', { message: t.fetchUnreadableData }), 'data'), kind: 'error' };
+    if (outcome === 'ok') {
+      fetchMessage = { text: reduced ? `${reduction} ${t.fetchDone}` : t.fetchDone, kind: 'info' };
+    } else if (outcome === 'empty') {
+      fetchMessage = { text: fetchErrorText(new FetchError('no-results'), 'data'), kind: 'error' };
+    } else {
+      fetchMessage = { text: fetchErrorText(new FetchError('service', { message: t.fetchUnreadableData }), 'data'), kind: 'error' };
+    }
   } catch (e) {
     const err = e instanceof FetchError ? e : new FetchError('service');
     fetchMessage = { text: fetchErrorText(err, 'data'), kind: err.code === 'cancelled' ? 'info' : 'error' };
@@ -6012,19 +7025,27 @@ function initialiseFetch(): void {
     hideDialog('fetch-panel');
   });
   el('fetch-cancel').addEventListener('click', () => fetchAbort?.abort());
-  for (const id of ['fetch-mode-place', 'fetch-mode-bbox']) el(id).addEventListener('change', renderFetchState);
+  for (const id of ['fetch-mode-place', 'fetch-mode-bbox']) {
+    el(id).addEventListener('change', renderFetchState);
+  }
   for (const field of EDGES) {
     edgeInput(field).addEventListener('input', () => {
-      if (fetchInvalidField === field) fetchInvalidField = null;
+      if (fetchInvalidField === field) {
+        fetchInvalidField = null;
+      }
       renderFetchState();
     });
     edgeInput(field).addEventListener('keydown', (e) => {
-      if ((e as KeyboardEvent).key === 'Enter' && !el<HTMLButtonElement>('fetch-go').disabled) void fetchOpenMap();
+      if (e.key === 'Enter' && !el<HTMLButtonElement>('fetch-go').disabled) {
+        void fetchOpenMap();
+      }
     });
   }
   el('fetch-search').addEventListener('click', () => void searchFetchPlace());
   el('fetch-place').addEventListener('keydown', (e) => {
-    if ((e as KeyboardEvent).key === 'Enter' && !el<HTMLButtonElement>('fetch-search').disabled) void searchFetchPlace();
+    if (e.key === 'Enter' && !el<HTMLButtonElement>('fetch-search').disabled) {
+      void searchFetchPlace();
+    }
   });
   el('fetch-go').addEventListener('click', () => void fetchOpenMap());
   window.addEventListener('online', renderFetchState);
@@ -6034,26 +7055,36 @@ function initialiseFetch(): void {
 
 async function loadBackgroundFile(file: File): Promise<void> {
   showMapError(null);
-  if (isOsmFile(file)) await loadOsmFile(file);
-  else if (isPdfFile(file)) await loadPdfFile(file);
-  else await mapView?.loadImageFile(file);
+  if (isOsmFile(file)) {
+    await loadOsmFile(file);
+  } else if (isPdfFile(file)) {
+    await loadPdfFile(file);
+  } else {
+    await mapView?.loadImageFile(file);
+  }
 }
 
 function initialiseMapView(): void {
-  mapView = new MapView(el('map-stage'), el('map-content'), el<HTMLImageElement>('map-image'), {
-    onError: (kind) => showMapError(kind),
-    onBackgroundChanged: () => {
-      markDirty();
-      syncPresentationBackground();
-      renderMapControls();
-      renderWorkStatus();
-      renderComparison();
+  mapView = new MapView(
+    el('map-stage'),
+    el('map-content'),
+    el<HTMLImageElement>('map-image'),
+    {
+      onError: (kind) => showMapError(kind),
+      onBackgroundChanged: () => {
+        markDirty();
+        syncPresentationBackground();
+        renderMapControls();
+        renderWorkStatus();
+        renderComparison();
+      },
+      onViewportChanged: () => {
+        renderMapControls();
+        renderMapItems();
+      },
     },
-    onViewportChanged: () => {
-      renderMapControls();
-      renderMapItems();
-    },
-  }, { panFilter: (e) => drawingTools?.allowsPan(e) ?? true });
+    { panFilter: (e) => drawingTools?.allowsPan(e) ?? true },
+  );
   mapAnnotations = new AnnotationLayer(
     el('map-annotations') as unknown as SVGSVGElement,
     el('map-annotation-labels'),
@@ -6063,7 +7094,7 @@ function initialiseMapView(): void {
   drawingTools = new DrawingTools(el('map-stage'), {
     viewport: () => mapView?.viewport ?? { scale: 1, x: 0, y: 0 },
     stagePoint: (x, y) => mapView?.stagePoint(x, y) ?? { x, y },
-    hasBackground: () => mapView?.background != null,
+    hasBackground: () => mapView?.background !== null && mapView?.background !== undefined,
     style: () => ({ ...state.annotationStyle }),
     onDraft: (draft, cursor) => {
       annotationDraft = { draft, cursor };
@@ -6076,9 +7107,13 @@ function initialiseMapView(): void {
     onSelect: selectAnnotation,
     onChange: (annotation, final) => {
       replaceAnnotation(annotation);
-      if (final) markDirty();
+      if (final) {
+        markDirty();
+      }
       renderAnnotations();
-      if (final) renderAnnotationInspector();
+      if (final) {
+        renderAnnotationInspector();
+      }
     },
     touch: () => narrowApplication(),
   });
@@ -6102,7 +7137,9 @@ function initialiseMapView(): void {
   el('map-load').addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', () => {
     const file = fileInput.files?.[0];
-    if (file) void loadBackgroundFile(file);
+    if (file) {
+      void loadBackgroundFile(file);
+    }
     fileInput.value = '';
   });
   el('map-zoom-in').addEventListener('click', () => mapView?.zoomBy(BUTTON_ZOOM_FACTOR));
@@ -6116,14 +7153,18 @@ function initialiseMapView(): void {
   el('marker-shape').addEventListener('change', (e) => {
     const value = (e.target as HTMLSelectElement).value;
     const row = state.selectedMarker ? rowById(state.selectedMarker) : undefined;
-    if (!row || !isSymbol(value)) return;
+    if (!row || !isSymbol(value)) {
+      return;
+    }
     state.shapes.set(row, value);
     markDirty();
     renderMapItems();
     renderDetailsPanel();
   });
   el('marker-remove').addEventListener('click', () => {
-    if (state.selectedMarker) deleteMarker(state.selectedMarker);
+    if (state.selectedMarker) {
+      deleteMarker(state.selectedMarker);
+    }
   });
 
   const stage = el('map-stage');
@@ -6137,7 +7178,9 @@ function initialiseMapView(): void {
   stage.addEventListener(
     'pointerdown',
     (e) => {
-      if (placingId === null) return;
+      if (placingId === null) {
+        return;
+      }
       placingDown = e.isPrimary ? { id: e.pointerId, x: e.clientX, y: e.clientY } : null;
     },
     true,
@@ -6147,8 +7190,12 @@ function initialiseMapView(): void {
     (e) => {
       const down = placingDown;
       placingDown = null;
-      if (placingId === null || !down || down.id !== e.pointerId) return;
-      if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > TAP_SLOP) return;
+      if (placingId === null || !down || down.id !== e.pointerId) {
+        return;
+      }
+      if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > TAP_SLOP) {
+        return;
+      }
       const id = placingId;
       placingId = null;
       dropRowOnMap(id, e.clientX, e.clientY);
@@ -6159,10 +7206,14 @@ function initialiseMapView(): void {
   stage.addEventListener('pointercancel', () => (placingDown = null), true);
   el('place-cancel').addEventListener('click', () => stopPlacing());
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && placingId !== null) stopPlacing();
+    if (e.key === 'Escape' && placingId !== null) {
+      stopPlacing();
+    }
   });
   stage.addEventListener('pointerdown', (e) => {
-    if (!(e.target as HTMLElement).closest('.marker') && state.selectedMarker) selectMarker(null);
+    if (!(e.target as HTMLElement).closest('.marker') && state.selectedMarker) {
+      selectMarker(null);
+    }
   });
   stage.addEventListener('drop', (e) => {
     e.preventDefault();
@@ -6173,7 +7224,9 @@ function initialiseMapView(): void {
       return;
     }
     const file = e.dataTransfer?.files?.[0];
-    if (file) void loadBackgroundFile(file);
+    if (file) {
+      void loadBackgroundFile(file);
+    }
   });
 }
 
@@ -6181,7 +7234,9 @@ function initialiseMapView(): void {
 // confirm. Nothing is ever written automatically: work reaches a file only
 // through Save.
 function guardUnsavedWork(e: BeforeUnloadEvent): void {
-  if (!state.dirty) return;
+  if (!state.dirty) {
+    return;
+  }
   e.preventDefault();
   e.returnValue = '';
 }
@@ -6193,26 +7248,34 @@ function wireEvents(): void {
   for (const kind of VALUE_VOCABULARIES) {
     el(`${kind}-add`).addEventListener('click', () => addVocabValue(kind));
     el(`${kind}-new`).addEventListener('keydown', (e) => {
-      if ((e as KeyboardEvent).key === 'Enter') addVocabValue(kind);
+      if (e.key === 'Enter') {
+        addVocabValue(kind);
+      }
     });
     el(`${kind}-collect`).addEventListener('click', () => collectVocabValues(kind));
   }
   el('event-add').addEventListener('click', addEvent);
   for (const id of ['event-date-new', 'event-label-new']) {
     el(id).addEventListener('keydown', (e) => {
-      if ((e as KeyboardEvent).key === 'Enter') addEvent();
+      if (e.key === 'Enter') {
+        addEvent();
+      }
     });
   }
   const addStatusValue = () => {
     const input = el<HTMLInputElement>('status-new');
     const next = addStatus(state.statuses, input.value, DEFAULT_SHAPE);
     input.value = '';
-    if (next !== state.statuses) setStatuses(next);
+    if (next !== state.statuses) {
+      setStatuses(next);
+    }
   };
   el('status-add').addEventListener('click', addStatusValue);
   el('symbols-from-status').addEventListener('change', (e) => setSymbolsFromStatus((e.target as HTMLInputElement).checked));
   el('status-new').addEventListener('keydown', (e) => {
-    if ((e as KeyboardEvent).key === 'Enter') addStatusValue();
+    if (e.key === 'Enter') {
+      addStatusValue();
+    }
   });
   el('start-empty').addEventListener('click', startEmptyList);
   el('load-demo').addEventListener('click', () => void loadDemo());
@@ -6221,7 +7284,9 @@ function wireEvents(): void {
   presentationInput.addEventListener('change', () => {
     const file = presentationInput.files?.[0];
     presentationInput.value = '';
-    if (file) void openPresentationFile(file);
+    if (file) {
+      void openPresentationFile(file);
+    }
   });
   // Leaving a presentation opened in the application starts it afresh: the
   // work it replaced was given up when it opened (FR-60).
@@ -6230,7 +7295,9 @@ function wireEvents(): void {
   el('add-row').addEventListener('click', addManualRow);
   el('add-column').addEventListener('click', addManualColumn);
   el('new-column-name').addEventListener('keydown', (e) => {
-    if ((e as KeyboardEvent).key === 'Enter') addManualColumn();
+    if (e.key === 'Enter') {
+      addManualColumn();
+    }
   });
   const presetSelect = el<HTMLSelectElement>('preset-select');
   presetSelect.addEventListener('change', () => {
@@ -6241,21 +7308,29 @@ function wireEvents(): void {
   el('preset-remove').addEventListener('click', removeSelectedPreset);
   el('preset-save').addEventListener('click', saveCurrentPreset);
   el('preset-name').addEventListener('keydown', (e) => {
-    if ((e as KeyboardEvent).key === 'Enter') saveCurrentPreset();
+    if (e.key === 'Enter') {
+      saveCurrentPreset();
+    }
   });
   const workInput = el<HTMLInputElement>('work-file-input');
   el('work-open').addEventListener('click', () => workInput.click());
   workInput.addEventListener('change', () => {
     const file = workInput.files?.[0];
-    if (file) void openWorkFile(file);
+    if (file) {
+      void openWorkFile(file);
+    }
     workInput.value = '';
   });
   el('segment-nav').addEventListener('click', (e) => {
     const tab = (e.target as HTMLElement).closest<HTMLElement>('.segment-tab');
-    if (tab && isSegment(tab.dataset.segment)) setSegment(tab.dataset.segment);
+    if (tab && isSegment(tab.dataset.segment)) {
+      setSegment(tab.dataset.segment);
+    }
   });
   el('segment-nav').addEventListener('keydown', (e) => {
-    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') {
+      return;
+    }
     const index = SEGMENTS.indexOf(state.segment);
     const step = e.key === 'ArrowRight' ? 1 : SEGMENTS.length - 1;
     const next = SEGMENTS[(index + step) % SEGMENTS.length];
@@ -6274,7 +7349,9 @@ function wireEvents(): void {
   el('browse-button').addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', () => {
     const file = fileInput.files?.[0];
-    if (file) void handleFile(file);
+    if (file) {
+      void handleFile(file);
+    }
     fileInput.value = '';
   });
   dropZone.addEventListener('dragover', (e) => {
@@ -6286,9 +7363,10 @@ function wireEvents(): void {
     e.preventDefault();
     dropZone.classList.remove('dragover');
     const file = e.dataTransfer?.files?.[0];
-    if (file) void handleFile(file);
+    if (file) {
+      void handleFile(file);
+    }
   });
-
 
   const filterKind = el<HTMLSelectElement>('select-filter-kind');
   const filterText = el<HTMLInputElement>('filter-text');
@@ -6308,7 +7386,9 @@ function wireEvents(): void {
   });
 
   el('economics-overlay').addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape') return;
+    if (e.key !== 'Escape') {
+      return;
+    }
     // The overlay closes alone: what is beneath it stays as it was.
     e.preventDefault();
     e.stopPropagation();
@@ -6333,7 +7413,9 @@ function wireEvents(): void {
   el('compare-select-all').addEventListener('click', selectAllDiffering);
   el('compare-adopt').addEventListener('click', adoptPositions);
   el('details-panel').addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') openDetails(null);
+    if (e.key === 'Escape') {
+      openDetails(null);
+    }
   });
   el('list-view').addEventListener('change', (e) => setListView((e.target as HTMLSelectElement).value === 'grouped' ? 'grouped' : 'flat'));
   el('numbering-mode').addEventListener('change', (e) => setNumbering((e.target as HTMLSelectElement).value === 'grouped' ? 'grouped' : 'global'));
@@ -6345,7 +7427,24 @@ function wireEvents(): void {
 // island of an exported file, in view-only mode. Only the Presentation
 // segment is offered; the controls that edit, toggle visibility, open,
 // save, or export are not shown and cannot be reached.
-const VIEWER_HIDDEN = ['compare-panel', 'activity-panel', 'segment-nav', 'work-controls', 'export-separator', 'export-open', 'export-panel', 'export-status', 'pdf-open', 'pptx-open', 'document-panel', 'document-status', 'segment-information', 'segment-map', 'details-panel', 'visibility-area'];
+const VIEWER_HIDDEN = [
+  'compare-panel',
+  'activity-panel',
+  'segment-nav',
+  'work-controls',
+  'export-separator',
+  'export-open',
+  'export-panel',
+  'export-status',
+  'pdf-open',
+  'pptx-open',
+  'document-panel',
+  'document-status',
+  'segment-information',
+  'segment-map',
+  'details-panel',
+  'visibility-area',
+];
 
 async function startViewer(text: string): Promise<void> {
   document.documentElement.dataset.mode = 'viewer';
@@ -6358,7 +7457,9 @@ async function startViewer(text: string): Promise<void> {
   try {
     data = parseExport(text);
   } catch (e) {
-    if (!(e instanceof ExportError)) throw e;
+    if (!(e instanceof ExportError)) {
+      throw e;
+    }
     el('presentation-empty-hint').textContent = strings(state.prefs.lang).viewerDamaged;
     el('presentation-empty').classList.add('error');
     return;
@@ -6417,8 +7518,12 @@ function showDialog(id: string): void {
   if (narrowDialogs?.active()) {
     narrowDialogs.closeOpen();
     closeNarrowOverlay();
-    if (cardId !== null) closeCard();
-    if (state.selectedAnnotation !== null) selectAnnotation(null);
+    if (cardId !== null) {
+      closeCard();
+    }
+    if (state.selectedAnnotation !== null) {
+      selectAnnotation(null);
+    }
     narrowDialogs.showing(id);
   }
   el(id).classList.remove('hidden');
@@ -6431,7 +7536,14 @@ function hideDialog(id: string): void {
 
 function dialogSpecs(): NarrowDialogSpec[] {
   return [
-    { id: 'fetch-panel', kind: 'sheet', close: () => { fetchAbort?.abort(); hideDialog('fetch-panel'); } },
+    {
+      id: 'fetch-panel',
+      kind: 'sheet',
+      close: () => {
+        fetchAbort?.abort();
+        hideDialog('fetch-panel');
+      },
+    },
     { id: 'pdf-panel', kind: 'sheet', close: () => void closePdf() },
     { id: 'document-panel', kind: 'sheet', close: closeDocumentDialog },
     { id: 'export-panel', kind: 'page', close: closeExportDialog },
@@ -6467,9 +7579,15 @@ function startNarrowApplication(): void {
       // The card, the details sheet (FR-74), and the annotation inspector's
       // sheet take the overlays' place.
       closeCard: () => {
-        if (cardId !== null) closeCard();
-        if (state.detailsId !== null) openDetails(null);
-        if (state.selectedAnnotation !== null) selectAnnotation(null);
+        if (cardId !== null) {
+          closeCard();
+        }
+        if (state.detailsId !== null) {
+          openDetails(null);
+        }
+        if (state.selectedAnnotation !== null) {
+          selectAnnotation(null);
+        }
         narrowDialogs?.closeOpen();
       },
       render: () => {
@@ -6500,11 +7618,17 @@ const narrowStages = new Map<MapView, { width: number; height: number }>();
 
 function refitNarrowStages(): void {
   for (const view of [mapView, presentationView]) {
-    if (!view) continue;
+    if (!view) {
+      continue;
+    }
     const now = view.stageSize();
-    if (now.width <= 0 || now.height <= 0) continue;
+    if (now.width <= 0 || now.height <= 0) {
+      continue;
+    }
     const before = narrowStages.get(view);
-    if (before) view.refit(before);
+    if (before) {
+      view.refit(before);
+    }
     narrowStages.set(view, view.stageSize());
   }
   renderMapItems();
@@ -6526,9 +7650,17 @@ function layoutHeader(): void {
   }
   const menu = el('app-menu');
   if (narrowApplication()) {
-    for (const { item } of headerAnchors) if (item.parentElement !== menu) menu.appendChild(item);
+    for (const { item } of headerAnchors) {
+      if (item.parentElement !== menu) {
+        menu.appendChild(item);
+      }
+    }
   } else {
-    for (const { item, anchor } of headerAnchors) if (item.previousSibling !== anchor) anchor.after(item);
+    for (const { item, anchor } of headerAnchors) {
+      if (item.previousSibling !== anchor) {
+        anchor.after(item);
+      }
+    }
   }
 }
 
@@ -6556,9 +7688,17 @@ function layoutAnnotationControls(): void {
   }
   const inspector = el('annotation-inspector');
   if (narrowApplication()) {
-    for (const { item } of annotationStyleAnchors) if (item.parentElement !== inspector) inspector.insertBefore(item, annotationStyleSheetAnchor);
+    for (const { item } of annotationStyleAnchors) {
+      if (item.parentElement !== inspector) {
+        inspector.insertBefore(item, annotationStyleSheetAnchor);
+      }
+    }
   } else {
-    for (const { item, anchor } of annotationStyleAnchors) if (item.previousSibling !== anchor) anchor.after(item);
+    for (const { item, anchor } of annotationStyleAnchors) {
+      if (item.previousSibling !== anchor) {
+        anchor.after(item);
+      }
+    }
   }
 }
 
@@ -6572,14 +7712,20 @@ function startNarrowViewer(): void {
     ],
     {
       closeCard: () => {
-        if (cardId !== null) closeCard();
+        if (cardId !== null) {
+          closeCard();
+        }
       },
       render: () => renderPresentation(),
       refit: () => {
-        if (!presentationView) return;
+        if (!presentationView) {
+          return;
+        }
         const before = narrowStage;
         narrowStage = presentationView.stageSize();
-        if (before) presentationView.refit(before);
+        if (before) {
+          presentationView.refit(before);
+        }
         renderPresentation();
       },
     },
@@ -6589,14 +7735,18 @@ function startNarrowViewer(): void {
 function renderViewerBadge(): void {
   const badge = el('viewer-badge');
   const at = badge.dataset.exportedAt;
-  if (!state.viewOnly || !at) return;
+  if (!state.viewOnly || !at) {
+    return;
+  }
   badge.textContent = fill(strings(state.prefs.lang).viewerBadge, { date: formatCommentDate(at) });
 }
 
 export function main(): void {
   const island = readDataIsland(document);
   state.viewOnly = island !== null;
-  if (state.viewOnly) state.segment = 'presentation';
+  if (state.viewOnly) {
+    state.segment = 'presentation';
+  }
   initialisePreferences();
   initialiseMapView();
   initialisePresentation();
@@ -6607,8 +7757,12 @@ export function main(): void {
   setSegment(state.segment);
   // The application's narrow layout (FR-71, FR-72); the exported viewer
   // starts its own.
-  if (island === null) startNarrowApplication();
-  if (island !== null) void startViewer(island);
+  if (island === null) {
+    startNarrowApplication();
+  }
+  if (island !== null) {
+    void startViewer(island);
+  }
   // The application has started: an exported file's static state and its
   // no-scripts notice give way (FR-38 as amended, FR-59).
   document.documentElement.dataset.started = 'true';

@@ -46,7 +46,9 @@ export function isOsmFile(file: File): boolean {
 }
 
 function finite(value: string | null): number | null {
-  if (value === null || value.trim() === '') return null;
+  if (value === null || value.trim() === '') {
+    return null;
+  }
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 }
@@ -75,11 +77,15 @@ export function parseOsm(text: string): OsmData {
       for (const part of Array.from(child.children)) {
         if (part.nodeName === 'nd') {
           const ref = part.getAttribute('ref');
-          if (ref !== null) refs.push(ref);
+          if (ref !== null) {
+            refs.push(ref);
+          }
         } else if (part.nodeName === 'tag') {
           const k = part.getAttribute('k');
           const v = part.getAttribute('v');
-          if (k !== null && v !== null) tags[k] = v;
+          if (k !== null && v !== null) {
+            tags[k] = v;
+          }
         }
       }
       ways.push({ refs, tags });
@@ -90,8 +96,12 @@ export function parseOsm(text: string): OsmData {
         maxLat: finite(child.getAttribute('maxlat')),
         maxLon: finite(child.getAttribute('maxlon')),
       };
-      if (b.minLat === null || b.minLon === null || b.maxLat === null || b.maxLon === null) throw new OsmError('malformed');
-      if (b.minLat >= b.maxLat || b.minLon >= b.maxLon) throw new OsmError('malformed');
+      if (b.minLat === null || b.minLon === null || b.maxLat === null || b.maxLon === null) {
+        throw new OsmError('malformed');
+      }
+      if (b.minLat >= b.maxLat || b.minLon >= b.maxLon) {
+        throw new OsmError('malformed');
+      }
       bounds = { minLat: b.minLat, minLon: b.minLon, maxLat: b.maxLat, maxLon: b.maxLon };
     }
   }
@@ -108,17 +118,27 @@ const PATHS = ['footway', 'path', 'cycleway', 'pedestrian', 'steps', 'bridleway'
 const GREEN_LANDUSE = ['grass', 'forest', 'meadow', 'recreation_ground', 'village_green', 'cemetery', 'allotments'];
 
 export function classify(tags: Record<string, string>): FeatureClass | null {
-  if (tags.building !== undefined && tags.building !== 'no') return 'building';
+  if (tags.building !== undefined && tags.building !== 'no') {
+    return 'building';
+  }
   if (tags.natural === 'water' || tags.water !== undefined || tags.waterway === 'riverbank' || tags.landuse === 'reservoir' || tags.landuse === 'basin') {
     return 'water';
   }
-  if (tags.waterway !== undefined) return 'waterway';
+  if (tags.waterway !== undefined) {
+    return 'waterway';
+  }
   if (tags.highway !== undefined) {
-    if (MAJOR_ROADS.includes(tags.highway)) return 'major-road';
-    if (PATHS.includes(tags.highway)) return 'path';
+    if (MAJOR_ROADS.includes(tags.highway)) {
+      return 'major-road';
+    }
+    if (PATHS.includes(tags.highway)) {
+      return 'path';
+    }
     return 'minor-road';
   }
-  if (tags.railway !== undefined && tags.railway !== 'abandoned') return 'rail';
+  if (tags.railway !== undefined && tags.railway !== 'abandoned') {
+    return 'rail';
+  }
   if (tags.leisure === 'park' || tags.leisure === 'garden' || tags.natural === 'wood' || GREEN_LANDUSE.includes(tags.landuse ?? '')) {
     return 'green';
   }
@@ -167,12 +187,18 @@ function mercatorY(lat: number): number {
 // The extent to draw: the file's bounds, else the extent of the nodes used
 // by drawable ways.
 function extentOf(data: OsmData, used: OsmNode[]): OsmBounds | null {
-  if (data.bounds) return data.bounds;
-  if (used.length === 0) return null;
+  if (data.bounds) {
+    return data.bounds;
+  }
+  if (used.length === 0) {
+    return null;
+  }
   const lats = used.map((n) => n.lat);
   const lons = used.map((n) => n.lon);
   const b = { minLat: Math.min(...lats), maxLat: Math.max(...lats), minLon: Math.min(...lons), maxLon: Math.max(...lons) };
-  if (b.minLat === b.maxLat || b.minLon === b.maxLon) return null;
+  if (b.minLat === b.maxLat || b.minLon === b.maxLon) {
+    return null;
+  }
   return b;
 }
 
@@ -182,15 +208,26 @@ export function planRender(data: OsmData, longestSide = PREFERRED_RENDER_SIDE): 
   const drawable: Array<{ feature: FeatureClass; nodes: OsmNode[]; closed: boolean }> = [];
   for (const way of data.ways) {
     const feature = classify(way.tags);
-    if (!feature) continue;
+    if (!feature) {
+      continue;
+    }
     const nodes = way.refs.map((r) => data.nodes.get(r)).filter((n): n is OsmNode => n !== undefined);
-    if (nodes.length < 2) continue;
+    if (nodes.length < 2) {
+      continue;
+    }
     const closed = way.refs.length > 3 && way.refs[0] === way.refs[way.refs.length - 1];
-    if (AREA_CLASSES.includes(feature) && !closed && feature !== 'water') continue;
+    if (AREA_CLASSES.includes(feature) && !closed && feature !== 'water') {
+      continue;
+    }
     drawable.push({ feature, nodes, closed: closed && AREA_CLASSES.includes(feature) });
   }
-  const extent = extentOf(data, drawable.flatMap((d) => d.nodes));
-  if (drawable.length === 0 || !extent) throw new OsmError('empty');
+  const extent = extentOf(
+    data,
+    drawable.flatMap((d) => d.nodes),
+  );
+  if (drawable.length === 0 || !extent) {
+    throw new OsmError('empty');
+  }
   const x0 = (extent.minLon * Math.PI) / 180;
   const x1 = (extent.maxLon * Math.PI) / 180;
   const y0 = mercatorY(extent.minLat);

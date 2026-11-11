@@ -26,7 +26,9 @@ export const BUTTON_ZOOM_FACTOR = 1.25;
 export const IDENTITY: Viewport = { scale: 1, x: 0, y: 0 };
 
 export function clampScale(scale: number): number {
-  if (!Number.isFinite(scale) || scale <= 0) return MIN_SCALE;
+  if (!Number.isFinite(scale) || scale <= 0) {
+    return MIN_SCALE;
+  }
   return Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
 }
 
@@ -77,7 +79,9 @@ function centredAt(scale: number, image: Size, stage: Size): Viewport {
 
 // The largest scale at which the whole image fits the stage, centred.
 export function fitView(image: Size, stage: Size): Viewport {
-  if (image.width <= 0 || image.height <= 0 || stage.width <= 0 || stage.height <= 0) return { ...IDENTITY };
+  if (image.width <= 0 || image.height <= 0 || stage.width <= 0 || stage.height <= 0) {
+    return { ...IDENTITY };
+  }
   const scale = clampScale(Math.min(stage.width / image.width, stage.height / image.height));
   return centredAt(scale, image, stage);
 }

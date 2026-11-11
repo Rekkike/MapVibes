@@ -42,8 +42,8 @@ async function mount(mode: 'wide' | 'narrow'): Promise<App> {
     mode === 'narrow'
       ? {
           beforeMain: () => {
-            const plain = window.matchMedia;
-            window.matchMedia = ((q: string) => (q === NARROW_QUERY ? { ...plain(q), matches: true } : plain(q))) as typeof window.matchMedia;
+            const plain = window.matchMedia.bind(window);
+            window.matchMedia = (q: string) => (q === NARROW_QUERY ? { ...plain(q), matches: true } : plain(q));
           },
         }
       : {},

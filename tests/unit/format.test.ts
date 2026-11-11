@@ -32,7 +32,12 @@ describe('count grammar', () => {
     // singular too.
     for (const table of [en, sv]) {
       for (const [key, value] of Object.entries(table)) {
-        expect(/\{(count|items|comments|removed|excluded|placed|hidden|annotations|markers|outside|pages)\} (items|comments|rows|markers|columns|annotations|values|pages|slides|kommentarer|rader|markörer|kolumner|markeringar|värden|sidor|bilder)\b/.test(value), key).toBe(false);
+        expect(
+          /\{(count|items|comments|removed|excluded|placed|hidden|annotations|markers|outside|pages)\} (items|comments|rows|markers|columns|annotations|values|pages|slides|kommentarer|rader|markörer|kolumner|markeringar|värden|sidor|bilder)\b/.test(
+            value,
+          ),
+          key,
+        ).toBe(false);
       }
     }
   });

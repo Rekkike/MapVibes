@@ -4,7 +4,9 @@ import { beforeEach, describe, expect, test } from 'vitest';
 import { byId, flush, mountApp, placeExampleMarkers, setRole } from './harness';
 
 function values(prefix: 'map' | 'presentation'): string[][] {
-  return [...byId(`${prefix}-glance-list`).querySelectorAll('.glance-entry')].map((e) => [...e.querySelectorAll('.glance-value')].map((v) => v.textContent ?? ''));
+  return [...byId(`${prefix}-glance-list`).querySelectorAll('.glance-entry')].map((e) =>
+    [...e.querySelectorAll('.glance-value')].map((v) => v.textContent ?? ''),
+  );
 }
 
 function picker(): Array<[string, boolean]> {

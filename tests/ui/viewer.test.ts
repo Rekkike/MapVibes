@@ -52,7 +52,11 @@ async function mountViewer(page: string, options: { keepStorage?: boolean } = {}
 function visibleText(): string {
   const out: string[] = [];
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-  for (let n = walker.nextNode(); n; n = walker.nextNode()) if (!n.parentElement?.closest('script, .hidden')) out.push(n.textContent ?? '');
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    if (!n.parentElement?.closest('script, .hidden')) {
+      out.push(n.textContent ?? '');
+    }
+  }
   return out.join(' ');
 }
 
@@ -75,7 +79,16 @@ describe('exported viewer (FR-38, FR-20)', () => {
     expect(document.getElementById(DATA_ISLAND_ID)).not.toBeNull();
     expect(document.documentElement.dataset.mode).toBe('viewer');
     expect(byId('segment-presentation').classList.contains('hidden')).toBe(false);
-    for (const id of ['segment-nav', 'work-controls', 'export-open', 'export-panel', 'segment-information', 'segment-map', 'details-panel', 'visibility-area']) {
+    for (const id of [
+      'segment-nav',
+      'work-controls',
+      'export-open',
+      'export-panel',
+      'segment-information',
+      'segment-map',
+      'details-panel',
+      'visibility-area',
+    ]) {
       expect(byId(id).classList.contains('hidden'), id).toBe(true);
       expect(byId(id).hasAttribute('inert'), id).toBe(true);
     }
@@ -122,8 +135,10 @@ describe('exported viewer (FR-38, FR-20)', () => {
     // items without a marker are in the data only.
     expect(visibleText()).toContain('A-03');
     expect(visibleText()).not.toContain('A-02');
-    const island = byId(DATA_ISLAND_ID).textContent!;
-    for (const id of ['A-02', 'A-03', 'A-04', 'A-05']) expect(island).toContain(`"${id}"`);
+    const island = byId(DATA_ISLAND_ID).textContent;
+    for (const id of ['A-02', 'A-03', 'A-04', 'A-05']) {
+      expect(island).toContain(`"${id}"`);
+    }
     expect(document.body.textContent).not.toContain('A-01');
   });
 

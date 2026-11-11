@@ -1,5 +1,16 @@
 import { beforeEach, describe, expect, test } from 'vitest';
-import { byId, flush, importExampleWorkbook, mountApp, openWorkFile, placeExampleMarkers, setRole, stubImageDecoding, stubStageLayout, textFile } from './harness';
+import {
+  byId,
+  flush,
+  importExampleWorkbook,
+  mountApp,
+  openWorkFile,
+  placeExampleMarkers,
+  setRole,
+  stubImageDecoding,
+  stubStageLayout,
+  textFile,
+} from './harness';
 import { serialiseWorkState } from '../../src/workstate';
 import { dayNumber } from '../../src/dates';
 
@@ -12,8 +23,11 @@ type App = Awaited<ReturnType<typeof mountApp>>;
 
 const lines = () => [...document.querySelectorAll<HTMLElement>('#presentation-timeline .timeline-lines > li')];
 const rowsText = () =>
-  lines().map((li) => (li.classList.contains('timeline-heading') ? `# ${li.textContent}` : li.querySelector('.timeline-name')!.textContent!.replace(/^\d+/, '').trim()));
-const entry = (name: string) => [...document.querySelectorAll<HTMLButtonElement>('#presentation-timeline .timeline-chip')].find((b) => b.textContent!.includes(name))!;
+  lines().map((li) =>
+    li.classList.contains('timeline-heading') ? `# ${li.textContent}` : li.querySelector('.timeline-name')!.textContent.replace(/^\d+/, '').trim(),
+  );
+const entry = (name: string) =>
+  [...document.querySelectorAll<HTMLButtonElement>('#presentation-timeline .timeline-chip')].find((b) => b.textContent.includes(name))!;
 
 async function setUp(): Promise<App> {
   const app = await mountApp({ singleFile: true });
@@ -122,7 +136,7 @@ describe('the timeline (FR-67)', () => {
     expect(rowsText()).toContain('Timed item');
   });
 
-  test('a line\'s chip opens the item\'s card; Escape closes it, and focus returns to the chip', () => {
+  test("a line's chip opens the item's card; Escape closes it, and focus returns to the chip", () => {
     const line = entry('Timed item');
     line.focus();
     line.click();
@@ -217,10 +231,20 @@ describe('the presentation order (FR-70)', () => {
     expect(app.captureWorkState().presentationOrder).toBe('number');
   });
 
-  test("on the timeline: by area, each area's lines under its name; by start date, the items without a start last; \"No dates\" always last", () => {
+  test('on the timeline: by area, each area\'s lines under its name; by start date, the items without a start last; "No dates" always last', () => {
     byId('pres-mode-timeline').click();
     choose('area');
-    expect(rowsText()).toEqual(['# North', 'Dated item', 'Month item', '# South', 'Timed item', 'Open item', '# No dates', 'Ambiguous itemStart: 15/03/2024', 'Undated item']);
+    expect(rowsText()).toEqual([
+      '# North',
+      'Dated item',
+      'Month item',
+      '# South',
+      'Timed item',
+      'Open item',
+      '# No dates',
+      'Ambiguous itemStart: 15/03/2024',
+      'Undated item',
+    ]);
     expect(inView()).toEqual(['Dated item', 'Month item', 'Timed item', 'Open item', 'Ambiguous item', 'Undated item']);
     choose('start');
     expect(rowsText()).toEqual(['Dated item', 'Timed item', 'Open item', 'Month item', '# No dates', 'Ambiguous itemStart: 15/03/2024', 'Undated item']);
@@ -255,7 +279,7 @@ describe('the presentation order (FR-70)', () => {
   });
 });
 
-describe("the new strings in both languages (Pass 16)", () => {
+describe('the new strings in both languages (Pass 16)', () => {
   test('the switch, the order, the timeline, and the totals follow the language', async () => {
     await setUp();
     const role = (key: string) => document.querySelector<HTMLSelectElement>(`#series-list .series-item[data-series="${key}"] .series-role`);
@@ -264,7 +288,11 @@ describe("the new strings in both languages (Pass 16)", () => {
     const lang = byId<HTMLSelectElement>('select-language');
     lang.value = 'sv';
     lang.dispatchEvent(new Event('change'));
-    expect([byId('pres-mode-map').textContent, byId('pres-mode-timeline').textContent, byId('pres-mode').getAttribute('aria-label')]).toEqual(['Karta', 'Tidslinje', 'Presentationsvy']);
+    expect([byId('pres-mode-map').textContent, byId('pres-mode-timeline').textContent, byId('pres-mode').getAttribute('aria-label')]).toEqual([
+      'Karta',
+      'Tidslinje',
+      'Presentationsvy',
+    ]);
     expect(byId('pres-order-text').textContent).toBe('Ordning');
     expect([...byId<HTMLSelectElement>('pres-order').options].map((o) => o.textContent)).toEqual(['Efter nummer', 'Efter område', 'Efter startdatum']);
     expect(rowsText()).toContain('# Inga datum');

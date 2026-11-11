@@ -29,7 +29,9 @@ async function newPage(): Promise<{ page: Page; errors: string[] }> {
 }
 
 beforeAll(async () => {
-  if (!existsSync(BUILT)) throw new Error('dist/build/index.html is missing: run the build first');
+  if (!existsSync(BUILT)) {
+    throw new Error('dist/build/index.html is missing: run the build first');
+  }
   dir = mkdtempSync(join(tmpdir(), 'mapvibes-export-'));
   browser = await chromium.launch();
   context = await browser.newContext({ viewport: { width: 1500, height: 950 }, acceptDownloads: true, hasTouch: false });
@@ -38,7 +40,9 @@ beforeAll(async () => {
   await context.route('**/*', (route) => {
     const url = route.request().url();
     requests.push(url);
-    if (url.startsWith('file://') || url.startsWith('data:') || url.startsWith('blob:')) return route.continue();
+    if (url.startsWith('file://') || url.startsWith('data:') || url.startsWith('blob:')) {
+      return route.continue();
+    }
     return route.abort();
   });
 
@@ -78,7 +82,9 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await browser?.close();
-  if (dir) rmSync(dir, { recursive: true, force: true });
+  if (dir) {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 describe('the exported file in a browser, offline (FR-11, FR-38)', () => {
@@ -88,7 +94,9 @@ describe('the exported file in a browser, offline (FR-11, FR-38)', () => {
     await page.waitForFunction(() => document.getElementById('presentation-stage')!.dataset.hasBackground === 'true');
     expect(await page.evaluate(() => document.documentElement.dataset.mode)).toBe('viewer');
     expect(await page.isVisible('#segment-presentation')).toBe(true);
-    for (const id of ['#segment-nav', '#work-controls', '#export-open', '#segment-information', '#segment-map']) expect(await page.isVisible(id), id).toBe(false);
+    for (const id of ['#segment-nav', '#work-controls', '#export-open', '#segment-information', '#segment-map']) {
+      expect(await page.isVisible(id), id).toBe(false);
+    }
     expect(await page.locator('.visibility-toggle').count()).toBe(0);
     expect(errors).toEqual([]);
     await page.close();
@@ -104,13 +112,19 @@ describe('the exported file in a browser, offline (FR-11, FR-38)', () => {
     // The viewer's legend is used-only (FR-75): every shown row of the example
     // is green and carries the default circle.
     expect(await page.locator('#presentation-legend .legend-entry[data-colour]').allTextContents()).toEqual(['Green']);
-    expect(await page.locator('#presentation-legend .legend-entry[data-shape]:not([data-status])').evaluateAll((els) => els.map((e) => e.getAttribute('data-shape')))).toEqual(['circle']);
+    expect(
+      await page
+        .locator('#presentation-legend .legend-entry[data-shape]:not([data-status])')
+        .evaluateAll((els) => els.map((e) => e.getAttribute('data-shape'))),
+    ).toEqual(['circle']);
     // No item list is rendered (FR-38 as amended in v1.3.1); the data island
     // still carries every shared item, the ones without a marker included.
     expect(await page.isVisible('#visibility-area')).toBe(false);
     expect(await page.locator('#visibility-list li').count()).toBe(0);
-    const island = await page.evaluate(() => document.getElementById('mapvibes-export-data')!.textContent!);
-    for (const id of ['A-01', 'A-02', 'A-03', 'A-04']) expect(island).toContain(`"${id}"`);
+    const island = await page.evaluate(() => document.getElementById('mapvibes-export-data')!.textContent);
+    for (const id of ['A-01', 'A-02', 'A-03', 'A-04']) {
+      expect(island).toContain(`"${id}"`);
+    }
     expect(await page.locator('#presentation-glance-list .glance-name').allTextContents()).toEqual(['A-01', 'A-03']);
     expect(await page.locator('#presentation-glance-list .glance-area').allTextContents()).toEqual(['North', 'South']);
     await page.locator('#presentation-marker-layer .marker').nth(1).click();

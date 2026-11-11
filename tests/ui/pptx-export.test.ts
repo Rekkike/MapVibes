@@ -7,23 +7,29 @@ import type { StageScene } from '../../src/documents';
 
 // jsdom has no canvas: the rasterising of the pages stands in with the
 // example image and records the scene and frame each call was given.
-const rendered: Array<{ kind: 'stage' | 'page'; scene?: StageScene; frame: { width: number; height: number; footer: string }; scale: number; src: string | null }> = [];
+const rendered: Array<{
+  kind: 'stage' | 'page';
+  scene?: StageScene;
+  frame: { width: number; height: number; footer: string };
+  scale: number;
+  src: string | null;
+}> = [];
 vi.mock('../../src/raster', () => ({
-  backgroundJpeg: async () => {
-    throw new Error('not used by the PowerPoint export');
-  },
-  stagePagePng: async (scene: StageScene, frame: { width: number; height: number; footer: string }, scale: number, src: string | null) => {
+  backgroundJpeg: () => Promise.reject(new Error('not used by the PowerPoint export')),
+  stagePagePng: (scene: StageScene, frame: { width: number; height: number; footer: string }, scale: number, src: string | null) => {
     rendered.push({ kind: 'stage', scene, frame, scale, src });
-    return { png: new Uint8Array(readFileSync(join(process.cwd(), 'example-data', 'example-background.png'))), width: 1920, height: 1080 };
+    return Promise.resolve({ png: new Uint8Array(readFileSync(join(process.cwd(), 'example-data', 'example-background.png'))), width: 1920, height: 1080 });
   },
-  pagePng: async (frame: { width: number; height: number; footer: string }, scale: number) => {
+  pagePng: (frame: { width: number; height: number; footer: string }, scale: number) => {
     rendered.push({ kind: 'page', frame, scale, src: null });
-    return { png: new Uint8Array(readFileSync(join(process.cwd(), 'example-data', 'example-background.png'))), width: 1920, height: 1080 };
+    return Promise.resolve({ png: new Uint8Array(readFileSync(join(process.cwd(), 'example-data', 'example-background.png'))), width: 1920, height: 1080 });
   },
 }));
 
 async function settle(): Promise<void> {
-  for (let i = 0; i < 5; i++) await flush();
+  for (let i = 0; i < 5; i++) {
+    await flush();
+  }
 }
 
 function lines(id: string): string[] {
@@ -92,12 +98,20 @@ describe('PowerPoint export (FR-12, FR-51, FR-52)', () => {
     expect(rendered[1].scale).toBe(2);
     expect(p.has('ppt/media/image1.png')).toBe(true);
     expect(p.has('ppt/media/image2.png')).toBe(true);
-    expect([...p.keys()].filter((k) => /^ppt\/slides\/slide\d+\.xml$/.test(k))).toEqual(['ppt/slides/slide1.xml', 'ppt/slides/slide2.xml', 'ppt/slides/slide3.xml']);
+    expect([...p.keys()].filter((k) => /^ppt\/slides\/slide\d+\.xml$/.test(k))).toEqual([
+      'ppt/slides/slide1.xml',
+      'ppt/slides/slide2.xml',
+      'ppt/slides/slide3.xml',
+    ]);
     // Slides 1 and 2 are pictures; slide 3 holds the native table.
-    for (const n of [1, 2]) expect(p.get(`ppt/slides/slide${n}.xml`)).toContain('<p:pic>');
+    for (const n of [1, 2]) {
+      expect(p.get(`ppt/slides/slide${n}.xml`)).toContain('<p:pic>');
+    }
     const table = slideTexts(p.get('ppt/slides/slide3.xml')!);
     expect(table.slice(0, 7)).toEqual(['Items 1 to 5 of 5', 'No.', 'ID', 'Start', 'End', 'Group', 'Note']);
-    for (const id of ['A-01', 'A-02', 'A-03', 'A-04', 'A-05']) expect(table).toContain(id);
+    for (const id of ['A-01', 'A-02', 'A-03', 'A-04', 'A-05']) {
+      expect(table).toContain(id);
+    }
     expect(byId('document-status').textContent).toBe('The document was exported.');
   });
 

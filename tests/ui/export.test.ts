@@ -67,7 +67,9 @@ describe('interactive export (FR-11, FR-39)', () => {
     // Where the data lives, now that the viewer renders no item list (FR-38
     // as amended in v1.3.1).
     expect(byId('export-intro').textContent).toContain('the stage, the at-a-glance panel, the legend, and the cards');
-    expect(byId('export-intro').textContent).toContain('embedded in the source of the file in readable form, also what the presentation does not show, such as items without a marker');
+    expect(byId('export-intro').textContent).toContain(
+      'embedded in the source of the file in readable form, also what the presentation does not show, such as items without a marker',
+    );
     expect(lines('export-contains')).toEqual([
       '3 items, each with all 5 columns',
       '2 markers with their positions, colours, and symbols',

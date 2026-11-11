@@ -19,7 +19,9 @@ let browser: Browser;
 let exported: string;
 
 beforeAll(async () => {
-  if (!existsSync(BUILT)) throw new Error('dist/build/index.html is missing: run the build first');
+  if (!existsSync(BUILT)) {
+    throw new Error('dist/build/index.html is missing: run the build first');
+  }
   browser = await chromium.launch();
   const context = await browser.newContext({ viewport: { width: 1500, height: 950 }, acceptDownloads: true });
   await context.setOffline(true);
@@ -55,7 +57,7 @@ const PROFILES: Array<[string, object, [number, number], number, [number, number
 ];
 
 async function openViewer(options: object): Promise<{ page: Page; errors: string[] }> {
-  const context = await browser.newContext({ ...(options as object) });
+  const context = await browser.newContext({ ...options });
   await context.setOffline(true);
   const page = await context.newPage();
   const errors: string[] = [];
@@ -112,11 +114,17 @@ describe.each(PROFILES)('the quiet chrome on %s (v1.9.0)', (name, options, heade
     // all six statuses; each entry keeps its meaning.
     const colours = await page.locator('#presentation-legend .legend-entry[data-colour]').evaluateAll((els) => els.map((e) => e.getAttribute('data-colour')));
     expect(colours).toEqual(['green', 'blue', 'yellow', 'red']);
-    const shapes = await page.locator('#presentation-legend .legend-entry[data-shape]:not([data-status])').evaluateAll((els) => els.map((e) => e.getAttribute('data-shape')));
+    const shapes = await page
+      .locator('#presentation-legend .legend-entry[data-shape]:not([data-status])')
+      .evaluateAll((els) => els.map((e) => e.getAttribute('data-shape')));
     expect(shapes).toEqual(['square', 'diamond', 'bulb', 'magnifier', 'pause', 'cross', 'check', 'hammer-shovel', 'bolt']);
-    const statuses = await page.locator('#presentation-legend .legend-entry[data-status]').evaluateAll((els) => els.map((e) => [e.getAttribute('data-status'), e.getAttribute('data-shape')]));
+    const statuses = await page
+      .locator('#presentation-legend .legend-entry[data-status]')
+      .evaluateAll((els) => els.map((e) => [e.getAttribute('data-status'), e.getAttribute('data-shape')]));
     expect(statuses).toHaveLength(6);
-    for (const [, symbol] of statuses) expect(symbol).not.toBeNull();
+    for (const [, symbol] of statuses) {
+      expect(symbol).not.toBeNull();
+    }
     if (scaleBand) {
       await page.click('#pres-fit');
       await page.waitForTimeout(1200);
@@ -130,7 +138,9 @@ describe.each(PROFILES)('the quiet chrome on %s (v1.9.0)', (name, options, heade
       // they read at the printed fraction of the background times the scale.
       const labelPx = await page.evaluate(() => {
         const label = document.querySelector('#presentation-annotation-labels > *');
-        if (!label) return null;
+        if (!label) {
+          return null;
+        }
         const m = /matrix\(([^)]+)\)/.exec(getComputedStyle(document.querySelector('#presentation-content')!).transform)!;
         return parseFloat(getComputedStyle(label).fontSize) * Number(m[1].split(',')[0]);
       });

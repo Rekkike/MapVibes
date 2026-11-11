@@ -29,11 +29,17 @@ export function yearOfHeader(label: string): { year: number; name: string } | nu
     const year = Number(m[2]);
     return year >= FIRST_YEAR && year <= LAST_YEAR;
   });
-  if (tokens.length !== 1) return null;
+  if (tokens.length !== 1) {
+    return null;
+  }
   const m = tokens[0];
   const start = m.index + m[1].length;
   const rest = `${label.slice(0, start)} ${label.slice(start + 4)}`;
-  const name = rest.replace(/\(\s*\)|\[\s*\]/g, ' ').replace(EDGE, '').replace(/\s+/g, ' ').trim();
+  const name = rest
+    .replace(/\(\s*\)|\[\s*\]/g, ' ')
+    .replace(EDGE, '')
+    .replace(/\s+/g, ' ')
+    .trim();
   return { year: Number(m[2]), name };
 }
 
@@ -54,7 +60,9 @@ export function proposeSeries(columns: Array<{ key: string; label: string }>): S
   const out: SeriesProposal[] = [];
   for (const column of columns) {
     const found = yearOfHeader(column.label);
-    if (!found || found.name === '') continue;
+    if (!found || found.name === '') {
+      continue;
+    }
     const key = seriesKey(found.name);
     let series = out.find((s) => s.key === key);
     if (!series) {
@@ -62,7 +70,9 @@ export function proposeSeries(columns: Array<{ key: string; label: string }>): S
       out.push(series);
     }
     // A second column for the same year is left to the user; the first wins.
-    if (series.columns[found.year] === undefined) series.columns[found.year] = column.key;
+    if (series.columns[found.year] === undefined) {
+      series.columns[found.year] = column.key;
+    }
   }
   return out;
 }
@@ -86,7 +96,9 @@ function plainNumber(s: string): { value: number; decimals: number } | null {
   let sign = 1;
   let body = s;
   if (/^[-−+]/.test(body)) {
-    if (body[0] !== '+') sign = -1;
+    if (body[0] !== '+') {
+      sign = -1;
+    }
     body = body.slice(1).trim();
   }
   let integer: string;
@@ -123,13 +135,18 @@ function plainNumber(s: string): { value: number; decimals: number } | null {
 // before or after the number; any other text makes it a value as typed.
 export function readAmount(text: string, unit: string): Reading {
   const s = text.replace(SPACES, ' ').trim();
-  if (s === '') return { kind: 'empty' };
+  if (s === '') {
+    return { kind: 'empty' };
+  }
   let body = s;
   const u = unit.trim().toLocaleLowerCase();
   if (u !== '') {
     const lower = body.toLocaleLowerCase();
-    if (lower.endsWith(u) && /[\d\s]$/.test(body.slice(0, body.length - u.length))) body = body.slice(0, body.length - u.length).trim();
-    else if (lower.startsWith(u) && /^[\s\d\-−+]/.test(body.slice(u.length))) body = body.slice(u.length).trim();
+    if (lower.endsWith(u) && /[\d\s]$/.test(body.slice(0, body.length - u.length))) {
+      body = body.slice(0, body.length - u.length).trim();
+    } else if (lower.startsWith(u) && /^[\s\d\-−+]/.test(body.slice(u.length))) {
+      body = body.slice(u.length).trim();
+    }
   }
   const n = plainNumber(body);
   return n ? { kind: 'number', ...n } : { kind: 'text', text: s };
@@ -177,34 +194,53 @@ function valueOf(values: Record<string, string>, key: string | undefined): strin
 }
 
 function hasAny(values: Record<string, string>, series: SeriesAssignment | undefined): boolean {
-  if (!series) return false;
+  if (!series) {
+    return false;
+  }
   return Object.values(series.columns).some((k) => valueOf(values, k).trim() !== '') || (series.total !== null && valueOf(values, series.total).trim() !== '');
 }
 
 // The economics of an item, or null when it has none: no assigned series
 // holds a value for it (absence is never an error).
-export function economicsOf(values: Record<string, string>, series: SeriesAssignments, span: { start: number | null; end: number | null }, unit: string): Economics | null {
+export function economicsOf(
+  values: Record<string, string>,
+  series: SeriesAssignments,
+  span: { start: number | null; end: number | null },
+  unit: string,
+): Economics | null {
   const showBudget = hasAny(values, series.budget);
   const showTrack = hasAny(values, series.outcome) || hasAny(values, series.forecast);
-  if (!showBudget && !showTrack) return null;
+  if (!showBudget && !showTrack) {
+    return null;
+  }
   const read = (s: SeriesAssignment | undefined, year: number): Reading => readAmount(valueOf(values, s?.columns[year]), unit);
   // The years: the item's span, and every year outside it that holds a value.
   const valueYears = new Set<number>();
   for (const role of SERIES_ROLES) {
     const s = series[role];
-    if (!s || (role === 'budget' ? !showBudget : !showTrack)) continue;
-    for (const [year, key] of Object.entries(s.columns)) if (valueOf(values, key).trim() !== '') valueYears.add(Number(year));
+    if (!s || (role === 'budget' ? !showBudget : !showTrack)) {
+      continue;
+    }
+    for (const [year, key] of Object.entries(s.columns)) {
+      if (valueOf(values, key).trim() !== '') {
+        valueYears.add(Number(year));
+      }
+    }
   }
   const { start, end } = span;
   const years = new Set<number>(valueYears);
   const low = start !== null && end !== null ? Math.min(start, end) : null;
   const high = start !== null && end !== null ? Math.max(start, end) : null;
   if (low !== null && high !== null) {
-    for (let y = low; y <= high; y++) years.add(y);
+    for (let y = low; y <= high; y++) {
+      years.add(y);
+    }
   } else if (valueYears.size > 0) {
     // Without a span, the years from the first to the last with a value.
     const all = [...valueYears];
-    for (let y = Math.min(...all); y <= Math.max(...all); y++) years.add(y);
+    for (let y = Math.min(...all); y <= Math.max(...all); y++) {
+      years.add(y);
+    }
   }
   const texts: Economics['texts'] = [];
   const rows: EconomicsYear[] = [...years]
@@ -217,8 +253,12 @@ export function economicsOf(values: Record<string, string>, series: SeriesAssign
         const outcome = read(series.outcome, year);
         track = outcome.kind !== 'empty' ? { reading: outcome, kind: 'outcome' } : { reading: read(series.forecast, year), kind: 'forecast' };
       }
-      if (budget?.kind === 'text') texts.push({ role: 'budget', year, text: budget.text });
-      if (track?.reading.kind === 'text') texts.push({ role: track.kind, year, text: track.reading.text });
+      if (budget?.kind === 'text') {
+        texts.push({ role: 'budget', year, text: budget.text });
+      }
+      if (track?.reading.kind === 'text') {
+        texts.push({ role: track.kind, year, text: track.reading.text });
+      }
       return { year, outside, budget, track };
     });
   const total = (cells: Array<{ year: number; reading: Reading }>, file: Reading | null): EconomicsTotal => {
@@ -228,13 +268,24 @@ export function economicsOf(values: Record<string, string>, series: SeriesAssign
     return { sum, decimals, counted: numbers.map((c) => c.year), file };
   };
   const fileTotal = (s: SeriesAssignment | undefined, role: SeriesRole): Reading | null => {
-    if (!s || s.total === null) return null;
+    if (!s || s.total === null) {
+      return null;
+    }
     const reading = readAmount(valueOf(values, s.total), unit);
-    if (reading.kind === 'empty') return null;
-    if (reading.kind === 'text') texts.push({ role, year: null, text: reading.text });
+    if (reading.kind === 'empty') {
+      return null;
+    }
+    if (reading.kind === 'text') {
+      texts.push({ role, year: null, text: reading.text });
+    }
     return reading;
   };
-  const budget = showBudget ? total(rows.map((r) => ({ year: r.year, reading: r.budget! })), fileTotal(series.budget, 'budget')) : null;
+  const budget = showBudget
+    ? total(
+        rows.map((r) => ({ year: r.year, reading: r.budget! })),
+        fileTotal(series.budget, 'budget'),
+      )
+    : null;
   let track: Economics['track'] = null;
   if (showTrack) {
     const outcomeYears = rows.filter((r) => r.track!.kind === 'outcome').map((r) => r.year);
@@ -243,7 +294,14 @@ export function economicsOf(values: Record<string, string>, series: SeriesAssign
     // that series; a mix of outcome and forecast has no column in the file.
     const only = outcomeYears.length > 0 && forecastYears.length === 0 ? 'outcome' : forecastYears.length > 0 && outcomeYears.length === 0 ? 'forecast' : null;
     const file = only === null ? null : fileTotal(series[only], only);
-    track = { ...total(rows.map((r) => ({ year: r.year, reading: r.track!.reading })), file), outcomeYears, forecastYears };
+    track = {
+      ...total(
+        rows.map((r) => ({ year: r.year, reading: r.track!.reading })),
+        file,
+      ),
+      outcomeYears,
+      forecastYears,
+    };
   }
   return { years: rows, budget, track, texts, span: { start: low, end: high } };
 }
@@ -255,8 +313,11 @@ export function yearRanges(years: number[]): Array<[number, number]> {
   const out: Array<[number, number]> = [];
   for (const y of sorted) {
     const last = out[out.length - 1];
-    if (last && y === last[1] + 1) last[1] = y;
-    else out.push([y, y]);
+    if (last && y === last[1] + 1) {
+      last[1] = y;
+    } else {
+      out.push([y, y]);
+    }
   }
   return out;
 }
@@ -278,7 +339,8 @@ export function informationTotals(items: Array<Economics | null>, assigned: { bu
     const sum = parts.reduce((acc, p) => acc + Math.round(p.value * scale), 0) / scale;
     return { sum, decimals };
   };
-  const itemTotal = (t: EconomicsTotal | null) => (t === null ? [] : t.file?.kind === 'number' ? [{ value: t.file.value, decimals: t.file.decimals }] : [{ value: t.sum, decimals: t.decimals }]);
+  const itemTotal = (t: EconomicsTotal | null) =>
+    t === null ? [] : t.file?.kind === 'number' ? [{ value: t.file.value, decimals: t.file.decimals }] : [{ value: t.sum, decimals: t.decimals }];
   const present = items.filter((e): e is Economics => e !== null);
   return {
     budget: assigned.budget ? add(present.flatMap((e) => itemTotal(e.budget))) : null,

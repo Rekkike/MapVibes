@@ -22,7 +22,9 @@ let exported: string;
 const measured: string[] = [];
 
 beforeAll(async () => {
-  if (!existsSync(BUILT)) throw new Error('dist/build/index.html is missing: run the build first');
+  if (!existsSync(BUILT)) {
+    throw new Error('dist/build/index.html is missing: run the build first');
+  }
   // A-01: five overlapping activities, its work phase one that lies behind
   // the third lane, not drawn while the line is collapsed. A-04: two activities, its work
   // phase the first, visible, and corrected by hand. A-03: a work phase
@@ -53,7 +55,9 @@ beforeAll(async () => {
   await context.setOffline(true);
   await context.route('**/*', (route) => {
     const url = route.request().url();
-    if (url.startsWith('file://') || url.startsWith('data:') || url.startsWith('blob:')) return route.continue();
+    if (url.startsWith('file://') || url.startsWith('data:') || url.startsWith('blob:')) {
+      return route.continue();
+    }
     return route.abort();
   });
   const page = await context.newPage();
@@ -78,7 +82,7 @@ afterAll(async () => {
 });
 
 async function openViewer(options: object): Promise<{ page: Page; errors: string[] }> {
-  const context = await browser.newContext({ ...(options as object) });
+  const context = await browser.newContext({ ...options });
   await context.setOffline(true);
   const page = await context.newPage();
   const errors: string[] = [];
@@ -104,13 +108,23 @@ function measureLine(page: Page, rowId: string) {
     const cs = band ? getComputedStyle(band) : null;
     const segs = [...row.querySelectorAll<HTMLElement>('.timeline-seg')].map((s) => {
       const after = getComputedStyle(s, '::after');
-      return { ...rel(s), title: s.title, lane: Number(s.dataset.lane), phase: s.dataset.phase === 'true', shown: s.getClientRects().length > 0, hatch: after.backgroundImage, hatchContent: after.content };
+      return {
+        ...rel(s),
+        title: s.title,
+        lane: Number(s.dataset.lane),
+        phase: s.dataset.phase === 'true',
+        shown: s.getClientRects().length > 0,
+        hatch: after.backgroundImage,
+        hatchContent: after.content,
+      };
     });
     return {
       plot: { w: plot.width, h: plot.height },
       lineH: row.getBoundingClientRect().height,
       lanes: Number(row.dataset.lanes),
-      band: band ? { ...rel(band), image: cs!.backgroundImage, opacity: cs!.opacity, events: cs!.pointerEvents, first: plotEl.firstElementChild === band } : null,
+      band: band
+        ? { ...rel(band), image: cs!.backgroundImage, opacity: cs!.opacity, events: cs!.pointerEvents, first: plotEl.firstElementChild === band }
+        : null,
       bar: row.querySelector('.timeline-bar') ? rel(row.querySelector('.timeline-bar')!) : null,
       segs,
       indicator: row.querySelector('.timeline-indicator')?.textContent ?? null,
@@ -126,9 +140,10 @@ describe.each([
 ] as const)('the work phase in the viewer timeline at %s (FR-78)', (name, options, lineH, plotH, nameRow) => {
   // The lines are collapsed by default (FR-78 as amended in v1.14.0): the
   // band is drawn unbidden; its segment is drawn once the line is pressed.
-  const press = (page: Page, id: string) => page.locator(`#presentation-timeline .timeline-line[data-row-id="${id}"] .timeline-plot-control`).click({ position: { x: 4, y: 4 } });
+  const press = (page: Page, id: string) =>
+    page.locator(`#presentation-timeline .timeline-line[data-row-id="${id}"] .timeline-plot-control`).click({ position: { x: 4, y: 4 } });
 
-  test('the band spans the plot\'s full height from the activity\'s start to its end, hatched, behind the bar and the segments, unbidden; pressed, its segment is hatched', async () => {
+  test("the band spans the plot's full height from the activity's start to its end, hatched, behind the bar and the segments, unbidden; pressed, its segment is hatched", async () => {
     const { page, errors } = await openViewer(options);
     const theme = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     const quiet = await measureLine(page, 'row-4');
@@ -161,10 +176,14 @@ describe.each([
     expect(m.segs.filter((s) => s.hatchContent !== 'none').map((s) => s.title.split(':')[0])).toEqual(['Survey']);
     // The band is taller than every bar and segment it stands behind.
     expect(band.h).toBeGreaterThan(m.bar!.h);
-    for (const s of m.segs) expect(band.h).toBeGreaterThan(s.h);
+    for (const s of m.segs) {
+      expect(band.h).toBeGreaterThan(s.h);
+    }
     // A work phase whose dates cannot be read draws nothing.
     expect((await measureLine(page, 'row-3')).band).toBeNull();
-    measured.push(`${name}: page ${theme}; collapsed line ${quiet.lineH} px, band ${quiet.band!.w.toFixed(1)} x ${quiet.band!.h.toFixed(1)} px; open line ${m.lineH} px, plot ${m.plot.h} px, band ${band.w.toFixed(1)} x ${band.h.toFixed(1)} px, opacity ${band.opacity}; its segment ${seg.w.toFixed(1)} x ${seg.h} px at y ${seg.y.toFixed(1)}`);
+    measured.push(
+      `${name}: page ${theme}; collapsed line ${quiet.lineH} px, band ${quiet.band!.w.toFixed(1)} x ${quiet.band!.h.toFixed(1)} px; open line ${m.lineH} px, plot ${m.plot.h} px, band ${band.w.toFixed(1)} x ${band.h.toFixed(1)} px, opacity ${band.opacity}; its segment ${seg.w.toFixed(1)} x ${seg.h} px at y ${seg.y.toFixed(1)}`,
+    );
     expect(errors).toEqual([]);
     await page.context().close();
   }, 60_000);
@@ -194,7 +213,9 @@ describe.each([
     expect(shown.shown).toBe(true);
     expect(expanded.band!.x).toBeCloseTo(shown.x, 0);
     expect(expanded.band!.w).toBeCloseTo(shown.w, 0);
-    measured.push(`${name}: collapsed band ${collapsed.band!.w.toFixed(1)} x ${collapsed.band!.h.toFixed(1)} px its segment not drawn, the indicator "${collapsed.indicator}"; expanded to ${lanes} lanes, band ${expanded.band!.w.toFixed(1)} x ${expanded.band!.h.toFixed(1)} px over a ${expanded.plot.h.toFixed(0)} px plot`);
+    measured.push(
+      `${name}: collapsed band ${collapsed.band!.w.toFixed(1)} x ${collapsed.band!.h.toFixed(1)} px its segment not drawn, the indicator "${collapsed.indicator}"; expanded to ${lanes} lanes, band ${expanded.band!.w.toFixed(1)} x ${expanded.band!.h.toFixed(1)} px over a ${expanded.plot.h.toFixed(0)} px plot`,
+    );
     expect(errors).toEqual([]);
     await page.context().close();
   }, 60_000);
@@ -204,10 +225,19 @@ describe.each([
     const entry = () =>
       page.evaluate(() => {
         const group = document.querySelector<HTMLElement>('#presentation-legend .legend-group[data-kind="phase"]');
-        if (!group) return null;
+        if (!group) {
+          return null;
+        }
         const swatch = group.querySelector<HTMLElement>('.legend-swatch')!;
         const r = swatch.getBoundingClientRect();
-        return { label: group.querySelector('.legend-group-label')!.textContent, text: group.querySelector('.legend-label')!.textContent, w: r.width, h: r.height, image: getComputedStyle(swatch).backgroundImage, entries: group.querySelectorAll('.legend-entry').length };
+        return {
+          label: group.querySelector('.legend-group-label')!.textContent,
+          text: group.querySelector('.legend-label')!.textContent,
+          w: r.width,
+          h: r.height,
+          image: getComputedStyle(swatch).backgroundImage,
+          entries: group.querySelectorAll('.legend-entry').length,
+        };
       });
     const inTimeline = await entry();
     expect(inTimeline).not.toBeNull();

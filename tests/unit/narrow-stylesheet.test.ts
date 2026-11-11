@@ -22,8 +22,11 @@ function withoutComments(text: string): string {
 function blockEnd(text: string, open: number): number {
   let depth = 0;
   for (let i = open; i < text.length; i++) {
-    if (text[i] === '{') depth++;
-    else if (text[i] === '}' && --depth === 0) return i + 1;
+    if (text[i] === '{') {
+      depth++;
+    } else if (text[i] === '}' && --depth === 0) {
+      return i + 1;
+    }
   }
   throw new Error('unbalanced braces');
 }
@@ -34,9 +37,11 @@ function topLevel(list: string): string[] {
   let depth = 0;
   let start = 0;
   for (let i = 0; i < list.length; i++) {
-    if (list[i] === '(') depth++;
-    else if (list[i] === ')') depth--;
-    else if (list[i] === ',' && depth === 0) {
+    if (list[i] === '(') {
+      depth++;
+    } else if (list[i] === ')') {
+      depth--;
+    } else if (list[i] === ',' && depth === 0) {
       out.push(list.slice(start, i).trim());
       start = i + 1;
     }
@@ -51,11 +56,16 @@ function selectors(body: string): string[] {
   let i = 0;
   while (i < body.length) {
     const open = body.indexOf('{', i);
-    if (open < 0) break;
+    if (open < 0) {
+      break;
+    }
     const prelude = body.slice(i, open).trim();
     const end = blockEnd(body, open);
-    if (prelude.startsWith('@media')) out.push(...selectors(body.slice(open + 1, end - 1)));
-    else out.push(...topLevel(prelude));
+    if (prelude.startsWith('@media')) {
+      out.push(...selectors(body.slice(open + 1, end - 1)));
+    } else {
+      out.push(...topLevel(prelude));
+    }
     i = end;
   }
   return out;
@@ -68,7 +78,9 @@ function blocks(after: string): { query: string; body: string }[] {
   let i = 0;
   for (;;) {
     const start = after.indexOf('@media', i);
-    if (start < 0) break;
+    if (start < 0) {
+      break;
+    }
     expect(after.slice(i, start).trim(), 'nothing between the blocks').toBe('');
     const open = after.indexOf('{', start);
     const end = blockEnd(after, open);
@@ -98,15 +110,22 @@ describe('the narrow media blocks (FR-58 as amended)', () => {
   });
 
   test('both queries are the query of the script', () => {
-    for (const block of blocks(after)) expect(block.query).toBe(NARROW_QUERY);
+    for (const block of blocks(after)) {
+      expect(block.query).toBe(NARROW_QUERY);
+    }
   });
 
-  test("every rule of the first block applies to the viewer only, every rule of the second to the application only, and none sizes a marker", () => {
+  test('every rule of the first block applies to the viewer only, every rule of the second to the application only, and none sizes a marker', () => {
     blocks(after).forEach((block, i) => {
       const found = selectors(block.body);
       expect(found.length, SCOPES[i].name).toBeGreaterThan(10);
-      for (const selector of found) expect(selector, `${SCOPES[i].name}: ${selector}`).toMatch(SCOPES[i].prefix);
-      expect(found.some((s) => /\.marker\b/.test(s)), SCOPES[i].name).toBe(false);
+      for (const selector of found) {
+        expect(selector, `${SCOPES[i].name}: ${selector}`).toMatch(SCOPES[i].prefix);
+      }
+      expect(
+        found.some((s) => /\.marker\b/.test(s)),
+        SCOPES[i].name,
+      ).toBe(false);
     });
   });
 

@@ -84,8 +84,12 @@ export function polygonArea(points: Point[]): number {
 
 // The area of a shape in squared image units; a line has none.
 export function shapeArea(a: Pick<Annotation, 'kind' | 'points'>): number {
-  if (a.kind === 'line') return 0;
-  if (a.kind === 'circle') return Math.PI * distance(a.points[0], a.points[1]) ** 2;
+  if (a.kind === 'line') {
+    return 0;
+  }
+  if (a.kind === 'circle') {
+    return Math.PI * distance(a.points[0], a.points[1]) ** 2;
+  }
   return polygonArea(outlinePoints(a));
 }
 
@@ -116,7 +120,9 @@ function insidePolygon(p: Point, vertices: Point[]): boolean {
   for (let i = 0, j = vertices.length - 1; i < vertices.length; j = i++) {
     const a = vertices[i];
     const b = vertices[j];
-    if (a.y > p.y !== b.y > p.y && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
+    if (a.y > p.y !== b.y > p.y && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x) {
+      inside = !inside;
+    }
   }
   return inside;
 }
@@ -131,7 +137,9 @@ export function hits(a: Annotation, p: Point, tolerance: number): boolean {
   const vertices = outlinePoints(a);
   const closed = a.kind !== 'line';
   for (let i = 0; i < vertices.length - (closed ? 0 : 1); i++) {
-    if (segmentDistance(p, vertices[i], vertices[(i + 1) % vertices.length]) <= tolerance) return true;
+    if (segmentDistance(p, vertices[i], vertices[(i + 1) % vertices.length]) <= tolerance) {
+      return true;
+    }
   }
   return closed && insidePolygon(p, vertices);
 }
@@ -155,8 +163,12 @@ export function isComplete(a: Pick<Annotation, 'kind' | 'points'>, minimum: numb
 
 // The SVG dash pattern of a line style, in screen pixels.
 export function dashArray(style: LineStyle): string | null {
-  if (style === 'dotted') return '0 7';
-  if (style === 'dashed') return '10 7';
+  if (style === 'dotted') {
+    return '0 7';
+  }
+  if (style === 'dashed') {
+    return '10 7';
+  }
   return null;
 }
 
@@ -170,11 +182,16 @@ export function dashArray(style: LineStyle): string | null {
 const EARTH_RADIUS = 6378137;
 
 export function trueArea(a: Pick<Annotation, 'kind' | 'points'>, projection: MercatorProjection | undefined): number | null {
-  if (!projection || a.kind === 'line') return null;
+  if (!projection || a.kind === 'line') {
+    return null;
+  }
   let vertices = outlinePoints(a);
   if (a.kind === 'circle') {
     const r = distance(a.points[0], a.points[1]);
-    vertices = Array.from({ length: 64 }, (_, i) => ({ x: a.points[0].x + r * Math.cos((2 * Math.PI * i) / 64), y: a.points[0].y + r * Math.sin((2 * Math.PI * i) / 64) }));
+    vertices = Array.from({ length: 64 }, (_, i) => ({
+      x: a.points[0].x + r * Math.cos((2 * Math.PI * i) / 64),
+      y: a.points[0].y + r * Math.sin((2 * Math.PI * i) / 64),
+    }));
   }
   const geo = vertices.map((p) => pixelToLatLon(projection, p.x, p.y)).map((g) => ({ lat: (g.lat * Math.PI) / 180, lon: (g.lon * Math.PI) / 180 }));
   let sum = 0;
@@ -191,7 +208,11 @@ export function trueArea(a: Pick<Annotation, 'kind' | 'points'>, projection: Mer
 // significant digits.
 export function formatArea(squareMetres: number, locale: string): string {
   const format = (v: number, unit: string) => `${new Intl.NumberFormat(locale, { maximumSignificantDigits: 3 }).format(v)} ${unit}`;
-  if (squareMetres < 10_000) return format(squareMetres, 'm²');
-  if (squareMetres < 1_000_000) return format(squareMetres / 10_000, 'ha');
+  if (squareMetres < 10_000) {
+    return format(squareMetres, 'm²');
+  }
+  if (squareMetres < 1_000_000) {
+    return format(squareMetres / 10_000, 'ha');
+  }
   return format(squareMetres / 1_000_000, 'km²');
 }

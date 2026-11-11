@@ -28,7 +28,9 @@ function addStatus(name: string, symbol: string): void {
 function toggle(on: boolean): void {
   byId('tab-information').click();
   const box = byId<HTMLInputElement>('symbols-from-status');
-  if (box.checked !== on) box.click();
+  if (box.checked !== on) {
+    box.click();
+  }
   byId('tab-map').click();
 }
 

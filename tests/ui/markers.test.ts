@@ -61,7 +61,9 @@ describe('markers (FR-5, FR-18)', () => {
     chips()[3].click();
     chips()[3].click();
     byId('tab-map').click();
-    placementItems().slice(0, 4).forEach((item, i) => dragItemToStage(item, ...client(100 + i * 50, 100)));
+    placementItems()
+      .slice(0, 4)
+      .forEach((item, i) => dragItemToStage(item, ...client(100 + i * 50, 100)));
     expect(markers().map((m) => [m.textContent, m.className.replace(' selected', '')])).toEqual([
       ['1', 'marker marker-green marker-shape-circle'],
       ['2', 'marker marker-blue marker-shape-circle'],

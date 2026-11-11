@@ -82,10 +82,7 @@ describe('marker symbol library (FR-26)', () => {
   test('the legend explains the colours and the shapes, in both views and both languages', () => {
     for (const id of ['map-legend', 'presentation-legend']) {
       const legend = byId(id);
-      expect([...legend.querySelectorAll('.legend-group')].map((g) => g.querySelector('.legend-group-label')!.textContent)).toEqual([
-        'Colours',
-        'Symbols',
-      ]);
+      expect([...legend.querySelectorAll('.legend-group')].map((g) => g.querySelector('.legend-group-label')!.textContent)).toEqual(['Colours', 'Symbols']);
       const shapes = [...legend.querySelectorAll<HTMLElement>('.legend-entry[data-shape]')];
       // The Map segment's legend keeps the working palette; the presentation's
       // is used-only (FR-75): both placed markers and the unplaced rows carry

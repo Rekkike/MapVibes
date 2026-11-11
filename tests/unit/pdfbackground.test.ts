@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, test } from 'vitest';
-import { isPdfFile, MAX_RENDER_SIDE, openPdf, PREFERRED_RENDER_SCALE, renderScale } from '../../src/pdfbackground';
+import { documentParams, isPdfFile, MAX_RENDER_SIDE, NO_FETCH_URL, openPdf, PREFERRED_RENDER_SCALE, renderScale } from '../../src/pdfbackground';
 
 function fixture(): ArrayBuffer {
   const buf = readFileSync(join(process.cwd(), 'example-data', 'example-background.pdf'));
@@ -42,8 +42,21 @@ describe('PDF background import (FR-25)', () => {
     await doc.close();
   });
 
+  test('the document parameters pin the cmap and font-data URLs off the network and refuse binary-data loads', async () => {
+    const params = documentParams(new Uint8Array([1, 2, 3]));
+    expect(params.cMapUrl).toBe(NO_FETCH_URL);
+    expect(params.standardFontDataUrl).toBe(NO_FETCH_URL);
+    expect(/^https?:/.test(params.cMapUrl ?? '')).toBe(false);
+    expect(/^https?:/.test(params.standardFontDataUrl ?? '')).toBe(false);
+    expect(params.useWorkerFetch).toBe(false);
+    expect(params.useSystemFonts).toBe(true);
+    expect(params.enableXfa).toBe(false);
+    const factory = new (params.BinaryDataFactory as new (options: unknown) => { fetch(): Promise<unknown> })({});
+    await expect(factory.fetch()).rejects.toThrow('never fetches');
+  });
+
   test('a document that is not a PDF is rejected', async () => {
     const bytes = new TextEncoder().encode('not a pdf document');
-    await expect(openPdf(bytes.buffer as ArrayBuffer)).rejects.toBeDefined();
+    await expect(openPdf(bytes.buffer)).rejects.toBeDefined();
   });
 });

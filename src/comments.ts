@@ -27,7 +27,9 @@ function newId(): string {
 // with no text is not added.
 export function addComment(store: CommentStore, row: RowData, text: string, now: Date = new Date()): ItemComment | null {
   const trimmed = text.trim();
-  if (trimmed === '') return null;
+  if (trimmed === '') {
+    return null;
+  }
   const comment: ItemComment = { id: newId(), date: now.toISOString(), text: trimmed };
   store.set(row, [...(store.get(row) ?? []), comment]);
   return comment;
@@ -40,7 +42,9 @@ export function editComment(store: CommentStore, row: RowData, id: string, text:
   const list = store.get(row);
   const trimmed = text.trim();
   const entry = list?.find((c) => c.id === id);
-  if (!list || !entry || trimmed === '' || trimmed === entry.text) return false;
+  if (!list || !entry || trimmed === '' || trimmed === entry.text) {
+    return false;
+  }
   store.set(
     row,
     list.map((c) => (c.id === id ? { ...c, text: trimmed, edited: now.toISOString() } : c)),
@@ -50,10 +54,15 @@ export function editComment(store: CommentStore, row: RowData, id: string, text:
 
 export function removeComment(store: CommentStore, row: RowData, id: string): boolean {
   const list = store.get(row);
-  if (!list || !list.some((c) => c.id === id)) return false;
+  if (!list || !list.some((c) => c.id === id)) {
+    return false;
+  }
   const rest = list.filter((c) => c.id !== id);
-  if (rest.length === 0) store.delete(row);
-  else store.set(row, rest);
+  if (rest.length === 0) {
+    store.delete(row);
+  } else {
+    store.set(row, rest);
+  }
   return true;
 }
 
@@ -79,6 +88,8 @@ function pad(n: number): string {
 // same in every language.
 export function formatCommentDate(iso: string): string {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
+  if (Number.isNaN(d.getTime())) {
+    return iso;
+  }
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }

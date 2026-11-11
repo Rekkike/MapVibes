@@ -29,7 +29,7 @@ async function setUp(): Promise<App> {
 }
 
 describe('the clock seam', () => {
-  test('today is the device\'s local calendar date as a day number', () => {
+  test("today is the device's local calendar date as a day number", () => {
     expect(todayDay(new Date(2026, 10, 11, 23, 59))).toBe(dayNumber(2026, 11, 11));
     expect(todayDay(new Date(2026, 0, 1, 0, 0))).toBe(dayNumber(2026, 1, 1));
   });
@@ -39,7 +39,7 @@ describe('the today mark in the schedule views', () => {
   beforeEach(() => vi.setSystemTime(new Date(2026, 10, 11, 10, 0)));
   afterEach(() => vi.useRealTimers());
 
-  test('a dashed line at today\'s date in both views, placed like a gridline; not an event, and no chip', async () => {
+  test("a dashed line at today's date in both views, placed like a gridline; not an event, and no chip", async () => {
     await setUp();
     for (const v of ['timeline', 'costs']) {
       byId(`pres-mode-${v}`).click();
@@ -105,7 +105,7 @@ describe('the today mark in the schedule views', () => {
     expect(legendToday()!.querySelector('.legend-group-label')!.textContent).toBe('I dag');
   });
 
-  test('the exported viewer shows the reader\'s today, not the export date', async () => {
+  test("the exported viewer shows the reader's today, not the export date", async () => {
     const app = await setUp();
     byId('pres-mode-timeline').click();
     await flush();
@@ -113,7 +113,13 @@ describe('the today mark in the schedule views', () => {
     // Opened later, by a reader whose device says another day.
     vi.setSystemTime(new Date(2027, 2, 3, 9, 0));
     const doc = new DOMParser().parseFromString(page, 'text/html');
-    await mountApp({ body: doc.body.innerHTML, beforeMain: () => { stubStageLayout(); stubImageDecoding(1200, 800); } });
+    await mountApp({
+      body: doc.body.innerHTML,
+      beforeMain: () => {
+        stubStageLayout();
+        stubImageDecoding(1200, 800);
+      },
+    });
     await flush();
     expect(mark('timeline')!.dataset.day).toBe(String(dayNumber(2027, 3, 3)));
     expect(legendToday()!.querySelector('.legend-label')!.textContent).toBe('2027-03-03');

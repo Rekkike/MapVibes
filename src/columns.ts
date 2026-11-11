@@ -14,7 +14,9 @@ export function columnKeys(headers: string[]): string[] {
     const n = (counts.get(header) ?? 0) + 1;
     counts.set(header, n);
     let key = n === 1 ? header : `${header}${DUPLICATE_SEPARATOR}${n}`;
-    while (used.has(key)) key = `${key}${DUPLICATE_SEPARATOR}`;
+    while (used.has(key)) {
+      key = `${key}${DUPLICATE_SEPARATOR}`;
+    }
     used.add(key);
     return key;
   });

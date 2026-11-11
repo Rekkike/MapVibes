@@ -74,7 +74,10 @@ describe('the straight-line constraint (FR-47)', () => {
     at('pointerup', 100, 100);
     at('pointermove', 260, 108, { shiftKey: true });
     const draft = byId('map-annotations').querySelector('g.annotation.draft polyline')!;
-    const coords = draft.getAttribute('points')!.split(' ').map((pair) => pair.split(',').map(Number));
+    const coords = draft
+      .getAttribute('points')!
+      .split(' ')
+      .map((pair) => pair.split(',').map(Number));
     expect(coords[coords.length - 1][1]).toBeCloseTo(coords[0][1], 6);
   });
 

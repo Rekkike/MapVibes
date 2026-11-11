@@ -25,7 +25,9 @@ describe('ingestion (FR-1)', () => {
   test('treats all cell values as strings', () => {
     const result = parseWorkbook(loadFixture());
     for (const row of result.rows) {
-      for (const cell of row) expect(typeof cell).toBe('string');
+      for (const cell of row) {
+        expect(typeof cell).toBe('string');
+      }
     }
   });
 
@@ -74,7 +76,7 @@ describe('direct import (FR-1)', () => {
 // A regression pin (v1.11.0): a text file that begins with a UTF-8 byte
 // order mark is read as UTF-8, and the mark is not part of the first header.
 describe('a text file with a byte order mark (FR-1)', () => {
-  const bytes = (text: string): ArrayBuffer => new TextEncoder().encode(text).buffer as ArrayBuffer;
+  const bytes = (text: string): ArrayBuffer => new TextEncoder().encode(text).buffer;
   const BOM = '\uFEFF';
 
   test('the mark is not part of the first header, so the header matches as typed', () => {

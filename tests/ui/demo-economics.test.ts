@@ -20,7 +20,9 @@ async function demo(lang: 'en' | 'sv'): Promise<void> {
   select.value = lang;
   select.dispatchEvent(new Event('change'));
   byId('load-demo').click();
-  for (let i = 0; i < 5; i++) await flush();
+  for (let i = 0; i < 5; i++) {
+    await flush();
+  }
   byId('tab-presentation').click();
   await flush();
 }
@@ -31,7 +33,9 @@ function cardByItem(item: string): HTMLElement {
     pointer('pointerdown', m, STAGE.left + parseFloat(m.style.left), STAGE.top + parseFloat(m.style.top));
     pointer('pointerup', m, STAGE.left + parseFloat(m.style.left), STAGE.top + parseFloat(m.style.top));
     const c = byId('presentation-card');
-    if (c.querySelector(`.card-value[data-header]`) && [...c.querySelectorAll('.card-value')].some((v) => v.textContent === item)) return c;
+    if (c.querySelector(`.card-value[data-header]`) && [...c.querySelectorAll('.card-value')].some((v) => v.textContent === item)) {
+      return c;
+    }
   }
   throw new Error(`no card for ${item}`);
 }
@@ -41,7 +45,8 @@ function economics(item: string): HTMLElement {
   return byId('economics-overlay');
 }
 
-const rows = (o: HTMLElement) => [...o.querySelectorAll('.economics-table tbody tr')].map((tr) => [...tr.children].map((c) => c.textContent!.replace(/ /g, ' ')));
+const rows = (o: HTMLElement) =>
+  [...o.querySelectorAll('.economics-table tbody tr')].map((tr) => [...tr.children].map((c) => c.textContent.replace(/ /g, ' ')));
 
 for (const [lang, words] of [
   ['en', { owner: 'Project owner', manager: 'Project manager', budget: 'Budget', track: 'Outcome / Forecast', outside: "outside the item's years" }],
@@ -65,10 +70,14 @@ for (const [lang, words] of [
       expect(rows(o)[0][1]).toMatch(/ kr$/);
       o.querySelector<HTMLButtonElement>('.economics-close')!.click();
       o = economics('D-04');
-      expect(rows(o).find((r) => r[0] === '2025')!.slice(1)).toEqual(['–', '–']);
+      expect(
+        rows(o)
+          .find((r) => r[0] === '2032')!
+          .slice(1),
+      ).toEqual(['–', '–']);
       o.querySelector<HTMLButtonElement>('.economics-close')!.click();
       o = economics('D-10');
-      expect(rows(o)[0][0]).toBe(`2025${words.outside}`);
+      expect(rows(o)[0][0]).toBe(`2032${words.outside}`);
       expect([...o.querySelectorAll('.economics-table thead th')].map((th) => th.textContent)[2]).toBe(words.track);
     }, 30_000);
   });

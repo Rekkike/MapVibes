@@ -12,7 +12,8 @@ import { serialiseWorkState, type WorkState } from '../../src/workstate';
 type App = Awaited<ReturnType<typeof mountApp>>;
 
 const view = (name: string) => byId(`presentation-${name}`);
-const lineOf = (v: string, item: string) => [...view(v).querySelectorAll<HTMLElement>('.timeline-line')].find((li) => li.querySelector('.timeline-title')!.textContent === item)!;
+const lineOf = (v: string, item: string) =>
+  [...view(v).querySelectorAll<HTMLElement>('.timeline-line')].find((li) => li.querySelector('.timeline-title')!.textContent === item)!;
 const chip = (line: HTMLElement) => line.querySelector<HTMLButtonElement>('.timeline-chip')!;
 const control = (line: HTMLElement) => line.querySelector<HTMLElement>('.timeline-plot-control')!;
 const card = () => byId('presentation-card');
@@ -23,11 +24,21 @@ const card = () => byId('presentation-card');
 async function setUp(change: (ws: WorkState) => void = () => undefined): Promise<App> {
   const app = await mountApp({ singleFile: true });
   window.confirm = () => true;
-  await placeExampleMarkers([[0, 100, 100], [1, 300, 150]], 'example-economics.xlsx');
+  await placeExampleMarkers(
+    [
+      [0, 100, 100],
+      [1, 300, 150],
+    ],
+    'example-economics.xlsx',
+  );
   setRole('Name', 'name');
   setRole('Start', 'start');
   setRole('End', 'end');
-  for (const [key, role] of [['budget', 'budget'], ['prognos', 'forecast'], ['utfall', 'outcome']]) {
+  for (const [key, role] of [
+    ['budget', 'budget'],
+    ['prognos', 'forecast'],
+    ['utfall', 'outcome'],
+  ]) {
     const select = document.querySelector<HTMLSelectElement>(`#series-list .series-item[data-series="${key}"] .series-role`)!;
     select.value = role;
     select.dispatchEvent(new Event('change'));
@@ -56,7 +67,7 @@ async function show(v: 'timeline' | 'costs'): Promise<void> {
   await flush();
 }
 
-describe('the split of a line\'s controls (FR-35, FR-67, FR-78 as amended)', () => {
+describe("the split of a line's controls (FR-35, FR-67, FR-78 as amended)", () => {
   test('each line holds two real controls -- the chip and, where there is something to reveal, the plot -- in a line that is not itself a control; no control is nested in another', async () => {
     await setUp();
     await show('timeline');
@@ -106,7 +117,13 @@ describe('the split of a line\'s controls (FR-35, FR-67, FR-78 as amended)', () 
     const stops = [...view('timeline').querySelectorAll<HTMLElement>('button')].filter((b) => b.closest('.timeline-lines'));
     const title = (b: HTMLElement) => b.closest('li')!.querySelector('.timeline-title')!.textContent;
     expect(stops.map((b) => `${b.classList.contains('timeline-chip') ? 'chip' : 'plot'} ${title(b)}`)).toEqual([
-      'chip Long item', 'plot Long item', 'chip No economics', 'chip Budget only', 'plot Budget only', 'chip Gaps', 'chip Outside',
+      'chip Long item',
+      'plot Long item',
+      'chip No economics',
+      'chip Budget only',
+      'plot Budget only',
+      'chip Gaps',
+      'chip Outside',
     ]);
     expect(stops.every((b) => b.tabIndex === 0)).toBe(true);
     chip(lineOf('timeline', 'Long item')).focus();
@@ -116,7 +133,7 @@ describe('the split of a line\'s controls (FR-35, FR-67, FR-78 as amended)', () 
     expect(document.activeElement).toBe(chip(lineOf('timeline', 'Long item')));
   });
 
-  test('the controls\' accessible names: the chip carries the line\'s description, the plot its activities or series', async () => {
+  test("the controls' accessible names: the chip carries the line's description, the plot its activities or series", async () => {
     await setUp();
     await show('timeline');
     const long = lineOf('timeline', 'Long item');
@@ -139,7 +156,13 @@ describe('the split of a line\'s controls (FR-35, FR-67, FR-78 as amended)', () 
     expect(indicator(lineOf('timeline', 'Long item'))!.parentElement).toBe(control(lineOf('timeline', 'Long item')));
     await show('costs');
     // In the costs view, the lines with forecast or outcome to reveal.
-    expect([...view('costs').querySelectorAll<HTMLElement>('.timeline-line')].map((li) => indicator(li)?.textContent ?? null)).toEqual(['≡', null, null, '≡', null]);
+    expect([...view('costs').querySelectorAll<HTMLElement>('.timeline-line')].map((li) => indicator(li)?.textContent ?? null)).toEqual([
+      '≡',
+      null,
+      null,
+      '≡',
+      null,
+    ]);
   });
 
   test('several lines stand open at once; the expansion is transient, never saved, and survives a re-render, zoom, fit, and a change of order', async () => {
@@ -147,7 +170,8 @@ describe('the split of a line\'s controls (FR-35, FR-67, FR-78 as amended)', () 
     await show('timeline');
     control(lineOf('timeline', 'Long item')).click();
     control(lineOf('timeline', 'Budget only')).click();
-    const open = () => [...view('timeline').querySelectorAll<HTMLElement>('.timeline-line[data-expanded="true"]')].map((li) => li.querySelector('.timeline-title')!.textContent);
+    const open = () =>
+      [...view('timeline').querySelectorAll<HTMLElement>('.timeline-line[data-expanded="true"]')].map((li) => li.querySelector('.timeline-title')!.textContent);
     expect(open()).toEqual(['Long item', 'Budget only']);
     byId('pres-zoom-in').click();
     byId('pres-fit').click();
@@ -168,11 +192,16 @@ describe('the split of a line\'s controls (FR-35, FR-67, FR-78 as amended)', () 
     await setUp();
     await show('timeline');
     // jsdom has no layout: the stage and every chip get a box.
-    const rect = (left: number, top: number, width: number, height: number) => ({ left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON: () => ({}) }) as DOMRect;
-    const original = Element.prototype.getBoundingClientRect;
+    const rect = (left: number, top: number, width: number, height: number) =>
+      ({ left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON: () => ({}) }) as DOMRect;
+    const original = Object.getOwnPropertyDescriptor(Element.prototype, 'getBoundingClientRect')?.value as (this: Element) => DOMRect;
     Element.prototype.getBoundingClientRect = function (this: Element) {
-      if (this.id === 'presentation-stage') return rect(100, 50, 800, 600);
-      if (this.classList.contains('timeline-chip')) return rect(100, 130, 180, 28);
+      if (this.id === 'presentation-stage') {
+        return rect(100, 50, 800, 600);
+      }
+      if (this.classList.contains('timeline-chip')) {
+        return rect(100, 130, 180, 28);
+      }
       return original.call(this);
     };
     try {
@@ -186,7 +215,7 @@ describe('the split of a line\'s controls (FR-35, FR-67, FR-78 as amended)', () 
   });
 });
 
-describe('the timeline\'s two states (FR-78 as amended)', () => {
+describe("the timeline's two states (FR-78 as amended)", () => {
   const segs = (li: HTMLElement) => [...li.querySelectorAll<HTMLElement>('.timeline-seg')];
   const names = (li: HTMLElement) => [...li.querySelectorAll<HTMLElement>('.timeline-lane-label')];
 
@@ -225,7 +254,7 @@ describe('the timeline\'s two states (FR-78 as amended)', () => {
     expect(segs(long).map((s) => s.querySelector<HTMLElement>('.timeline-seg-fill')!.style.width)).toEqual(['100%', '60%', '0%', '0%']);
   });
 
-  test('expanded, each activity\'s name stands beside its bar in its lane, or nowhere, its title the fallback; never on the bar', async () => {
+  test("expanded, each activity's name stands beside its bar in its lane, or nowhere, its title the fallback; never on the bar", async () => {
     await setUp();
     await show('timeline');
     control(lineOf('timeline', 'Long item')).click();
@@ -255,17 +284,19 @@ describe('the timeline\'s two states (FR-78 as amended)', () => {
   });
 });
 
-describe('the costs view\'s two states (FR-79 as amended)', () => {
+describe("the costs view's two states (FR-79 as amended)", () => {
   const shown = (li: HTMLElement) => [...li.querySelectorAll<HTMLElement>('.timeline-seg')].filter((s) => s.style.display !== 'none');
 
-  test('collapsed, a costs line shows its budget alone, as its spine, at the line\'s rhythm; pressed, the three sub-lanes', async () => {
+  test("collapsed, a costs line shows its budget alone, as its spine, at the line's rhythm; pressed, the three sub-lanes", async () => {
     await setUp();
     await show('costs');
     const long = () => lineOf('costs', 'Long item');
     expect(long().style.getPropertyValue('--timeline-plot-h')).toBe('28px');
     expect([...new Set(shown(long()).map((s) => s.dataset.series))]).toEqual(['budget']);
     expect(shown(long())).toHaveLength(13);
-    for (const s of shown(long())) expect([s.style.top, s.style.height]).toEqual(['8px', '12px']);
+    for (const s of shown(long())) {
+      expect([s.style.top, s.style.height]).toEqual(['8px', '12px']);
+    }
     control(long()).click();
     expect(long().style.getPropertyValue('--timeline-plot-h')).toBe('46px');
     expect([...new Set(shown(long()).map((s) => s.dataset.series))]).toEqual(['budget', 'forecast', 'outcome']);

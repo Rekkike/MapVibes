@@ -26,7 +26,13 @@ describe('user-managed vocabularies (FR-32, FR-33)', () => {
   });
 
   test('the values present in a column are collected in first-seen order and merged without duplicates', () => {
-    const rows: Array<{ values: Record<string, string> }> = [{ values: { G: 'North' } }, { values: { G: '' } }, { values: { G: 'South' } }, { values: { G: ' North ' } }, { values: {} }];
+    const rows: Array<{ values: Record<string, string> }> = [
+      { values: { G: 'North' } },
+      { values: { G: '' } },
+      { values: { G: 'South' } },
+      { values: { G: ' North ' } },
+      { values: {} },
+    ];
     expect(collectValues(rows, 'G')).toEqual(['North', 'South']);
     expect(mergeValues(['East', 'South'], ['North', 'South'])).toEqual(['East', 'South', 'North']);
   });
@@ -67,7 +73,15 @@ describe('status vocabulary (FR-33)', () => {
     const { parseStatuses } = await import('../../src/vocab');
     expect(parseStatuses([{ name: 'A', symbol: 'circle' }], isSymbol)).toEqual([{ name: 'A', symbol: 'circle' }]);
     expect(parseStatuses([{ name: 'A', symbol: 'star' }], isSymbol)).toBeNull();
-    expect(parseStatuses([{ name: 'A', symbol: 'circle' }, { name: 'A', symbol: 'square' }], isSymbol)).toBeNull();
+    expect(
+      parseStatuses(
+        [
+          { name: 'A', symbol: 'circle' },
+          { name: 'A', symbol: 'square' },
+        ],
+        isSymbol,
+      ),
+    ).toBeNull();
     expect(parseStatuses([{ name: ' ', symbol: 'circle' }], isSymbol)).toBeNull();
     expect(parseStatuses({}, isSymbol)).toBeNull();
   });

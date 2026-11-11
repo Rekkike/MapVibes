@@ -1,5 +1,15 @@
 import { describe, expect, test } from 'vitest';
-import { areaRanks, buildTimeline, clampWindow, fitWindow, layoutLanes, MIN_WINDOW_DAYS, orderEntries, zoomWindow, type TimelineItem } from '../../src/timeline';
+import {
+  areaRanks,
+  buildTimeline,
+  clampWindow,
+  fitWindow,
+  layoutLanes,
+  MIN_WINDOW_DAYS,
+  orderEntries,
+  zoomWindow,
+  type TimelineItem,
+} from '../../src/timeline';
 import { ticks } from '../../src/timelineview';
 import { dayNumber } from '../../src/dates';
 
@@ -67,7 +77,13 @@ describe('the timeline model (FR-67)', () => {
 });
 
 describe('the presentation order (FR-70)', () => {
-  const entries = [item('1', 'South', '2025', ''), item('2', '', '2023', ''), item('3', 'North', '', ''), item('4', 'East', '2023', ''), item('5', 'North', '2022', '')];
+  const entries = [
+    item('1', 'South', '2025', ''),
+    item('2', '', '2023', ''),
+    item('3', 'North', '', ''),
+    item('4', 'East', '2023', ''),
+    item('5', 'North', '2022', ''),
+  ];
   const keys = (e: TimelineItem) => ({ area: e.area, start: e.start === '' ? null : Number(e.start) });
 
   test('by number, the order given', () => {
@@ -85,7 +101,18 @@ describe('the presentation order (FR-70)', () => {
 
   test('by area, the timeline shows each area under its name', () => {
     const m = buildTimeline(entries, 'area', ['North']);
-    expect(m.rows.map((r) => (r.kind === 'heading' ? `# ${r.heading === 'area' ? r.area : 'noDates'}` : r.item.id))).toEqual(['# North', '5', '# East', '4', '# South', '1', '# ', '2', '# noDates', '3']);
+    expect(m.rows.map((r) => (r.kind === 'heading' ? `# ${r.heading === 'area' ? r.area : 'noDates'}` : r.item.id))).toEqual([
+      '# North',
+      '5',
+      '# East',
+      '4',
+      '# South',
+      '1',
+      '# ',
+      '2',
+      '# noDates',
+      '3',
+    ]);
   });
 });
 
@@ -94,7 +121,15 @@ describe('activities in the timeline model (FR-78)', () => {
 
   test('the own span keeps lane 0 and the activities pack into lanes; the extent includes them', () => {
     const m = buildTimeline([
-      { ...item('1', 'P1', '2024', '2025'), activities: [act('a', '2024-01-01', '2024-03-01', 50), act('b', '2024-02-01', '2024-04-01', 100), act('c', '2024-02-15', '2024-05-01', null), act('d', '2025-06-01', '2025-12-31', 0)] },
+      {
+        ...item('1', 'P1', '2024', '2025'),
+        activities: [
+          act('a', '2024-01-01', '2024-03-01', 50),
+          act('b', '2024-02-01', '2024-04-01', 100),
+          act('c', '2024-02-15', '2024-05-01', null),
+          act('d', '2025-06-01', '2025-12-31', 0),
+        ],
+      },
     ]);
     const line = m.lines[0];
     const own = line.spans.find((s) => s.kind !== 'activity')!;
@@ -108,7 +143,9 @@ describe('activities in the timeline model (FR-78)', () => {
   });
 
   test('an activity with an unreadable date has no segment (absence is not an error)', () => {
-    const m = buildTimeline([{ ...item('1', 'P1', '2024', '2025'), activities: [act('bad', '15/03/2024', '2024-05-01', 10), act('ok', '2024-02-01', '2024-03-01', null)] }]);
+    const m = buildTimeline([
+      { ...item('1', 'P1', '2024', '2025'), activities: [act('bad', '15/03/2024', '2024-05-01', 10), act('ok', '2024-02-01', '2024-03-01', null)] },
+    ]);
     const line = m.lines[0];
     expect(line.activitySpans).toHaveLength(1);
     expect(line.activitySpans[0].activity!.label).toBe('ok');

@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import {
   byId,
   flush,
@@ -24,8 +24,8 @@ import { NARROW_QUERY } from '../../src/narrowviewer';
 async function mountNarrow(): Promise<void> {
   await mountApp({
     beforeMain: () => {
-      const plain = window.matchMedia;
-      window.matchMedia = ((q: string) => (q === NARROW_QUERY ? { ...plain(q), matches: true } : plain(q))) as typeof window.matchMedia;
+      const plain = window.matchMedia.bind(window);
+      window.matchMedia = (q: string) => (q === NARROW_QUERY ? { ...plain(q), matches: true } : plain(q));
     },
   });
 }
@@ -35,8 +35,8 @@ async function mountNarrowWithWork(): Promise<void> {
   await mountApp({
     singleFile: true,
     beforeMain: () => {
-      const plain = window.matchMedia;
-      window.matchMedia = ((q: string) => (q === NARROW_QUERY ? { ...plain(q), matches: true } : plain(q))) as typeof window.matchMedia;
+      const plain = window.matchMedia.bind(window);
+      window.matchMedia = (q: string) => (q === NARROW_QUERY ? { ...plain(q), matches: true } : plain(q));
     },
   });
   await placeExampleMarkers([

@@ -8,9 +8,13 @@
 // single-file page to copy and the export is unavailable.
 
 function capture(): string | null {
-  if (typeof document === 'undefined') return null;
+  if (typeof document === 'undefined') {
+    return null;
+  }
   const inline = [...document.querySelectorAll('script[type="module"]')].some((s) => !s.hasAttribute('src') && (s.textContent ?? '').trim() !== '');
-  if (!inline) return null;
+  if (!inline) {
+    return null;
+  }
   return `<!doctype html>\n${document.documentElement.outerHTML}`;
 }
 

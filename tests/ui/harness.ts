@@ -10,12 +10,12 @@ export function exampleFile(name: string, type: string): File {
   // jsdom's Blob does not implement arrayBuffer(); the browser's does.
   const bytes = new Uint8Array(buf.byteLength);
   bytes.set(buf);
-  Object.defineProperty(file, 'arrayBuffer', { value: async () => bytes.buffer, configurable: true });
+  Object.defineProperty(file, 'arrayBuffer', { value: () => Promise.resolve(bytes.buffer), configurable: true });
   return file;
 }
 
 function stubMatchMedia(): void {
-  window.matchMedia = ((query: string) => ({
+  window.matchMedia = (query: string) => ({
     matches: false,
     media: query,
     onchange: null,
@@ -24,7 +24,7 @@ function stubMatchMedia(): void {
     addListener: () => undefined,
     removeListener: () => undefined,
     dispatchEvent: () => false,
-  })) as unknown as typeof window.matchMedia;
+  });
 }
 
 // Mounts the real application markup into the jsdom document and starts a
@@ -44,12 +44,18 @@ window.addEventListener = ((type: string, listener: EventListenerOrEventListener
 // With singleFile, the document carries an inline application script, as the
 // built single-file page does, so that the application can copy its own page
 // for the export (FR-11); the script is not run.
-export async function mountApp(options: { keepStorage?: boolean; firstRun?: boolean; singleFile?: boolean; body?: string; beforeMain?: () => void } = {}): Promise<typeof import('../../src/main')> {
-  for (const [type, listener] of windowListeners.splice(0)) window.removeEventListener(type, listener);
+export async function mountApp(
+  options: { keepStorage?: boolean; firstRun?: boolean; singleFile?: boolean; body?: string; beforeMain?: () => void } = {},
+): Promise<typeof import('../../src/main')> {
+  for (const [type, listener] of windowListeners.splice(0)) {
+    window.removeEventListener(type, listener);
+  }
   stubMatchMedia();
   if (!options.keepStorage) {
     localStorage.clear();
-    if (!options.firstRun) localStorage.setItem('mapvibes.preferences', JSON.stringify({ lang: 'en', theme: 'system' }));
+    if (!options.firstRun) {
+      localStorage.setItem('mapvibes.preferences', JSON.stringify({ lang: 'en', theme: 'system' }));
+    }
   }
   const doc = new DOMParser().parseFromString(indexHtml, 'text/html');
   doc.querySelectorAll('script').forEach((s) => s.remove());
@@ -70,12 +76,16 @@ export async function mountApp(options: { keepStorage?: boolean; firstRun?: bool
 }
 
 export async function flush(): Promise<void> {
-  for (let i = 0; i < 5; i++) await new Promise((r) => setTimeout(r, 0));
+  for (let i = 0; i < 5; i++) {
+    await new Promise((r) => setTimeout(r, 0));
+  }
 }
 
 export function byId<T extends HTMLElement = HTMLElement>(id: string): T {
   const e = document.getElementById(id);
-  if (!e) throw new Error(`missing #${id}`);
+  if (!e) {
+    throw new Error(`missing #${id}`);
+  }
   return e as T;
 }
 
@@ -95,22 +105,32 @@ export const STAGE = { left: 100, top: 50, width: 800, height: 600 };
 export function stubStageLayout(): void {
   for (const id of ['map-stage', 'presentation-stage']) {
     const stage = byId(id);
-    stage.getBoundingClientRect = () =>
-      ({ ...STAGE, x: STAGE.left, y: STAGE.top, right: STAGE.left + STAGE.width, bottom: STAGE.top + STAGE.height, toJSON: () => ({}) }) as DOMRect;
+    stage.getBoundingClientRect = () => ({
+      ...STAGE,
+      x: STAGE.left,
+      y: STAGE.top,
+      right: STAGE.left + STAGE.width,
+      bottom: STAGE.top + STAGE.height,
+      toJSON: () => ({}),
+    });
   }
 }
 
 // jsdom does not decode images: once the application assigns a source to the
 // background image, report the given intrinsic size and fire its load event.
 export function stubImageDecoding(width: number, height: number, fail = false): void {
-  for (const id of ['map-image', 'presentation-image']) stubOneImage(byId<HTMLImageElement>(id), width, height, fail);
+  for (const id of ['map-image', 'presentation-image']) {
+    stubOneImage(byId<HTMLImageElement>(id), width, height, fail);
+  }
 }
 
 function stubOneImage(img: HTMLImageElement, width: number, height: number, fail: boolean): void {
   Object.defineProperty(img, 'naturalWidth', { get: () => width, configurable: true });
   Object.defineProperty(img, 'naturalHeight', { get: () => height, configurable: true });
   const observer = new MutationObserver(() => {
-    if (img.getAttribute('src')) setTimeout(() => img.dispatchEvent(new Event(fail ? 'error' : 'load')), 0);
+    if (img.getAttribute('src')) {
+      setTimeout(() => img.dispatchEvent(new Event(fail ? 'error' : 'load')), 0);
+    }
   });
   observer.observe(img, { attributes: true, attributeFilter: ['src'] });
 }
@@ -126,7 +146,9 @@ export async function loadExampleBackground(): Promise<void> {
 
 export function pointer(type: string, target: Element, clientX: number, clientY: number, extra: Record<string, unknown> = {}): void {
   const e = new MouseEvent(type, { bubbles: true, cancelable: true, clientX, clientY, button: 0 });
-  for (const [k, v] of Object.entries({ pointerId: 1, ...extra })) Object.defineProperty(e, k, { value: v });
+  for (const [k, v] of Object.entries({ pointerId: 1, ...extra })) {
+    Object.defineProperty(e, k, { value: v });
+  }
   target.dispatchEvent(e);
 }
 
@@ -170,35 +192,40 @@ export type Picker = (options: { suggestedName: string }) => Promise<unknown>;
 // records what the application writes.
 export function stubSaveDialog(outcome: 'save' | 'cancel' | 'fail' = 'save') {
   const written: { name?: string; text?: string; bytes?: Uint8Array; type?: string; closed: boolean } = { closed: false };
-  const picker: Picker = async (options) => {
+  const picker: Picker = (options) => {
     written.name = options.suggestedName;
-    if (outcome === 'cancel') throw new DOMException('The user aborted a request.', 'AbortError');
-    if (outcome === 'fail') throw new DOMException('Not allowed.', 'NotAllowedError');
-    return {
-      createWritable: async () => ({
-        write: async (blob: Blob) => {
-          written.type = blob.type;
-          written.text = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(String(reader.result));
-            reader.readAsText(blob);
-          });
-          written.bytes = await new Promise<Uint8Array>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(new Uint8Array(reader.result as ArrayBuffer));
-            reader.readAsArrayBuffer(blob);
-          });
-        },
-        close: async () => {
-          written.closed = true;
-        },
-      }),
-    };
+    if (outcome === 'cancel') {
+      return Promise.reject(new DOMException('The user aborted a request.', 'AbortError'));
+    }
+    if (outcome === 'fail') {
+      return Promise.reject(new DOMException('Not allowed.', 'NotAllowedError'));
+    }
+    return Promise.resolve({
+      createWritable: () =>
+        Promise.resolve({
+          write: async (blob: Blob) => {
+            written.type = blob.type;
+            written.text = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result as string);
+              reader.readAsText(blob);
+            });
+            written.bytes = await new Promise<Uint8Array>((resolve) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(new Uint8Array(reader.result as ArrayBuffer));
+              reader.readAsArrayBuffer(blob);
+            });
+          },
+          close: () => {
+            written.closed = true;
+            return Promise.resolve();
+          },
+        }),
+    });
   };
   (window as unknown as { showSaveFilePicker?: Picker }).showSaveFilePicker = picker;
   return written;
 }
-
 
 export function removeSaveDialog(): void {
   delete (window as unknown as { showSaveFilePicker?: Picker }).showSaveFilePicker;
@@ -217,7 +244,9 @@ export function openWorkFile(file: File): void {
 // Assigns a role to a column through the in-list role control.
 export function setRole(header: string, role: string): void {
   const select = document.querySelector<HTMLSelectElement>(`#row-table-head .role-select[data-header="${header}"]`);
-  if (!select) throw new Error(`no role control for ${header}`);
+  if (!select) {
+    throw new Error(`no role control for ${header}`);
+  }
   select.value = role;
   select.dispatchEvent(new Event('change'));
 }
@@ -233,7 +262,9 @@ export async function placeExampleMarkers(points: Array<[number, number, number]
   setRole('ID', 'identifier');
   byId('tab-map').click();
   await loadExampleBackground();
-  for (const [index, x, y] of points) dragItemToStage(placementItems()[index], STAGE.left + x, STAGE.top + y);
+  for (const [index, x, y] of points) {
+    dragItemToStage(placementItems()[index], STAGE.left + x, STAGE.top + y);
+  }
 }
 
 export function addColumn(name: string): void {
@@ -245,7 +276,9 @@ export function columnKeyOf(label: string): string {
   const th = [...document.querySelectorAll<HTMLElement>('#row-table-head th[data-header]')].find(
     (h) => h.querySelector('.column-label')!.textContent === label,
   );
-  if (!th) throw new Error(`no column ${label}`);
+  if (!th) {
+    throw new Error(`no column ${label}`);
+  }
   return th.dataset.header!;
 }
 
@@ -255,7 +288,9 @@ export function editCell(rowIndex: number, label: string, value: string): void {
   const key = columnKeyOf(label);
   const tr = document.querySelectorAll('#row-table-body tr')[rowIndex];
   const input = tr.querySelector<HTMLInputElement>(`.cell-input[data-header="${esc(key)}"]`);
-  if (!input) throw new Error(`cell ${rowIndex}/${label} is not editable`);
+  if (!input) {
+    throw new Error(`cell ${rowIndex}/${label} is not editable`);
+  }
   input.value = value;
   input.dispatchEvent(new Event('change'));
 }

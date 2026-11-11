@@ -27,17 +27,18 @@ function storage(): Storage | null {
 
 export function loadPreferences(): Preferences {
   const s = storage();
-  if (!s) return { ...DEFAULT_PREFERENCES };
+  if (!s) {
+    return { ...DEFAULT_PREFERENCES };
+  }
   try {
     const raw = s.getItem(STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_PREFERENCES };
+    if (!raw) {
+      return { ...DEFAULT_PREFERENCES };
+    }
     const parsed = JSON.parse(raw) as Partial<Preferences>;
     return {
       lang: parsed.lang === 'sv' || parsed.lang === 'en' ? parsed.lang : DEFAULT_PREFERENCES.lang,
-      theme:
-        parsed.theme === 'light' || parsed.theme === 'dark' || parsed.theme === 'system'
-          ? parsed.theme
-          : DEFAULT_PREFERENCES.theme,
+      theme: parsed.theme === 'light' || parsed.theme === 'dark' || parsed.theme === 'system' ? parsed.theme : DEFAULT_PREFERENCES.theme,
     };
   } catch {
     return { ...DEFAULT_PREFERENCES };
@@ -46,7 +47,9 @@ export function loadPreferences(): Preferences {
 
 export function savePreferences(prefs: Preferences): void {
   const s = storage();
-  if (!s) return;
+  if (!s) {
+    return;
+  }
   try {
     s.setItem(STORAGE_KEY, JSON.stringify(prefs));
   } catch {

@@ -11,7 +11,7 @@ import { dayNumber } from '../../src/dates';
 type App = Awaited<ReturnType<typeof mountApp>>;
 
 const timeline = () => byId('presentation-timeline');
-const lineOf = (name: string) => [...timeline().querySelectorAll<HTMLElement>('.timeline-line')].find((li) => li.textContent!.includes(name))!;
+const lineOf = (name: string) => [...timeline().querySelectorAll<HTMLElement>('.timeline-line')].find((li) => li.textContent.includes(name))!;
 const legendKinds = () => [...byId('presentation-legend').querySelectorAll<HTMLElement>('.legend-group')].map((g) => g.dataset.kind);
 const action = (text: string) => [...document.querySelectorAll<HTMLElement>('#details-panel .details-economics')].find((b) => b.textContent === text)!;
 
@@ -21,7 +21,10 @@ const action = (text: string) => [...document.querySelectorAll<HTMLElement>('#de
 async function setUp(change: (ws: WorkState) => void = () => undefined): Promise<App> {
   const app = await mountApp({ singleFile: true });
   window.confirm = () => true;
-  await placeExampleMarkers([[0, 100, 100], [1, 300, 150]]);
+  await placeExampleMarkers([
+    [0, 100, 100],
+    [1, 300, 150],
+  ]);
   setRole('ID', 'identifier');
   setRole('Start', 'start');
   const ws = app.captureWorkState();
@@ -126,7 +129,7 @@ describe('assigning the work phase (FR-78)', () => {
 });
 
 describe('the work phase in the timeline (FR-78, FR-75)', () => {
-  test('a hatched band across the line\'s plot from the activity\'s start to its end, behind the bar and the segments; the referenced segment is marked', async () => {
+  test("a hatched band across the line's plot from the activity's start to its end, behind the bar and the segments; the referenced segment is marked", async () => {
     await setUp((ws) => (ws.rows[1].workPhase = 'a1'));
     await showTimeline();
     const line = lineOf('A-02');
@@ -173,7 +176,7 @@ describe('the work phase in the timeline (FR-78, FR-75)', () => {
     expect(legendKinds()).not.toContain('phase');
   });
 
-  test('an activity edited by hand says so in its title and in the line\'s description', async () => {
+  test("an activity edited by hand says so in its title and in the line's description", async () => {
     await setUp((ws) => (ws.rows[1].activities![0].edited = true));
     await showTimeline();
     const seg = lineOf('A-02').querySelector<HTMLElement>('.timeline-seg')!;

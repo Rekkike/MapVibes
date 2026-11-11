@@ -65,6 +65,6 @@ describe('a text file is read as typed (FR-1, FR-68)', () => {
   test('no value of a text file is converted into a number or a date by guessing', async () => {
     const { parseWorkbook } = await import('../../src/ingest');
     const csv = new TextEncoder().encode('A,B,C,D,E,F\n2024-03-15,3/15/2024,1.5.2024,0042,"1,5",TRUE\n');
-    expect(parseWorkbook(csv.buffer as ArrayBuffer).rows[0]).toEqual(['2024-03-15', '3/15/2024', '1.5.2024', '0042', '1,5', 'TRUE']);
+    expect(parseWorkbook(csv.buffer).rows[0]).toEqual(['2024-03-15', '3/15/2024', '1.5.2024', '0042', '1,5', 'TRUE']);
   });
 });

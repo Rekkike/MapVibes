@@ -21,9 +21,13 @@ export function assignRole(roles: RoleAssignments, key: string, role: Role | nul
   const next: RoleAssignments = {};
   for (const r of ROLES) {
     const holder = roles[r];
-    if (holder !== undefined && holder !== key && r !== role) next[r] = holder;
+    if (holder !== undefined && holder !== key && r !== role) {
+      next[r] = holder;
+    }
   }
-  if (role) next[role] = key;
+  if (role) {
+    next[role] = key;
+  }
   return next;
 }
 
@@ -32,7 +36,9 @@ export function pruneRoles(roles: RoleAssignments, headers: string[]): RoleAssig
   const next: RoleAssignments = {};
   for (const r of ROLES) {
     const holder = roles[r];
-    if (holder !== undefined && headers.includes(holder)) next[r] = holder;
+    if (holder !== undefined && headers.includes(holder)) {
+      next[r] = holder;
+    }
   }
   return next;
 }
@@ -40,15 +46,13 @@ export function pruneRoles(roles: RoleAssignments, headers: string[]): RoleAssig
 // The display name of an item (FR-1): the name/title value where that role is
 // assigned and the value is not empty; otherwise the identifier value;
 // otherwise the item's global number, formatted by the caller.
-export function displayName(
-  values: Record<string, string>,
-  roles: RoleAssignments,
-  numberLabel: string,
-): string {
+export function displayName(values: Record<string, string>, roles: RoleAssignments, numberLabel: string): string {
   for (const role of ['name', 'identifier'] as const) {
     const key = roles[role];
     const value = key === undefined ? '' : (values[key] ?? '').trim();
-    if (value !== '') return value;
+    if (value !== '') {
+      return value;
+    }
   }
   return numberLabel;
 }
@@ -57,6 +61,8 @@ export function displayName(
 // the primary label; the other columns keep the file's order.
 export function listColumnOrder(headers: string[], roles: RoleAssignments): string[] {
   const name = roles.name;
-  if (name === undefined || !headers.includes(name)) return [...headers];
+  if (name === undefined || !headers.includes(name)) {
+    return [...headers];
+  }
   return [name, ...headers.filter((h) => h !== name)];
 }

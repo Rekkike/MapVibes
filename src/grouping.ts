@@ -19,16 +19,27 @@ export function areaGroups(rows: RowData[], areaKey: string, areaValues: string[
   for (const row of rows) {
     const area = (row.values[areaKey] ?? '').trim();
     const list = byArea.get(area);
-    if (list) list.push(row);
-    else byArea.set(area, [row]);
+    if (list) {
+      list.push(row);
+    } else {
+      byArea.set(area, [row]);
+    }
   }
   const order: string[] = [];
   for (const value of areaValues) {
     const v = value.trim();
-    if (v !== '' && byArea.has(v) && !order.includes(v)) order.push(v);
+    if (v !== '' && byArea.has(v) && !order.includes(v)) {
+      order.push(v);
+    }
   }
-  for (const area of byArea.keys()) if (area !== '' && !order.includes(area)) order.push(area);
-  if (byArea.has('')) order.push('');
+  for (const area of byArea.keys()) {
+    if (area !== '' && !order.includes(area)) {
+      order.push(area);
+    }
+  }
+  if (byArea.has('')) {
+    order.push('');
+  }
   return order.map((area, i) => ({ area, index: i + 1, rows: byArea.get(area)! }));
 }
 
@@ -56,6 +67,10 @@ export function programLabels(rows: RowData[], programKey: string, programValues
     group.rows.forEach((row, i) => labels.set(row, `${group.index}.${i + 1}`));
   }
   let running = 0;
-  for (const row of rows) if (!labels.has(row)) labels.set(row, String(++running));
+  for (const row of rows) {
+    if (!labels.has(row)) {
+      labels.set(row, String(++running));
+    }
+  }
   return labels;
 }

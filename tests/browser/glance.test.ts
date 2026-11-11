@@ -17,7 +17,9 @@ const EXAMPLE = join(process.cwd(), 'example-data');
 let browser: Browser;
 
 beforeAll(async () => {
-  if (!existsSync(BUILT)) throw new Error('dist/build/index.html is missing: run the build first');
+  if (!existsSync(BUILT)) {
+    throw new Error('dist/build/index.html is missing: run the build first');
+  }
   browser = await chromium.launch();
 }, 60_000);
 
@@ -49,8 +51,14 @@ describe('the at-a-glance end column in a browser (FR-46)', () => {
     await page.setInputFiles('#map-file-input', join(EXAMPLE, 'example-background.png'));
     await page.waitForFunction(() => document.getElementById('map-stage')!.dataset.hasBackground === 'true');
     const box = (await page.locator('#map-stage').boundingBox())!;
-    await page.locator('.placement-item').nth(0).dragTo(page.locator('#map-stage'), { targetPosition: { x: Math.round(box.width * 0.3), y: Math.round(box.height / 2) } });
-    await page.locator('.placement-item').nth(2).dragTo(page.locator('#map-stage'), { targetPosition: { x: Math.round(box.width * 0.6), y: Math.round(box.height / 2) } });
+    await page
+      .locator('.placement-item')
+      .nth(0)
+      .dragTo(page.locator('#map-stage'), { targetPosition: { x: Math.round(box.width * 0.3), y: Math.round(box.height / 2) } });
+    await page
+      .locator('.placement-item')
+      .nth(2)
+      .dragTo(page.locator('#map-stage'), { targetPosition: { x: Math.round(box.width * 0.6), y: Math.round(box.height / 2) } });
     const map = await glanceValues(page, 'map');
     expect(map.join(' ')).toContain('2024-02-01');
     expect(map.join(' ')).toContain('2024-03-15');
@@ -90,7 +98,11 @@ describe('the at-a-glance end column in a browser (FR-46)', () => {
       await page.click(`#tab-${prefix}`);
       await page.click(prefix === 'map' ? '#map-fit' : '#pres-fit');
       await page.waitForTimeout(300);
-      const headers = await page.locator(`#${prefix}-glance-list .glance-entry`).first().locator('.glance-value').evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.header));
+      const headers = await page
+        .locator(`#${prefix}-glance-list .glance-entry`)
+        .first()
+        .locator('.glance-value')
+        .evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.header));
       expect(headers, prefix).toEqual(['Group', 'Start', 'End']);
     }
   }
@@ -111,10 +123,20 @@ describe('the at-a-glance end column in a browser (FR-46)', () => {
     await page.click('#tab-information');
     await page.setInputFiles('#file-input', join(EXAMPLE, 'example.xlsx'));
     await page.waitForFunction(() => document.querySelector('.role-select[data-header="Group"]') !== null);
-    for (const [header, role] of [['ID', 'identifier'], ['Group', 'area'], ['Start', 'start'], ['End', 'end']]) await page.selectOption(`.role-select[data-header="${header}"]`, role);
+    for (const [header, role] of [
+      ['ID', 'identifier'],
+      ['Group', 'area'],
+      ['Start', 'start'],
+      ['End', 'end'],
+    ]) {
+      await page.selectOption(`.role-select[data-header="${header}"]`, role);
+    }
     await page.click('#tab-map');
     const box = (await page.locator('#map-stage').boundingBox())!;
-    await page.locator('.placement-item').nth(0).dragTo(page.locator('#map-stage'), { targetPosition: { x: Math.round(box.width * 0.3), y: Math.round(box.height / 2) } });
+    await page
+      .locator('.placement-item')
+      .nth(0)
+      .dragTo(page.locator('#map-stage'), { targetPosition: { x: Math.round(box.width * 0.3), y: Math.round(box.height / 2) } });
     await expectFullDefaults(page);
     await page.context().close();
   }, 60_000);

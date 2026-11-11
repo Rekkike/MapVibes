@@ -36,25 +36,24 @@ const PLACES = JSON.stringify([
 type Reply = { status?: number; body?: string; fail?: boolean; pending?: boolean };
 let calls: Array<{ url: string; init: RequestInit }>;
 let replies: Reply[];
-let release: (() => void) | null;
 
 function stubFetch(): void {
   calls = [];
   replies = [];
-  release = null;
   window.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-    calls.push({ url: String(input), init: init ?? {} });
+    calls.push({ url: typeof input === 'string' ? input : input instanceof URL ? input.href : input.url, init: init ?? {} });
     const reply = replies.shift() ?? { status: 500, body: '' };
     if (reply.pending) {
-      await new Promise<void>((resolve, reject) => {
-        release = resolve;
+      await new Promise<void>((_resolve, reject) => {
         init?.signal?.addEventListener('abort', () => reject(new DOMException('The operation was aborted.', 'AbortError')));
       });
     }
-    if (reply.fail) throw new TypeError('Failed to fetch');
+    if (reply.fail) {
+      throw new TypeError('Failed to fetch');
+    }
     const status = reply.status ?? 200;
-    return { ok: status >= 200 && status < 300, status, text: async () => reply.body ?? '' } as Response;
-  }) as typeof window.fetch;
+    return { ok: status >= 200 && status < 300, status, text: () => Promise.resolve(reply.body ?? '') } as Response;
+  });
 }
 
 function setOnline(online: boolean): void {
@@ -82,7 +81,9 @@ async function searchAndChoose(name: string, index = 0): Promise<void> {
 function rectangleMode(values?: [string, string, string, string]): void {
   byId('fetch-open').click();
   byId<HTMLInputElement>('fetch-mode-bbox').click();
-  if (!values) return;
+  if (!values) {
+    return;
+  }
   (['south', 'west', 'north', 'east'] as const).forEach((edge, i) => {
     const input = byId<HTMLInputElement>(`fetch-${edge}`);
     input.value = values[i];
@@ -158,7 +159,9 @@ describe('open-map fetch (FR-31)', () => {
       expect(call.init.credentials).toBe('omit');
       expect(call.init.method).toBe('GET');
       expect(call.init.body).toBeUndefined();
-      for (const value of ['A-01', 'Alpha item', 'North']) expect(decodeURIComponent(call.url)).not.toContain(value);
+      for (const value of ['A-01', 'Alpha item', 'North']) {
+        expect(decodeURIComponent(call.url)).not.toContain(value);
+      }
     }
     expect(rendered).toEqual([{ width: 3000, height: 2000, attribution: '© OpenStreetMap contributors' }]);
     expect(byId('map-stage').dataset.hasBackground).toBe('true');
@@ -187,9 +190,15 @@ describe('open-map fetch (FR-31)', () => {
     replies.push({ body: osmText });
     byId('fetch-go').click();
     await flush();
-    const box = new URL(calls[1].url).searchParams.get('data')!.match(/\]\(([^)]*)\)/)![1].split(',').map(Number);
+    const box = new URL(calls[1].url).searchParams
+      .get('data')!
+      .match(/\]\(([^)]*)\)/)![1]
+      .split(',')
+      .map(Number);
     expect((box[2] - box[0]) * (box[3] - box[1])).toBeLessThanOrEqual(0.0025);
-    expect(status()).toMatch(/^The area was larger than the limit of about 5\.5 by 5\.5 kilometres and was reduced to its central part: South -0\.02498, West -0\.02498, North 0\.02498, East 0\.02498\. Open map data fetched and rendered\.$/);
+    expect(status()).toMatch(
+      /^The area was larger than the limit of about 5\.5 by 5\.5 kilometres and was reduced to its central part: South -0\.02498, West -0\.02498, North 0\.02498, East 0\.02498\. Open map data fetched and rendered\.$/,
+    );
   });
 
   describe('bounding rectangle', () => {
@@ -246,7 +255,9 @@ describe('open-map fetch (FR-31)', () => {
       replies.push({ body: osmText });
       byId('fetch-go').click();
       await flush();
-      expect(status()).toMatch(/^The area was larger than the limit .* reduced to its central part: South 0\.47502, West 0\.47502, North 0\.52497, East 0\.52497\./);
+      expect(status()).toMatch(
+        /^The area was larger than the limit .* reduced to its central part: South 0\.47502, West 0\.47502, North 0\.52497, East 0\.52497\./,
+      );
     });
   });
 
@@ -338,7 +349,9 @@ describe('open-map fetch (FR-31)', () => {
     });
 
     test('an unexpected answer keeps its status', async () => {
-      expect(await dataFails({ status: 500 })).toBe('The service returned an unexpected answer. Nothing was changed. The service answered: HTTP 500 (Internal Server Error).');
+      expect(await dataFails({ status: 500 })).toBe(
+        'The service returned an unexpected answer. Nothing was changed. The service answered: HTTP 500 (Internal Server Error).',
+      );
       expect(await dataFails({ body: '<html>error page</html>' })).toBe(
         'The service returned an unexpected answer. Nothing was changed. The service answered: "map data that could not be read".',
       );

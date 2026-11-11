@@ -26,7 +26,11 @@ async function load(): Promise<void> {
 
 function roles(): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const select of document.querySelectorAll<HTMLSelectElement>('#row-table-head .role-select')) if (select.value) out[select.dataset.header!] = select.value;
+  for (const select of document.querySelectorAll<HTMLSelectElement>('#row-table-head .role-select')) {
+    if (select.value) {
+      out[select.dataset.header!] = select.value;
+    }
+  }
   return out;
 }
 
@@ -47,7 +51,16 @@ describe('full-test demo (FR-41)', () => {
     await load();
     // The list and every role, applied by the saved demo preset.
     expect(document.querySelectorAll('#row-table-body tr')).toHaveLength(12);
-    expect(roles()).toEqual({ Item: 'identifier', Name: 'name', Area: 'area', Programme: 'program', Status: 'status', 'Start year': 'start', 'End year': 'end', Note: 'note' });
+    expect(roles()).toEqual({
+      Item: 'identifier',
+      Name: 'name',
+      Area: 'area',
+      Programme: 'program',
+      Status: 'status',
+      'Start year': 'start',
+      'End year': 'end',
+      Note: 'note',
+    });
     expect(byId('preset-status').textContent).toBe('The preset "Demo columns" matches these columns and was applied automatically.');
     expect(JSON.parse(localStorage.getItem('mapvibes.presets')!).map((p: { name: string }) => p.name)).toContain('Demo columns');
     // The vocabularies and the toggle.
@@ -59,7 +72,19 @@ describe('full-test demo (FR-41)', () => {
     expect(byId('map-stage').dataset.hasBackground).toBe('true');
     expect(byId<HTMLImageElement>('map-image').getAttribute('src')).toBe('data:image/png;base64,T1NN3000x2000');
     expect(markers()).toHaveLength(11);
-    expect(markers().map((m) => m.dataset.shape)).toEqual(['check', 'hammer-shovel', 'bulb', 'diamond', 'hammer-shovel', 'pause', 'check', 'cross', 'square', 'bolt', 'magnifier']);
+    expect(markers().map((m) => m.dataset.shape)).toEqual([
+      'check',
+      'hammer-shovel',
+      'bulb',
+      'diamond',
+      'hammer-shovel',
+      'pause',
+      'check',
+      'cross',
+      'square',
+      'bolt',
+      'magnifier',
+    ]);
     expect(new Set(markers().map((m) => m.dataset.colour))).toEqual(new Set(['green', 'blue', 'yellow', 'red']));
     expect(document.querySelectorAll('.placement-item[data-placed="false"]')).toHaveLength(1);
     // It opens in the Map segment, labelled as example data, as unsaved work.
@@ -74,9 +99,12 @@ describe('full-test demo (FR-41)', () => {
     await load();
     markers()[0].dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }));
     expect(byId('details-panel').querySelector('.details-title')!.textContent).toBe('North gate');
-    expect([...byId('details-panel').querySelectorAll('.details-comment-text')].map((n) => n.textContent)).toEqual(['Finished as planned.', 'Final check done.']);
+    expect([...byId('details-panel').querySelectorAll('.details-comment-text')].map((n) => n.textContent)).toEqual([
+      'Finished as planned.',
+      'Final check done.',
+    ]);
     const value = (h: string) => byId('details-panel').querySelector<HTMLInputElement>(`dd[data-header="${h}"] .cell-input`)!.value;
-    expect([value('Start year'), value('End year')]).toEqual(['2019', '2021']);
+    expect([value('Start year'), value('End year')]).toEqual(['2026', '2028']);
     byId('tab-presentation').click();
     await flush();
     expect(presentationMarkers()).toHaveLength(11);
@@ -141,8 +169,22 @@ describe('the demo extension (FR-41 as amended in v1.1.0)', () => {
       await load();
       // The demo is in the interface language (FR-41 as amended in v1.3.1).
       const texts = {
-        en: { colours: ['On track', 'Under way', 'Needs attention', 'Stopped'], zone: 'Survey zone', groups: ['Heritage route', 'Green links'], jetty: 'Lake jetty', note: 'On the lake shore.', footprint: 'Jetty footprint' },
-        sv: { colours: ['Enligt plan', 'På gång', 'Kräver uppmärksamhet', 'Stoppad'], zone: 'Inventeringszon', groups: ['Kulturarvsleden', 'Gröna stråk'], jetty: 'Sjöbryggan', note: 'På sjöstranden.', footprint: 'Bryggans fotavtryck' },
+        en: {
+          colours: ['On track', 'Under way', 'Needs attention', 'Stopped'],
+          zone: 'Survey zone',
+          groups: ['Heritage route', 'Green links'],
+          jetty: 'Lake jetty',
+          note: 'On the lake shore.',
+          footprint: 'Jetty footprint',
+        },
+        sv: {
+          colours: ['Enligt plan', 'På gång', 'Kräver uppmärksamhet', 'Stoppad'],
+          zone: 'Inventeringszon',
+          groups: ['Kulturarvsleden', 'Gröna stråk'],
+          jetty: 'Sjöbryggan',
+          note: 'På sjöstranden.',
+          footprint: 'Bryggans fotavtryck',
+        },
       }[lang];
       // The user-named colour labels in the legend; the data never colours.
       expect([...byId('map-legend').querySelectorAll('.legend-entry[data-colour]')].map((e) => e.textContent)).toEqual(texts.colours);

@@ -18,7 +18,10 @@ function openDetails(index: number): HTMLElement {
 }
 
 const groups = (panel: HTMLElement) => [...panel.querySelectorAll<HTMLElement>('.details-series')];
-const topLabels = (panel: HTMLElement) => [...panel.querySelectorAll(':scope .details-fields > .details-field:not(.details-series):not(.details-economics-row) .details-label')].map((d) => d.textContent);
+const topLabels = (panel: HTMLElement) =>
+  [...panel.querySelectorAll(':scope .details-fields > .details-field:not(.details-series):not(.details-economics-row) .details-label')].map(
+    (d) => d.textContent,
+  );
 
 describe('series groups in the details panel (FR-7)', () => {
   let app: App;

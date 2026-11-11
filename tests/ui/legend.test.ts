@@ -30,7 +30,12 @@ describe('legend (FR-6)', () => {
     select.value = 'sv';
     select.dispatchEvent(new Event('change'));
     expect(byId('map-legend').querySelector('.legend-heading')!.textContent).toBe('Teckenförklaring');
-    expect([...document.querySelectorAll('#map-legend .legend-entry[data-colour] .legend-label')].map((e) => e.textContent)).toEqual(['Grön', 'Blå', 'Gul', 'Röd']);
+    expect([...document.querySelectorAll('#map-legend .legend-entry[data-colour] .legend-label')].map((e) => e.textContent)).toEqual([
+      'Grön',
+      'Blå',
+      'Gul',
+      'Röd',
+    ]);
   });
 
   test('the legend is fixed: zooming and panning do not change it', async () => {

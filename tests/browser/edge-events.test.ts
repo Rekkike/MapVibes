@@ -21,14 +21,18 @@ let exported: string;
 const measured: string[] = [];
 
 beforeAll(async () => {
-  if (!existsSync(BUILT)) throw new Error('dist/build/index.html is missing: run the build first');
+  if (!existsSync(BUILT)) {
+    throw new Error('dist/build/index.html is missing: run the build first');
+  }
   const dir = mkdtempSync(join(tmpdir(), 'mapvibes-edge-'));
   browser = await chromium.launch();
   const context = await browser.newContext({ viewport: { width: 1500, height: 950 }, acceptDownloads: true });
   await context.setOffline(true);
   await context.route('**/*', (route) => {
     const url = route.request().url();
-    if (url.startsWith('file://') || url.startsWith('data:') || url.startsWith('blob:')) return route.continue();
+    if (url.startsWith('file://') || url.startsWith('data:') || url.startsWith('blob:')) {
+      return route.continue();
+    }
     return route.abort();
   });
   const page = await context.newPage();
@@ -42,7 +46,10 @@ beforeAll(async () => {
   await page.waitForTimeout(300);
   await page.click('#event-panel-summary');
   await page.waitForTimeout(300);
-  for (const [date, label] of [['2015-03', 'Early'], ['2035-06', 'Far review']] as const) {
+  for (const [date, label] of [
+    ['2015-03', 'Early'],
+    ['2035-06', 'Far review'],
+  ] as const) {
     await page.fill('#event-date-new', date);
     await page.fill('#event-label-new', label);
     await page.click('#event-add');
@@ -64,7 +71,7 @@ afterAll(async () => {
 });
 
 async function openViewer(options: object): Promise<{ page: Page; errors: string[] }> {
-  const context = await browser.newContext({ ...(options as object) });
+  const context = await browser.newContext({ ...options });
   await context.setOffline(true);
   const page = await context.newPage();
   const errors: string[] = [];
@@ -87,11 +94,20 @@ async function readStrip(page: Page, view: 'timeline' | 'costs') {
     const plot = root.querySelector('.timeline-event-plot')!.getBoundingClientRect();
     const edges = [...root.querySelectorAll<HTMLElement>('.timeline-event-edge')].map((c) => {
       const r = c.getBoundingClientRect();
-      return { side: c.dataset.side!, text: c.textContent!, title: c.title, x: r.left - plot.left, right: r.right - plot.left, w: r.width, h: r.height, top: r.top - strip.top };
+      return {
+        side: c.dataset.side!,
+        text: c.textContent,
+        title: c.title,
+        x: r.left - plot.left,
+        right: r.right - plot.left,
+        w: r.width,
+        h: r.height,
+        top: r.top - strip.top,
+      };
     });
     const labels = [...root.querySelectorAll<HTMLElement>('.timeline-event-chip:not(.timeline-event-edge)')].map((c) => {
       const r = c.getBoundingClientRect();
-      return { text: c.textContent!, row: c.dataset.row!, x: r.left - plot.left, right: r.right - plot.left };
+      return { text: c.textContent, row: c.dataset.row!, x: r.left - plot.left, right: r.right - plot.left };
     });
     return {
       stripH: strip.height,
@@ -133,7 +149,9 @@ describe.each([
       }
       // The off-span events have no hairline at the fitted view.
       expect(m.hairlines).toEqual(['e1', 'e2']);
-      measured.push(`${name}, ${view}: edge chips ${m.edges.map((e) => `${e.side} "${e.text}" at ${e.x.toFixed(0)}..${e.right.toFixed(0)} of ${m.plotW.toFixed(0)} px, ${e.w}x${e.h.toFixed(0)} px`).join('; ')}; strip ${m.stripH} px, in-window chips ${m.labels.map((l) => `${l.text} row ${l.row}`).join(', ')}`);
+      measured.push(
+        `${name}, ${view}: edge chips ${m.edges.map((e) => `${e.side} "${e.text}" at ${e.x.toFixed(0)}..${e.right.toFixed(0)} of ${m.plotW.toFixed(0)} px, ${e.w}x${e.h.toFixed(0)} px`).join('; ')}; strip ${m.stripH} px, in-window chips ${m.labels.map((l) => `${l.text} row ${l.row}`).join(', ')}`,
+      );
     }
     expect(errors).toEqual([]);
     await page.context().close();
@@ -161,7 +179,9 @@ describe.each([
       expect(after.labels).toContain('Far review');
       expect(after.edges).toEqual(['before:+1']);
       expect(after.stripH).toBeLessThanOrEqual(before.stripH + 20);
-      measured.push(`${name}, ${view}: tapping the "after" edge chip panned the window at ${after.zoom}; hairlines ${after.hairlines.join(',')}; chips ${after.labels.join(', ')}; edges ${after.edges.join(', ')}; strip ${after.stripH} px`);
+      measured.push(
+        `${name}, ${view}: tapping the "after" edge chip panned the window at ${after.zoom}; hairlines ${after.hairlines.join(',')}; chips ${after.labels.join(', ')}; edges ${after.edges.join(', ')}; strip ${after.stripH} px`,
+      );
     }
     expect(errors).toEqual([]);
     await page.context().close();

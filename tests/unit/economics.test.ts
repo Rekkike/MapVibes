@@ -14,7 +14,9 @@ describe('year series from headers (FR-63)', () => {
   });
 
   test('no year, a year within a word or a longer number, two years, or a number outside the years is not a year series', () => {
-    for (const header of ['Budget', 'Budget2026', 'Ref 20261', 'Budget 2024 2025', 'Code 0042', 'Start year']) expect(yearOfHeader(header), header).toBeNull();
+    for (const header of ['Budget', 'Budget2026', 'Ref 20261', 'Budget 2024 2025', 'Code 0042', 'Start year']) {
+      expect(yearOfHeader(header), header).toBeNull();
+    }
   });
 
   test('columns are grouped by the header without its year, without regard to case, named by the first header as typed', () => {
@@ -61,14 +63,18 @@ describe('reading amounts (FR-65)', () => {
   });
 
   test('an ambiguous separator is never guessed', () => {
-    for (const s of ['1,250', '1.250', '0,500', '12.345']) expect(readAmount(s, 'SEK'), s).toEqual({ kind: 'text', text: s });
+    for (const s of ['1,250', '1.250', '0,500', '12.345']) {
+      expect(readAmount(s, 'SEK'), s).toEqual({ kind: 'text', text: s });
+    }
   });
 
   // Recorded as ruled in v1.11.0 (the note on FR-65): exactly three decimals
   // after a single separator read as ambiguous text, by design, and are left
   // out of sums; two or four decimals leave no doubt.
   test('a number with exactly three decimals after a single separator is ambiguous text, never a number', () => {
-    for (const s of ['1234.567', '1234,567', '-1234.567']) expect(readAmount(s, 'SEK'), s).toEqual({ kind: 'text', text: s });
+    for (const s of ['1234.567', '1234,567', '-1234.567']) {
+      expect(readAmount(s, 'SEK'), s).toEqual({ kind: 'text', text: s });
+    }
     expect(readAmount('1234.56', 'SEK')).toEqual(n(1234.56, 2));
     expect(readAmount('1234.5678', 'SEK')).toEqual(n(1234.5678, 4));
   });
@@ -192,7 +198,10 @@ describe('the Information totals (FR-69)', () => {
   const of = (values: Record<string, string>) => economicsOf(values, series, span, 'kr');
 
   test("each item's total is the file's figure where it is a number, else the sum of its years; summed exactly", () => {
-    const t = informationTotals([of({ b24: '100', b25: '100', bt: '250' }), of({ b24: '0,10', b25: '0,20', bt: 'see note' }), of({}), null], { budget: true, track: true });
+    const t = informationTotals([of({ b24: '100', b25: '100', bt: '250' }), of({ b24: '0,10', b25: '0,20', bt: 'see note' }), of({}), null], {
+      budget: true,
+      track: true,
+    });
     expect(t.budget).toEqual({ sum: 250.3, decimals: 2 });
     expect(t.track).toEqual({ sum: 0, decimals: 0 });
     expect(t.texts).toBe(1);

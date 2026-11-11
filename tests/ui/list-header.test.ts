@@ -6,9 +6,7 @@ function headCells(): HTMLElement[] {
 }
 
 function rowCells(index = 0): HTMLElement[] {
-  return [...document.querySelectorAll('#row-table-body tr')[index].querySelectorAll<HTMLElement>('td')].filter(
-    (c) => !c.classList.contains('hidden'),
-  );
+  return [...document.querySelectorAll('#row-table-body tr')[index].querySelectorAll<HTMLElement>('td')].filter((c) => !c.classList.contains('hidden'));
 }
 
 // Regression test for the pre-existing defect: the header row lacked a cell for
@@ -29,11 +27,13 @@ describe('list header alignment', () => {
     expect(rowCells()[1].classList.contains('num')).toBe(true);
   });
 
-  test('every column heading sits directly above that column\'s values', () => {
+  test("every column heading sits directly above that column's values", () => {
     const heads = headCells();
     const cells = rowCells();
     heads.forEach((th, i) => {
-      if (th.dataset.header) expect(cells[i].dataset.header).toBe(th.dataset.header);
+      if (th.dataset.header) {
+        expect(cells[i].dataset.header).toBe(th.dataset.header);
+      }
     });
     expect(heads.at(-1)!.textContent).toBe('Colour');
     expect(cells.at(-1)!.querySelector('.colour-chip')).not.toBeNull();
@@ -44,14 +44,18 @@ describe('list header alignment', () => {
     expect(document.querySelector('th[data-header="Start"]')!.classList.contains('hidden')).toBe(true);
     expect(headCells()).toHaveLength(rowCells().length);
     headCells().forEach((th, i) => {
-      if (th.dataset.header) expect(rowCells()[i].dataset.header).toBe(th.dataset.header);
+      if (th.dataset.header) {
+        expect(rowCells()[i].dataset.header).toBe(th.dataset.header);
+      }
     });
   });
 
   test('alignment holds when the name/title column leads', () => {
     setRole('Note', 'name');
     headCells().forEach((th, i) => {
-      if (th.dataset.header) expect(rowCells()[i].dataset.header).toBe(th.dataset.header);
+      if (th.dataset.header) {
+        expect(rowCells()[i].dataset.header).toBe(th.dataset.header);
+      }
     });
     expect(headCells()[2].dataset.header).toBe('Note');
   });

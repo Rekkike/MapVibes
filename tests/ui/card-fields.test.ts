@@ -34,7 +34,7 @@ function openCard(index: number): HTMLElement {
 }
 
 function fields(card: HTMLElement): string[][] {
-  return [...card.querySelectorAll('.card-field')].map((f) => [f.querySelector('.card-label')!.textContent!, f.querySelector('.card-value')!.textContent!]);
+  return [...card.querySelectorAll('.card-field')].map((f) => [f.querySelector('.card-label')!.textContent, f.querySelector('.card-value')!.textContent]);
 }
 
 function toggle(header: string, on: boolean): void {
@@ -81,7 +81,7 @@ describe('card fields (FR-62)', () => {
     expect(fields(openCard(0)).map((f) => f[0])).toEqual(['ID', 'Start', 'End']);
   });
 
-  test('the choice persists in the work state', async () => {
+  test('the choice persists in the work state', () => {
     toggle('Owner', true);
     const back = parseWorkState(serialiseWorkState(app.captureWorkState(), new Date()));
     expect(back.cardColumns).toEqual(['ID', 'Start', 'End', 'Owner']);
@@ -91,7 +91,9 @@ describe('card fields (FR-62)', () => {
     toggle('Owner', true);
     byId('tab-presentation').click();
     byId('export-open').click();
-    expect(byId('export-columns-hint').textContent).toBe("The columns that travel in the file, with their values; the exported cards show the work's card fields among them. A column not chosen is left out of the file entirely.");
+    expect(byId('export-columns-hint').textContent).toBe(
+      "The columns that travel in the file, with their values; the exported cards show the work's card fields among them. A column not chosen is left out of the file entirely.",
+    );
     // Leave Start out of the file.
     const start = document.querySelector<HTMLInputElement>('.export-column-toggle[data-header="Start"]')!;
     start.checked = false;

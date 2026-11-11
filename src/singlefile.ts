@@ -44,10 +44,14 @@ const MODULE_SCRIPT = '<script type="module">';
 // document when the application starts.
 export function embedDataIsland(page: string, json: string): string {
   const at = page.indexOf(MODULE_SCRIPT);
-  if (at === -1) throw new Error('the page has no inline application script');
+  if (at === -1) {
+    throw new Error('the page has no inline application script');
+  }
   // Only the part before the application script is markup; the script text
   // itself may mention the identifier.
-  if (page.slice(0, at).includes(`id="${DATA_ISLAND_ID}"`)) throw new Error('the page already carries a data island');
+  if (page.slice(0, at).includes(`id="${DATA_ISLAND_ID}"`)) {
+    throw new Error('the page already carries a data island');
+  }
   const island = `<script type="application/json" id="${DATA_ISLAND_ID}">\n${sanitiseJsonForInlineScript(json)}\n</script>\n`;
   return page.slice(0, at) + island + page.slice(at);
 }
@@ -73,9 +77,13 @@ function escapeHtml(text: string): string {
 // the data island, only markup outside the application script is touched.
 export function writeStaticViewerState(page: string, lang: string, notice: string[]): string {
   const at = page.indexOf(MODULE_SCRIPT);
-  if (at === -1) throw new Error('the page has no inline application script');
+  if (at === -1) {
+    throw new Error('the page has no inline application script');
+  }
   const html = /<html\b([^>]*)>/i.exec(page.slice(0, at));
-  if (!html) throw new Error('the page has no html element before the application script');
+  if (!html) {
+    throw new Error('the page has no html element before the application script');
+  }
   const attributes = html[1].replace(/\s(lang|data-mode)="[^"]*"/g, '');
   const htmlTag = `<html${attributes} lang="${escapeHtml(lang)}" data-mode="viewer">`;
   const before = page.slice(0, html.index) + htmlTag + page.slice(html.index + html[0].length, at);
@@ -92,7 +100,9 @@ export function writeStaticViewerState(page: string, lang: string, notice: strin
   }
   const scriptEnd = after.indexOf('</script>');
   const bodyAfter = scriptEnd === -1 ? null : /<body\b[^>]*>/i.exec(after.slice(scriptEnd));
-  if (!bodyAfter) throw new Error('the page has no body');
+  if (!bodyAfter) {
+    throw new Error('the page has no body');
+  }
   const open = scriptEnd + bodyAfter.index + bodyAfter[0].length;
   return before + BOOT_SCRIPT + after.slice(0, open) + element + after.slice(open);
 }

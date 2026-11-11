@@ -25,7 +25,9 @@ const NS = 'http://www.w3.org/2000/svg';
 
 function svg<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, string | number>): SVGElementTagNameMap[K] {
   const node = document.createElementNS(NS, tag);
-  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
+  for (const [k, v] of Object.entries(attrs)) {
+    node.setAttribute(k, String(v));
+  }
   return node;
 }
 
@@ -37,7 +39,9 @@ function pointsAttr(points: Point[]): string {
 // that it stays clear of the marker of the item a footprint surrounds; on the
 // middle segment of a line.
 export function labelAnchor(a: Pick<Annotation, 'kind' | 'points'>): Point {
-  if (a.kind === 'circle') return { x: a.points[0].x, y: a.points[0].y + distance(a.points[0], a.points[1]) };
+  if (a.kind === 'circle') {
+    return { x: a.points[0].x, y: a.points[0].y + distance(a.points[0], a.points[1]) };
+  }
   if (a.kind === 'line') {
     const mid = Math.floor((a.points.length - 1) / 2);
     const p = a.points[mid];
@@ -125,9 +129,15 @@ export class AnnotationLayer {
     const v = this.viewport();
     for (const a of annotations) {
       const classes: string[] = [];
-      if (options.selectedId === a.id) classes.push('selected');
-      if (options.highlighted?.has(a.id)) classes.push('highlighted');
-      if (options.faded?.has(a.id)) classes.push('faded');
+      if (options.selectedId === a.id) {
+        classes.push('selected');
+      }
+      if (options.highlighted?.has(a.id)) {
+        classes.push('highlighted');
+      }
+      if (options.faded?.has(a.id)) {
+        classes.push('faded');
+      }
       this.layer.appendChild(annotationElement(a, classes));
       if (a.label.trim() !== '') {
         const label = document.createElement('div');
@@ -280,9 +290,15 @@ export class DrawingTools {
   // Whether the stage's own pointer handling (panning) may run: not while a
   // drawing tool is in use, nor for a press on an annotation or a handle.
   allowsPan(e?: PointerEvent): boolean {
-    if (this.tool !== 'select') return false;
-    if (!e) return true;
-    if ((e.target as HTMLElement).closest?.('.annotation-handle')) return false;
+    if (this.tool !== 'select') {
+      return false;
+    }
+    if (!e) {
+      return true;
+    }
+    if ((e.target as HTMLElement).closest?.('.annotation-handle')) {
+      return false;
+    }
     return this.hitAt(this.image(e).image) === null;
   }
 
@@ -290,7 +306,11 @@ export class DrawingTools {
   private hitAt(p: Point): Annotation | null {
     const tolerance = (this.hooks.touch() ? TOUCH_HIT_TOLERANCE : HIT_TOLERANCE) / this.hooks.viewport().scale;
     const list = this.hooks.editable();
-    for (let i = list.length - 1; i >= 0; i--) if (hits(list[i], p, tolerance)) return list[i];
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (hits(list[i], p, tolerance)) {
+        return list[i];
+      }
+    }
     return null;
   }
 
@@ -310,7 +330,9 @@ export class DrawingTools {
 
   // Enter finishes a polygon or a line being drawn.
   finish(): void {
-    if (this.draft && (this.draft.kind === 'polygon' || this.draft.kind === 'line')) this.commit();
+    if (this.draft && (this.draft.kind === 'polygon' || this.draft.kind === 'line')) {
+      this.commit();
+    }
   }
 
   private image(e: PointerEvent): { image: Point; screen: Point } {
@@ -327,12 +349,16 @@ export class DrawingTools {
   }
 
   private down(e: PointerEvent): void {
-    if (e.button !== 0 || !this.hooks.hasBackground()) return;
+    if (e.button !== 0 || !this.hooks.hasBackground()) {
+      return;
+    }
     if (this.tool === 'select') {
       this.selectDown(e);
       return;
     }
-    if ((e.target as HTMLElement).closest?.('.marker')) return;
+    if ((e.target as HTMLElement).closest?.('.marker')) {
+      return;
+    }
     e.preventDefault();
     const { image, screen } = this.image(e);
     this.pressed = e.pointerId;
@@ -363,7 +389,9 @@ export class DrawingTools {
   }
 
   private selectDown(e: PointerEvent): void {
-    if ((e.target as HTMLElement).closest?.('.marker')) return;
+    if ((e.target as HTMLElement).closest?.('.marker')) {
+      return;
+    }
     const { image } = this.image(e);
     const handle = (e.target as HTMLElement).closest?.<HTMLElement>('.annotation-handle');
     const selected = this.hooks.editable().find((a) => a.id === this.hooks.selectedId());
@@ -373,7 +401,9 @@ export class DrawingTools {
     }
     const hit = this.hitAt(image);
     if (!hit) {
-      if (this.hooks.selectedId() !== null) this.hooks.onSelect(null);
+      if (this.hooks.selectedId() !== null) {
+        this.hooks.onSelect(null);
+      }
       return;
     }
     // Always re-select, so that a re-tap on the selected shape reopens its
@@ -400,7 +430,9 @@ export class DrawingTools {
     const to = straight ? snapToAxis(from, pointer) : pointer;
     const dx = to.x - from.x;
     const dy = to.y - from.y;
-    if (index === null || (original.kind === 'circle' && index === 0)) return translate(original, dx, dy);
+    if (index === null || (original.kind === 'circle' && index === 0)) {
+      return translate(original, dx, dy);
+    }
     return { ...original, points: original.points.map((p, i) => (i === index ? { x: p.x + dx, y: p.y + dy } : { ...p })) };
   }
 
@@ -410,10 +442,14 @@ export class DrawingTools {
       this.hooks.onChange(this.edited(this.image(e).image, isConstrained(this.straight, e)), false);
       return;
     }
-    if (!this.draft) return;
+    if (!this.draft) {
+      return;
+    }
     const { image, screen } = this.image(e);
     if (this.draft.kind === 'rectangle' || this.draft.kind === 'circle') {
-      if (this.pressed !== e.pointerId) return;
+      if (this.pressed !== e.pointerId) {
+        return;
+      }
       this.draft = { ...this.draft, points: [this.draft.points[0], image] };
       this.hooks.onDraft(this.draft, null);
       return;
@@ -434,7 +470,9 @@ export class DrawingTools {
         // Freehand: a vertex every few pixels while pressed.
         this.straightFrom = null;
         const last = points[points.length - 1];
-        if (distance(screen, this.screenOf(last)) >= FREEHAND_SPACING) this.draft = { ...this.draft, points: [...points, image] };
+        if (distance(screen, this.screenOf(last)) >= FREEHAND_SPACING) {
+          this.draft = { ...this.draft, points: [...points, image] };
+        }
       }
       this.cursor = null;
     } else {
@@ -448,20 +486,28 @@ export class DrawingTools {
     if (this.edit && this.edit.pointerId === e.pointerId) {
       const final = this.edit.moved ? this.edited(this.image(e).image, isConstrained(this.straight, e)) : null;
       this.edit = null;
-      if (final) this.hooks.onChange(final, true);
+      if (final) {
+        this.hooks.onChange(final, true);
+      }
       return;
     }
-    if (this.pressed !== e.pointerId) return;
+    if (this.pressed !== e.pointerId) {
+      return;
+    }
     this.pressed = null;
     this.straightFrom = null;
-    if (this.draft && (this.draft.kind === 'rectangle' || this.draft.kind === 'circle')) this.commit();
+    if (this.draft && (this.draft.kind === 'rectangle' || this.draft.kind === 'circle')) {
+      this.commit();
+    }
   }
 
   private commit(): void {
     const draft = this.draft;
     this.draft = null;
     this.cursor = null;
-    if (draft && isComplete(draft, MINIMUM_SIZE / this.hooks.viewport().scale)) this.hooks.onCreate(draft);
+    if (draft && isComplete(draft, MINIMUM_SIZE / this.hooks.viewport().scale)) {
+      this.hooks.onCreate(draft);
+    }
     this.hooks.onDraft(null, null);
   }
 }

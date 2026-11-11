@@ -20,7 +20,7 @@ function itemToggles(): HTMLInputElement[] {
 }
 
 function itemToggle(label: string): HTMLInputElement {
-  return itemToggles().find((b) => b.parentElement!.textContent!.includes(label))!;
+  return itemToggles().find((b) => b.parentElement!.textContent.includes(label))!;
 }
 
 function columnToggle(header: string): HTMLInputElement {
@@ -54,7 +54,7 @@ describe('export content selection (FR-53)', () => {
     at('pointermove', 450, 350);
     at('pointerup', 450, 350);
     const link = byId<HTMLSelectElement>('annotation-link');
-    link.value = [...link.options].find((o) => o.textContent!.includes('A-03'))!.value;
+    link.value = [...link.options].find((o) => o.textContent.includes('A-03'))!.value;
     link.dispatchEvent(new Event('change'));
     const label = byId<HTMLInputElement>('annotation-label');
     label.value = 'Footprint of the third';
@@ -71,7 +71,7 @@ describe('export content selection (FR-53)', () => {
     await flush();
     // A-04 (Gamma item) switched off for the presentation.
     const toggles = [...document.querySelectorAll<HTMLInputElement>('.visibility-toggle')];
-    toggles.find((t) => t.closest('li')!.textContent!.includes('Gamma item'))!.click();
+    toggles.find((t) => t.closest('li')!.textContent.includes('Gamma item'))!.click();
   });
 
   afterEach(() => removeSaveDialog());
@@ -93,7 +93,11 @@ describe('export content selection (FR-53)', () => {
     expect(areas).toContain('South');
     expect(itemToggles()).toHaveLength(5);
     // Every item is chosen except the one switched off.
-    expect(itemToggles().filter((b) => !b.checked).map((b) => b.parentElement!.textContent)).toEqual(['4. Gamma item']);
+    expect(
+      itemToggles()
+        .filter((b) => !b.checked)
+        .map((b) => b.parentElement!.textContent),
+    ).toEqual(['4. Gamma item']);
     // The area holding it shows a partial choice.
     expect(itemToggle('Gamma item').closest('.export-area')!.querySelector<HTMLInputElement>('.export-area-toggle')!.indeterminate).toBe(true);
     expect([...document.querySelectorAll<HTMLInputElement>('.export-column-toggle')].every((b) => b.checked)).toBe(true);
@@ -147,7 +151,9 @@ describe('export content selection (FR-53)', () => {
     const data = parseExport(island);
     expect(data.workState.headers).not.toContain('Note');
     expect(data.workState.roles.name).toBeUndefined();
-    for (const text of ['Alpha item', 'Beta item', 'Gamma item']) expect(page, text).not.toContain(text);
+    for (const text of ['Alpha item', 'Beta item', 'Gamma item']) {
+      expect(page, text).not.toContain(text);
+    }
   });
 
   test('the dialog follows the language', () => {

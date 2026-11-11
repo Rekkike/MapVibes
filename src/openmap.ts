@@ -74,24 +74,38 @@ export function isOnline(): boolean {
 
 // Classifies an HTTP status that is not a success.
 export function statusError(status: number): FetchError {
-  if (status === 408 || status === 504) return new FetchError('timeout', { status });
-  if (status === 403 || status === 429 || status === 503) return new FetchError('refused', { status });
+  if (status === 408 || status === 504) {
+    return new FetchError('timeout', { status });
+  }
+  if (status === 403 || status === 429 || status === 503) {
+    return new FetchError('refused', { status });
+  }
   return new FetchError('service', { status });
 }
 
 // Overpass reports some failures inside a successful answer, as a remark.
 export function overpassRemarkError(text: string): FetchError | null {
   const remark = text.match(/<remark>([\s\S]*?)<\/remark>/);
-  if (!remark) return null;
+  if (!remark) {
+    return null;
+  }
   const message = remark[1].trim();
-  if (/timed out|timeout/i.test(message)) return new FetchError('timeout', { message });
-  if (/out of memory|maxsize/i.test(message)) return new FetchError('too-much-data', { message });
+  if (/timed out|timeout/i.test(message)) {
+    return new FetchError('timeout', { message });
+  }
+  if (/out of memory|maxsize/i.test(message)) {
+    return new FetchError('too-much-data', { message });
+  }
   return new FetchError('service', { message });
 }
 
 async function request(url: string, accept: string, timeoutMs: number, signal?: AbortSignal): Promise<string> {
-  if (!isOnline()) throw new FetchError('offline');
-  if (signal?.aborted) throw new FetchError('cancelled');
+  if (!isOnline()) {
+    throw new FetchError('offline');
+  }
+  if (signal?.aborted) {
+    throw new FetchError('cancelled');
+  }
   const controller = new AbortController();
   let timedOut = false;
   const timer = setTimeout(() => {
@@ -105,15 +119,25 @@ async function request(url: string, accept: string, timeoutMs: number, signal?: 
     try {
       response = await fetch(url, { ...REQUEST, headers: { Accept: accept }, signal: controller.signal });
     } catch {
-      if (signal?.aborted) throw new FetchError('cancelled');
-      if (timedOut) throw new FetchError('timeout');
+      if (signal?.aborted) {
+        throw new FetchError('cancelled');
+      }
+      if (timedOut) {
+        throw new FetchError('timeout');
+      }
       throw new FetchError('network');
     }
-    if (!response.ok) throw statusError(response.status);
+    if (!response.ok) {
+      throw statusError(response.status);
+    }
     const length = Number(response.headers?.get?.('content-length') ?? '0');
-    if (length > MAX_FETCH_BYTES) throw new FetchError('too-much-data');
+    if (length > MAX_FETCH_BYTES) {
+      throw new FetchError('too-much-data');
+    }
     const text = await response.text();
-    if (text.length > MAX_FETCH_BYTES) throw new FetchError('too-much-data');
+    if (text.length > MAX_FETCH_BYTES) {
+      throw new FetchError('too-much-data');
+    }
     return text;
   } finally {
     clearTimeout(timer);
@@ -125,9 +149,13 @@ async function request(url: string, accept: string, timeoutMs: number, signal?: 
 // is accepted as the decimal separator.
 export function parseEdge(field: BoundsField, text: string): number {
   const value = Number(text.trim().replace(',', '.').replace('−', '-'));
-  if (text.trim() === '' || !Number.isFinite(value)) throw new FetchError('not-a-number', { field });
+  if (text.trim() === '' || !Number.isFinite(value)) {
+    throw new FetchError('not-a-number', { field });
+  }
   const limit = field === 'south' || field === 'north' ? 90 : 180;
-  if (value < -limit || value > limit) throw new FetchError('out-of-range', { field });
+  if (value < -limit || value > limit) {
+    throw new FetchError('out-of-range', { field });
+  }
   return value;
 }
 
@@ -137,8 +165,12 @@ export function parseBounds(edges: Record<BoundsField, string>): OsmBounds {
   const west = parseEdge('west', edges.west);
   const north = parseEdge('north', edges.north);
   const east = parseEdge('east', edges.east);
-  if (south >= north) throw new FetchError('south-north', { field: 'south' });
-  if (west >= east) throw new FetchError('west-east', { field: 'west' });
+  if (south >= north) {
+    throw new FetchError('south-north', { field: 'south' });
+  }
+  if (west >= east) {
+    throw new FetchError('west-east', { field: 'west' });
+  }
   return { minLat: south, minLon: west, maxLat: north, maxLon: east };
 }
 
@@ -150,7 +182,9 @@ export function areaOf(b: OsmBounds): number {
 // once; an area within the limit is returned unchanged.
 export function fetchableBounds(b: OsmBounds): OsmBounds {
   const area = areaOf(b);
-  if (area <= MAX_FETCH_AREA) return b;
+  if (area <= MAX_FETCH_AREA) {
+    return b;
+  }
   const f = Math.sqrt(MAX_FETCH_AREA / area) * 0.999;
   const cLat = (b.minLat + b.maxLat) / 2;
   const cLon = (b.minLon + b.maxLon) / 2;
@@ -182,31 +216,45 @@ export function parsePlaces(json: string): PlaceResult[] {
   } catch {
     throw new FetchError('service', { message: 'unreadable answer' });
   }
-  if (!Array.isArray(raw)) throw new FetchError('service', { message: 'unreadable answer' });
+  if (!Array.isArray(raw)) {
+    throw new FetchError('service', { message: 'unreadable answer' });
+  }
   const out: PlaceResult[] = [];
   for (const item of raw) {
     const o = item as { display_name?: unknown; boundingbox?: unknown };
-    if (typeof o.display_name !== 'string' || !Array.isArray(o.boundingbox) || o.boundingbox.length !== 4) continue;
+    if (typeof o.display_name !== 'string' || !Array.isArray(o.boundingbox) || o.boundingbox.length !== 4) {
+      continue;
+    }
     const [s, n, w, e] = o.boundingbox.map(Number);
-    if (![s, n, w, e].every(Number.isFinite) || s >= n || w >= e) continue;
+    if (![s, n, w, e].every(Number.isFinite) || s >= n || w >= e) {
+      continue;
+    }
     out.push({ name: o.display_name, bounds: { minLat: s, maxLat: n, minLon: w, maxLon: e } });
   }
   return out;
 }
 
 export async function searchPlace(place: string, signal?: AbortSignal): Promise<PlaceResult[]> {
-  if (place.trim() === '') throw new FetchError('no-results');
+  if (place.trim() === '') {
+    throw new FetchError('no-results');
+  }
   const places = parsePlaces(await request(geocoderUrl(place), 'application/json', SEARCH_TIMEOUT_MS, signal));
-  if (places.length === 0) throw new FetchError('no-results');
+  if (places.length === 0) {
+    throw new FetchError('no-results');
+  }
   return places;
 }
 
 // Fetches the map data of an area that is within the limit (see
 // fetchableBounds).
 export async function fetchMapData(b: OsmBounds, signal?: AbortSignal): Promise<string> {
-  if (areaOf(b) > MAX_FETCH_AREA * 1.0001) throw new FetchError('too-much-data');
+  if (areaOf(b) > MAX_FETCH_AREA * 1.0001) {
+    throw new FetchError('too-much-data');
+  }
   const text = await request(overpassUrl(b), 'application/osm3s+xml, application/xml', DATA_TIMEOUT_MS, signal);
   const remark = overpassRemarkError(text);
-  if (remark) throw remark;
+  if (remark) {
+    throw remark;
+  }
   return text;
 }

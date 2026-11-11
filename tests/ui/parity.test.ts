@@ -8,8 +8,26 @@ import { byId, flush, markers, mountApp, placeExampleMarkers, pointer, presentat
 type Kind = 'map' | 'presentation';
 
 const ids = {
-  map: { tab: 'tab-map', stage: 'map-stage', content: 'map-content', zoomIn: 'map-zoom-in', zoomOut: 'map-zoom-out', fit: 'map-fit', reset: 'map-reset', level: 'map-zoom-level' },
-  presentation: { tab: 'tab-presentation', stage: 'presentation-stage', content: 'presentation-content', zoomIn: 'pres-zoom-in', zoomOut: 'pres-zoom-out', fit: 'pres-fit', reset: 'pres-reset', level: 'pres-zoom-level' },
+  map: {
+    tab: 'tab-map',
+    stage: 'map-stage',
+    content: 'map-content',
+    zoomIn: 'map-zoom-in',
+    zoomOut: 'map-zoom-out',
+    fit: 'map-fit',
+    reset: 'map-reset',
+    level: 'map-zoom-level',
+  },
+  presentation: {
+    tab: 'tab-presentation',
+    stage: 'presentation-stage',
+    content: 'presentation-content',
+    zoomIn: 'pres-zoom-in',
+    zoomOut: 'pres-zoom-out',
+    fit: 'pres-fit',
+    reset: 'pres-reset',
+    level: 'pres-zoom-level',
+  },
 };
 
 function view(kind: Kind): string {
@@ -193,7 +211,12 @@ describe('smooth viewport motion (FR-36, FR-37)', () => {
     for (const kind of ['map', 'presentation'] as Kind[]) {
       show(kind);
       const stage = byId(ids[kind].stage);
-      for (const action of [() => byId(ids[kind].zoomIn).click(), () => byId(ids[kind].fit).click(), () => byId(ids[kind].reset).click(), () => wheel(kind, 100, 100, -100)]) {
+      for (const action of [
+        () => byId(ids[kind].zoomIn).click(),
+        () => byId(ids[kind].fit).click(),
+        () => byId(ids[kind].reset).click(),
+        () => wheel(kind, 100, 100, -100),
+      ]) {
         stage.classList.remove('easing');
         action();
         expect(stage.classList.contains('easing')).toBe(true);

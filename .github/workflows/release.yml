@@ -24,6 +24,12 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
 
+      - name: "Lint (two tiers: full ruled set on src, test tier on tests)"
+        run: npx eslint src tests
+
+      - name: Format check
+        run: npx prettier --check .
+
       - name: Unit tests
         run: npx vitest run tests/unit
 
@@ -54,6 +60,11 @@ jobs:
         run: |
           VERSION=$(grep -oP 'Status: v\K[0-9]+\.[0-9]+\.[0-9]+' docs/SPECIFICATION.md | head -1)
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      # package.json's version is the specification's version: written here
+      # from the same status line, so the two can never drift.
+      - name: Sync package.json's version to the specification version
+        run: npm version --no-git-tag-version "${{ steps.spec.outputs.version }}"
 
       # The build version shown in the header is injected here, from the same
       # specification status line as the release tag.

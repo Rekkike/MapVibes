@@ -17,7 +17,9 @@ let browser: Browser;
 let exported: string;
 
 beforeAll(async () => {
-  if (!existsSync(BUILT)) throw new Error('dist/build/index.html is missing: run the build first');
+  if (!existsSync(BUILT)) {
+    throw new Error('dist/build/index.html is missing: run the build first');
+  }
   browser = await chromium.launch();
   const context = await browser.newContext({ viewport: { width: 1500, height: 950 }, acceptDownloads: true });
   await context.setOffline(true);
@@ -42,16 +44,19 @@ afterAll(async () => {
 async function open(file: string, options: BrowserContextOptions = {}, init?: () => void): Promise<Page> {
   const context = await browser.newContext({ ...devices['iPhone 13'], ...options });
   await context.setOffline(true);
-  if (init) await context.addInitScript(init);
+  if (init) {
+    await context.addInitScript(init);
+  }
   const page = await context.newPage();
   await page.goto(`file://${file}`);
   return page;
 }
 
-const noticeShown = (page: Page) => page.evaluate(() => {
-  const n = document.getElementById('boot-notice');
-  return n !== null && getComputedStyle(n).display !== 'none' && n.getClientRects().length > 0;
-});
+const noticeShown = (page: Page) =>
+  page.evaluate(() => {
+    const n = document.getElementById('boot-notice');
+    return n !== null && getComputedStyle(n).display !== 'none' && n.getClientRects().length > 0;
+  });
 
 describe('the no-scripts notice (FR-59)', () => {
   for (const [name, throttle] of [
@@ -64,7 +69,9 @@ describe('the no-scripts notice (FR-59)', () => {
         (window as unknown as { noticeFrames: number }).noticeFrames = 0;
         const watch = () => {
           const n = document.getElementById('boot-notice');
-          if (n && getComputedStyle(n).display !== 'none' && n.getClientRects().length > 0) (window as unknown as { noticeFrames: number }).noticeFrames++;
+          if (n && getComputedStyle(n).display !== 'none' && n.getClientRects().length > 0) {
+            (window as unknown as { noticeFrames: number }).noticeFrames++;
+          }
           requestAnimationFrame(watch);
         };
         requestAnimationFrame(watch);
@@ -92,7 +99,9 @@ describe('the no-scripts notice (FR-59)', () => {
     // The static state: the viewer frame, in the export language.
     expect(await page.evaluate(() => [document.documentElement.dataset.mode, document.documentElement.lang])).toEqual(['viewer', 'en']);
     expect(await page.isVisible('#presentation-stage')).toBe(true);
-    for (const id of ['#segment-information', '#segment-map', '#segment-nav', '#work-controls', '#visibility-area', '#export-open', '#presentation-empty']) expect(await page.isVisible(id), id).toBe(false);
+    for (const id of ['#segment-information', '#segment-map', '#segment-nav', '#work-controls', '#visibility-area', '#export-open', '#presentation-empty']) {
+      expect(await page.isVisible(id), id).toBe(false);
+    }
     const body = await page.locator('body').innerText();
     expect(body).not.toContain('Drop an .xlsx file');
     expect(body).not.toContain('Load demo');
@@ -151,7 +160,9 @@ describe('Open presentation in the application (FR-60)', () => {
     // The narrow layout applies: the toggle bar, the overlays closed.
     expect(await page.isVisible('#toggle-glance')).toBe(true);
     expect(await page.$eval('#presentation-glance', (e) => (e as HTMLElement).dataset.state)).toBe('closed');
-    for (const id of ['#segment-information', '#segment-map', '#work-controls']) expect(await page.isVisible(id), id).toBe(false);
+    for (const id of ['#segment-information', '#segment-map', '#work-controls']) {
+      expect(await page.isVisible(id), id).toBe(false);
+    }
     expect(await page.isVisible('#presentation-close')).toBe(true);
     // Nothing of the file's own program ran: the notice and its script are
     // only text the file carries.

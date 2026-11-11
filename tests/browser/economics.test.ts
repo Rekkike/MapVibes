@@ -51,7 +51,9 @@ async function openFromCard(page: Page): Promise<void> {
 }
 
 beforeAll(async () => {
-  if (!existsSync(BUILT)) throw new Error('dist/build/index.html is missing: run the build first');
+  if (!existsSync(BUILT)) {
+    throw new Error('dist/build/index.html is missing: run the build first');
+  }
   browser = await chromium.launch();
 }, 60_000);
 
@@ -76,19 +78,26 @@ describe('the economics view in a browser (FR-64)', () => {
       ['Name', 'name'],
       ['Start', 'start'],
       ['End', 'end'],
-    ]) await page.selectOption(`.role-select[data-header="${h}"]`, r);
+    ]) {
+      await page.selectOption(`.role-select[data-header="${h}"]`, r);
+    }
     await page.click('#series-panel-summary');
     for (const [k, r] of [
       ['budget', 'budget'],
       ['prognos', 'forecast'],
       ['utfall', 'outcome'],
-    ]) await page.selectOption(`.series-item[data-series="${k}"] .series-role`, r);
+    ]) {
+      await page.selectOption(`.series-item[data-series="${k}"] .series-role`, r);
+    }
     await page.selectOption('.series-item[data-series="budget"] .series-total', 'Budget total');
     await page.click('#tab-map');
     await page.setInputFiles('#map-file-input', join(EXAMPLE, 'example-background.png'));
     await page.waitForFunction(() => document.getElementById('map-stage')!.dataset.hasBackground === 'true');
     const box = (await page.locator('#map-stage').boundingBox())!;
-    await page.locator('.placement-item').nth(0).dragTo(page.locator('#map-stage'), { targetPosition: { x: Math.round(box.width / 2), y: Math.round(box.height / 2) } });
+    await page
+      .locator('.placement-item')
+      .nth(0)
+      .dragTo(page.locator('#map-stage'), { targetPosition: { x: Math.round(box.width / 2), y: Math.round(box.height / 2) } });
     await page.click('#tab-presentation');
     await page.click('#pres-fit');
     await openFromCard(page);
@@ -99,7 +108,12 @@ describe('the economics view in a browser (FR-64)', () => {
     expect(Math.abs(m.y + m.height / 2 - m.vh / 2)).toBeLessThanOrEqual(1);
     expect(m.y).toBeGreaterThanOrEqual(0);
     expect(m.y + m.height).toBeLessThanOrEqual(m.vh);
-    expect(await page.evaluate(() => { const o = document.getElementById('economics-overlay')!; return o.scrollHeight <= o.clientHeight + 1; })).toBe(true);
+    expect(
+      await page.evaluate(() => {
+        const o = document.getElementById('economics-overlay')!;
+        return o.scrollHeight <= o.clientHeight + 1;
+      }),
+    ).toBe(true);
     expect([m.tableFits, m.pageOverflowX]).toEqual([true, false]);
     // Escape closes it alone, and focus returns to the card's action.
     await page.keyboard.press('Escape');

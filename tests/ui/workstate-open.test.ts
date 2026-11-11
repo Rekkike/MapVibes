@@ -53,7 +53,7 @@ function snapshot() {
     ),
     retained: byId('counter-retained').textContent,
     removed: byId('counter-removed').textContent,
-    hiddenNote: (document.querySelector('.column-visible[data-header="Note"]') as HTMLInputElement | null)?.checked,
+    hiddenNote: document.querySelector<HTMLInputElement>('.column-visible[data-header="Note"]')?.checked,
     filterKind: byId<HTMLSelectElement>('select-filter-kind').value,
     filterColumn: byId<HTMLSelectElement>('select-filter-column').value,
     // Marker selection is transient interaction state and is not saved.
@@ -141,9 +141,7 @@ describe('Open work (FR-13)', () => {
     const confirm = vi.spyOn(window, 'confirm');
     openWorkFile(textFile('future.json', JSON.stringify({ ...JSON.parse(text), schemaVersion: 13 })));
     await flush();
-    expect(byId('work-status').textContent).toBe(
-      'The work-state file has schema version 13, which this version of MapVibes cannot read. Nothing was opened.',
-    );
+    expect(byId('work-status').textContent).toBe('The work-state file has schema version 13, which this version of MapVibes cannot read. Nothing was opened.');
     expect(byId('work-status').classList.contains('error')).toBe(true);
     expect(confirm).not.toHaveBeenCalled();
     expect(byId('counter-retained').textContent).toBe('Retained rows: 5');

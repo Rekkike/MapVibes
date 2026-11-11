@@ -51,7 +51,8 @@ function openEconomics(index: number): HTMLElement {
   return byId('economics-overlay');
 }
 
-const totals = (o: HTMLElement) => [...o.querySelectorAll('.economics-total')].map((t) => [t.querySelector('dt')!.textContent, t.querySelector('dd')!.textContent]);
+const totals = (o: HTMLElement) =>
+  [...o.querySelectorAll('.economics-total')].map((t) => [t.querySelector('dt')!.textContent, t.querySelector('dd')!.textContent]);
 const rows = (o: HTMLElement) => [...o.querySelectorAll('.economics-table tbody tr')].map((tr) => [...tr.children].map((c) => c.textContent));
 
 describe('the economics view (FR-64)', () => {

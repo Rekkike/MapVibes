@@ -12,7 +12,9 @@ type App = Awaited<ReturnType<typeof mountApp>>;
 let exported = '';
 
 async function settle(): Promise<void> {
-  for (let i = 0; i < 5; i++) await flush();
+  for (let i = 0; i < 5; i++) {
+    await flush();
+  }
 }
 
 async function exportedPage(): Promise<string> {
@@ -50,7 +52,7 @@ async function choose(file: File): Promise<void> {
 function withIsland(page: string, change: (data: Record<string, any>) => void): string {
   const doc = new DOMParser().parseFromString(page, 'text/html');
   const node = doc.getElementById(DATA_ISLAND_ID)!;
-  const data = JSON.parse(node.textContent!);
+  const data = JSON.parse(node.textContent);
   change(data);
   const start = page.indexOf(`<script type="application/json" id="${DATA_ISLAND_ID}">`);
   const end = page.indexOf('</script>', start);
@@ -62,7 +64,9 @@ const inViewer = () => document.documentElement.dataset.mode === 'viewer';
 
 describe('Open presentation (FR-60)', () => {
   beforeEach(async () => {
-    if (exported === '') exported = await exportedPage();
+    if (exported === '') {
+      exported = await exportedPage();
+    }
     delete document.documentElement.dataset.mode;
   });
 
@@ -79,7 +83,9 @@ describe('Open presentation (FR-60)', () => {
     await choose(htmlFile(exported));
     expect(inViewer()).toBe(true);
     expect(presentationMarkers().map((m) => m.textContent)).toEqual(['1', '3']);
-    for (const id of ['segment-information', 'segment-map', 'work-controls', 'segment-nav', 'export-open']) expect(byId(id).classList.contains('hidden'), id).toBe(true);
+    for (const id of ['segment-information', 'segment-map', 'work-controls', 'segment-nav', 'export-open']) {
+      expect(byId(id).classList.contains('hidden'), id).toBe(true);
+    }
     expect(byId('segment-presentation').classList.contains('hidden')).toBe(false);
     expect(byId('viewer-badge').textContent).toMatch(/^View-only presentation, exported 2024-08-09 10:30$/);
     expect(byId('presentation-close').classList.contains('hidden')).toBe(false);
@@ -145,7 +151,9 @@ describe('Open presentation (FR-60)', () => {
     expect(byId('work-dirty').classList.contains('hidden')).toBe(false);
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
     await choose(htmlFile(exported));
-    expect(confirm).toHaveBeenCalledWith('The current work has unsaved changes. Opening the presentation replaces what is on screen and the unsaved changes are lost. Continue?');
+    expect(confirm).toHaveBeenCalledWith(
+      'The current work has unsaved changes. Opening the presentation replaces what is on screen and the unsaved changes are lost. Continue?',
+    );
     expect(inViewer()).toBe(false);
     expect(app.captureWorkState().rows).toHaveLength(5);
     confirm.mockReturnValue(true);
