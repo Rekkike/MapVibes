@@ -653,6 +653,22 @@ input[type='text'] {
   height: 1.1rem;
 }
 
+/* Today (FR-75 as noted in v1.14.0): a dashed swatch like the mark. */
+.legend-swatch.legend-today-swatch {
+  width: 0.9rem;
+  height: 0.9rem;
+  border: 0;
+  border-left: 2px dashed var(--fg);
+  border-radius: 0;
+  background: transparent;
+  margin-left: 0.4rem;
+}
+
+.legend-swatch.legend-today-swatch::before,
+.legend-swatch.legend-today-swatch::after {
+  content: none;
+}
+
 /* The work phase (FR-75 as amended in v1.12.0): a swatch hatched like the
    timeline's band. */
 .legend-swatch.legend-phase-swatch {
@@ -694,6 +710,15 @@ input[type='text'] {
 }
 
 .legend-swatch.legend-series-swatch[data-series='budget'] {
+  border: 1px solid var(--fg);
+  background: transparent;
+}
+
+.legend-swatch.legend-series-swatch[data-series='budget']::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--fg);
   opacity: 0.4;
 }
 
@@ -2769,6 +2794,11 @@ html[data-boot='failed'] #boot-notice {
 .timeline {
   --timeline-name: 180px;
   --timeline-line: 28px;
+  /* The two states (FR-78 as amended in v1.14.0): a lane is 28 pixels, and
+     the line is its chip beside its plot; the narrow layout puts a 24-pixel
+     chip row over the plot. */
+  --timeline-lane: 28px;
+  --timeline-name-row: 0px;
   /* The activity segments of a line (FR-78): packed sub-lane rows inside
      the unchanged line -- 7-pixel segments, 2-pixel gaps, 2-pixel padding,
      three rows fitting the 28-pixel plot (tops 2, 11, 20, bottom 27). */
@@ -2862,25 +2892,85 @@ html[data-boot='failed'] #boot-notice {
 .timeline-heading {
   display: flex;
   align-items: flex-end;
-  height: var(--timeline-line);
+  height: var(--timeline-heading, var(--timeline-line));
   padding: 0 var(--space-2);
   font-size: var(--dense-label);
   font-weight: 700;
   color: var(--muted);
 }
 
+/* A line (FR-78 as amended in v1.14.0): not itself a control, but its two
+   controls -- the chip, which opens the card, and the plot, which expands
+   the line. The plot's height is set at positioning: one lane collapsed,
+   every lane whole expanded. */
 .timeline-entry {
   display: grid;
   grid-template-columns: var(--timeline-name) 1fr;
-  align-items: center;
+  align-items: start;
   width: 100%;
-  height: calc(var(--timeline-line) * var(--timeline-lanes, 1));
+  height: calc(var(--timeline-name-row) + var(--timeline-plot-h, var(--timeline-lane)));
+}
+
+.timeline-chip {
+  width: 100%;
+  height: var(--timeline-lane);
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.timeline-entry[data-expandable='true'] > .timeline-chip {
+  padding-right: 2.25rem;
+}
+
+.timeline-plot-control {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: var(--timeline-plot-h, var(--timeline-lane));
   margin: 0;
   padding: 0;
   border: 0;
   border-radius: 0;
   background: transparent;
+  color: inherit;
+  font: inherit;
   text-align: left;
+}
+
+button.timeline-plot-control {
+  cursor: pointer;
+}
+
+/* The quiet indicator (FR-78, FR-79 as amended in v1.14.0): part of the
+   plot's control, at the chip's end, counting the activities in the
+   timeline and marked without a count in the costs view. */
+.timeline-indicator {
+  position: absolute;
+  top: calc(var(--timeline-lane) / 2 - 9px);
+  right: calc(100% + 6px);
+  box-sizing: border-box;
+  min-width: 1.25rem;
+  height: 18px;
+  padding: 0 5px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--panel);
+  color: var(--muted);
+  font-size: var(--dense-label);
+  line-height: 16px;
+  text-align: center;
+}
+
+button.timeline-plot-control:hover > .timeline-indicator,
+.timeline-plot-control[aria-expanded='true'] > .timeline-indicator {
+  border-color: var(--accent);
+  color: var(--fg);
 }
 
 .timeline-entry:hover,
@@ -2987,8 +3077,21 @@ html[data-boot='failed'] #boot-notice {
   line-height: 1.4;
 }
 
-.timeline-line[data-expanded='true'] .timeline-seg[data-wide='true'] .timeline-seg-label {
-  display: block;
+/* An activity's name beside its bar in an open line (FR-78 as amended in
+   v1.14.0): in the text colour on the panel, the lane's height as its line
+   height; not shown where neither side of the bar has room. */
+.timeline-lane-label {
+  position: absolute;
+  display: none;
+  white-space: nowrap;
+  color: var(--fg);
+  font-size: var(--dense-label);
+  pointer-events: none;
+}
+
+.timeline-line[data-expanded='true'] .timeline-lane-label:is([data-place='after'], [data-place='before']) {
+  display: flex;
+  align-items: center;
 }
 
 /* The costs view (FR-79): the timeline's machinery with a taller line, so
@@ -2996,7 +3099,8 @@ html[data-boot='failed'] #boot-notice {
    bars, 2-pixel gaps, 3-pixel padding in a 46-pixel line (tops 3, 17, 31,
    bottom 43). */
 .timeline[data-kind='costs'] {
-  --timeline-line: 46px;
+  --timeline-totals-h: 46px;
+  --timeline-costs-open: 46px;
   --timeline-seg-h: 12px;
   --timeline-seg-gap: 2px;
   --timeline-seg-pad: 3px;
@@ -3017,8 +3121,47 @@ html[data-boot='failed'] #boot-notice {
   border-radius: calc(var(--radius) / 2);
 }
 
+/* The budget (FR-79, D7 as revised in v1.14.0): one style everywhere -- a
+   faint fill of the item colour with a solid edge in it -- for the
+   collapsed spine, the opened sub-lane, and the totals row, so that it
+   never reads as the outcome, which is solid. */
 .timeline-seg[data-series='budget'] > .timeline-seg-fill {
+  box-sizing: border-box;
+  border: 1.5px solid var(--marker-fill);
+  border-radius: calc(var(--radius) / 2);
+  background: transparent;
+}
+
+.timeline-seg[data-series='budget'] > .timeline-seg-fill::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--marker-fill);
   opacity: 0.4;
+}
+
+/* The quiet tick: a year with forecast or outcome but no budget, shown
+   while the line is collapsed. */
+.timeline-year-tick {
+  position: absolute;
+  top: calc(50% - 4px);
+  height: 8px;
+  min-width: 0;
+  background: none;
+}
+
+.timeline-year-tick::after {
+  content: '';
+  position: absolute;
+  left: calc(50% - 1px);
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: var(--muted);
+}
+
+.timeline-line[data-expanded='true'] .timeline-year-tick {
+  display: none;
 }
 
 .timeline-seg[data-series='forecast'] > .timeline-seg-fill {
@@ -3062,7 +3205,7 @@ html[data-boot='failed'] #boot-notice {
   display: grid;
   grid-template-columns: var(--timeline-name) 1fr;
   align-items: center;
-  height: var(--timeline-line);
+  height: var(--timeline-totals-h, var(--timeline-line));
   border-bottom: 1px solid var(--border);
   background: var(--panel);
 }
@@ -3156,6 +3299,29 @@ html[data-boot='failed'] #boot-notice {
   cursor: pointer;
 }
 
+/* The today mark (FR-78, FR-79 as amended in v1.14.0): a 2-pixel dashed
+   line in the text colour across the body, distinct from the events' thin
+   solid hairlines; beyond the window, a dashed edge indicator. */
+.timeline-today {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  margin-left: -1px;
+  border-left: 2px dashed var(--fg);
+  pointer-events: none;
+}
+
+.timeline-event-chip.timeline-today-edge {
+  padding: 0;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  border-style: dashed;
+  border-color: var(--fg);
+  color: var(--fg);
+  text-align: center;
+}
+
 .timeline-event-lines {
   position: absolute;
   top: 0;
@@ -3190,26 +3356,6 @@ html[data-boot='failed'] #boot-notice {
   inset: 0;
   background-image: repeating-linear-gradient(135deg, var(--fg) 0 1px, transparent 1px 4px);
   opacity: 0.55;
-}
-
-/* The "+n" badge: a first-class control in the line's name column; it counts
-   the spans that do not fit the packed sub-lanes (FR-78). */
-.timeline-badge-more {
-  flex: none;
-  margin-left: var(--space-1);
-  padding: 0 6px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  background: var(--panel);
-  color: var(--muted);
-  font-size: var(--dense-label);
-  line-height: 1.5;
-  cursor: pointer;
-}
-
-.timeline-badge-more:hover {
-  border-color: var(--accent);
-  color: var(--fg);
 }
 
 /* A marked point: an item of which only the start or the end is known. */
@@ -3664,7 +3810,12 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   /* The narrow timeline (FR-67): 40-pixel lines, the name above the bar. */
   html[data-mode='viewer'] .timeline {
     --timeline-name: 0px;
-    --timeline-line: 40px;
+    /* The 48-pixel line (FR-58 as noted in v1.14.0): a 24-pixel chip row
+       over a 24-pixel plot, two separate targets; a lane is 24 pixels. */
+    --timeline-line: 48px;
+    --timeline-heading: 40px;
+    --timeline-name-row: 24px;
+    --timeline-lane: 24px;
     --timeline-badge: 1.125rem;
     --timeline-badge-font: 0.6875rem;
     /* The narrow plot is 20 pixels (the 40-pixel line holds a 20-pixel name
@@ -3679,10 +3830,16 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   /* The narrow costs view (FR-79): a 20-pixel name row over a 44-pixel
      plot (12-pixel bars, 2-pixel gaps, 2-pixel padding: tops 2, 16, 30). */
   html[data-mode='viewer'] .timeline[data-kind='costs'] {
-    --timeline-line: 64px;
+    --timeline-totals-h: 64px;
     --timeline-seg-h: 12px;
     --timeline-seg-gap: 2px;
     --timeline-seg-pad: 2px;
+    /* An open costs line: the 24-pixel chip row over a 40-pixel plot, the
+       sub-lanes' 12-pixel bars at tops 0, 14, and 28 -- 64 pixels as before. */
+    --timeline-costs-open: 40px;
+    --timeline-line-seg-h: 12px;
+    --timeline-line-seg-gap: 2px;
+    --timeline-line-seg-pad: 0px;
   }
 
   html[data-mode='viewer'] .timeline-totals {
@@ -3712,8 +3869,22 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
 
   html[data-mode='viewer'] .timeline-entry {
     grid-template-columns: 1fr;
-    grid-template-rows: 1.25rem 1fr;
+    grid-template-rows: var(--timeline-name-row) 1fr;
     align-items: stretch;
+  }
+
+  html[data-mode='viewer'] .timeline-chip {
+    height: var(--timeline-name-row);
+  }
+
+  html[data-mode='viewer'] .timeline-entry[data-expandable='true'] > .timeline-chip {
+    padding-right: 2.75rem;
+  }
+
+  html[data-mode='viewer'] .timeline-indicator {
+    top: auto;
+    right: var(--space-2);
+    bottom: calc(100% + 3px);
   }
 
   html[data-mode='viewer'] .timeline-name {
@@ -3949,13 +4120,13 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   }
 
   /* Every editing control reaches 44 pixels on its smallest side; a line
-     of the timeline, which only opens its card, keeps the viewer's 40
-     pixels (FR-58 as amended in v1.7.0). */
-  html:not([data-mode='viewer']) :is(#app-header, #app-main) :is(button:not(.timeline-entry), select, input[type='text'], input:not([type]), summary, textarea) {
+     of the schedule views keeps its own targets: the 24-pixel chip row and
+     the 24-pixel plot of the 48-pixel line (FR-58 as noted in v1.14.0). */
+  html:not([data-mode='viewer']) :is(#app-header, #app-main) :is(button:not(.timeline-chip, .timeline-plot-control), select, input[type='text'], input:not([type]), summary, textarea) {
     min-height: 44px;
   }
 
-  html:not([data-mode='viewer']) :is(#app-header, #app-main) button:not(.timeline-entry) {
+  html:not([data-mode='viewer']) :is(#app-header, #app-main) button:not(.timeline-chip, .timeline-plot-control) {
     min-width: 44px;
   }
 
@@ -4215,7 +4386,12 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   /* The narrow timeline (FR-67): 40-pixel lines, the name above the bar. */
   html:not([data-mode='viewer']) .timeline {
     --timeline-name: 0px;
-    --timeline-line: 40px;
+    /* The 48-pixel line (FR-58 as noted in v1.14.0): a 24-pixel chip row
+       over a 24-pixel plot, two separate targets; a lane is 24 pixels. */
+    --timeline-line: 48px;
+    --timeline-heading: 40px;
+    --timeline-name-row: 24px;
+    --timeline-lane: 24px;
     --timeline-badge: 1.125rem;
     --timeline-badge-font: 0.6875rem;
     --timeline-seg-h: 4px;
@@ -4227,10 +4403,16 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   /* The narrow costs view (FR-79): a 20-pixel name row over a 44-pixel
      plot (12-pixel bars, 2-pixel gaps, 2-pixel padding: tops 2, 16, 30). */
   html:not([data-mode='viewer']) .timeline[data-kind='costs'] {
-    --timeline-line: 64px;
+    --timeline-totals-h: 64px;
     --timeline-seg-h: 12px;
     --timeline-seg-gap: 2px;
     --timeline-seg-pad: 2px;
+    /* An open costs line: the 24-pixel chip row over a 40-pixel plot, the
+       sub-lanes' 12-pixel bars at tops 0, 14, and 28 -- 64 pixels as before. */
+    --timeline-costs-open: 40px;
+    --timeline-line-seg-h: 12px;
+    --timeline-line-seg-gap: 2px;
+    --timeline-line-seg-pad: 0px;
   }
 
   html:not([data-mode='viewer']) .timeline-totals {
@@ -4260,8 +4442,22 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
 
   html:not([data-mode='viewer']) .timeline-entry {
     grid-template-columns: 1fr;
-    grid-template-rows: 1.25rem 1fr;
+    grid-template-rows: var(--timeline-name-row) 1fr;
     align-items: stretch;
+  }
+
+  html:not([data-mode='viewer']) .timeline-chip {
+    height: var(--timeline-name-row);
+  }
+
+  html:not([data-mode='viewer']) .timeline-entry[data-expandable='true'] > .timeline-chip {
+    padding-right: 2.75rem;
+  }
+
+  html:not([data-mode='viewer']) .timeline-indicator {
+    top: auto;
+    right: var(--space-2);
+    bottom: calc(100% + 3px);
   }
 
   html:not([data-mode='viewer']) .timeline-name {

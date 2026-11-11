@@ -13,7 +13,7 @@ type App = Awaited<ReturnType<typeof mountApp>>;
 const lines = () => [...document.querySelectorAll<HTMLElement>('#presentation-timeline .timeline-lines > li')];
 const rowsText = () =>
   lines().map((li) => (li.classList.contains('timeline-heading') ? `# ${li.textContent}` : li.querySelector('.timeline-name')!.textContent!.replace(/^\d+/, '').trim()));
-const entry = (name: string) => [...document.querySelectorAll<HTMLButtonElement>('#presentation-timeline .timeline-entry')].find((b) => b.textContent!.includes(name))!;
+const entry = (name: string) => [...document.querySelectorAll<HTMLButtonElement>('#presentation-timeline .timeline-chip')].find((b) => b.textContent!.includes(name))!;
 
 async function setUp(): Promise<App> {
   const app = await mountApp({ singleFile: true });
@@ -92,7 +92,7 @@ describe('the timeline (FR-67)', () => {
 
   test('one line per item, with or without a marker, in number order; "No dates" last; a value that cannot be read shown as typed', () => {
     expect(rowsText()).toEqual(['Dated item', 'Timed item', 'Month item', 'Open item', '# No dates', 'Ambiguous itemStart: 15/03/2024', 'Undated item']);
-    const bar = (name: string) => entry(name).querySelector<HTMLElement>('.timeline-bar, .timeline-point')!;
+    const bar = (name: string) => entry(name).closest('li')!.querySelector<HTMLElement>('.timeline-bar, .timeline-point')!;
     // T-01: 2024-03-15 to 2026-06-30, a bar to the end of its last day.
     expect([bar('Dated item').dataset.from, bar('Dated item').dataset.to]).toEqual([String(dayNumber(2024, 3, 15)), String(dayNumber(2026, 6, 30) + 1)]);
     // T-02: to the end of the year 2027.
@@ -122,7 +122,7 @@ describe('the timeline (FR-67)', () => {
     expect(rowsText()).toContain('Timed item');
   });
 
-  test('a line opens the item\'s card; Escape closes it, and focus returns to the line', () => {
+  test('a line\'s chip opens the item\'s card; Escape closes it, and focus returns to the chip', () => {
     const line = entry('Timed item');
     line.focus();
     line.click();

@@ -12,7 +12,7 @@ import type { RowColour } from './dataset';
 import { COLOUR_RGB, drawFooter, drawMarker, layoutLegend, LEGEND_FONT, markerSize, PALETTE, wrapValue, type PageFrame, type Painter } from './documents';
 import { format } from './i18n';
 import type { LegendSection } from './legend';
-import { fitText } from './pdfwriter';
+import { fitText, textWidth } from './pdfwriter';
 import type { MarkerSymbol } from './symbols';
 import { fitWindow, layoutEvents, type EventChip, type ScheduleEvent, type TimelineItem, type TimelineLine, type TimelineModel, type TimelineRow, type TimelineSpan } from './timeline';
 import { eventChipWidth, ticks } from './timelineview';
@@ -47,11 +47,15 @@ export interface TimelineFigureLabels {
   moreEvents: string;
   eventsBefore: string;
   eventsAfter: string;
+  // The today line's label, with {date} (FR-12 as noted).
+  today: string;
 }
 
 export interface TimelineFigure {
   model: TimelineModel;
   events: ScheduleEvent[];
+  // The export date as a day number, or null for no today line.
+  today: number | null;
   labels: TimelineFigureLabels;
   legendTitle: string;
   legend: LegendSection[];
@@ -87,6 +91,10 @@ export const FIGURE = {
   captionLineHeight: 8.5,
   captionMaxLines: 2,
   hairline: 0.6,
+  // The today line: a dashed 1.2-point line, distinct from the events' thin
+  // solid hairlines.
+  todayWidth: 1.2,
+  todayDash: [3, 2] as readonly number[],
   gridline: 0.4,
   legendGap: 6,
   rowGap: 2,
@@ -377,6 +385,7 @@ export function drawTimelinePage(p: Painter, fig: TimelineFigure, layout: Timeli
     }
     y += layout.stripHeight;
   }
+  const bodyTop = y;
 
   // The rows: headings, then the lines with every lane a full row.
   for (const rowIndex of page) {
@@ -430,6 +439,31 @@ export function drawTimelinePage(p: Painter, fig: TimelineFigure, layout: Timeli
       y += lines.length * f.captionLineHeight + 2;
     }
     y += f.rowGap;
+  }
+
+  // The today line (FR-12 as noted): a dashed line in the text
+  // colour across the body at the export date, labelled with that date at
+  // its head, on the side with room; not drawn outside the window.
+  if (layout.drawn && fig.today !== null && fig.today >= layout.window.from && fig.today <= layout.window.to) {
+    const x = dayX(layout, fig.today + 0.5);
+    p.strokeColour(PALETTE.fg);
+    p.lineWidth(f.todayWidth);
+    p.dash(f.todayDash);
+    p.beginPath();
+    p.moveTo(x, bodyTop);
+    p.lineTo(x, bodyBottom);
+    p.stroke();
+    p.dash([]);
+    const day = fig.today;
+    const label = format(fig.labels.today, { date: formatDate({ kind: 'date', start: day, end: day, precision: 'day' }) });
+    const w = textWidth(label, 'regular', f.captionFont) + 4;
+    const right = x + 2 + w <= layout.plotX + layout.plotWidth;
+    p.fillColour(PALETTE.white);
+    p.beginPath();
+    p.rect(right ? x + 2 : x - 2 - w, bodyTop + 1, w, f.captionLineHeight);
+    p.fill();
+    p.fillColour(PALETTE.fg);
+    p.text(right ? x + 4 : x - w, bodyTop + f.captionLineHeight - 1.5, label, 'regular', f.captionFont);
   }
 
   // The legend, as the stage page carries it, then the footer.

@@ -24,7 +24,7 @@ const measured: string[] = [];
 beforeAll(async () => {
   if (!existsSync(BUILT)) throw new Error('dist/build/index.html is missing: run the build first');
   // A-01: five overlapping activities, its work phase one that lies behind
-  // the "+n" badge of the collapsed line. A-04: two activities, its work
+  // the third lane, not drawn while the line is collapsed. A-04: two activities, its work
   // phase the first, visible, and corrected by hand. A-03: a work phase
   // whose dates cannot be read, so nothing is drawn for it.
   const ws = parseWorkState(readFileSync(V6, 'utf8'));
@@ -109,31 +109,43 @@ function measureLine(page: Page, rowId: string) {
     return {
       plot: { w: plot.width, h: plot.height },
       lineH: row.getBoundingClientRect().height,
+      lanes: Number(row.dataset.lanes),
       band: band ? { ...rel(band), image: cs!.backgroundImage, opacity: cs!.opacity, events: cs!.pointerEvents, first: plotEl.firstElementChild === band } : null,
       bar: row.querySelector('.timeline-bar') ? rel(row.querySelector('.timeline-bar')!) : null,
       segs,
-      badge: row.querySelector('.timeline-badge-more')?.textContent ?? null,
+      indicator: row.querySelector('.timeline-indicator')?.textContent ?? null,
     };
   }, rowId);
 }
 
 describe.each([
-  ['1500x950 light', { viewport: { width: 1500, height: 950 }, colorScheme: 'light' }, 28, 28],
-  ['1500x950 dark', { viewport: { width: 1500, height: 950 }, colorScheme: 'dark' }, 28, 28],
-  ['390x844 light', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2, colorScheme: 'light' }, 40, 20],
-  ['390x844 dark', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2, colorScheme: 'dark' }, 40, 20],
-] as const)('the work phase in the viewer timeline at %s (FR-78)', (name, options, lineH, plotH) => {
-  test('the band spans the plot\'s full height from the activity\'s start to its end, hatched, behind the bar and the segments; its segment is hatched', async () => {
+  ['1500x950 light', { viewport: { width: 1500, height: 950 }, colorScheme: 'light' }, 28, 28, 0],
+  ['1500x950 dark', { viewport: { width: 1500, height: 950 }, colorScheme: 'dark' }, 28, 28, 0],
+  ['390x844 light', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2, colorScheme: 'light' }, 48, 24, 24],
+  ['390x844 dark', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2, colorScheme: 'dark' }, 48, 24, 24],
+] as const)('the work phase in the viewer timeline at %s (FR-78)', (name, options, lineH, plotH, nameRow) => {
+  // The lines are collapsed by default (FR-78 as amended in v1.14.0): the
+  // band is drawn unbidden; its segment is drawn once the line is pressed.
+  const press = (page: Page, id: string) => page.locator(`#presentation-timeline .timeline-line[data-row-id="${id}"] .timeline-plot-control`).click({ position: { x: 4, y: 4 } });
+
+  test('the band spans the plot\'s full height from the activity\'s start to its end, hatched, behind the bar and the segments, unbidden; pressed, its segment is hatched', async () => {
     const { page, errors } = await openViewer(options);
     const theme = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    const quiet = await measureLine(page, 'row-4');
+    expect(quiet.lineH).toBe(lineH);
+    expect(quiet.plot.h).toBe(plotH);
+    expect(quiet.band).not.toBeNull();
+    // Collapsed: the band at the plot's full height, no segment drawn.
+    expect(quiet.band!.y).toBeCloseTo(0, 0);
+    expect(quiet.band!.h).toBeCloseTo(plotH, 0);
+    expect(quiet.segs.filter((s) => s.shown)).toEqual([]);
+    await press(page, 'row-4');
     const m = await measureLine(page, 'row-4');
-    expect(m.lineH).toBe(lineH);
-    expect(m.plot.h).toBe(plotH);
-    expect(m.band).not.toBeNull();
+    expect(m.lineH).toBe(nameRow + plotH * m.lanes);
     const band = m.band!;
-    // The full height of the plot.
+    // The full height of the open plot.
     expect(band.y).toBeCloseTo(0, 0);
-    expect(band.h).toBeCloseTo(plotH, 0);
+    expect(band.h).toBeCloseTo(m.plot.h, 0);
     // From the activity's start to its end: where its segment stands.
     const seg = m.segs.find((s) => s.phase)!;
     expect(seg.title).toBe('Survey: 2024-02-02 – 2024-02-10, 100%, edited by hand, Work phase');
@@ -152,15 +164,16 @@ describe.each([
     for (const s of m.segs) expect(band.h).toBeGreaterThan(s.h);
     // A work phase whose dates cannot be read draws nothing.
     expect((await measureLine(page, 'row-3')).band).toBeNull();
-    measured.push(`${name}: page ${theme}; line ${m.lineH} px, plot ${m.plot.h} px; band at y ${band.y.toFixed(1)}, ${band.w.toFixed(1)} x ${band.h.toFixed(1)} px, opacity ${band.opacity}; its segment ${seg.w.toFixed(1)} x ${seg.h} px at y ${seg.y.toFixed(1)}`);
+    measured.push(`${name}: page ${theme}; collapsed line ${quiet.lineH} px, band ${quiet.band!.w.toFixed(1)} x ${quiet.band!.h.toFixed(1)} px; open line ${m.lineH} px, plot ${m.plot.h} px, band ${band.w.toFixed(1)} x ${band.h.toFixed(1)} px, opacity ${band.opacity}; its segment ${seg.w.toFixed(1)} x ${seg.h} px at y ${seg.y.toFixed(1)}`);
     expect(errors).toEqual([]);
     await page.context().close();
   }, 60_000);
 
-  test('the collapsed "+n" case: the segment is hidden behind the badge and the band still shows; expanded, the band spans all the lanes', async () => {
+  test('the collapsed line: the segment is not drawn and the band still shows, the indicator counting the activities; expanded, the band spans all the lanes', async () => {
     const { page, errors } = await openViewer(options);
     const collapsed = await measureLine(page, 'row-1');
-    expect(collapsed.badge).not.toBeNull();
+    expect(collapsed.indicator).toBe('5');
+    expect(collapsed.segs.filter((s) => s.shown)).toEqual([]);
     const hidden = collapsed.segs.find((s) => s.phase)!;
     expect(hidden.title.startsWith('Testing')).toBe(true);
     expect(hidden.lane).toBeGreaterThanOrEqual(3);
@@ -169,19 +182,19 @@ describe.each([
     expect(collapsed.band!.y).toBeCloseTo(0, 0);
     expect(collapsed.band!.h).toBeCloseTo(plotH, 0);
     expect(collapsed.band!.w).toBeGreaterThan(3);
-    await page.locator('#presentation-timeline .timeline-line[data-row-id="row-1"] .timeline-badge-more').click();
+    await press(page, 'row-1');
     const expanded = await measureLine(page, 'row-1');
-    const lanes = expanded.lineH / lineH;
-    expect(lanes).toBeGreaterThanOrEqual(4);
-    // The band spans the expanded plot, every lane of it.
+    const lanes = expanded.plot.h / plotH;
+    expect(lanes).toBe(5);
+    expect(expanded.lineH).toBe(nameRow + plotH * lanes);
+    // The band spans the expanded plot, every lane of it, whole.
     expect(expanded.band!.y).toBeCloseTo(0, 0);
     expect(expanded.band!.h).toBeCloseTo(expanded.plot.h, 0);
-    expect(expanded.plot.h).toBeGreaterThanOrEqual(lineH * (lanes - 1));
     const shown = expanded.segs.find((s) => s.phase)!;
     expect(shown.shown).toBe(true);
     expect(expanded.band!.x).toBeCloseTo(shown.x, 0);
     expect(expanded.band!.w).toBeCloseTo(shown.w, 0);
-    measured.push(`${name}: collapsed band ${collapsed.band!.w.toFixed(1)} x ${collapsed.band!.h.toFixed(1)} px with its segment behind "${collapsed.badge}"; expanded to ${lanes} lanes, band ${expanded.band!.w.toFixed(1)} x ${expanded.band!.h.toFixed(1)} px over a ${expanded.plot.h.toFixed(0)} px plot`);
+    measured.push(`${name}: collapsed band ${collapsed.band!.w.toFixed(1)} x ${collapsed.band!.h.toFixed(1)} px its segment not drawn, the indicator "${collapsed.indicator}"; expanded to ${lanes} lanes, band ${expanded.band!.w.toFixed(1)} x ${expanded.band!.h.toFixed(1)} px over a ${expanded.plot.h.toFixed(0)} px plot`);
     expect(errors).toEqual([]);
     await page.context().close();
   }, 60_000);

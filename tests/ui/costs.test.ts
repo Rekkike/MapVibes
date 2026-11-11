@@ -112,11 +112,11 @@ describe('the costs view (FR-79)', () => {
     byId('pres-mode-costs').click();
     const none = line('No economics');
     expect(segs(none)).toHaveLength(0);
-    expect(none.querySelector('.timeline-entry')!.getAttribute('aria-label')).toBe('2: No economics. no amounts');
+    expect(none.querySelector('.timeline-chip')!.getAttribute('aria-label')).toBe('2: No economics. no amounts');
     const gaps = line('Gaps');
     // Budget 2026 and the forecasts of 2024 and 2026; "ca 1 M" has no bar.
     expect(segs(gaps).map((s) => `${s.dataset.series} ${s.querySelector('.timeline-seg-label')!.textContent}`)).toEqual(['forecast 200', 'budget 300', 'forecast 310']);
-    expect(gaps.querySelector('.timeline-entry')!.getAttribute('aria-label')).toBe(
+    expect(gaps.querySelector('.timeline-chip')!.getAttribute('aria-label')).toBe(
       '4: Gaps. 2024: Prognos 200,000 SEK; 2026: Budget 300,000 SEK, Prognos 310,000 SEK. Not numbers, shown as typed: Budget 2024: ca 1 M',
     );
   });
@@ -189,9 +189,9 @@ describe('the costs view (FR-79)', () => {
     expect(segs(totals()).find((s) => s.dataset.series === 'budget' && Number(s.dataset.from) === dayNumber(2026, 1, 1))!.title).toBe('Budget 2026: 650,000 SEK');
   });
 
-  test('a line opens the item\'s card, unchanged', () => {
+  test('a line\'s chip opens the item\'s card, unchanged', () => {
     byId('pres-mode-costs').click();
-    line('Budget only').querySelector<HTMLButtonElement>('.timeline-entry')!.click();
+    line('Budget only').querySelector<HTMLButtonElement>('.timeline-chip')!.click();
     const card = byId('presentation-card');
     expect(card.dataset.state).toBe('open');
     expect(card.textContent).toContain('Budget only');

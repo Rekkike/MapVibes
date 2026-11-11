@@ -27,9 +27,10 @@ export interface TimelineLabels {
   startHeader: string;
   endHeader: string;
   locale: string;
-  // The "+n" badge of a line whose spans do not all fit the packed sub-lanes
-  // (FR-78), and the header of the activities in a line's description.
-  moreSpans: string;
+  // The accessible name of a line's expansion control (FR-78 as amended),
+  // with {name} and, in the timeline, {count}; and the header of
+  // the activities in a line's description.
+  expand: string;
   activities: string;
   // An activity corrected by hand, and the work phase (FR-76, FR-78 as
   // amended), as said in titles and descriptions.
@@ -37,6 +38,11 @@ export interface TimelineLabels {
   workPhase: string;
   // The costs view's own words (FR-79); absent in the timeline.
   costs?: CostsLabels;
+  // The today mark (FR-78, FR-79 as amended): its name with
+  // {date}, and the edge indicator's names when today lies beyond the window.
+  today: string;
+  todayBefore: string;
+  todayAfter: string;
   // The events' heading and their "+n" chip (FR-80), and the edge
   // indicators' accessible names (the follow-up amendment): the events beyond the shown
   // window, listed at each end of the strip.
@@ -60,6 +66,8 @@ export interface CostsLabels {
   // A line without amounts, and the header of the values shown as typed.
   none: string;
   typed: string;
+  // The quiet tick's word for a year without a budget (FR-79 as amended).
+  noBudget: string;
 }
 
 export interface TimelineCallbacks {
@@ -94,10 +102,15 @@ const MIN_TICK_PX = 64;
 // viewport (3 rows: tops 2, 11, 20, bottom 27 of 28), 4-pixel segments with
 // 2-pixel gaps and 1-pixel padding in the narrow 20-pixel plot (tops 1, 7,
 // 13, bottom 17 of 20).
-export const PACKED_SUBLANES = 3;
+// v1.10.0's packed sub-lanes are retired in the views (FR-78 as amended):
+// collapsed, a line shows its own bar alone.
+// An activity's name beside its bar (FR-78 as amended): the gap
+// between the bar and the name, and the name's width estimated from its
+// characters where the layout gives none.
+const LANE_LABEL_GAP = 4;
+const LANE_LABEL_CHAR_PX = 6.5;
 // A segment's label shows inside it only from this width on (the rest is
 // carried by its title and the line's description).
-const LABEL_MIN_PX = 64;
 // An amount's figure in thousands (FR-79) shows after its fill where the
 // year cell has room for both, else inside the fill's end where the fill is
 // wide enough to hold it, else not at all: the title and the description
@@ -185,6 +198,8 @@ export class TimelineView {
   private readonly eventPlot: HTMLElement;
   private readonly eventLines: HTMLElement;
   private events: ScheduleEvent[] = [];
+  // Today's day number for the today mark, or null for none.
+  private today: number | null = null;
   private readonly scroller: HTMLElement;
   private readonly list: HTMLUListElement;
   private readonly message: HTMLElement;
@@ -340,17 +355,15 @@ export class TimelineView {
     return this.model.lines.filter((l) => shown.has(l.item.id));
   }
 
-  // Where the card of a line opens beside it: the end of its bar, or the
-  // start of its plot, in the coordinates of the given element.
+  // Where the card of a line opens beside it (FR-35 as amended):
+  // at the line's chip, the control that opened it, in the coordinates of
+  // the given element.
   anchorOf(id: string, relativeTo: HTMLElement): { x: number; y: number } | null {
     const row = this.lineElement(id);
     if (!row) return null;
     const base = relativeTo.getBoundingClientRect();
-    const r = row.getBoundingClientRect();
-    const plot = row.querySelector<HTMLElement>('.timeline-plot')!.getBoundingClientRect();
-    const mark = row.querySelector<HTMLElement>('.timeline-bar, .timeline-point')?.getBoundingClientRect();
-    const x = mark ? Math.min(Math.max(mark.right, plot.left), plot.right) : plot.left;
-    return { x: x - base.left, y: r.top + r.height / 2 - base.top };
+    const chip = row.querySelector<HTMLElement>('.timeline-chip')!.getBoundingClientRect();
+    return { x: chip.right - base.left, y: chip.top + chip.height / 2 - base.top };
   }
 
   private lineElement(id: string): HTMLElement | undefined {
@@ -366,10 +379,11 @@ export class TimelineView {
     else if (row.offsetTop + row.offsetHeight > top + this.scroller.clientHeight) this.scroller.scrollTop = row.offsetTop + row.offsetHeight - this.scroller.clientHeight;
   }
 
-  render(model: TimelineModel, labels: TimelineLabels, selectedId: string | null, events: ScheduleEvent[] = []): void {
+  render(model: TimelineModel, labels: TimelineLabels, selectedId: string | null, events: ScheduleEvent[] = [], today: number | null = null): void {
     this.model = model;
     this.labels = labels;
     this.events = events;
+    this.today = today;
     this.fitted = fitWindow(model.extent);
     if (!this.chosen) this.current = { ...this.fitted };
     else this.current = clampWindow(this.current, this.fitted);
@@ -399,14 +413,16 @@ export class TimelineView {
     const li = el('li', 'timeline-line');
     li.dataset.rowId = line.item.id;
     li.dataset.lanes = String(line.lanes);
-    // Collapsed, the line keeps its single row (the packed sub-lanes live
-    // inside it); expanded, every lane is a full row (FR-78).
-    li.style.setProperty('--timeline-lanes', String(this.expanded.has(line.item.id) ? line.lanes : 1));
+    li.dataset.expanded = this.expanded.has(line.item.id) ? 'true' : 'false';
     if (selectedId === line.item.id) li.dataset.selected = 'true';
-    const entry = el('button', 'timeline-entry');
-    entry.type = 'button';
+    // Two real controls (FR-78 as amended): the number-and-name
+    // chip opens the card; the plot expands and collapses the line. The
+    // entry holding them is not itself a control.
+    const entry = el('div', 'timeline-entry');
     entry.dataset.rowId = line.item.id;
-    const name = el('span', 'timeline-name');
+    const name = el('button', 'timeline-name timeline-chip');
+    name.type = 'button';
+    name.dataset.rowId = line.item.id;
     name.appendChild(this.callbacks.badge(line));
     name.appendChild(el('span', 'timeline-title', line.item.name));
     // A value that cannot be read is shown as typed (FR-67, FR-68).
@@ -425,6 +441,21 @@ export class TimelineView {
       band.title = `${labels.workPhase}: ${line.phase.activity.label}`;
       plot.appendChild(band);
     }
+    // The quiet tick (FR-79 as amended): a year that carries
+    // forecast or outcome but no budget, so that it is not invisible while
+    // the line shows its budget spine alone.
+    if (labels.costs) {
+      const years = new Map<number, TimelineSpan[]>();
+      for (const sp of line.spans) if (sp.kind === 'amount') years.set(sp.amount!.year, [...(years.get(sp.amount!.year) ?? []), sp]);
+      for (const [year, spans] of [...years].sort(([a], [b]) => a - b)) {
+        if (spans.some((sp) => sp.amount!.series === 'budget')) continue;
+        const tick = el('span', 'timeline-year-tick');
+        tick.dataset.from = String(spans[0].from);
+        tick.dataset.to = String(spans[0].to + 1);
+        tick.title = `${year}: ${spans.map((sp) => labels.costs!.series[sp.amount!.series]).join(', ')}, ${labels.costs.noBudget}`;
+        plot.appendChild(tick);
+      }
+    }
     for (const span of line.spans) {
       if (span.kind === 'amount') {
         plot.appendChild(this.amountSeg(span, this.model.scale?.line ?? 0, labels, `marker-${line.item.colour}`));
@@ -442,8 +473,14 @@ export class TimelineView {
         const a = span.activity!;
         const fill = el('span', 'timeline-seg-fill');
         fill.style.width = `${a.progress ?? 0}%`;
-        const label = el('span', 'timeline-seg-label', a.label);
-        seg.append(fill, label);
+        seg.append(fill);
+        // Its name, written beside the bar in its lane when the line is open
+        // (placed at positioning; the title is the fallback).
+        const name = el('span', 'timeline-lane-label', a.label);
+        name.setAttribute('aria-hidden', 'true');
+        name.dataset.from = seg.dataset.from;
+        name.dataset.to = seg.dataset.to;
+        name.dataset.lane = seg.dataset.lane;
         const s = readDate(a.start);
         const e = readDate(a.end);
         const when = s.kind === 'date' && e.kind === 'date' ? `${formatDate(s, 'start')} \u2013 ${formatDate(e, 'end')}` : `${a.start} \u2013 ${a.end}`;
@@ -452,7 +489,7 @@ export class TimelineView {
         if (isPhase) seg.dataset.phase = 'true';
         if (a.edited) seg.dataset.edited = 'true';
         seg.title = `${a.label}: ${when}${a.progress === null ? '' : `, ${a.progress}%`}${a.edited ? `, ${labels.edited}` : ''}${isPhase ? `, ${labels.workPhase}` : ''}`;
-        plot.appendChild(seg);
+        plot.append(seg, name);
         continue;
       }
       const mark = el('span', span.kind === 'span' ? 'timeline-bar' : 'timeline-point');
@@ -467,29 +504,44 @@ export class TimelineView {
     // packed sub-lanes. It counts spans, not activities, so a later view can
     // reuse it. Activating expands the line to full-height lanes; activating
     // again collapses it.
-    const hidden = line.spans.filter((sp) => sp.lane >= PACKED_SUBLANES).length;
-    if (hidden > 0) {
-      const badge = el('button', 'timeline-badge-more', fill(labels.moreSpans, { count: hidden }));
-      badge.type = 'button';
-      badge.setAttribute('aria-label', fill(labels.moreSpans, { count: hidden }));
-      badge.setAttribute('aria-expanded', this.expanded.has(line.item.id) ? 'true' : 'false');
-      badge.addEventListener('click', (e) => {
-        e.stopPropagation();
+    // What a press on the plot reveals: in the timeline the activities
+    // drawn, counted by the indicator; in the costs view the forecast and
+    // outcome, marked without a count.
+    const costs = !!labels.costs;
+    const count = costs ? line.spans.filter((sp) => sp.kind === 'amount' && sp.amount!.series !== 'budget').length : line.activitySpans.length;
+    let control: HTMLElement;
+    if (count > 0) {
+      control = el('button', 'timeline-plot-control');
+      (control as HTMLButtonElement).type = 'button';
+      control.dataset.rowId = line.item.id;
+      control.setAttribute('aria-expanded', this.expanded.has(line.item.id) ? 'true' : 'false');
+      control.setAttribute('aria-label', fill(labels.expand, { name: `${line.item.label}: ${line.item.name}`, count }));
+      // The quiet indicator, in place of v1.10.0's badge: part of the
+      // control, inviting the press.
+      const indicator = el('span', 'timeline-indicator', costs ? '\u2261' : String(count));
+      indicator.setAttribute('aria-hidden', 'true');
+      control.append(indicator, plot);
+      control.addEventListener('click', () => {
         if (this.expanded.has(line.item.id)) this.expanded.delete(line.item.id);
         else this.expanded.add(line.item.id);
-        badge.setAttribute('aria-expanded', this.expanded.has(line.item.id) ? 'true' : 'false');
+        control.setAttribute('aria-expanded', this.expanded.has(line.item.id) ? 'true' : 'false');
         this.position();
         this.callbacks.onViewChanged();
       });
-      name.appendChild(badge);
+      entry.dataset.expandable = 'true';
+    } else {
+      control = el('span', 'timeline-plot-control');
+      control.appendChild(plot);
     }
-    entry.append(name, plot);
-    entry.setAttribute('aria-label', this.describe(line, labels));
-    entry.addEventListener('click', () => this.callbacks.onSelect(line.item.id));
+    entry.append(name, control);
+    name.setAttribute('aria-label', this.describe(line, labels));
+    name.addEventListener('click', () => this.callbacks.onSelect(line.item.id));
     entry.addEventListener('pointerenter', () => this.callbacks.onHover(line.item.id));
     entry.addEventListener('pointerleave', () => this.callbacks.onHover(null));
-    entry.addEventListener('focus', () => this.callbacks.onHover(line.item.id));
-    entry.addEventListener('blur', () => this.callbacks.onHover(null));
+    for (const target of [name, control]) {
+      target.addEventListener('focus', () => this.callbacks.onHover(line.item.id));
+      target.addEventListener('blur', () => this.callbacks.onHover(null));
+    }
     li.appendChild(entry);
     return li;
   }
@@ -587,11 +639,26 @@ export class TimelineView {
     const length = to - from;
     const pct = (day: number) => ((day - from) / length) * 100;
     const cs = getComputedStyle(this.root);
-    const lineH = parseFloat(cs.getPropertyValue('--timeline-line')) || 28;
-    const segH = parseFloat(cs.getPropertyValue('--timeline-seg-h')) || 7;
-    const segGap = parseFloat(cs.getPropertyValue('--timeline-seg-gap')) || 2;
-    const segPad = parseFloat(cs.getPropertyValue('--timeline-seg-pad')) || 2;
-    const laneBarH = parseFloat(cs.getPropertyValue('--timeline-lane-bar-h')) || 14;
+    // A length from the stylesheet, a stated zero included.
+    const css = (name: string, fallback: number) => {
+      const v = parseFloat(cs.getPropertyValue(name));
+      return Number.isFinite(v) ? v : fallback;
+    };
+    // A lane: 28 pixels on a wide viewport, 24 in the narrow plot (FR-78 as
+    // amended); an expanded line's plot holds its lanes whole.
+    const laneH = css('--timeline-lane', 28);
+    const segH = css('--timeline-seg-h', 7);
+    const segGap = css('--timeline-seg-gap', 2);
+    const segPad = css('--timeline-seg-pad', 2);
+    // The costs lines' sub-lanes, and the costs line's open plot (FR-79).
+    const lineSegH = css('--timeline-line-seg-h', segH);
+    const lineSegGap = css('--timeline-line-seg-gap', segGap);
+    const lineSegPad = css('--timeline-line-seg-pad', segPad);
+    const costsOpen = css('--timeline-costs-open', 46);
+    const laneBarH = css('--timeline-lane-bar-h', 14);
+    // The costs line's budget spine, collapsed (FR-79 as amended).
+    const spineH = css('--timeline-spine-h', 12);
+    const isCostsView = this.root.dataset.kind === 'costs';
     const plotW = this.plotWidth();
     const linesById = new Map(this.model.lines.map((l) => [l.item.id, l]));
     for (const row of this.list.querySelectorAll<HTMLElement>('.timeline-line, .timeline-totals')) {
@@ -600,11 +667,14 @@ export class TimelineView {
       // spans into sub-lanes (FR-78, FR-79).
       const hasActivities = row.classList.contains('timeline-totals') || (!!line && line.spans.some((sp) => sp.kind === 'activity' || sp.kind === 'amount'));
       const expanded = !!line && this.expanded.has(line.item.id);
-      row.style.setProperty('--timeline-lanes', String(expanded ? line!.lanes : 1));
-      row.dataset.expanded = expanded ? 'true' : 'false';
+      const isTotals = row.classList.contains('timeline-totals');
+      if (!isTotals) {
+        row.style.setProperty('--timeline-plot-h', `${expanded ? (isCostsView ? costsOpen : line!.lanes * laneH) : laneH}px`);
+        row.dataset.expanded = expanded ? 'true' : 'false';
+      }
       // The work-phase band: placed in time only; the stylesheet gives it
       // the plot's full height, collapsed or expanded.
-      for (const band of row.querySelectorAll<HTMLElement>('.timeline-phase')) {
+      for (const band of row.querySelectorAll<HTMLElement>('.timeline-phase, .timeline-year-tick')) {
         const a = Number(band.dataset.from);
         const b = Number(band.dataset.to);
         band.style.left = `${pct(a).toFixed(3)}%`;
@@ -625,30 +695,49 @@ export class TimelineView {
           mark.style.removeProperty('height');
           continue;
         }
-        // A line with activities: packed sub-lanes inside the unchanged row
-        // when collapsed (spans past the packed rows are hidden behind the
-        // badge), one full-height row per lane when expanded (FR-78).
+        // A line with activities (FR-78 as amended): collapsed,
+        // its own bar alone, as a plain line; expanded, one whole row per
+        // lane.
         const lane = Number(mark.dataset.lane ?? 0);
-        if (!expanded && lane >= PACKED_SUBLANES) {
+        if (!expanded && !isTotals && mark.dataset.kind === 'amount') {
+          // Collapsed, a costs line shows its budget alone, as its spine,
+          // centred at the line's rhythm (FR-79 as amended).
+          if (mark.dataset.series !== 'budget') {
+            mark.style.display = 'none';
+            continue;
+          }
+          mark.style.display = '';
+          mark.style.height = `${spineH}px`;
+          mark.style.top = `${(laneH - spineH) / 2}px`;
+          mark.dataset.label = amountLabelPlace(((b - a) / length) * plotW, Number(mark.dataset.share), mark.textContent?.length ?? 0);
+          continue;
+        }
+        if (!expanded && mark.dataset.kind === 'activity') {
           mark.style.display = 'none';
           continue;
         }
         mark.style.display = '';
-        if (expanded) {
-          const h = mark.classList.contains('timeline-point') ? 12 : laneBarH;
-          mark.style.height = `${h}px`;
-          mark.style.top = `${lane * lineH + (lineH - h) / 2}px`;
-        } else {
-          const h = mark.classList.contains('timeline-point') ? Math.max(6, segH - 1) : segH;
-          mark.style.height = `${h}px`;
-          mark.style.top = `${segPad + lane * (segH + segGap)}px`;
+        if (!expanded && mark.dataset.kind !== 'amount') {
+          mark.style.removeProperty('top');
+          mark.style.removeProperty('height');
+          continue;
         }
-        if (mark.classList.contains('timeline-seg')) {
+        if (mark.dataset.kind === 'amount') {
+          // An amount's sub-lane: the totals' geometry, or the lines'.
+          const [h, gap, pad] = isTotals ? [segH, segGap, segPad] : [lineSegH, lineSegGap, lineSegPad];
+          mark.style.height = `${h}px`;
+          mark.style.top = `${pad + lane * (h + gap)}px`;
+        } else {
+          const h = mark.classList.contains('timeline-point') ? Math.min(12, laneBarH) : laneBarH;
+          mark.style.height = `${h}px`;
+          mark.style.top = `${lane * laneH + (laneH - h) / 2}px`;
+        }
+        if (mark.dataset.kind === 'amount') {
           const px = ((b - a) / length) * plotW;
-          if (mark.dataset.kind === 'amount') mark.dataset.label = amountLabelPlace(px, Number(mark.dataset.share), mark.textContent?.length ?? 0);
-          else mark.dataset.wide = px >= LABEL_MIN_PX ? 'true' : 'false';
+          mark.dataset.label = amountLabelPlace(px, Number(mark.dataset.share), mark.textContent?.length ?? 0);
         }
       }
+      this.placeLaneLabels(row, expanded, from, length, plotW, laneH);
     }
     // The axis and the grid leave room for the list's scroll bar.
     const gutter = this.scroller.offsetWidth - this.scroller.clientWidth;
@@ -684,10 +773,24 @@ export class TimelineView {
   // nearest of those events, so that it is drawn.)
   private positionEvents(pct: (day: number) => number, plotW: number): void {
     const labels = this.labels;
-    this.eventStrip.classList.toggle('hidden', this.events.length === 0);
-    if (this.events.length === 0 || !labels) {
+    // The today mark (FR-78, FR-79 as amended): not an event --
+    // a dashed line across the body at today's date, placed in time like a
+    // gridline, with no chip; beyond the window, an edge indicator of its own.
+    const today = this.today;
+    const todayBeyond = today === null ? null : today < this.current.from ? 'before' : today > this.current.to + 1 ? 'after' : null;
+    const todayMarks: HTMLElement[] = [];
+    if (today !== null && labels && todayBeyond === null) {
+      const mark = el('span', 'timeline-today');
+      mark.style.left = `${pct(today + 0.5).toFixed(3)}%`;
+      mark.dataset.day = String(today);
+      mark.title = fill(labels.today, { date: formatDate({ kind: 'date', start: today, end: today, precision: 'day' }) });
+      todayMarks.push(mark);
+    }
+    const stripShown = this.events.length > 0 || todayBeyond !== null;
+    this.eventStrip.classList.toggle('hidden', !stripShown);
+    if (!stripShown || !labels) {
       this.eventPlot.replaceChildren();
-      this.eventLines.replaceChildren();
+      this.eventLines.replaceChildren(...todayMarks);
       return;
     }
     this.eventStrip.setAttribute('aria-label', labels.events);
@@ -697,13 +800,14 @@ export class TimelineView {
     // counted.
     const before = this.events.filter((e) => e.day < this.current.from);
     const after = this.events.filter((e) => e.day > this.current.to);
+    const reserve = (events: number, side: 'before' | 'after') => (events > 0 ? EVENT_EDGE_RESERVE_PX : 0) + (todayBeyond === side ? EVENT_EDGE_RESERVE_PX : 0);
     const chips = layoutEvents(
       this.events.map((event) => ({ event, x: (pct(event.day) / 100) * plotW, width: eventChipWidth(event.label) })),
       plotW,
       EVENT_MORE_PX,
       EVENT_ROWS,
-      before.length > 0 ? EVENT_EDGE_RESERVE_PX : 0,
-      after.length > 0 ? EVENT_EDGE_RESERVE_PX : 0,
+      reserve(before.length, 'before'),
+      reserve(after.length, 'after'),
     );
     const said = (e: ScheduleEvent) => `${e.date}: ${e.label}`;
     const strip: HTMLElement[] = [];
@@ -726,6 +830,25 @@ export class TimelineView {
         ev.stopPropagation();
         const nearest = beyond.reduce((a, b) => (side === 'before' ? (b.day > a.day ? b : a) : b.day < a.day ? b : a));
         this.panToEvent(nearest.day);
+      });
+      strip.push(edge);
+    }
+    if (today !== null && todayBeyond !== null) {
+      // Today beyond the window: its own edge indicator, dashed like the
+      // mark, inward of the events' one; a tap pans to today.
+      const date = formatDate({ kind: 'date', start: today, end: today, precision: 'day' });
+      const name = fill(todayBeyond === 'before' ? labels.todayBefore : labels.todayAfter, { date });
+      const offset = (todayBeyond === 'before' ? before.length : after.length) > 0 ? EVENT_EDGE_RESERVE_PX : 0;
+      const edge = el('button', 'timeline-event-chip timeline-today-edge', todayBeyond === 'before' ? '\u2039' : '\u203a');
+      edge.type = 'button';
+      edge.dataset.side = todayBeyond;
+      edge.style.width = `${EVENT_EDGE_PX}px`;
+      edge.style.left = todayBeyond === 'before' ? `${offset}px` : `${plotW - EVENT_EDGE_PX - offset}px`;
+      edge.title = name;
+      edge.setAttribute('aria-label', name);
+      edge.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        this.panToEvent(today);
       });
       strip.push(edge);
     }
@@ -766,7 +889,59 @@ export class TimelineView {
     }
     this.eventStrip.style.setProperty('--timeline-event-rows', String(Math.max(1, ...chips.map((c) => c.row + 1))));
     this.eventPlot.replaceChildren(...strip);
-    this.eventLines.replaceChildren(...hairlines);
+    this.eventLines.replaceChildren(...hairlines, ...todayMarks);
+  }
+
+  // The activities' names beside their bars in an open line (FR-78 as
+  // amended): after the bar where its lane has room up to the
+  // next mark, before it otherwise, and nowhere where neither side has room
+  // -- the segment's title then carries the name. Names already placed are
+  // obstacles too, so two never overlap.
+  private placeLaneLabels(row: HTMLElement, expanded: boolean, from: number, length: number, plotW: number, laneH: number): void {
+    const labels = [...row.querySelectorAll<HTMLElement>('.timeline-lane-label')];
+    if (labels.length === 0) return;
+    if (!expanded) {
+      for (const label of labels) label.dataset.place = 'none';
+      return;
+    }
+    const px = (day: number) => ((day - from) / length) * plotW;
+    const obstacles = new Map<string, Array<[number, number]>>();
+    const lane = (key: string) => obstacles.get(key) ?? obstacles.set(key, []).get(key)!;
+    for (const mark of row.querySelectorAll<HTMLElement>('.timeline-bar, .timeline-point, .timeline-seg')) {
+      if (mark.style.display === 'none') continue;
+      const a = px(Number(mark.dataset.from));
+      const b = mark.classList.contains('timeline-point') ? a : px(Number(mark.dataset.to));
+      lane(mark.dataset.lane ?? '0').push([a, b]);
+    }
+    const ordered = labels.sort((p, q) => Number(p.dataset.from) - Number(q.dataset.from));
+    for (const label of ordered) {
+      const a = px(Number(label.dataset.from));
+      const b = px(Number(label.dataset.to));
+      const marks = lane(label.dataset.lane ?? '0');
+      // Measured where there is layout (shown unseen for the reading), else
+      // estimated from the characters.
+      label.style.display = 'block';
+      label.style.visibility = 'hidden';
+      const measured = label.offsetWidth;
+      label.style.removeProperty('display');
+      label.style.removeProperty('visibility');
+      const w = measured || Math.ceil((label.textContent ?? '').length * LANE_LABEL_CHAR_PX);
+      const need = w + 2 * LANE_LABEL_GAP;
+      const next = Math.min(plotW, ...marks.filter(([x0]) => x0 >= b - 0.5).map(([x0]) => x0));
+      const prev = Math.max(0, ...marks.filter(([, x1]) => x1 <= a + 0.5).map(([, x1]) => x1));
+      let x: number | null = null;
+      if (b >= 0 && b < plotW && next - b >= need) x = b + LANE_LABEL_GAP;
+      else if (a > 0 && a <= plotW && a - prev >= need) x = a - LANE_LABEL_GAP - w;
+      label.style.top = `${Number(label.dataset.lane ?? 0) * laneH}px`;
+      label.style.height = `${laneH}px`;
+      if (x === null) {
+        label.dataset.place = 'none';
+        continue;
+      }
+      label.dataset.place = x > a ? 'after' : 'before';
+      label.style.left = `${x.toFixed(1)}px`;
+      marks.push([x, x + w]);
+    }
   }
 
   // A day at a client x coordinate, within the plot.

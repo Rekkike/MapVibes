@@ -55,7 +55,7 @@ function item(partial: Partial<FigureItem> & { id: string }): FigureItem {
 
 // A small fictional schedule: one item with activities and a work phase, one
 // plain dated item, one item with an unreadable start, one without dates.
-function figure(events: ScheduleEvent[] = []): TimelineFigure {
+function figure(events: ScheduleEvent[] = [], today: number | null = null): TimelineFigure {
   const items: FigureItem[] = [
     item({
       id: 'r1',
@@ -78,6 +78,7 @@ function figure(events: ScheduleEvent[] = []): TimelineFigure {
   return {
     model: buildTimeline(items, 'number', [], 'en'),
     events,
+    today,
     labels: {
       title: 'Timeline',
       noDates: 'No dates',
@@ -96,6 +97,7 @@ function figure(events: ScheduleEvent[] = []): TimelineFigure {
       moreEvents: '+{count}',
       eventsBefore: 'Events before the shown window: {events}',
       eventsAfter: 'Events after the shown window: {events}',
+      today: 'Today, {date}',
     },
     legendTitle: en.legend,
     legend: legendModel(en),
@@ -236,5 +238,68 @@ describe('the timeline page drawn through the Painter', () => {
     doc.toBytes();
     // ₹ and Ω are each one character outside WinAnsi, in the event label and the item name.
     expect(doc.replacedCharacters).toBe(3);
+  });
+});
+
+// The today line (FR-12 as noted in v1.14.0): a dashed line at the export
+// date across the body, labelled with that date, and its legend entry.
+describe("the timeline page's today line (FR-12 as noted in v1.14.0)", () => {
+  const draw = (fig: TimelineFigure) => {
+    const p = new RecordingPainter();
+    const layout = layoutTimeline(fig, frame());
+    drawTimelinePage(p, fig, layout, layout.pages[0], frame());
+    return { p, layout };
+  };
+  // The dashed strokes: a dash pattern set, a path, a stroke.
+  const dashedLines = (p: RecordingPainter) => {
+    const out: Array<{ pattern: unknown; x: number; y0: number; y1: number; width: unknown }> = [];
+    p.ops.forEach((o, i) => {
+      if (o.op !== 'dash' || (o.args[0] as number[]).length === 0) return;
+      const move = p.ops.slice(i).find((x) => x.op === 'moveTo')!;
+      const line = p.ops.slice(i).find((x) => x.op === 'lineTo')!;
+      const width = [...p.ops.slice(0, i)].reverse().find((x) => x.op === 'lineWidth')!.args[0];
+      out.push({ pattern: o.args[0], x: move.args[0] as number, y0: move.args[1] as number, y1: line.args[1] as number, width });
+    });
+    return out;
+  };
+
+  test('at the export date within the window: a dashed 1.2-point line across the body, labelled with the date', () => {
+    const { p, layout } = draw(figure([], day('2021-03-15')));
+    const lines = dashedLines(p);
+    expect(lines).toHaveLength(1);
+    expect(lines[0].pattern).toEqual([3, 2]);
+    expect(lines[0].width).toBe(1.2);
+    const x = layout.plotX + ((day('2021-03-15') + 0.5 - layout.window.from) / (layout.window.to - layout.window.from)) * layout.plotWidth;
+    expect(lines[0].x).toBeCloseTo(x, 3);
+    expect(lines[0].y1).toBeGreaterThan(lines[0].y0 + 50);
+    expect(p.texts()).toContain('Today, 2021-03-15');
+    // The dash is reset after it, so nothing else is drawn dashed.
+    const resets = p.ops.filter((o) => o.op === 'dash' && (o.args[0] as number[]).length === 0);
+    expect(resets.length).toBeGreaterThanOrEqual(1);
+  });
+
+  test('outside the window, or with no date, nothing is drawn', () => {
+    for (const today of [day('2040-01-01'), day('2001-01-01'), null]) {
+      const { p } = draw(figure([], today));
+      expect(dashedLines(p)).toHaveLength(0);
+      expect(p.texts().some((t) => t.startsWith('Today'))).toBe(false);
+    }
+  });
+
+  test('it is not an event: the events keep their solid hairlines and chips', () => {
+    const { p } = draw(figure([{ id: 'e1', label: 'Review', day: day('2021-03-15'), date: '2021-03-15' }], day('2021-03-15')));
+    expect(dashedLines(p)).toHaveLength(1);
+    expect(p.texts()).toContain('Review');
+    expect(p.texts()).toContain('Today, 2021-03-15');
+  });
+
+  test('the legend carries its entry with the date, drawn as a dashed swatch', () => {
+    const fig = { ...figure([], day('2021-03-15')), legend: legendModel(en, [], [], undefined, undefined, undefined, undefined, false, '2021-03-15') };
+    expect(fig.legend.map((s) => s.kind)).toContain('today');
+    const { p } = draw(fig);
+    expect(p.texts()).toContain('Today');
+    expect(p.texts()).toContain('2021-03-15');
+    // The page's line and the legend's swatch: two dashed strokes.
+    expect(dashedLines(p)).toHaveLength(2);
   });
 });

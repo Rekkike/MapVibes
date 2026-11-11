@@ -140,13 +140,13 @@ describe('the work phase in the timeline (FR-78, FR-75)', () => {
     // The band stands where the segment stands.
     expect([bands[0].style.left, bands[0].style.width]).toEqual([seg.style.left, seg.style.width]);
     expect(seg.title).toBe('Survey: 2024-02-02 – 2024-02-10, 100%, Work phase');
-    expect(line.querySelector('.timeline-entry')!.getAttribute('aria-label')).toContain('Survey: 2024-02-02 – 2024-02-10, 100%, Work phase');
+    expect(line.querySelector('.timeline-chip')!.getAttribute('aria-label')).toContain('Survey: 2024-02-02 – 2024-02-10, 100%, Work phase');
     // No other line has a band.
     expect(timeline().querySelectorAll('.timeline-phase')).toHaveLength(1);
     expect(timeline().querySelectorAll('.timeline-seg[data-phase="true"]')).toHaveLength(1);
   });
 
-  test('lane packing does not hide the band: behind the "+n" badge the segment is hidden and the band still shows; expanded, the segment shows hatched', async () => {
+  test('the collapsed line does not hide the band: its segment is not drawn and the band still shows; expanded, the segment shows hatched', async () => {
     await setUp((ws) => (ws.rows[0].workPhase = 'a4'));
     await showTimeline();
     const line = lineOf('A-01');
@@ -156,7 +156,7 @@ describe('the work phase in the timeline (FR-78, FR-75)', () => {
     const band = line.querySelector<HTMLElement>('.timeline-phase')!;
     expect(band.style.display).toBe('');
     expect([Number(band.dataset.from), Number(band.dataset.to)]).toEqual([dayNumber(2024, 1, 20), dayNumber(2024, 2, 2)]);
-    line.querySelector<HTMLButtonElement>('.timeline-badge-more')!.click();
+    line.querySelector<HTMLButtonElement>('.timeline-plot-control')!.click();
     expect(line.dataset.expanded).toBe('true');
     expect(seg.style.display).toBe('');
     expect(seg.dataset.phase).toBe('true');
@@ -221,7 +221,7 @@ describe('the work phase in the timeline (FR-78, FR-75)', () => {
       ws.rows[1].activities![0].edited = true;
     });
     await showTimeline();
-    lineOf('A-02').querySelector<HTMLButtonElement>('.timeline-entry')!.click();
+    lineOf('A-02').querySelector<HTMLButtonElement>('.timeline-chip')!.click();
     const card = byId('presentation-card');
     expect(card.dataset.state).toBe('open');
     expect(card.textContent).not.toMatch(/Work phase|edited by hand|Survey/);

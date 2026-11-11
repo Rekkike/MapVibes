@@ -110,8 +110,8 @@ describe('the timeline in the application (FR-66, FR-67, FR-70)', () => {
     expect(await page.textContent('#pres-zoom-level')).toBe('100%');
     // The map underneath did not move.
     expect(await page.evaluate(() => getComputedStyle(document.getElementById('presentation-marker-layer')!).visibility)).toBe('hidden');
-    // A line opens the card beside it, within the stage; Escape closes it.
-    await page.click('#presentation-timeline .timeline-entry >> text=Timed item');
+    // A line's chip opens the card beside it, within the stage; Escape closes it.
+    await page.click('#presentation-timeline .timeline-chip >> text=Timed item');
     await page.waitForFunction(() => document.getElementById('presentation-card')!.dataset.state === 'open');
     await page.waitForTimeout(250);
     const card = (await page.locator('#presentation-card').boundingBox())!;
@@ -121,7 +121,7 @@ describe('the timeline in the application (FR-66, FR-67, FR-70)', () => {
     expect(card.y + card.height).toBeLessThanOrEqual(stage.y + stage.height + 0.5);
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => document.getElementById('presentation-card')!.dataset.state === 'closed');
-    expect(await page.evaluate(() => document.activeElement?.closest('.timeline-entry')?.textContent)).toContain('Timed item');
+    expect(await page.evaluate(() => document.activeElement?.closest('.timeline-chip')?.textContent)).toContain('Timed item');
     // The order: by area under the areas' names, by start date.
     await page.selectOption('#pres-order', 'area');
     l = await lines(page);
@@ -165,7 +165,7 @@ describe('the timeline in the application (FR-66, FR-67, FR-70)', () => {
     ['phone landscape', devices['iPhone 13 landscape'], true],
     ['tablet portrait', devices['iPad (gen 7)'], true],
   ] as const) {
-    test(`the exported viewer on a ${name}: the timeline it was exported in, ${narrow ? '40-pixel lines with the name above the bar, the switch on the toggles row' : 'the switch at the head of the toolbar'}; both views`, async () => {
+    test(`the exported viewer on a ${name}: the timeline it was exported in, ${narrow ? '48-pixel lines with the chip row above the plot, the switch on the toggles row' : 'the switch at the head of the toolbar'}; both views`, async () => {
       const context = await browser.newContext({ ...profile });
       await context.setOffline(true);
       const page = await context.newPage();
@@ -178,7 +178,8 @@ describe('the timeline in the application (FR-66, FR-67, FR-70)', () => {
       const l = (await lines(page)).filter((x) => !x.heading);
       const vw = await page.evaluate(() => innerWidth);
       if (narrow) {
-        for (const x of l) expect(x.height).toBe(40);
+        // The 48-pixel line (FR-58 as noted in v1.14.0): the chip row over the plot.
+        for (const x of l) expect(x.height).toBe(48);
         // The name above the bar.
         for (const x of l.filter((x) => x.bar && x.top >= 0)) expect(x.name!.bottom).toBeLessThanOrEqual(x.bar!.top + 0.5);
         // The switch on the row of the two toggles.
@@ -193,12 +194,13 @@ describe('the timeline in the application (FR-66, FR-67, FR-70)', () => {
         const overflows = await scroller.evaluate((x) => x.scrollHeight > x.clientHeight);
         // Measured on the built v1.9.0 viewer (iPhone 13, 390 x 664): the
         // stage grew to 517 pixels (header 71, toolbar 54), so the twelve
-        // 40-pixel lines (scroller 487 x 487) no longer overflow in portrait;
+        // lines (scroller 487 x 487) no longer overflow in portrait;
         // in landscape (844 x 390, stage 314) they still do.
         // Measured on the built v1.11.0 viewer (iPhone 13, 390 x 664): the
         // demo's two events stagger into two rows, so the events strip
         // (FR-80) takes 42 pixels above the lines; the scroller is 440
         // pixels and the twelve lines (480 pixels) scroll in portrait too.
+        // Since v1.14.0 the lines are 48 pixels (576 in all) and scroll.
         if (name === 'phone portrait') expect(overflows).toBe(true);
         if (name === 'phone landscape') expect(overflows).toBe(true);
         if (overflows) {

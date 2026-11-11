@@ -99,8 +99,8 @@ describe('the activities import (FR-76, FR-77, FR-78)', () => {
     // Two segments render (the unreadable date has none); all three are in the description.
     expect(document.querySelectorAll('#presentation-timeline .timeline-seg').length).toBe(2);
     const line = document.querySelector('#presentation-timeline .timeline-line')!;
-    expect(line.querySelector('.timeline-entry')!.getAttribute('aria-label')).toContain('Activities');
-    expect(line.querySelector('.timeline-entry')!.getAttribute('aria-label')).toContain('15/03/2024');
+    expect(line.querySelector('.timeline-chip')!.getAttribute('aria-label')).toContain('Activities');
+    expect(line.querySelector('.timeline-chip')!.getAttribute('aria-label')).toContain('15/03/2024');
   });
 
   test('a PDF without a table is honest: a clear message, nothing attached', async () => {

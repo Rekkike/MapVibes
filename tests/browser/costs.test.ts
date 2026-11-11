@@ -79,13 +79,58 @@ test('the exported file carries the events and the costs view in its island', ()
 });
 
 describe.each([
-  ['desktop 1500x950', { viewport: { width: 1500, height: 950 } }, 46, 46, [3, 17, 31]],
-  ['phone 390x844', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, 64, 44, [2, 16, 30]],
-] as const)('the costs view and the events in the viewer on %s', (name, options, lineH, plotH, tops) => {
-  test('the viewer opens in the costs view; the line, its three sub-lanes, and the fills on the scale of the largest year amount', async () => {
+  ['desktop 1500x950', { viewport: { width: 1500, height: 950 } }, 28, 28, 46, 46, [3, 17, 31]],
+  ['phone 390x844', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, 48, 24, 64, 40, [0, 14, 28]],
+] as const)('the costs view and the events in the viewer on %s', (name, options, lineH, laneH, openH, openPlotH, tops) => {
+  test('the viewer opens in the costs view; collapsed, the budget spine at the line\'s rhythm in the budget\'s one style; pressed, the three sub-lanes and the fills on the scale of the largest year amount', async () => {
     const { page, errors } = await openViewer(options);
     expect(await page.getAttribute('#presentation-stage', 'data-view')).toBe('costs');
     expect(await page.getAttribute('#pres-mode-costs', 'aria-pressed')).toBe('true');
+    // Collapsed (FR-79 as amended in v1.14.0): the budget alone, its spine
+    // centred in the one-lane plot, a faint fill with a solid edge.
+    const quiet = await page.evaluate(() => {
+      const root = document.querySelector<HTMLElement>('#presentation-costs')!;
+      const lines = [...root.querySelectorAll<HTMLElement>('.timeline-line')];
+      const shown = lines.flatMap((l) => {
+        const plot = l.querySelector('.timeline-plot')!.getBoundingClientRect();
+        return [...l.querySelectorAll<HTMLElement>('.timeline-seg')].filter((s) => s.getClientRects().length > 0).map((s) => {
+          const r = s.getBoundingClientRect();
+          const f = getComputedStyle(s.querySelector('.timeline-seg-fill')!);
+          const before = getComputedStyle(s.querySelector('.timeline-seg-fill')!, '::before');
+          return { series: s.dataset.series, top: r.top - plot.top, h: r.height, border: `${f.borderTopStyle} ${f.borderTopColor}`, fillColour: f.backgroundColor, faint: before.opacity, faintColour: before.backgroundColor, item: getComputedStyle(s).getPropertyValue('--marker-fill') };
+        });
+      });
+      return {
+        heights: [...new Set(lines.map((l) => Math.round(l.getBoundingClientRect().height)))],
+        plots: [...new Set(lines.map((l) => Math.round(l.querySelector('.timeline-plot')!.getBoundingClientRect().height)))],
+        shown,
+        ticks: root.querySelectorAll('.timeline-year-tick').length,
+        marks: lines.map((l) => l.querySelector('.timeline-indicator')?.textContent ?? '').join(''),
+      };
+    });
+    expect(quiet.heights).toEqual([lineH]);
+    expect(quiet.plots).toEqual([laneH]);
+    expect([...new Set(quiet.shown.map((s) => s.series))]).toEqual(['budget']);
+    expect(quiet.shown).toHaveLength(42);
+    for (const s of quiet.shown) {
+      expect(s.h).toBe(12);
+      expect(s.top).toBeCloseTo((laneH - 12) / 2, 0);
+      expect(s.border.startsWith('solid')).toBe(true);
+      expect(s.fillColour).toBe('rgba(0, 0, 0, 0)');
+      expect(s.faint).toBe('0.4');
+      expect(s.faintColour).not.toBe('rgba(0, 0, 0, 0)');
+    }
+    // The demo has no year without a budget, so no tick.
+    expect(quiet.ticks).toBe(0);
+    // The countless mark on every line with forecast or outcome to reveal.
+    expect(quiet.marks).toBe('\u2261'.repeat(10));
+    // Pressed, every line with something to reveal opens to its sub-lanes.
+    for (const id of await page.$$eval('#presentation-costs button.timeline-plot-control', (b) => b.map((x) => (x as HTMLElement).dataset.rowId!))) {
+      const loc = page.locator(`#presentation-costs .timeline-plot-control[data-row-id="${id}"]`);
+      await loc.scrollIntoViewIfNeeded();
+      await loc.click({ position: { x: 4, y: 4 } });
+    }
+    await page.waitForTimeout(300);
     const m = await page.evaluate(() => {
       const root = document.querySelector<HTMLElement>('#presentation-costs')!;
       const lines = [...root.querySelectorAll<HTMLElement>('.timeline-line')];
@@ -98,20 +143,23 @@ describe.each([
         });
       };
       return {
-        heights: [...new Set(lines.map((l) => Math.round(l.getBoundingClientRect().height)))],
-        plots: [...new Set(lines.map((l) => Math.round(l.querySelector('.timeline-plot')!.getBoundingClientRect().height)))],
-        segs: lines.map(of),
+        heights: [...new Set(lines.filter((l) => l.dataset.expanded === 'true').map((l) => Math.round(l.getBoundingClientRect().height)))],
+        plots: [...new Set(lines.filter((l) => l.dataset.expanded === 'true').map((l) => Math.round(l.querySelector('.timeline-plot')!.getBoundingClientRect().height)))],
+        segs: lines.filter((l) => l.dataset.expanded === 'true').map(of),
+        empty: lines.filter((l) => !l.querySelector('.timeline-seg')).length,
         names: lines.map((l) => l.querySelector('.timeline-title')!.textContent),
         badges: root.querySelectorAll('.timeline-badge-more').length,
         overflow: document.documentElement.scrollWidth - window.innerWidth,
       };
     });
-    expect(m.heights).toEqual([lineH]);
-    expect(m.plots).toEqual([plotH]);
+    expect(m.heights).toEqual([openH]);
+    expect(m.plots).toEqual([openPlotH]);
     expect(m.badges).toBe(0);
     expect(m.overflow).toBeLessThanOrEqual(0);
     // The demo's gaps: an item without economics is an empty named line.
-    expect(m.segs.filter((s) => s.length === 0)).toHaveLength(1);
+    expect(m.empty).toBe(1);
+    // Ten lines open; the two with a budget alone have nothing to reveal.
+    expect(m.segs).toHaveLength(10);
     expect(m.names).toHaveLength(12);
     const all = m.segs.flat();
     // Three sub-lanes of 12-pixel bars: budget, forecast, outcome where a year has all three.
@@ -131,7 +179,7 @@ describe.each([
     const largest = all.reduce((a, b) => (b.share > a.share ? b : a));
     expect(largest.share).toBe(1);
     expect(largest.title).toContain('663,000 kr');
-    measured.push(`${name}: line ${m.heights[0]} px, plot ${m.plots[0]} px, sub-lane tops ${[...new Set(all.map((s) => Math.round(s.top)))].sort((a, b) => a - b).join(', ')}, bars 12 px, year cell ${all[0].w.toFixed(1)} px, ${all.length} amount spans on 11 lines, figures shown on ${all.filter((s) => s.label !== 'none').length}`);
+    measured.push(`${name}: collapsed line ${quiet.heights[0]} px, the budget spine 12 px at ${Math.round(quiet.shown[0].top)} px, ${quiet.shown.length} spans; opened line ${m.heights[0]} px, plot ${m.plots[0]} px, sub-lane tops ${[...new Set(all.map((s) => Math.round(s.top)))].sort((a, b) => a - b).join(', ')}, bars 12 px, year cell ${all[0].w.toFixed(1)} px, ${all.length} amount spans on ${m.segs.length} open lines, figures shown on ${all.filter((s) => s.label !== 'none').length}`);
     expect(errors).toEqual([]);
     await page.context().close();
   }, 60_000);
@@ -151,7 +199,8 @@ describe.each([
     expect(m.first).toBe(true);
     expect(m.before).toBeCloseTo(0, 0);
     if (m.scrolled > 0) expect(m.after).toBeCloseTo(0, 0);
-    expect(m.h).toBe(lineH);
+    // The totals row is unchanged: 46 pixels, 64 on the phone.
+    expect(m.h).toBe(openH);
     expect(m.name).toBe('Total per yearthousands of kr');
     // The demo: 12 budget years, 12 forecast years, 8 outcome years.
     const count = (series: string) => m.segs.filter((s) => s.series === series).length;
@@ -254,15 +303,18 @@ describe.each([
     }
     const [budget, forecast, outcome] = m!.entries;
     // The styles are the bars' own: the outcome solid, the forecast
-    // outlined, the budget a lighter base.
+    // outlined, the budget a faint fill with a solid edge (D7 as revised in
+    // v1.14.0).
     expect(outcome.background).not.toBe('rgba(0, 0, 0, 0)');
     expect(outcome.borderTop).toBe('0px none');
     expect(outcome.opacity).toBe('1');
     expect(forecast.background).toBe('rgba(0, 0, 0, 0)');
     // 1.5 pixels, which the browser may snap in the computed style.
     expect(forecast.borderTop).toMatch(/^1(\.5)?px solid/);
-    expect(budget.background).not.toBe('rgba(0, 0, 0, 0)');
-    expect(budget.opacity).toBe('0.4');
+    expect(budget.background).toBe('rgba(0, 0, 0, 0)');
+    expect(budget.borderTop).toMatch(/^1px solid/);
+    expect(budget.opacity).toBe('1');
+    expect(await page.evaluate(() => getComputedStyle(document.querySelector('#presentation-legend .legend-swatch[data-series="budget"]')!, '::before').opacity)).toBe('0.4');
     measured.push(`${name}: series key in the legend while the costs view is shown: ${m!.entries.map((e) => `${e.series} ${e.text} (${e.w.toFixed(1)}x${e.h.toFixed(1)} px, ${e.borderTop}, opacity ${e.opacity})`).join(', ')}`);
     // Another view: the key is gone; the costs view again: it is back.
     await page.click('#pres-mode-map');

@@ -485,6 +485,27 @@ export function layoutLegend(title: string, sections: LegendSection[], width: nu
       section !== sections[0],
     );
     for (const item of section.items) {
+      // The today entry (FR-75 as noted): a dashed vertical
+      // swatch, as the page's today line is drawn.
+      if (item.today) {
+        const w = swatch * 0.8 + gap + textWidth(item.label, 'regular', font);
+        place(w, (p, x, b) => {
+          const h = swatch;
+          const y = b - font * 0.33 - h / 2;
+          const lx = x + swatch * 0.4;
+          p.strokeColour(PALETTE.fg);
+          p.lineWidth(1.2);
+          p.dash([2, 1.5]);
+          p.beginPath();
+          p.moveTo(lx, y);
+          p.lineTo(lx, y + h);
+          p.stroke();
+          p.dash([]);
+          p.fillColour(PALETTE.fg);
+          p.text(x + swatch * 0.8 + gap, b, item.label, 'regular', font);
+        });
+        continue;
+      }
       // The work-phase entry (FR-75 as amended in v1.13.0): a hatched swatch,
       // as the timeline's band is hatched.
       if (item.phase) {
@@ -518,7 +539,7 @@ export function layoutLegend(title: string, sections: LegendSection[], width: nu
       }
       // A series entry (FR-79's key, as a later costs page would carry it):
       // a bar in the series' own style -- outcome solid, forecast outlined,
-      // budget a lighter base.
+      // budget a faint fill with a solid edge.
       if (item.series !== undefined) {
         const w = swatch * 1.67 + gap + textWidth(item.label, 'regular', font);
         place(w, (p, x, b) => {
@@ -535,10 +556,17 @@ export function layoutLegend(title: string, sections: LegendSection[], width: nu
             p.lineWidth(0.8);
             p.stroke();
           } else {
+            // The budget (FR-79, D7 as revised): a faint fill
+            // with a solid edge, as on screen.
             p.fillColour(PALETTE.fg);
             p.opacity(0.4);
             p.fill();
             p.opacity(1);
+            p.beginPath();
+            p.rect(x, y, ww, h);
+            p.strokeColour(PALETTE.fg);
+            p.lineWidth(0.8);
+            p.stroke();
           }
           p.fillColour(PALETTE.fg);
           p.text(x + ww + gap, b, item.label, 'regular', font);

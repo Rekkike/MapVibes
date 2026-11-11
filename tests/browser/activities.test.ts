@@ -7,7 +7,7 @@ import { chromium, type Browser, type Page } from 'playwright';
 import { parseWorkState, serialiseWorkState } from '../../src/workstate';
 
 // The activities in the timeline (FR-78) in a real layout, headless Chromium,
-// offline: a work state of schema 10 with activities is opened in the
+// offline (revised for the two states of v1.14.0): a work state with activities is opened in the
 // application, exported, and the exported viewer's timeline is measured on a
 // desktop and a phone -- the packed sub-lane rhythm, the "+n" badge, the
 // full-height expansion and its collapse, the progress fill, the fitted
@@ -90,99 +90,106 @@ async function openViewer(options: object): Promise<{ page: Page; errors: string
 const box = (page: Page, sel: string) => page.locator(sel).first().boundingBox();
 
 describe.each([
-  ['desktop 1500x950', { viewport: { width: 1500, height: 950 } }, 28, 7, 9, 2],
-  ['phone 390x844', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, 40, 4, 6, 1],
-] as const)('the activities in the viewer timeline on %s (FR-78)', (name, options, lineH, segH, laneStep, segPad) => {
-  test('packed sub-lanes in the unchanged line, the badge, expansion and collapse, the fill, the fitted window', async () => {
+  ['desktop 1500x950', { viewport: { width: 1500, height: 950 } }, 28, 28, 14, 0],
+  ['phone 390x844', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, 48, 24, 10, 24],
+] as const)('the activities in the viewer timeline on %s (FR-78 as amended in v1.14.0)', (name, options, lineH, laneH, barH, nameRow) => {
+  test('collapsed, the own bar alone and the indicator; pressed, the lanes whole with the names beside the bars, the fill, the fitted window', async () => {
     const { page, errors } = await openViewer(options);
-    // A-01's line: the own bar in lane 0 and five activity segments packed.
-    const a01 = await page.evaluate(() => {
-      const row = [...document.querySelectorAll<HTMLElement>('#presentation-timeline .timeline-line')].find((r) => r.dataset.rowId === 'row-1')!;
+    const line = (id: string) => `#presentation-timeline .timeline-line[data-row-id="${id}"]`;
+    // A-01 collapsed: the own bar alone, centred, at the line's rhythm; the
+    // indicator counting its five activities.
+    const a01 = await page.evaluate((sel) => {
+      const row = document.querySelector<HTMLElement>(sel)!;
+      const plot = row.querySelector('.timeline-plot')!.getBoundingClientRect();
+      const bar = row.querySelector('.timeline-bar')!.getBoundingClientRect();
+      return {
+        lanes: row.dataset.lanes,
+        entryH: Math.round(row.querySelector('.timeline-entry')!.getBoundingClientRect().height),
+        plotH: Math.round(plot.height),
+        bar: [Math.round(bar.top - plot.top), Math.round(bar.height)],
+        visible: [...row.querySelectorAll('.timeline-seg, .timeline-lane-label')].filter((s) => s.getClientRects().length > 0).length,
+        indicator: row.querySelector('.timeline-indicator')!.textContent,
+        expanded: row.querySelector('.timeline-plot-control')!.getAttribute('aria-expanded'),
+        aria: row.querySelector('.timeline-chip')!.getAttribute('aria-label'),
+      };
+    }, line('row-1'));
+    expect(a01.lanes).toBe('5'); // own + five activities, in five lanes
+    expect(a01.entryH).toBe(lineH);
+    expect(a01.plotH).toBe(laneH);
+    expect(a01.bar).toEqual([(laneH - barH) / 2, barH]);
+    expect(a01.visible).toBe(0);
+    expect(a01.indicator).toBe('5');
+    expect(a01.expanded).toBe('false');
+    // Pressed on the plot: every lane whole, the plot the lane count times
+    // the lane, below the chip row on a phone.
+    await page.locator(`${line('row-1')} .timeline-plot-control`).click({ position: { x: 4, y: 4 } });
+    await page.waitForTimeout(300);
+    const open = await page.evaluate((sel) => {
+      const row = document.querySelector<HTMLElement>(sel)!;
       const plot = row.querySelector('.timeline-plot')!.getBoundingClientRect();
       const marks = [...row.querySelectorAll<HTMLElement>('.timeline-bar, .timeline-seg')].map((m) => {
         const r = m.getBoundingClientRect();
-        return { cls: m.className, lane: m.dataset.lane, kind: m.dataset.kind, x: r.x, w: r.width, y: r.y - plot.y, h: r.height };
+        return { lane: Number(m.dataset.lane), top: r.top - plot.top, bottom: r.bottom - plot.top, h: r.height, title: m.title };
       });
-      const badge = row.querySelector('.timeline-badge-more');
-      const entry = row.querySelector('.timeline-entry')!.getBoundingClientRect();
-      return {
-        lanes: row.dataset.lanes,
-        entryH: Math.round(entry.height),
-        plotH: Math.round(plot.height),
-        marks,
-        badge: badge ? { text: badge.textContent, expanded: badge.getAttribute('aria-expanded') } : null,
-        aria: row.querySelector('.timeline-entry')!.getAttribute('aria-label'),
-      };
-    });
-    expect(a01.lanes).toBe('5'); // own + five activities, packed into five lanes
-    expect(a01.entryH).toBe(lineH); // the line keeps its one row, collapsed
-    const segs = a01.marks.filter((m) => m.cls.includes('timeline-seg'));
-    expect(segs).toHaveLength(5);
-    // Collapsed, only the packed sub-lane rows show: lanes 0..2 (the badge
-    // hides the rest).
-    const visible = segs.filter((m) => m.lane !== undefined && Number(m.lane) < 3);
-    expect(visible).toHaveLength(3);
-    // The packed sub-lane rhythm: segments of segH, stepping laneStep, from segPad.
-    for (const seg of visible) expect(seg.h).toBe(segH);
-    const lanes = [...new Set(visible.map((s) => Number(s.lane)))].sort((a, b) => a - b);
-    const tops = lanes.map((l) => visible.find((s) => Number(s.lane) === l)!.y);
-    for (let i = 0; i < tops.length; i++) expect(tops[i]).toBeCloseTo(segPad + lanes[i] * laneStep, 0);
-    // The own bar is lane 0.
-    expect(a01.marks.find((m) => m.cls.includes('timeline-bar'))!.lane).toBe('0');
-    // The badge counts the hidden spans and expands to full-height lanes.
-    const hidden = Number(a01.lanes) - 3; // spans past the three packed rows
-    expect(a01.badge).not.toBeNull();
-    expect(a01.badge!.text).toBe(`+${hidden} more`);
-    expect(a01.badge!.expanded).toBe('false');
-    await page.locator('#presentation-timeline .timeline-line[data-row-id="row-1"] .timeline-badge-more').click();
-    await page.waitForTimeout(300);
-    const expanded = await page.evaluate(() => {
-      const row = document.querySelector<HTMLElement>('#presentation-timeline .timeline-line[data-row-id="row-1"]')!;
-      const entry = row.querySelector('.timeline-entry')!.getBoundingClientRect();
-      const bar = row.querySelector('.timeline-bar')!.getBoundingClientRect();
-      const seg = row.querySelector('.timeline-seg')!.getBoundingClientRect();
-      return { entryH: Math.round(entry.height), lanes: Number(row.dataset.lanes), barH: Math.round(bar.height), segH: Math.round(seg.height), expanded: row.dataset.expanded, ariaExpanded: row.querySelector('.timeline-badge-more')!.getAttribute('aria-expanded') };
-    });
-    expect(expanded.entryH).toBe(lineH * Number(a01.lanes));
-    expect(expanded.barH).toBeGreaterThan(segH);
-    expect(expanded.expanded).toBe('true');
-    expect(expanded.ariaExpanded).toBe('true');
-    // Collapse on the second activation.
-    await page.locator('#presentation-timeline .timeline-line[data-row-id="row-1"] .timeline-badge-more').click();
-    await page.waitForTimeout(300);
-    const collapsed = await page.evaluate(() => Math.round(document.querySelector<HTMLElement>('#presentation-timeline .timeline-line[data-row-id="row-1"] .timeline-entry')!.getBoundingClientRect().height));
-    expect(collapsed).toBe(lineH);
+      const names = [...row.querySelectorAll<HTMLElement>('.timeline-lane-label')].map((n) => {
+        const r = n.getBoundingClientRect();
+        const seg = [...row.querySelectorAll<HTMLElement>('.timeline-seg')].find((s) => s.dataset.from === n.dataset.from && s.dataset.lane === n.dataset.lane)!.getBoundingClientRect();
+        return { text: n.textContent, place: n.dataset.place, shown: n.getClientRects().length > 0, beside: r.right <= seg.left + 0.5 || r.left >= seg.right - 0.5, inPlot: r.left >= plot.left - 0.5 && r.right <= plot.right + 0.5, lane: Number(n.dataset.lane), top: r.top - plot.top, h: r.height };
+      });
+      return { entryH: Math.round(row.querySelector('.timeline-entry')!.getBoundingClientRect().height), plotH: Math.round(plot.height), marks, names, expanded: row.querySelector('.timeline-plot-control')!.getAttribute('aria-expanded') };
+    }, line('row-1'));
+    expect(open.expanded).toBe('true');
+    expect(open.plotH).toBe(laneH * 5);
+    expect(open.entryH).toBe(nameRow + laneH * 5);
+    for (const m of open.marks) {
+      // Whole: each bar inside its own lane's row, inside the plot.
+      expect(m.top).toBeCloseTo(m.lane * laneH + (laneH - barH) / 2, 0);
+      expect(m.h).toBe(barH);
+      expect(m.bottom).toBeLessThanOrEqual(open.plotH);
+    }
+    // The names beside their bars, never on them, never past the plot.
+    expect(open.names.map((n) => n.text)).toEqual(['Groundwork', 'Piping', 'Wiring', 'Testing', 'Handover']);
+    for (const n of open.names.filter((x) => x.shown)) {
+      expect(n.beside).toBe(true);
+      expect(n.inPlot).toBe(true);
+      expect(n.top).toBeCloseTo(n.lane * laneH, 0);
+      expect(n.h).toBeCloseTo(laneH, 0);
+    }
+    expect(open.names.filter((x) => x.shown).length).toBeGreaterThanOrEqual(3);
     // The progress fill: the 100% activity's fill spans its segment.
-    const fill = await page.evaluate(() => {
-      const seg = [...document.querySelectorAll<HTMLElement>('#presentation-timeline .timeline-line[data-row-id="row-1"] .timeline-seg')].find((s) => s.title!.startsWith('Groundwork'))!;
-      const r = seg.getBoundingClientRect();
-      const f = seg.querySelector('.timeline-seg-fill')!.getBoundingClientRect();
-      return { segW: r.width, fillW: f.width };
-    });
+    const fill = await page.evaluate((sel) => {
+      const seg = [...document.querySelectorAll<HTMLElement>(`${sel} .timeline-seg`)].find((s) => s.title!.startsWith('Groundwork'))!;
+      return { segW: seg.getBoundingClientRect().width, fillW: seg.querySelector('.timeline-seg-fill')!.getBoundingClientRect().width };
+    }, line('row-1'));
     expect(fill.fillW).toBeCloseTo(fill.segW - 2, 0); // the segment border
+    // A press again collapses it.
+    await page.locator(`${line('row-1')} .timeline-plot-control`).click({ position: { x: 4, y: 4 } });
+    await page.waitForTimeout(300);
+    expect(await page.evaluate((sel) => Math.round(document.querySelector<HTMLElement>(`${sel} .timeline-entry`)!.getBoundingClientRect().height), line('row-1'))).toBe(lineH);
     // The accessible description carries the activities, the unreadable date as typed.
     expect(a01.aria).toContain('Activities');
-    const a03aria = await page.locator('#presentation-timeline .timeline-line[data-row-id="row-3"] .timeline-entry').getAttribute('aria-label');
-    expect(a03aria).toContain('15/03/2024'); // the unreadable date, as typed
-    // A project without activities is exactly as before: one centred bar, no
-    // segments, no badge.
-    const a05 = await page.evaluate(() => {
-      const row = document.querySelector<HTMLElement>('#presentation-timeline .timeline-line[data-row-id="row-5"]')!;
-      return { segs: row.querySelectorAll('.timeline-seg').length, badge: !!row.querySelector('.timeline-badge-more'), marks: row.querySelectorAll('.timeline-bar, .timeline-point').length, entryH: Math.round(row.querySelector('.timeline-entry')!.getBoundingClientRect().height) };
-    });
-    expect(a05).toEqual({ segs: 0, badge: false, marks: 0, entryH: lineH }); // "No dates", as before
-    // The fitted window includes the activities' extents: after Fit, every
-    // segment is inside the plot.
+    expect(await page.locator(`${line('row-3')} .timeline-chip`).getAttribute('aria-label')).toContain('15/03/2024');
+    // A project without activities is as before: no segments, no indicator,
+    // no plot control.
+    const a05 = await page.evaluate((sel) => {
+      const row = document.querySelector<HTMLElement>(sel)!;
+      return { segs: row.querySelectorAll('.timeline-seg').length, indicator: !!row.querySelector('.timeline-indicator'), control: row.querySelector('.timeline-plot-control')!.tagName, marks: row.querySelectorAll('.timeline-bar, .timeline-point').length, entryH: Math.round(row.querySelector('.timeline-entry')!.getBoundingClientRect().height) };
+    }, line('row-5'));
+    expect(a05).toEqual({ segs: 0, indicator: false, control: 'SPAN', marks: 0, entryH: lineH }); // "No dates", as before
+    // The fitted window includes the activities' extents: with every line
+    // open, after Fit, every segment is inside the plot.
+    for (const id of ['row-1', 'row-4']) await page.locator(`${line(id)} .timeline-plot-control`).click({ position: { x: 4, y: 4 } });
     await page.click('#pres-fit');
     await page.waitForTimeout(1200);
     const inside = await page.evaluate(() => {
       const plot = document.querySelector('#presentation-timeline .timeline-plot')!.getBoundingClientRect();
       const out = [...document.querySelectorAll<HTMLElement>('#presentation-timeline .timeline-seg')].filter((s) => s.getClientRects().length > 0).map((s) => {
         const r = s.getBoundingClientRect();
-        return { title: s.title, left: Math.round(r.left - plot.left), right: Math.round(r.right - plot.left), plotW: Math.round(plot.width), ok: r.left >= plot.left - 0.5 && r.right <= plot.right + 0.5 };
+        return { ok: r.left >= plot.left - 0.5 && r.right <= plot.right + 0.5 };
       });
-      return { all: out.every((o) => o.ok), out };
+      return { count: out.length, all: out.every((o) => o.ok) };
     });
+    expect(inside.count).toBe(7);
     expect(inside.all).toBe(true);
     expect(errors).toEqual([]);
     await page.context().close();

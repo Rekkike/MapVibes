@@ -28,7 +28,7 @@ import { DEFAULT_SHAPE, placedMarkers, placeMarker, pruneMarkers, removeMarker, 
 import { BUTTON_ZOOM_FACTOR, imageToScreen, screenToImage, type Point, type Viewport } from './viewport';
 import { isSegment, SEGMENTS, showSegment, type Segment } from './segments';
 import { type Problem, parseWorkState, rowNumbers, serialiseWorkState, SUGGESTED_FILE_NAME, WorkStateError, type ActivityImport, activityId, type PresentationMode, type PresentationOrder, type StoredEvent, type StoredActivity, type TimelineWindow, type WorkState } from './workstate';
-import { buildCosts, buildTimeline, inThousands, orderEntries, startDay, type CostsItem, type ScheduleEvent, type TimelineItem, type TimelineLine } from './timeline';
+import { buildCosts, buildTimeline, fitWindow, inThousands, orderEntries, startDay, type CostsItem, type ScheduleEvent, type TimelineItem, type TimelineLine } from './timeline';
 import { parsePdfPages, parseRows, type ActivityDraft, type ActivityField, type ActivityTable } from './activityparse';
 import { readPdfText } from './pdftext';
 import { TimelineView, type TimelineLabels } from './timelineview';
@@ -41,6 +41,7 @@ import { DEMO_MAP_TEXT, demoCounterparts, demoScenario, demoWorkbook } from './d
 import { NARROW_QUERY, NarrowViewer } from './narrowviewer';
 import { formatAmount, renderEconomics } from './economicsview';
 import { formatDate, readDate } from './dates';
+import { todayDay } from './clock';
 import { DEFAULT_CURRENCY_UNIT, readAmount, economicsOf, informationTotals, proposeSeries, SERIES_ROLES, seriesKey, yearOfValue, type Economics, type SeriesAssignment, type SeriesAssignments, type SeriesProposal, type SeriesRole } from './economics';
 import { DEFAULT_STYLE, formatArea, newAnnotationId, LINE_STYLES, OUTLINES, trueArea, type Annotation, type AnnotationKind, type AnnotationStyle, type LineStyle, type Outline } from './annotations';
 import { AnnotationLayer, DrawingTools, type DrawingTool } from './annotationlayer';
@@ -2230,6 +2231,8 @@ function documentFigure(): TimelineFigure | null {
   return {
     model: buildTimeline(items, state.presentationOrder, state.areaValues, areaLocale()),
     events: scheduleEvents(),
+    // The export date (FR-12 as noted): the documents are made now.
+    today: todayDay(),
     labels: {
       title: t.presentationViewTimeline,
       noDates: t.timelineNoDates,
@@ -2248,10 +2251,23 @@ function documentFigure(): TimelineFigure | null {
       moreEvents: t.eventsMore,
       eventsBefore: t.eventsBefore,
       eventsAfter: t.eventsAfter,
+      today: t.todayMark,
     },
     legendTitle: t.legend,
-    legend: legendModel(t, state.statuses, shownProgramGroups(), colourLabels(), symbolLabels(), presentationLegendUse(), undefined, documentPhaseShown()),
+    legend: legendModel(t, state.statuses, shownProgramGroups(), colourLabels(), symbolLabels(), presentationLegendUse(), undefined, documentPhaseShown(), documentToday()),
   };
+}
+
+// The documents' today entry (FR-12 as noted): the export date,
+// shown when the timeline page draws its today line within the window.
+function documentToday(): string | undefined {
+  const day = todayDay();
+  const items = timelineItems();
+  const extent = buildTimeline(items).extent;
+  if (extent === null) return undefined;
+  const window = fitWindow(extent);
+  if (day < window.from || day > window.to) return undefined;
+  return formatDate({ kind: 'date', start: day, end: day, precision: 'day' });
 }
 
 // The economics blocks of the documents (FR-12 as amended in the documents' chapter, the
@@ -3390,6 +3406,14 @@ function workPhaseShown(): boolean {
   });
 }
 
+// The legend's today entry (FR-75 as noted): today's date while a
+// schedule view is shown, its mark drawn or counted at an edge.
+function scheduleToday(): string | undefined {
+  if (state.presentationMode === 'map') return undefined;
+  const day = todayDay();
+  return formatDate({ kind: 'date', start: day, end: day, precision: 'day' });
+}
+
 function renderLegends(): void {
   const t = strings(state.prefs.lang);
   const groups = shownProgramGroups();
@@ -3399,7 +3423,7 @@ function renderLegends(): void {
   // the presentation's is used-only (FR-75), with the costs view's series
   // key when the costs view is shown (FR-79 as amended).
   renderLegend(el('map-legend'), t, state.statuses, groups, labels, names);
-  renderLegend(el('presentation-legend'), t, state.statuses, groups, labels, names, presentationLegendUse(), costsSeriesLegend(), workPhaseShown());
+  renderLegend(el('presentation-legend'), t, state.statuses, groups, labels, names, presentationLegendUse(), costsSeriesLegend(), workPhaseShown(), scheduleToday());
 }
 
 // Editable colour labels (FR-45): the user's name for a colour, or the
@@ -5058,7 +5082,7 @@ function openCard(id: string | null): void {
   if (id !== null) el('presentation-card').querySelector<HTMLElement>('.details-close')?.focus({ preventScroll: true });
   else if (previous !== null && hadFocus) {
     // Focus returns to the marker the card belonged to.
-    const opener = timelineMode() ? `#presentation-${state.presentationMode} .timeline-entry[data-row-id="${previous}"]` : `#presentation-marker-layer .marker[data-row-id="${previous}"]`;
+    const opener = timelineMode() ? `#presentation-${state.presentationMode} .timeline-chip[data-row-id="${previous}"]` : `#presentation-marker-layer .marker[data-row-id="${previous}"]`;
     document.querySelector<HTMLElement>(opener)?.focus({ preventScroll: true });
   }
 }
@@ -5340,7 +5364,7 @@ function scheduleLabels(): TimelineLabels {
     startHeader: start === undefined ? '' : labelOf(start),
     endHeader: end === undefined ? '' : labelOf(end),
     locale: areaLocale(),
-    moreSpans: t.timelineMoreSpans,
+    expand: t.timelineExpand,
     activities: t.timelineActivities,
     edited: t.activityEdited,
     workPhase: t.legendWorkPhase,
@@ -5348,6 +5372,9 @@ function scheduleLabels(): TimelineLabels {
     moreEvents: t.eventsMore,
     eventsBefore: t.eventsBefore,
     eventsAfter: t.eventsAfter,
+    today: t.todayMark,
+    todayBefore: t.todayBefore,
+    todayAfter: t.todayAfter,
   };
 }
 
@@ -5365,7 +5392,7 @@ function renderTimeline(): void {
   const t = strings(state.prefs.lang);
   const { start, end } = state.roles;
   const model = buildTimeline(timelineItems(), state.presentationOrder, state.areaValues, areaLocale());
-  timeline.render(model, { ...scheduleLabels(), noRoles: start === undefined && end === undefined && model.lines.length > 0 ? t.timelineNoRoles : null }, state.presentationSelected, scheduleEvents());
+  timeline.render(model, { ...scheduleLabels(), noRoles: start === undefined && end === undefined && model.lines.length > 0 ? t.timelineNoRoles : null }, state.presentationSelected, scheduleEvents(), todayDay());
   if (timelinePending) {
     timelinePending = false;
     const saved = state.timelineRestore;
@@ -5406,6 +5433,7 @@ function renderCosts(): void {
     {
       ...scheduleLabels(),
       noRoles: years.length === 0 && model.lines.length > 0 ? t.costsNoSeries : null,
+      expand: t.costsExpand,
       costs: {
         // The series in the user's own words (FR-63).
         series: Object.fromEntries(SERIES_ROLES.map((role) => [role, series[role]?.name ?? roleNames[role]])) as Record<SeriesRole, string>,
@@ -5416,10 +5444,12 @@ function renderCosts(): void {
         totalsDescription: t.costsTotalsDescription,
         none: t.costsNone,
         typed: t.costsTyped,
+        noBudget: t.costsNoBudget,
       },
     },
     state.presentationSelected,
     scheduleEvents(),
+    todayDay(),
   );
   if (costsPending) {
     costsPending = false;

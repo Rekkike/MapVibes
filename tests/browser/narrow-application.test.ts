@@ -78,8 +78,8 @@ async function overflowing(page: Page): Promise<string[]> {
 }
 
 // The editing controls in view that measure under 44 pixels on their
-// smallest side (the stage's content and the timeline's lines, which keep
-// the viewer's 40 pixels, aside).
+// smallest side (the stage's content and the schedule views' lines, whose
+// controls are the 24-pixel chip row and plot of the 48-pixel line, aside).
 async function smallControls(page: Page): Promise<string[]> {
   return page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>('button, select, input, summary, textarea')]
@@ -306,7 +306,7 @@ describe.each(PROFILES)('the narrow application on the %s (FR-71 to FR-74)', (na
     await page.context().close();
   }, 60_000);
 
-  test("the Presentation segment in the viewer's patterns: one toolbar row led by the switch, the order, and the toggles; the card docks; 40-pixel lines", async () => {
+  test("the Presentation segment in the viewer's patterns: one toolbar row led by the switch, the order, and the toggles; the card docks; 48-pixel lines", async () => {
     const { page } = await openDemo(profile);
     await page.tap('#tab-presentation');
     await page.waitForTimeout(400);
@@ -342,15 +342,15 @@ describe.each(PROFILES)('the narrow application on the %s (FR-71 to FR-74)', (na
     expect(card.x + card.width).toBeLessThanOrEqual(v.width + 0.5);
     await page.keyboard.press('Escape');
     await page.waitForTimeout(250);
-    // The timeline: 40-pixel lines with the name above the bar; a line opens
-    // the docked card.
+    // The timeline: 48-pixel lines, the chip row over the plot (FR-58 as
+    // noted in v1.14.0); a line's chip opens the docked card.
     await page.locator('#pres-mode-timeline').scrollIntoViewIfNeeded();
     await page.tap('#pres-mode-timeline');
     await page.waitForTimeout(400);
     const lines = await page.$$eval('#presentation-timeline .timeline-line', (ls) => ls.map((l) => l.getBoundingClientRect().height));
     expect(lines.length).toBe(12);
-    for (const h of lines) expect(h).toBe(40);
-    await page.locator('#presentation-timeline .timeline-entry').nth(1).tap();
+    for (const h of lines) expect(h).toBe(48);
+    await page.locator('#presentation-timeline .timeline-chip').nth(1).tap();
     await page.waitForTimeout(400);
     expect(await page.getAttribute('#presentation-card', 'data-dock')).toBe('bottom');
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(v.width);
