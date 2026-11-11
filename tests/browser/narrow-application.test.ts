@@ -81,7 +81,16 @@ async function overflowing(page: Page): Promise<string[]> {
 // smallest side (the stage's content and the schedule views' lines, whose
 // controls are the 24-pixel chip row and plot of the 48-pixel line, aside).
 async function smallControls(page: Page): Promise<string[]> {
-  return page.evaluate(() =>
+  // The enlarged touch handles (FR-47 as amended in v1.15.0) are admitted
+  // here too: their 44-pixel hit areas are measured like the other controls,
+  // outside the stage's exclusion.
+  const handles = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>('.annotation-handle')]
+      .filter((e) => e.getClientRects().length > 0 && !e.closest('[inert]'))
+      .filter((e) => Math.min(e.getBoundingClientRect().width, e.getBoundingClientRect().height) < 43.5)
+      .map((e) => e.className),
+  );
+  const controls = await page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>('button, select, input, summary, textarea')]
       .filter((e) => {
         const s = getComputedStyle(e);
@@ -94,6 +103,7 @@ async function smallControls(page: Page): Promise<string[]> {
       })
       .map((e) => e.id || e.className || e.tagName),
   );
+  return [...controls, ...handles];
 }
 
 async function state(page: Page, id: string): Promise<string> {

@@ -187,10 +187,17 @@ export interface DrawingHooks {
   selectedId(): string | null;
   onSelect(id: string | null): void;
   onChange(annotation: Annotation, final: boolean): void;
+  // Whether the touch layout is in force (the narrow layout, FR-71): the
+  // outline tolerance and the handles are sized for touch there.
+  touch(): boolean;
 }
 
-// How near a press must be to an outline or a line, in screen pixels.
+// How near a press must be to an outline or a line, in screen pixels: 6 on a
+// fine pointer, 16 on touch (FR-47 as amended in v1.15.0), so that the
+// enlarged handles and the tolerance grow together below the narrow
+// threshold.
 const HIT_TOLERANCE = 6;
+export const TOUCH_HIT_TOLERANCE = 16;
 
 // The smallest size of a drawn rectangle or circle, and the spacing of
 // freehand vertices, in screen pixels.
@@ -228,6 +235,12 @@ export function constrained(e: { shiftKey?: boolean; ctrlKey?: boolean }): boole
   return e.shiftKey === true || e.ctrlKey === true;
 }
 
+// Whether a straight segment is being drawn or a drag constrained right
+// now: the key held, or the Straight toggle on (FR-47 as amended in v1.15.0).
+function isConstrained(straight: boolean, e: { shiftKey?: boolean; ctrlKey?: boolean }): boolean {
+  return straight || constrained(e);
+}
+
 // The drawing tools of the Map stage (FR-47): rectangle and circle by
 // dragging; polygon and line by pressing at each vertex or by dragging
 // freehand. A polygon closes on a press near its first vertex (or Enter); a
@@ -236,6 +249,10 @@ export function constrained(e: { shiftKey?: boolean; ctrlKey?: boolean }): boole
 // or a vertex, on the nearest horizontal, vertical, or diagonal axis.
 export class DrawingTools {
   tool: DrawingTool = 'select';
+  // The Straight toggle (FR-47 as amended in v1.15.0): the touch form of the
+  // modifier-key constraint, one transient state flag consulted alongside
+  // the key reads; reset on tool change, never saved.
+  straight = false;
   private draft: Annotation | null = null;
   private pressed: number | null = null;
   private cursor: Point | null = null;
@@ -271,7 +288,7 @@ export class DrawingTools {
 
   // The topmost annotation under a point (image coordinates).
   private hitAt(p: Point): Annotation | null {
-    const tolerance = HIT_TOLERANCE / this.hooks.viewport().scale;
+    const tolerance = (this.hooks.touch() ? TOUCH_HIT_TOLERANCE : HIT_TOLERANCE) / this.hooks.viewport().scale;
     const list = this.hooks.editable();
     for (let i = list.length - 1; i >= 0; i--) if (hits(list[i], p, tolerance)) return list[i];
     return null;
@@ -279,6 +296,7 @@ export class DrawingTools {
 
   setTool(tool: DrawingTool): void {
     this.cancel();
+    this.straight = false;
     this.tool = tool;
     this.stage.dataset.tool = tool;
   }
@@ -337,7 +355,7 @@ export class DrawingTools {
       return;
     } else {
       const last = this.draft.points[this.draft.points.length - 1];
-      this.draft = { ...this.draft, points: [...this.draft.points, constrained(e) ? snapToAxis(last, image) : image] };
+      this.draft = { ...this.draft, points: [...this.draft.points, isConstrained(this.straight, e) ? snapToAxis(last, image) : image] };
     }
     this.straightFrom = null;
     this.cursor = null;
@@ -358,7 +376,9 @@ export class DrawingTools {
       if (this.hooks.selectedId() !== null) this.hooks.onSelect(null);
       return;
     }
-    if (this.hooks.selectedId() !== hit.id) this.hooks.onSelect(hit.id);
+    // Always re-select, so that a re-tap on the selected shape reopens its
+    // sheet in the narrow layout, where another overlay may have closed it.
+    this.hooks.onSelect(hit.id);
     this.beginEdit(e, hit, image, null);
   }
 
@@ -387,7 +407,7 @@ export class DrawingTools {
   private move(e: PointerEvent): void {
     if (this.edit && this.edit.pointerId === e.pointerId) {
       this.edit.moved = true;
-      this.hooks.onChange(this.edited(this.image(e).image, constrained(e)), false);
+      this.hooks.onChange(this.edited(this.image(e).image, isConstrained(this.straight, e)), false);
       return;
     }
     if (!this.draft) return;
@@ -400,7 +420,7 @@ export class DrawingTools {
     }
     if (this.pressed === e.pointerId) {
       const points = this.draft.points;
-      if (constrained(e)) {
+      if (isConstrained(this.straight, e)) {
         // Constrained, live during the stroke: one straight segment from
         // where the constraint began, its end following the pointer along
         // the nearest axis.
@@ -419,14 +439,14 @@ export class DrawingTools {
       this.cursor = null;
     } else {
       // The next vertex's preview follows the constraint too.
-      this.cursor = constrained(e) ? snapToAxis(this.draft.points[this.draft.points.length - 1], image) : image;
+      this.cursor = isConstrained(this.straight, e) ? snapToAxis(this.draft.points[this.draft.points.length - 1], image) : image;
     }
     this.hooks.onDraft(this.draft, this.cursor);
   }
 
   private up(e: PointerEvent): void {
     if (this.edit && this.edit.pointerId === e.pointerId) {
-      const final = this.edit.moved ? this.edited(this.image(e).image, constrained(e)) : null;
+      const final = this.edit.moved ? this.edited(this.image(e).image, isConstrained(this.straight, e)) : null;
       this.edit = null;
       if (final) this.hooks.onChange(final, true);
       return;

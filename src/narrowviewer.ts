@@ -148,3 +148,152 @@ export class NarrowViewer {
     if (this.active() && !initial) this.hooks.refit();
   }
 }
+
+// The six dialogs as overlays in the narrow layout (FR-71 and FR-72 as amended
+// in v1.15.0): below the threshold the dialogs open over the stage instead of
+// in the page flow -- three bottom sheets (fetch open map data, the PDF
+// background chooser, export document) and three stacked pages (export
+// presentation, comparison, activities), the stylesheet giving each its
+// shape with the header and the actions pinned. One dialog is open at a
+// time; focus moves into it on opening and returns to the opener on closing;
+// Escape and a tap outside close it through its own close routine. Above the
+// threshold the manager does nothing and the dialogs keep their page-flow
+// shapes, so the application routes every showing and hiding of the six
+// panels through it and lets the hidden class remain the dialogs' own flag.
+export type DialogKind = 'sheet' | 'page';
+
+export interface NarrowDialogSpec {
+  id: string;
+  kind: DialogKind;
+  // The dialog's own close routine, called on Escape and a tap outside.
+  close: () => void;
+}
+
+export class NarrowDialogs {
+  private openId: string | null = null;
+  private opener: HTMLElement | null = null;
+
+  constructor(
+    private readonly query: MediaQueryList,
+    private readonly specs: NarrowDialogSpec[],
+    private readonly hooks: { enabled?: () => boolean; render?: () => void },
+  ) {
+    // Escape closes the open dialog through its own close routine; the
+    // panels' own handlers run first when the focus is inside them, and the
+    // hidden check keeps the close single.
+    window.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape' || !this.active()) return;
+      const id = this.openId;
+      if (!id) return;
+      const panel = document.getElementById(id);
+      if (!panel || panel.classList.contains('hidden')) return;
+      e.preventDefault();
+      this.specs.find((s) => s.id === id)?.close();
+    });
+    // A tap outside the open dialog closes it.
+    window.addEventListener(
+      'pointerdown',
+      (e) => {
+        if (!this.active()) return;
+        const id = this.openId;
+        if (!id) return;
+        const panel = document.getElementById(id);
+        if (!panel || panel.classList.contains('hidden')) return;
+        const target = e.target as Node | null;
+        if (!target || panel.contains(target)) return;
+        this.specs.find((s) => s.id === id)?.close();
+      },
+      true,
+    );
+    query.addEventListener('change', () => this.apply());
+    this.apply();
+  }
+
+  active(): boolean {
+    return this.query.matches && (this.hooks.enabled?.() ?? true);
+  }
+
+  isOpen(id: string): boolean {
+    return this.openId === id;
+  }
+
+  // The application shows a dialog (its hidden class is about to be
+  // removed): in the narrow layout the dialog becomes the one open overlay
+  // -- any other open dialog closes, focus moves into this one, and the
+  // opener is remembered for the return.
+  showing(id: string): void {
+    if (!this.active()) return;
+    if (this.openId && this.openId !== id) this.specs.find((s) => s.id === this.openId)?.close();
+    const panel = document.getElementById(id);
+    if (!panel) return;
+    this.openId = id;
+    this.opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    panel.dataset.state = 'open';
+    panel.inert = false;
+    panel.removeAttribute('inert');
+    panel.tabIndex = -1;
+    panel.focus({ preventScroll: true });
+  }
+
+  // The application hides a dialog: the overlay state is cleared and focus
+  // returns to the opener, if it was inside the dialog.
+  hidden(id: string): void {
+    const panel = document.getElementById(id);
+    if (!panel) return;
+    if (!this.active()) {
+      delete panel.dataset.state;
+      panel.inert = false;
+      panel.removeAttribute('inert');
+      panel.removeAttribute('tabindex');
+      return;
+    }
+    const wasOpen = this.openId === id;
+    if (wasOpen) this.openId = null;
+    panel.dataset.state = 'closed';
+    panel.inert = true;
+    panel.setAttribute('inert', '');
+    if (wasOpen) {
+      const hadFocus = panel.contains(document.activeElement);
+      const opener = this.opener;
+      this.opener = null;
+      panel.removeAttribute('tabindex');
+      if (hadFocus && opener?.isConnected) opener.focus({ preventScroll: true });
+    }
+  }
+
+  // Closes the open dialog, if any, through its own close routine.
+  closeOpen(): void {
+    const id = this.openId;
+    if (!id) return;
+    this.specs.find((s) => s.id === id)?.close();
+  }
+
+  // Enters or leaves the narrow layout: outside it nothing of the overlay
+  // remains on the panels; entering it, a dialog already shown becomes the
+  // open overlay.
+  private apply(): void {
+    for (const spec of this.specs) {
+      const panel = document.getElementById(spec.id);
+      if (!panel) continue;
+      if (this.active()) {
+        if (!panel.classList.contains('hidden')) {
+          if (this.openId !== spec.id) this.openId = spec.id;
+          panel.dataset.state = 'open';
+          panel.inert = false;
+          panel.removeAttribute('inert');
+          panel.tabIndex = -1;
+        } else {
+          panel.dataset.state = 'closed';
+          panel.inert = true;
+          panel.setAttribute('inert', '');
+        }
+      } else {
+        delete panel.dataset.state;
+        panel.inert = false;
+        panel.removeAttribute('inert');
+        panel.removeAttribute('tabindex');
+      }
+    }
+    this.hooks.render?.();
+  }
+}

@@ -2363,6 +2363,18 @@ button.secondary-action {
   color: var(--muted);
 }
 
+/* The head and foot wrappers of the six dialogs (FR-71/FR-72 as amended in
+   v1.15.0) are transparent in the page flow; only the narrow layout turns
+   them into pinned bars. The export page's Close exists only there. */
+.dialog-head,
+.dialog-foot {
+  display: contents;
+}
+
+#export-panel #export-close {
+  display: none;
+}
+
 /* Export content selection (FR-53): the areas with their items, and the
    columns, in compact scrolling lists. */
 #export-panel #export-selection,
@@ -4535,6 +4547,146 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
       visibility 0s linear var(--motion-quick);
   }
 
+  /* The annotation inspector as a bottom sheet over the stage (FR-47 as
+     amended in v1.15.0, FR-72): it overlays the stage in the details-sheet
+     pattern of FR-74, so that the stage never moves under a selection and
+     the selected shape and its handles stay reachable; its own scrolling,
+     and the four style controls live in it (moved there by the layout). */
+  html:not([data-mode='viewer']) #annotation-inspector {
+    position: fixed;
+    z-index: 35;
+    left: var(--space-2);
+    right: var(--space-2);
+    bottom: var(--space-2);
+    max-height: min(45dvh, 22rem);
+    margin: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: var(--space-3);
+    border: 1px solid var(--accent);
+    border-radius: calc(2 * var(--radius));
+    background: var(--panel);
+    box-shadow: var(--card-shadow);
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity var(--motion-quick) var(--ease-out),
+      transform var(--motion-quick) var(--ease-out),
+      visibility 0s linear 0s;
+  }
+
+  html:not([data-mode='viewer']) #annotation-inspector:not([data-state='open']) {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(0.5rem);
+    transition:
+      opacity var(--motion-quick) var(--ease-out),
+      transform var(--motion-quick) var(--ease-out),
+      visibility 0s linear var(--motion-quick);
+  }
+
+  html:not([data-mode='viewer']) #annotation-inspector label {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  /* The six dialogs as overlays (FR-71 and FR-72 as amended in v1.15.0):
+     below the threshold they open over the stage instead of in the page
+     flow, so the stage never moves under a dialog. The three bottom sheets
+     -- fetch open map data, the PDF background chooser, export document --
+     dock at the bottom at most 75 per cent of the viewport high, with their
+     own scrolling; the three stacked pages -- export presentation,
+     comparison, activities -- fill the viewport's height. Each has its
+     header pinned at the top (with its Close) and its actions pinned at the
+     foot, so that every step keeps a Cancel or Close in view. */
+  html:not([data-mode='viewer']) :is(#fetch-panel, #pdf-panel, #document-panel, #export-panel, #compare-panel, #activity-panel):not(.hidden) {
+    position: fixed;
+    z-index: 45;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: var(--space-3);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: var(--panel);
+    box-shadow: var(--card-shadow);
+  }
+
+  html:not([data-mode='viewer']) :is(#fetch-panel, #pdf-panel, #document-panel):not(.hidden) {
+    left: var(--space-2);
+    right: var(--space-2);
+    bottom: var(--space-2);
+    max-height: 75dvh;
+    border: 1px solid var(--border);
+    border-radius: calc(2 * var(--radius));
+  }
+
+  html:not([data-mode='viewer']) :is(#export-panel, #compare-panel, #activity-panel):not(.hidden) {
+    inset: 0;
+    max-height: none;
+    border: none;
+    border-radius: 0;
+  }
+
+  html:not([data-mode='viewer']) .dialog-head {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: var(--space-2);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    margin: calc(-1 * var(--space-3)) calc(-1 * var(--space-3)) var(--space-2);
+    padding: var(--space-3);
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+  }
+
+  html:not([data-mode='viewer']) .dialog-foot {
+    display: flex;
+    flex: none;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    margin: var(--space-2) calc(-1 * var(--space-3)) calc(-1 * var(--space-3));
+    padding: var(--space-2) var(--space-3);
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+  }
+
+  html:not([data-mode='viewer']) #export-panel #export-close {
+    display: inline-flex;
+    margin-left: auto;
+  }
+
+  /* The vertex handles on touch (FR-47 as amended in v1.15.0): a 28-pixel
+     handle inside a 44-pixel hit area, so that each handle is a separate
+     target; above the threshold the 12-pixel handle stands. */
+  html:not([data-mode='viewer']) .annotation-handle {
+    width: 44px;
+    height: 44px;
+    border: none;
+    background: transparent;
+  }
+
+  html:not([data-mode='viewer']) .annotation-handle::after {
+    content: '';
+    position: absolute;
+    inset: 8px;
+    width: 28px;
+    height: 28px;
+    box-sizing: border-box;
+    border: 2px solid var(--accent);
+    border-radius: var(--radius-pill);
+    background: var(--panel);
+  }
+
   /* The quiet chrome of the Presentation segment (v1.9.0, FR-71, FR-38 as
      amended): the toolbar's controls and gaps quiet down; the 44-pixel
      editing minimum above still binds every control. */
@@ -4577,8 +4729,9 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   }
 
   @media (prefers-reduced-motion: reduce) {
-    html:not([data-mode='viewer']) :is(#app-menu, #placement-area, #map-glance, #map-legend, #visibility-area, #presentation-glance, #presentation-legend),
-    html:not([data-mode='viewer']) :is(#app-menu, #placement-area, #map-glance, #map-legend, #visibility-area, #presentation-glance, #presentation-legend):not([data-state='open']) {
+    html:not([data-mode='viewer']) :is(#app-menu, #placement-area, #map-glance, #map-legend, #visibility-area, #presentation-glance, #presentation-legend, #annotation-inspector),
+    html:not([data-mode='viewer']) :is(#app-menu, #placement-area, #map-glance, #map-legend, #visibility-area, #presentation-glance, #presentation-legend):not([data-state='open']),
+    html:not([data-mode='viewer']) #annotation-inspector:not([data-state='open']) {
       transition: none;
     }
   }

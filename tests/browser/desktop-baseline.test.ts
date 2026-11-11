@@ -186,6 +186,20 @@ function pass20(d: NonNullable<ReturnType<typeof parse>>): boolean {
   return a[0] === b[0] && a[2] === b[2] && a.slice(4).join('|') === b.slice(4).join('|') && Number(b[3]) > Number(a[3]);
 }
 
+// Pass 25 (v1.15.0, FR-47 as amended): the Straight toggle joins the
+// annotation toolbar beside the tool buttons, so in the map states the
+// toolbar's style controls move sideways by its width and nothing else
+// about them changes.
+const STRAIGHT_STATES = ['demo-map', 'demo-map-details'];
+const MOVED_BY_STRAIGHT = ['#annotation-toolbar>label:0', '#annotation-colour-text', '#annotation-colour', '#annotation-toolbar>label:1', '#annotation-fill-text', '#annotation-fill', '#annotation-fill-value'];
+
+function pass25(d: NonNullable<ReturnType<typeof parse>>): boolean {
+  if (!STRAIGHT_STATES.includes(d.state) || !d.all) return false;
+  if (!MOVED_BY_STRAIGHT.includes(d.target)) return false;
+  const [a, b] = [d.before.split('|'), d.after.split('|')];
+  return a.slice(1).join('|') === b.slice(1).join('|');
+}
+
 function intended(line: string): boolean {
   if (/ all #open-presentation: new$/.test(line)) return true;
   if (/ all #economics-overlay(>\S+)?: new$/.test(line)) return true;
@@ -197,6 +211,7 @@ function intended(line: string): boolean {
     if (PRESENTATION_STATES.includes(newEntry[1]) && inside(newEntry[2], ['#presentation-legend'])) return true;
     if (PRESENTATION_STATES.includes(newEntry[1]) && newEntry[2] === '#pres-mode-costs') return true;
     if (newEntry[1] === 'demo-information' && inside(newEntry[2], NEW_PASS_20)) return true;
+    if (STRAIGHT_STATES.includes(newEntry[1]) && newEntry[2] === '#annotation-straight') return true;
     return false;
   }
   const d = parse(line);
@@ -204,6 +219,7 @@ function intended(line: string): boolean {
   if (pass16(d)) return true;
   if (pass18(d)) return true;
   if (pass20(d)) return true;
+  if (pass25(d)) return true;
   // Pass 14's row.
   if (d.all && MOVED_IN_ROW.includes(d.target) && d.before.split('|').slice(1).join('|') === d.after.split('|').slice(1).join('|')) return true;
   if (inside(d.target, CHANGED_INSIDE)) return true;
@@ -269,6 +285,10 @@ describe('the desktop layout is that of v1.3.1 (Pass 13, unit 4)', () => {
     // in the demo's Information.
     expect(found.filter((l) => / all #pres-mode-costs: new$/.test(l)).map((l) => l.split(' ')[0])).toEqual(PRESENTATION_STATES);
     expect(found.filter((l) => / all #event-panel: new$/.test(l)).map((l) => l.split(' ')[0])).toEqual(['demo-information']);
+    // Pass 25: the Straight toggle in the map states, and the style controls
+    // moved sideways by it.
+    expect(found.filter((l) => / all #annotation-straight: new$/.test(l)).map((l) => l.split(' ')[0])).toEqual(STRAIGHT_STATES);
+    expect(found.filter((l) => STRAIGHT_STATES.includes(l.split(' ')[0]) && MOVED_BY_STRAIGHT.includes(parse(l)?.target ?? '')).length).toBe(2 * MOVED_BY_STRAIGHT.length);
     expect(found.filter((l) => !intended(l))).toEqual([]);
   }, 120_000);
 });

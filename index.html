@@ -24,6 +24,7 @@
           <button type="button" id="work-open">Open work</button>
           <input type="file" id="work-file-input" accept=".json,application/json,.html,.htm,text/html" hidden />
           <button type="button" id="work-save">Save work</button>
+          <button type="button" id="work-share">Share work</button>
           <span id="work-dirty" class="hidden" role="status">Unsaved changes</span>
           <span id="work-status" class="notice" aria-live="polite"></span>
         </div>
@@ -47,14 +48,14 @@
     </header>
     <main id="app-main">
       <section id="compare-panel" class="hidden" aria-labelledby="compare-heading">
-        <div class="compare-header">
+        <div class="compare-header dialog-head">
           <h2 id="compare-heading">Comparison with an exported file</h2>
           <button type="button" id="compare-close">Close comparison</button>
         </div>
         <p id="compare-source" class="notice"></p>
         <p id="compare-warning" class="warning hidden"></p>
         <div id="compare-groups"></div>
-        <div class="compare-actions">
+        <div class="compare-actions dialog-foot">
           <button type="button" id="compare-select-all">Select all that differ</button>
           <button type="button" id="compare-adopt">Adopt the selected marker positions</button>
           <span id="compare-status" aria-live="polite"></span>
@@ -269,11 +270,14 @@
               <button type="button" class="annotation-tool" data-tool="polygon" aria-pressed="false">Polygon</button>
               <button type="button" class="annotation-tool" data-tool="line" aria-pressed="false">Line</button>
             </div>
+            <button type="button" id="annotation-straight" class="annotation-tool" aria-pressed="false" aria-label="Straight">Straight</button>
             <label><span id="annotation-colour-text">Colour</span> <select id="annotation-colour"></select></label>
             <label><span id="annotation-fill-text">Fill</span> <input type="range" id="annotation-fill" min="0" max="100" step="5" /> <output id="annotation-fill-value" for="annotation-fill"></output></label>
             <label><span id="annotation-outline-text">Outline</span> <select id="annotation-outline"><option value="black"></option><option value="white"></option></select></label>
             <label><span id="annotation-line-text">Line</span> <select id="annotation-line-style"><option value="solid"></option><option value="dotted"></option><option value="dashed"></option></select></label>
             <span id="annotation-hint" class="notice" aria-live="polite"></span>
+            <button type="button" id="annotation-done" class="hidden">Done</button>
+            <button type="button" id="annotation-cancel" class="hidden">Cancel</button>
           </div>
           <div id="annotation-inspector" class="hidden" role="group" aria-labelledby="annotation-inspector-heading">
             <span id="annotation-inspector-heading"></span>
@@ -281,12 +285,15 @@
             <label><span id="annotation-link-text">Footprint of</span> <select id="annotation-link"></select></label>
             <span id="annotation-area" class="notice"></span>
             <button type="button" id="annotation-delete">Delete annotation</button>
+            <button type="button" id="annotation-inspector-close">Close</button>
           </div>
           <p id="fetch-offline" class="notice hidden">You are offline. Fetching open map data needs a connection; a local OpenStreetMap (.osm) file can be loaded instead.</p>
           <div id="fetch-panel" class="hidden" role="group" aria-labelledby="fetch-heading">
-            <div class="fetch-row">
-              <span id="fetch-heading">Fetch open map data</span>
-              <span id="fetch-badge" class="network-badge">Network</span>
+            <div class="dialog-head">
+              <div class="fetch-row">
+                <span id="fetch-heading">Fetch open map data</span>
+                <span id="fetch-badge" class="network-badge">Network</span>
+              </div>
             </div>
             <p id="fetch-notice" class="notice">This is the application's only network operation, made only when you press a button here. Only the place name or area you enter is sent, to the OpenStreetMap services Nominatim (place search) and Overpass API (map data). No list data, markers, or other work is sent.</p>
             <div class="fetch-row" role="radiogroup" aria-labelledby="fetch-heading">
@@ -309,24 +316,30 @@
                 <label class="fetch-edge"><span id="fetch-east-label">East</span> <input type="text" inputmode="decimal" id="fetch-east" data-edge="east" /></label>
               </div>
             </fieldset>
-            <div class="fetch-row">
-              <button type="button" id="fetch-go">Fetch map data</button>
-              <button type="button" id="fetch-cancel" class="hidden">Cancel</button>
-              <button type="button" id="fetch-close">Close</button>
-              <span id="fetch-status" aria-live="polite"></span>
+            <div class="dialog-foot">
+              <div class="fetch-row">
+                <button type="button" id="fetch-go">Fetch map data</button>
+                <button type="button" id="fetch-cancel" class="hidden">Cancel</button>
+                <button type="button" id="fetch-close">Close</button>
+                <span id="fetch-status" aria-live="polite"></span>
+              </div>
             </div>
           </div>
           <p id="map-error" class="error hidden" role="alert"></p>
           <div id="pdf-panel" class="hidden" role="group" aria-labelledby="pdf-heading">
-            <span id="pdf-heading">PDF document</span>
+            <div class="dialog-head">
+              <span id="pdf-heading">PDF document</span>
+            </div>
             <label>
               <span id="pdf-page-label">Page</span>
               <select id="pdf-page"></select>
             </label>
             <span id="pdf-page-count" class="notice"></span>
-            <button type="button" id="pdf-use">Use page</button>
-            <button type="button" id="pdf-cancel">Cancel</button>
-            <span id="pdf-status" class="notice" aria-live="polite"></span>
+            <div class="dialog-foot">
+              <button type="button" id="pdf-use">Use page</button>
+              <button type="button" id="pdf-cancel">Cancel</button>
+              <span id="pdf-status" class="notice" aria-live="polite"></span>
+            </div>
           </div>
           <div id="place-banner" class="hidden" role="status">
             <span id="place-banner-text"></span>
@@ -399,7 +412,10 @@
             </span>
           </div>
           <div id="export-panel" class="hidden" role="dialog" aria-labelledby="export-heading">
-            <h3 id="export-heading">Export presentation</h3>
+            <div class="dialog-head">
+              <h3 id="export-heading">Export presentation</h3>
+              <button type="button" id="export-close">Close</button>
+            </div>
             <p id="export-intro"></p>
             <h4 id="export-select-heading"></h4>
             <p id="export-select-hint" class="hint"></p>
@@ -412,21 +428,23 @@
             <h4 id="export-omitted-heading"></h4>
             <ul id="export-omitted"></ul>
             <p id="export-size"></p>
-            <div class="export-actions">
+            <div class="export-actions dialog-foot">
               <button type="button" id="export-go">Export file</button>
               <button type="button" id="export-cancel">Cancel</button>
             </div>
           </div>
           <p id="export-status" class="notice" aria-live="polite"></p>
           <div id="document-panel" class="hidden" role="dialog" aria-labelledby="document-heading">
-            <h3 id="document-heading"></h3>
+            <div class="dialog-head">
+              <h3 id="document-heading"></h3>
+            </div>
             <p id="document-intro"></p>
             <h4 id="document-contains-heading"></h4>
             <ul id="document-contains"></ul>
             <h4 id="document-omitted-heading"></h4>
             <ul id="document-omitted"></ul>
             <p id="document-size"></p>
-            <div class="export-actions">
+            <div class="export-actions dialog-foot">
               <button type="button" id="document-go"></button>
               <button type="button" id="document-cancel"></button>
             </div>
@@ -455,7 +473,7 @@
         </aside>
       </div>
       <section id="activity-panel" class="hidden" role="dialog" aria-labelledby="activity-heading">
-        <div class="compare-header">
+        <div class="compare-header dialog-head">
           <h2 id="activity-heading"></h2>
           <button type="button" id="activity-close">Close</button>
         </div>
@@ -476,7 +494,7 @@
             <p id="activity-phase-hint" class="hint"></p>
           </div>
           <ul id="activity-rows" class="vocab-list"></ul>
-          <div class="compare-actions">
+          <div class="compare-actions dialog-foot">
             <button type="button" id="activity-go" class="primary-action"></button>
             <button type="button" id="activity-cancel"></button>
           </div>

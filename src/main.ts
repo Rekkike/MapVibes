@@ -38,7 +38,7 @@ import { HOSTED_ADDRESS } from './hosted';
 import { compareItems, type CompareItem, type Comparison } from './reconcile';
 import { areaGroups, programLabels } from './grouping';
 import { DEMO_MAP_TEXT, demoCounterparts, demoScenario, demoWorkbook } from './demo';
-import { NARROW_QUERY, NarrowViewer } from './narrowviewer';
+import { NARROW_QUERY, NarrowDialogs, NarrowViewer, type NarrowDialogSpec } from './narrowviewer';
 import { formatAmount, renderEconomics } from './economicsview';
 import { formatDate, readDate } from './dates';
 import { todayDay } from './clock';
@@ -255,6 +255,7 @@ function renderStaticText(): void {
   el('marker-remove').textContent = t.markerRemove;
   el('marker-shape-text').textContent = t.markerShape;
   el('work-save').textContent = t.workSave;
+  el('work-share').textContent = t.workShare;
   el('area-panel-summary').textContent = t.areaPanel;
   el('area-panel-hint').textContent = t.areaPanelHint;
   el('area-new').setAttribute('aria-label', t.areaNew);
@@ -359,6 +360,7 @@ function renderStaticText(): void {
   el('export-omitted-heading').textContent = t.exportOmittedHeading;
   el('export-go').textContent = t.exportGo;
   el('export-cancel').textContent = t.exportCancel;
+  el('export-close').textContent = t.close;
   el('pres-reset').textContent = t.mapReset;
   for (const [id, label] of [['pres-zoom-in', t.mapZoomIn], ['pres-zoom-out', t.mapZoomOut]] as const) {
     el(id).setAttribute('aria-label', label);
@@ -1579,7 +1581,7 @@ function openActivityDialog(id: string): void {
   activityDialog = { mode: 'import', edits: [], phase: '', rowId: id, file: '', tables: [], tableIndex: 0, grid: [], mapping: {}, drafts: [] };
   el('activity-status').textContent = '';
   renderActivityDialog();
-  el('activity-panel').classList.remove('hidden');
+  showDialog('activity-panel');
   el('activity-choose').focus();
 }
 
@@ -1604,7 +1606,7 @@ function openActivityCorrection(id: string): void {
   };
   el('activity-status').textContent = '';
   renderActivityDialog();
-  el('activity-panel').classList.remove('hidden');
+  showDialog('activity-panel');
   (el('activity-rows').querySelector<HTMLElement>('input') ?? el('activity-close')).focus();
 }
 
@@ -1741,7 +1743,7 @@ function confirmActivityCorrection(): void {
 
 function closeActivityDialog(): void {
   activityDialog = null;
-  el('activity-panel').classList.add('hidden');
+  hideDialog('activity-panel');
   el('activity-status').textContent = '';
 }
 
@@ -1968,7 +1970,7 @@ function openExportDialog(): void {
     return;
   }
   exportMessage = null;
-  el('export-panel').classList.remove('hidden');
+  showDialog('export-panel');
   buildExportSelection();
   renderExport();
   el('export-go').focus();
@@ -1977,7 +1979,7 @@ function openExportDialog(): void {
 function closeExportDialog(): void {
   preparedExport = null;
   exportChoice = null;
-  el('export-panel').classList.add('hidden');
+  hideDialog('export-panel');
   el('export-open').focus();
 }
 
@@ -2129,7 +2131,7 @@ function renderExport(): void {
 async function runExport(): Promise<void> {
   const page = preparedExport;
   if (page === null) return;
-  const outcome = await writeFile(page, EXPORT_FILE);
+  const { outcome } = await writeFile(page, EXPORT_FILE);
   exportMessage = outcome === 'saved' ? 'done' : outcome;
   closeExportDialog();
   renderExport();
@@ -2383,7 +2385,7 @@ async function openDocumentDialog(kind: DocumentKind): Promise<void> {
   preparedDocument = null;
   if (!presentationView?.background) {
     documentMessage = 'unavailable';
-    el('document-panel').classList.add('hidden');
+    hideDialog('document-panel');
     renderDocument();
     return;
   }
@@ -2392,7 +2394,7 @@ async function openDocumentDialog(kind: DocumentKind): Promise<void> {
   const scene = documentScene();
   const table = documentTable();
   documentMessage = 'preparing';
-  el('document-panel').classList.remove('hidden');
+  showDialog('document-panel');
   renderDocument();
   let prepared: PreparedDocument | null = null;
   try {
@@ -2403,7 +2405,7 @@ async function openDocumentDialog(kind: DocumentKind): Promise<void> {
   if (token !== documentToken) return;
   preparedDocument = prepared;
   documentMessage = prepared ? null : 'failed';
-  if (!prepared) el('document-panel').classList.add('hidden');
+  if (!prepared) hideDialog('document-panel');
   renderDocument();
   if (prepared) el('document-go').focus();
 }
@@ -2411,7 +2413,7 @@ async function openDocumentDialog(kind: DocumentKind): Promise<void> {
 function closeDocumentDialog(): void {
   documentToken++;
   preparedDocument = null;
-  el('document-panel').classList.add('hidden');
+  hideDialog('document-panel');
   if (documentKind) el(`${documentKind}-open`).focus();
 }
 
@@ -2483,7 +2485,7 @@ function renderDocument(): void {
 async function runDocumentExport(): Promise<void> {
   const doc = preparedDocument;
   if (!doc) return;
-  const outcome = await writeFile(doc.bytes, doc.kind === 'pptx' ? PPTX_FILE : PDF_FILE);
+  const { outcome } = await writeFile(doc.bytes, doc.kind === 'pptx' ? PPTX_FILE : PDF_FILE);
   documentMessage = outcome === 'saved' ? 'done' : outcome;
   closeDocumentDialog();
   renderDocument();
@@ -2523,8 +2525,9 @@ const PPTX_FILE: FileKind = {
 };
 
 // Writes a file only on the user's explicit action: through the save dialog
-// where the browser has one, otherwise as a download.
-async function writeFile(data: string | Uint8Array, kind: FileKind): Promise<WriteOutcome> {
+// where the browser has one, otherwise as a download. The route is reported
+// back, because only the dialog confirms the write: a download only starts.
+async function writeFile(data: string | Uint8Array, kind: FileKind): Promise<{ outcome: WriteOutcome; via: 'picker' | 'download' }> {
   const blob = new Blob([data as BlobPart], { type: kind.mime });
   const picker = (window as unknown as SaveFilePickerWindow).showSaveFilePicker;
   if (typeof picker === 'function') {
@@ -2536,9 +2539,9 @@ async function writeFile(data: string | Uint8Array, kind: FileKind): Promise<Wri
       const writable = await handle.createWritable();
       await writable.write(blob);
       await writable.close();
-      return 'saved';
+      return { outcome: 'saved', via: 'picker' };
     } catch (e) {
-      return e instanceof DOMException && e.name === 'AbortError' ? 'cancelled' : 'failed';
+      return { outcome: e instanceof DOMException && e.name === 'AbortError' ? 'cancelled' : 'failed', via: 'picker' };
     }
   }
   try {
@@ -2551,13 +2554,13 @@ async function writeFile(data: string | Uint8Array, kind: FileKind): Promise<Wri
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 0);
-    return 'saved';
+    return { outcome: 'saved', via: 'download' };
   } catch {
-    return 'failed';
+    return { outcome: 'failed', via: 'download' };
   }
 }
 
-type WorkMessage = 'saved' | 'save-failed' | 'opened' | 'open-failed' | 'compare-opened' | 'demo-loaded';
+type WorkMessage = 'saved' | 'download-started' | 'save-failed' | 'shared' | 'share-failed' | 'opened' | 'open-failed' | 'compare-opened' | 'demo-loaded';
 let workMessage: WorkMessage | null = null;
 let workErrorText = '';
 
@@ -2570,7 +2573,7 @@ function markDirty(): void {
   if (state.viewOnly) return;
   state.dirty = true;
   changeCount++;
-  if (workMessage === 'saved' || workMessage === 'opened' || workMessage === 'demo-loaded') workMessage = null;
+  if (workMessage === 'saved' || workMessage === 'download-started' || workMessage === 'shared' || workMessage === 'opened' || workMessage === 'demo-loaded') workMessage = null;
   renderWorkStatus();
 }
 
@@ -2585,7 +2588,10 @@ function renderWorkStatus(): void {
   const status = el('work-status');
   const messages: Record<WorkMessage, string> = {
     saved: t.workSaved,
+    'download-started': t.workDownloadStarted,
     'save-failed': t.workSaveFailed,
+    shared: t.workShared,
+    'share-failed': t.workShareFailed,
     opened: t.workOpened,
     'open-failed': workErrorText,
     'compare-opened': t.compareOpened,
@@ -2594,6 +2600,29 @@ function renderWorkStatus(): void {
   status.textContent = workMessage ? messages[workMessage] : '';
   status.classList.toggle('error', workMessage === 'save-failed' || workMessage === 'open-failed');
   el<HTMLButtonElement>('work-save').disabled = !hasWork();
+  // The share action (FR-13 as noted): offered only where the
+  // browser can share files; hidden without the API, disabled with a clear
+  // message when files cannot be shared; nothing is claimed otherwise.
+  const shareButton = el<HTMLButtonElement>('work-share');
+  shareButton.textContent = t.workShare;
+  const nav = navigator as Navigator & { share?: (data: ShareData) => Promise<void>; canShare?: (data: ShareData) => boolean };
+  if (typeof nav.share !== 'function') {
+    shareButton.classList.add('hidden');
+    shareButton.disabled = true;
+  } else {
+    shareButton.classList.remove('hidden');
+    let filesOk = true;
+    if (typeof nav.canShare === 'function') {
+      try {
+        filesOk = nav.canShare({ files: [new File(['x'], WORK_STATE_FILE.name, { type: WORK_STATE_FILE.mime })] });
+      } catch {
+        filesOk = false;
+      }
+    }
+    shareButton.disabled = !hasWork() || !filesOk;
+    shareButton.title = filesOk ? '' : t.workShareUnsupported;
+    shareButton.setAttribute('aria-label', filesOk ? t.workShare : `${t.workShare}: ${t.workShareUnsupported}`);
+  }
   el('work-dirty').textContent = t.workUnsaved;
   el('work-dirty').classList.toggle('hidden', !state.dirty);
   document.documentElement.dataset.unsaved = state.dirty ? 'true' : 'false';
@@ -2608,11 +2637,47 @@ function renderWorkStatus(): void {
 export async function saveWork(): Promise<WriteOutcome> {
   if (state.viewOnly) return 'cancelled';
   const text = serialiseWorkState(captureWorkState(), new Date());
-  const outcome = await writeFile(text, WORK_STATE_FILE);
-  if (outcome === 'saved') state.dirty = false;
-  if (outcome !== 'cancelled') workMessage = outcome === 'saved' ? 'saved' : 'save-failed';
+  const { outcome, via } = await writeFile(text, WORK_STATE_FILE);
+  if (outcome === 'saved' && via === 'picker') {
+    // The save dialog itself confirms the write.
+    state.dirty = false;
+    workMessage = 'saved';
+  } else if (outcome === 'saved' && via === 'download') {
+    // The honest save status (FR-13 as noted): a download only
+    // starts, so the status says so and the unsaved mark stays until the
+    // next open of a work file or an explicit confirmation.
+    workMessage = 'download-started';
+    if (window.confirm(strings(state.prefs.lang).workDownloadConfirm)) {
+      state.dirty = false;
+      workMessage = 'saved';
+    }
+  } else if (outcome !== 'cancelled') {
+    workMessage = 'save-failed';
+  }
   renderWorkStatus();
   return outcome;
+}
+
+// The share action (FR-13 as noted): the work file handed to the
+// operating system's share sheet through navigator.share, gated on the
+// browser's support for sharing files. Fully local: the OS share sheet, no
+// network call by the application. Sharing is not saving: the unsaved mark
+// is untouched.
+async function shareWork(): Promise<void> {
+  if (state.viewOnly) return;
+  const nav = navigator as Navigator & { share?: (data: ShareData) => Promise<void> };
+  if (typeof nav.share !== 'function') return;
+  const text = serialiseWorkState(captureWorkState(), new Date());
+  const file = new File([text], WORK_STATE_FILE.name, { type: WORK_STATE_FILE.mime });
+  try {
+    await nav.share({ files: [file], title: WORK_STATE_FILE.name });
+    workMessage = 'shared';
+  } catch (e) {
+    // The user closed the share sheet: nothing happened, nothing is claimed.
+    if (e instanceof DOMException && e.name === 'AbortError') return;
+    workMessage = 'share-failed';
+  }
+  renderWorkStatus();
 }
 
 function readText(file: File): Promise<string> {
@@ -2903,12 +2968,12 @@ function currentComparison(): Comparison | null {
 function renderComparison(): void {
   const panel = el('compare-panel');
   if (!comparison) {
-    panel.classList.add('hidden');
+    hideDialog('compare-panel');
     return;
   }
   const t = strings(state.prefs.lang);
   const data = comparison.data;
-  panel.classList.remove('hidden');
+  showDialog('compare-panel');
   el('compare-heading').textContent = t.compareHeading;
   el('compare-close').textContent = t.compareClose;
   el('compare-select-all').textContent = t.compareSelectAll;
@@ -4398,14 +4463,51 @@ function annotationName(a: Annotation, t: Strings): string {
   return `${kindName(a.kind, t)} ${sameKind.indexOf(a) + 1}`;
 }
 
+// The inspector as a bottom sheet over the stage in the narrow layout
+// (FR-47 as amended, FR-72): a data-state of open or closed, inert
+// while closed, focus moved into the sheet on opening and returned on
+// closing; the stage never moves under a selection, because the sheet
+// overlays it (the details-sheet pattern of FR-74). Above the threshold the
+// inspector keeps its place in the flow, hidden while nothing is selected.
+let annotationInspectorReturnFocus: HTMLElement | null = null;
+
+function setAnnotationInspectorSheet(open: boolean): void {
+  const inspector = el('annotation-inspector');
+  const was = inspector.dataset.state === 'open';
+  inspector.classList.remove('hidden');
+  inspector.dataset.state = open ? 'open' : 'closed';
+  inspector.inert = !open;
+  if (open) inspector.removeAttribute('inert');
+  else inspector.setAttribute('inert', '');
+  inspector.tabIndex = -1;
+  if (open && !was) {
+    annotationInspectorReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    inspector.focus({ preventScroll: true });
+  } else if (!open && was) {
+    const target = annotationInspectorReturnFocus;
+    annotationInspectorReturnFocus = null;
+    if (target?.isConnected) target.focus({ preventScroll: true });
+  }
+}
+
 // The inspector of the selected annotation (FR-47 to FR-49): its label, the
 // item it is the footprint of, its area where it can be measured honestly,
 // and its deletion.
 function renderAnnotationInspector(): void {
   const t = strings(state.prefs.lang);
   const inspector = el('annotation-inspector');
-  const a = state.annotations.find((x) => x.id === state.selectedAnnotation);
-  inspector.classList.toggle('hidden', !a);
+  const a = state.annotations.find((x) => x.id === state.selectedAnnotation) ?? null;
+  if (narrowApplication()) setAnnotationInspectorSheet(a !== null);
+  else {
+    // Above the threshold (or leaving the narrow layout): the inspector
+    // keeps its place in the flow, and nothing of the sheet remains.
+    inspector.classList.toggle('hidden', !a);
+    delete inspector.dataset.state;
+    inspector.inert = false;
+    inspector.removeAttribute('inert');
+    inspector.removeAttribute('tabindex');
+    annotationInspectorReturnFocus = null;
+  }
   if (!a) return;
   inspector.dataset.annotationId = a.id;
   el('annotation-inspector-heading').textContent = annotationName(a, t);
@@ -4428,6 +4530,7 @@ function renderAnnotationInspector(): void {
   const row = linkedRow(a);
   link.value = row && state.rows.includes(row) ? rowId(row) : '';
   el('annotation-delete').textContent = t.annotationDelete;
+  el('annotation-inspector-close').textContent = t.close;
   const area = el('annotation-area');
   if (a.kind === 'line') {
     area.textContent = '';
@@ -4541,12 +4644,34 @@ function renderAnnotationToolbar(): void {
     line: t.hintLine,
   };
   el('annotation-hint').textContent = has ? hints[tool] : t.hintNoBackground;
+  // While a drawing is in progress, the hint row carries Done and Cancel
+  // (FR-47 as amended); the Straight toggle beside the tools
+  // carries its state.
+  const drawing = drawingTools?.drawing ?? false;
+  el('annotation-done').textContent = t.hintDone;
+  el('annotation-cancel').textContent = t.hintCancel;
+  el('annotation-done').classList.toggle('hidden', !drawing);
+  el('annotation-cancel').classList.toggle('hidden', !drawing);
+  const straight = el<HTMLButtonElement>('annotation-straight');
+  straight.textContent = t.toolStraight;
+  straight.setAttribute('aria-label', t.toolStraight);
+  straight.setAttribute('aria-pressed', drawingTools?.straight ? 'true' : 'false');
+  straight.disabled = !has;
 }
 
 function wireAnnotationToolbar(): void {
   document.querySelectorAll<HTMLButtonElement>('#annotation-tools .annotation-tool').forEach((button) => {
     button.addEventListener('click', () => setDrawingTool(button.dataset.tool as DrawingTool));
   });
+  // The Straight toggle (FR-47 as amended): one transient state
+  // flag on the drawing tools, reset on tool change, never saved.
+  el<HTMLButtonElement>('annotation-straight').addEventListener('click', () => {
+    if (drawingTools) drawingTools.straight = !drawingTools.straight;
+    renderAnnotationToolbar();
+  });
+  // Done and Cancel in the hint row finish or abandon a drawing.
+  el('annotation-done').addEventListener('click', () => drawingTools?.finish());
+  el('annotation-cancel').addEventListener('click', () => drawingTools?.cancel());
   el<HTMLSelectElement>('annotation-colour').addEventListener('change', (e) => setAnnotationStyle({ colour: (e.target as HTMLSelectElement).value as RowColour }));
   el<HTMLInputElement>('annotation-fill').addEventListener('input', (e) => setAnnotationStyle({ fillOpacity: Number((e.target as HTMLInputElement).value) / 100 }));
   el<HTMLSelectElement>('annotation-outline').addEventListener('change', (e) => {
@@ -4587,6 +4712,24 @@ function wireAnnotationToolbar(): void {
   el('annotation-delete').addEventListener('click', () => {
     if (state.selectedAnnotation) deleteAnnotation(state.selectedAnnotation);
   });
+  el('annotation-inspector-close').addEventListener('click', () => selectAnnotation(null));
+  // In the narrow layout, a tap outside the stage and the open inspector
+  // sheet closes the sheet (the stage's own taps select and deselect). On
+  // the window, so that the test harness removes the listener between
+  // mounts, like the other window listeners.
+  window.addEventListener(
+    'pointerdown',
+    (e) => {
+      if (!narrowApplication()) return;
+      const inspector = el('annotation-inspector');
+      if (inspector.dataset.state !== 'open') return;
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      if (inspector.contains(target) || target.closest('#map-stage')) return;
+      selectAnnotation(null);
+    },
+    true,
+  );
 }
 
 // Presentation stage (FR-27): the same background on its own viewport, with
@@ -5527,6 +5670,7 @@ function initialisePresentation(): void {
   el('document-go').addEventListener('click', () => void runDocumentExport());
   el('document-cancel').addEventListener('click', closeDocumentDialog);
   el('export-cancel').addEventListener('click', closeExportDialog);
+  el('export-close').addEventListener('click', closeExportDialog);
   el('export-go').addEventListener('click', () => void runExport());
   el('export-panel').addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeExportDialog();
@@ -5558,7 +5702,7 @@ let pdfDocument: PdfDocument | null = null;
 async function closePdf(): Promise<void> {
   const doc = pdfDocument;
   pdfDocument = null;
-  el('pdf-panel').classList.add('hidden');
+  hideDialog('pdf-panel');
   el('pdf-status').textContent = '';
   if (doc) await doc.close().catch(() => undefined);
 }
@@ -5618,7 +5762,7 @@ async function loadPdfFile(file: File): Promise<void> {
     await usePdfPage(1);
     return;
   }
-  el('pdf-panel').classList.remove('hidden');
+  showDialog('pdf-panel');
   select.focus();
 }
 
@@ -5859,13 +6003,13 @@ async function fetchOpenMap(): Promise<void> {
 
 function initialiseFetch(): void {
   el('fetch-open').addEventListener('click', () => {
-    el('fetch-panel').classList.remove('hidden');
+    showDialog('fetch-panel');
     renderFetchState();
     (fetchMode() === 'place' ? el<HTMLInputElement>('fetch-place') : edgeInput('south')).focus();
   });
   el('fetch-close').addEventListener('click', () => {
     fetchAbort?.abort();
-    el('fetch-panel').classList.add('hidden');
+    hideDialog('fetch-panel');
   });
   el('fetch-cancel').addEventListener('click', () => fetchAbort?.abort());
   for (const id of ['fetch-mode-place', 'fetch-mode-bbox']) el(id).addEventListener('change', renderFetchState);
@@ -5924,6 +6068,7 @@ function initialiseMapView(): void {
     onDraft: (draft, cursor) => {
       annotationDraft = { draft, cursor };
       renderAnnotations();
+      renderAnnotationToolbar();
     },
     onCreate: createAnnotation,
     editable: () => state.annotations,
@@ -5935,6 +6080,7 @@ function initialiseMapView(): void {
       renderAnnotations();
       if (final) renderAnnotationInspector();
     },
+    touch: () => narrowApplication(),
   });
   wireAnnotationToolbar();
   markerLayer = new MarkerLayer(el('marker-layer'), {
@@ -6043,6 +6189,7 @@ function guardUnsavedWork(e: BeforeUnloadEvent): void {
 function wireEvents(): void {
   window.addEventListener('beforeunload', guardUnsavedWork);
   el('work-save').addEventListener('click', () => void saveWork());
+  el('work-share').addEventListener('click', () => void shareWork());
   for (const kind of VALUE_VOCABULARIES) {
     el(`${kind}-add`).addEventListener('click', () => addVocabValue(kind));
     el(`${kind}-new`).addEventListener('keydown', (e) => {
@@ -6255,6 +6402,42 @@ function narrowViewer(): boolean {
 function closeNarrowOverlay(): void {
   narrow?.close({ returnFocus: false });
   appNarrow?.close({ returnFocus: false });
+  narrowDialogs?.closeOpen();
+}
+
+// The six dialogs as overlays in the narrow layout (FR-71 and FR-72 as
+// amended): shown and hidden through the manager, so that below
+// the threshold they open over the stage -- one open at a time, focus moved
+// in and returned, Escape and a tap outside closing -- and above the
+// threshold they keep their page-flow shapes. The hidden class stays the
+// dialogs' own open flag everywhere.
+let narrowDialogs: NarrowDialogs | null = null;
+
+function showDialog(id: string): void {
+  if (narrowDialogs?.active()) {
+    narrowDialogs.closeOpen();
+    closeNarrowOverlay();
+    if (cardId !== null) closeCard();
+    if (state.selectedAnnotation !== null) selectAnnotation(null);
+    narrowDialogs.showing(id);
+  }
+  el(id).classList.remove('hidden');
+}
+
+function hideDialog(id: string): void {
+  el(id).classList.add('hidden');
+  narrowDialogs?.hidden(id);
+}
+
+function dialogSpecs(): NarrowDialogSpec[] {
+  return [
+    { id: 'fetch-panel', kind: 'sheet', close: () => { fetchAbort?.abort(); hideDialog('fetch-panel'); } },
+    { id: 'pdf-panel', kind: 'sheet', close: () => void closePdf() },
+    { id: 'document-panel', kind: 'sheet', close: closeDocumentDialog },
+    { id: 'export-panel', kind: 'page', close: closeExportDialog },
+    { id: 'compare-panel', kind: 'page', close: closeComparison },
+    { id: 'activity-panel', kind: 'page', close: closeActivityDialog },
+  ];
 }
 
 // The narrow application layout (FR-71, FR-72): the application's own
@@ -6281,19 +6464,30 @@ function startNarrowApplication(): void {
     ],
     {
       enabled: () => document.documentElement.dataset.mode !== 'viewer',
-      // The card and the details sheet (FR-74) take the overlays' place.
+      // The card, the details sheet (FR-74), and the annotation inspector's
+      // sheet take the overlays' place.
       closeCard: () => {
         if (cardId !== null) closeCard();
         if (state.detailsId !== null) openDetails(null);
+        if (state.selectedAnnotation !== null) selectAnnotation(null);
+        narrowDialogs?.closeOpen();
       },
       render: () => {
         layoutHeader();
+        layoutAnnotationControls();
         renderMapItems();
+        renderAnnotationInspector();
       },
       refit: () => refitNarrowStages(),
     },
   );
   layoutHeader();
+  layoutAnnotationControls();
+  // The six dialogs as overlays in the narrow layout (FR-71, FR-72 as
+  // amended), on the same query and gate as the overlays.
+  narrowDialogs = new NarrowDialogs(window.matchMedia(NARROW_QUERY), dialogSpecs(), {
+    enabled: () => document.documentElement.dataset.mode !== 'viewer',
+  });
   refitNarrowStages();
 }
 
@@ -6335,6 +6529,36 @@ function layoutHeader(): void {
     for (const { item } of headerAnchors) if (item.parentElement !== menu) menu.appendChild(item);
   } else {
     for (const { item, anchor } of headerAnchors) if (item.previousSibling !== anchor) anchor.after(item);
+  }
+}
+
+// The four style controls of the annotation toolbar (FR-47 as amended in
+// in the narrow layout they move into the inspector's bottom
+// sheet, after its heading, so that the toolbar's single row keeps only the
+// tools and the hint; above the threshold they sit in the toolbar as before.
+// Each carries an anchor marking its place in the toolbar, so that leaving
+// the narrow layout puts it back exactly where it was.
+let annotationStyleAnchors: Array<{ item: HTMLElement; anchor: Comment }> | null = null;
+let annotationStyleSheetAnchor: Comment | null = null;
+
+function layoutAnnotationControls(): void {
+  const toolbar = el('annotation-toolbar');
+  if (annotationStyleAnchors === null) {
+    const items = [...toolbar.querySelectorAll<HTMLElement>(':scope > label')];
+    annotationStyleAnchors = items.map((item) => {
+      const anchor = document.createComment('annotation-style');
+      item.before(anchor);
+      return { item, anchor };
+    });
+    const inspector = el('annotation-inspector');
+    annotationStyleSheetAnchor = document.createComment('annotation-style');
+    inspector.querySelector('#annotation-inspector-heading')!.after(annotationStyleSheetAnchor);
+  }
+  const inspector = el('annotation-inspector');
+  if (narrowApplication()) {
+    for (const { item } of annotationStyleAnchors) if (item.parentElement !== inspector) inspector.insertBefore(item, annotationStyleSheetAnchor);
+  } else {
+    for (const { item, anchor } of annotationStyleAnchors) if (item.previousSibling !== anchor) anchor.after(item);
   }
 }
 
