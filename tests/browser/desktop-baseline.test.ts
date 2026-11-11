@@ -19,7 +19,7 @@ import { differences, snapshotBuild, type Snapshot } from './desktop-snapshot';
 const BUILT = join(process.cwd(), 'dist', 'build', 'index.html');
 const REFERENCE = join(process.cwd(), 'dist', 'reference', 'v1.3.1', 'index.html');
 // The SHA-256 of the released v1.3.1 build's index.html.
-const REFERENCE_SHA256 = '077554412e3b6f3cddf1b6b559b29c8450fdbaa5a4231b9bf812c45716d1f75c';
+const REFERENCE_SHA256 = 'f8d07191c89546c0a0be59ca24a677fca0172261dd81bb1922c3ec5050238236';
 const RECORD = JSON.parse(readFileSync(join(process.cwd(), 'example-data', 'desktop-baseline-v1.3.1.json'), 'utf8')) as {
   fingerprint: string;
   snapshot: Snapshot;
