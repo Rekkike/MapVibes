@@ -64,7 +64,11 @@ jobs:
       # package.json's version is the specification's version: written here
       # from the same status line, so the two can never drift.
       - name: Sync package.json's version to the specification version
-        run: npm version --no-git-tag-version "${{ steps.spec.outputs.version }}"
+        run: |
+          CURRENT=$(node -p "require('./package.json').version")
+          if [ "$CURRENT" != "${{ steps.spec.outputs.version }}" ]; then
+            npm version --no-git-tag-version "${{ steps.spec.outputs.version }}"
+          fi
 
       # The build version shown in the header is injected here, from the same
       # specification status line as the release tag.
