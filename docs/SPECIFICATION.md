@@ -148,11 +148,53 @@ The amendments.
 2. The token system is the design of record: the six type sizes, the one spacing scale, the two radii and the pill, the named layer scale, the colour tokens of the mockup in both themes, violet as the selection hue with its shape cue, and no colour literal outside the token blocks. The system typeface stack stands; no face is embedded.
 3. The owner's four rulings on what the mockup left open or contradicted, each made on a stop before implementation. (a) The mockup's values stand exactly although secondary text and violet text measure below 7:1 on the secondary surface and on the soft selection ground (6.40 to 6.81); those four combinations are forbidden and pinned as forbidden, and the allowed pairs are pinned at 7:1. (b) The mockup has no error or warning colour and the present values miss the raised bar (warning 6.33 on the light surface, error 6.08 on the dark surface); new values are derived by changing lightness only, each hue kept, until both reach 7:1 on the ground and on the surface in both themes; the derived values are recorded at delivery. (c) The schedule's smallest labels keep their sizes as the recorded exception of FR-29. (d) The mockup names no layers and gives no radius values; the layer tokens name the present stacking order one for one, so that no element changes its order, and the radii are 4 and 8 pixels with the pill.
 4. Nothing spatial moves: no breakpoint, no panel, no legend, no chrome changes its place; those belong to the layout pass. The type and spacing scales change text metrics and small distances by design.
-5. The desktop baseline of v1.3.1 retires at the start of this pass, one pass earlier than first planned, and honestly so: the type scale changes text metrics by design, so the baseline can no longer judge the work. Its final green run was that of Pass 27 (v1.16.0), at each of that pass's sixteen steps and in its release workflow. It guarded the desktop layout through fourteen passes, from v1.4.0 to v1.16.0. Its test (tests/browser/desktop-baseline.test.ts), its snapshot helper, its recording script, and the release workflow's step that built its reference are removed; its record (example-data/desktop-baseline-v1.3.1.json) stays in the repository as a historical record. From this pass on, the design pins of FR-29 judge the look; the layout pass adds the pins of the new layout.
+5. The desktop baseline of v1.3.1 retires at the start of this pass, one pass earlier than first planned, and honestly so: the type scale changes text metrics by design, so the baseline can no longer judge the work. Its final green run was that of Pass 27 (v1.16.0), at each of that pass's sixteen steps and in its release workflow. It guarded the desktop layout from v1.4.0 to v1.16.0. Its test (tests/browser/desktop-baseline.test.ts), its snapshot helper, its recording script, and the release workflow's step that built its reference are removed; its record (example-data/desktop-baseline-v1.3.1.json) stays in the repository as a historical record. From this pass on, the design pins of FR-29 judge the look; the layout pass adds the pins of the new layout.
 6. The documents' palette: the PDF and PowerPoint painters draw the four marker colours, the text, the grid, and the lines from the same token values as the screen's light theme. Their type sizes are not this pass's.
 7. The pins: this pass edits design pins by design and nothing else; every pin edit is itemised at delivery. A functional test needing an edit is a stop.
 
-Delivered state and measured figures: to be filled at delivery.
+Delivered state and measured figures.
+
+The token block (src/styles.css, :root and the dark theme's block). The colours are the mockup's values exactly, pinned by a test that reads docs/redesign/mockup.html; the stylesheet keeps its own token names beside the mockup's (--panel for the surface, --fg for the text, --muted for the secondary text, --border for the hairline, --marker-* for the item colours), and adds --surface-2, --control-line, and --accent-soft. The stage's ground and the inputs' ground take the secondary surface and the surface. The four item colours take the mockup's values: green #1f7a4a (it was #287a4d), blue #2a62b0 (#2f66b3), yellow #e0b31f (unchanged), red #bf3434 (#c03a3a) in the light theme, and #44b877, #6a9ce6, #ecc64a, #e56a6a in the dark theme. The derived colours (ruling b): the light theme's warning is #774700 (it was #8a5300; 7.11 on the ground, 7.82 on the surface) and the dark theme's error is #e49292 (it was #e08080; 7.88 and 7.09); the light theme's error (#a02020: 7.01 and 7.71) and the dark theme's warning (#f0b45a: 10.16 and 9.15) already met the bar and are unchanged. The scales: --text-12 to --text-28; --space-2 to --space-32; --radius (8 pixels), --radius-sm (4), --radius-pill; --hairline; eleven layers named in today's order (under, raised, selected, dragging, schedule, card, panel, sheet, inspector, overlay, dialog) with their values unchanged.
+
+The measured token deltas.
+
+| Property | Before | After |
+| --- | --- | --- |
+| Font sizes | 19 distinct values in 102 declarations | 5 of the six tokens in use (12, 13, 14, 16, 20; 28 is defined and not yet used), and the recorded exception: 3 values below 12 pixels in 5 declarations and 2 custom properties |
+| Spacing literals in padding, margin, and gap | 26 distinct literal lengths in 79 declarations | none: every part is a scale token, 0, auto, a negated token, or one of five named dimensions pinned by name |
+| Radii | 13 distinct expressions | the two radii, the pill, and 0 |
+| Layers | 11 literal values in 17 declarations | 11 named tokens, the same values |
+| Colour literals outside the token blocks | 0 | 0 |
+| Control border against the surface | 1.58 (light), 1.54 (dark) | 4.21, 4.01 |
+| Secondary text against the surface | 6.15, 6.34 | 7.86, 7.81 |
+| Selection colour against the surface | 5.99, 5.10 | 8.06, 7.65 |
+
+Two of the consultation's counts are corrected by this pass's measurement. The stylesheet had no colour literal outside its token blocks before the pass (the standing pin of FR-29 already held; the consultation's count of 23 hexadecimal and 3 rgb() literals was wrong). The spacing literals were 26 distinct lengths in 79 declarations, not 34 in 85.
+
+The mappings of the sweep (nearest step; a tie goes down). Sizes: 12.8 and 13 pixels to 13; 13.6, 14, and 15 to 14; 16, 17, 17.6, and 18 to 16; 20 and 22 to 20. Spacing: 1, 2, and 3 pixels to 2; 3.2 to 6 to 4; 6.4 to 10 to 8; 12 to 12; 20 to 16. Radii: 6 pixels to 8 and 4 to 4 by the tokens' values; twice the radius (12) to 8; half the radius (3) and half the small radius (2) to 4; a circle's 50 per cent to the pill. What this changes to the eye, by design: the data card's title is 20 pixels (it was 22) and its note 16 (it was 18, a size the scale does not have), so the card's three sizes become two; second-level headings are 16 pixels (17.6); the details panel's body is 14 (15); corners are slightly rounder; the presentation chrome's inner distances of 10, 6, and 3 pixels are 8, 4, and 2. No selector, breakpoint, or layout rule changed.
+
+The selection hue. The 58 uses of the accent now wear violet. Each selected, pressed, or current state carries a fill, a ring of at least two pixels, an outline, or a stroke, pinned by a test over the stylesheet; the one state that was marked by its border's colour alone (a column with a role) gained a ring. The native controls take the selection colour through accent-color. --accent-soft is defined and not yet used: a soft fill behind a selected row would put the row's secondary text on a forbidden ground.
+
+The documents' palette. src/documents.ts (PALETTE) and the PowerPoint writer's theme, table borders, and heading shade carry the light theme's token values; the standing pin that compares the palette with the stylesheet passes unedited; the python-pptx round trip is unchanged (45,892 bytes, 4 slides).
+
+The pin edits, itemised; each is a design pin, and no functional test was edited.
+
+1. tests/ui/annotations-constraint.test.ts: the label's size fallback is var(--text-14) (it was var(--dense-font)).
+2. tests/ui/card-design.test.ts: the size helper reads the type tokens.
+3. tests/ui/density.test.ts: the dense scale is --space-2, --space-4, --space-8 and the dense type --text-14 and --text-12 (they were the --dense-* tokens, the same values); the dense surfaces match those names; the card's exception is stated as no dense type and no smallest step on the card; the card's title is 1.25 rem (it was 1.375).
+4. tests/ui/design.test.ts: the shared tokens' names; the text contrast raised from 4.5:1 to 7:1 and extended to the error colour and to the ground; the at-a-glance entry's padding, gap, and size by their new token names.
+5. tests/ui/glance-columns.test.ts: two token names (--space-8; --space-2 and --space-8).
+6. tests/ui/marker-size-band.test.ts: the marker's size is var(--text-13) (it was 0.8rem).
+7. tests/ui/presentation-design.test.ts: the card's text contrast raised to 7:1; a token name; the card's title 1.25 rem and its note 1 rem, the title larger than the note.
+8. tests/browser/density.test.ts: the card's title 20 pixels (it was 22); the label contrast raised to 7:1.
+9. New, tests/ui/tokens.test.ts (16 tests): the values against the direction of record; the derived colours; the scales and the layers; the contrast of every allowed pair; the four forbidden pairs measured and no rule setting them; the no-literal rule; both themes complete; the membership of sizes, spacing, radii, and layers; the shape cue; the native controls.
+10. New, tests/browser/tokens.test.ts (5 tests): every enabled text at 7:1 in a real layout, both themes, a desktop and a phone size, through ten states of the demo; the violet on the active tab.
+11. Removed with the baseline (amendment 5): tests/browser/desktop-baseline.test.ts (3 tests) and its helper.
+12. tests/unit/documents.test.ts was not edited: its palette pin follows the stylesheet.
+
+Verification: type checking; ESLint on both tiers; Prettier; the unit suite (417 tests); the full UI suite (754 tests in 94 files); the build and the build regression tests (10 tests); the python-pptx round trip; and every browser suite (170 tests in 19 files) under the release workflow's font, in chunked invocations, offline. The desktop baseline is retired and no longer runs: no test compares this build's layout with an earlier one. No string changed; translation parity is exact.
+
+Notices. (1) The stop before implementation and the owner's four rulings are recorded in amendment 3. (2) The recorded exception is five declarations and two custom properties, not six rules as the stop's question said. (3) The economics bars use the selection colour as their data colour, as they used the accent before; they are violet now. (4) The retry to delete the branch wip/structure-v1.16.0 failed as the first attempt did; the branch stands on the remote.
 
 ### v1.16.0
 
