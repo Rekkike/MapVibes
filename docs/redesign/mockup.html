@@ -1,0 +1,444 @@
+<!doctype html>
+<!-- The redesign's direction of record, approved by the owner: a static mockup. A record, not a directive to build from; nothing here is implemented by the structure pass (v1.16.0). Self-contained: no network, system fonts, fictional demo items only. The measurements behind it are in probes.md. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MapVibes Redesign Direction</title>
+<style>
+/* Layout concept: the map is the page. One thin bar above, everything else docks to, floats on, or withdraws from the stage. */
+:root {
+  /* Ground and ink */
+  --bg: #f3f4f7; --surface: #ffffff; --surface-2: #e9ecf1;
+  --ink: #16181d; --ink-2: #4a5261;
+  --line: #c5cad3; --control-line: #737c8c;
+  /* One selection colour, chosen in the hue gap the four status colours leave open */
+  --accent: #5a3aa8; --on-accent: #ffffff; --accent-soft: #ebe5f8;
+  /* Status colours (the markers) */
+  --st-green: #1f7a4a; --st-blue: #2a62b0; --st-yellow: #e0b31f; --st-red: #bf3434; --st-neutral: #5f6876;
+  --st-on: #ffffff; --st-on-yellow: #16181d; --st-ring: #ffffff;
+  --shadow: 0 1px 2px rgba(15, 18, 25, .18), 0 6px 18px rgba(15, 18, 25, .16);
+  /* The map image stands for the user's own picture: the same in both themes */
+  --map-land: #f6f5f0; --map-block: #e4e2da; --map-water: #a9c9e3; --map-park: #c6ddb9; --map-road: #ffffff; --map-label: #5d6470;
+  /* Paper is paper in both themes */
+  --paper: #ffffff; --paper-ink: #16181d; --paper-ink-2: #4a5261; --paper-line: #c5cad3;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --num: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #101216; --surface: #1a1d23; --surface-2: #252931;
+  --ink: #e8eaee; --ink-2: #a9b1bd; --line: #353a45; --control-line: #737c8c;
+  --accent: #b9a2f2; --on-accent: #17112b; --accent-soft: #2d2649;
+  --st-green: #44b877; --st-blue: #6a9ce6; --st-yellow: #ecc64a; --st-red: #e56a6a; --st-neutral: #9aa2ae;
+  --st-on: #0d0f12; --st-on-yellow: #0d0f12; --st-ring: #0d0f12;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 6px 18px rgba(0, 0, 0, .45);
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #101216; --surface: #1a1d23; --surface-2: #252931;
+  --ink: #e8eaee; --ink-2: #a9b1bd; --line: #353a45; --control-line: #737c8c;
+  --accent: #b9a2f2; --on-accent: #17112b; --accent-soft: #2d2649;
+  --st-green: #44b877; --st-blue: #6a9ce6; --st-yellow: #ecc64a; --st-red: #e56a6a; --st-neutral: #9aa2ae;
+  --st-on: #0d0f12; --st-on-yellow: #0d0f12; --st-ring: #0d0f12;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 6px 18px rgba(0, 0, 0, .45);
+  color-scheme: dark }
+/* Frames pinned to one theme, whatever the reader's own theme is */
+.mv-light {
+  --bg: #f3f4f7; --surface: #ffffff; --surface-2: #e9ecf1;
+  --ink: #16181d; --ink-2: #4a5261; --line: #c5cad3; --control-line: #737c8c;
+  --accent: #5a3aa8; --on-accent: #ffffff; --accent-soft: #ebe5f8;
+  --st-green: #1f7a4a; --st-blue: #2a62b0; --st-yellow: #e0b31f; --st-red: #bf3434; --st-neutral: #5f6876;
+  --st-on: #ffffff; --st-on-yellow: #16181d; --st-ring: #ffffff;
+  --shadow: 0 1px 2px rgba(15, 18, 25, .18), 0 6px 18px rgba(15, 18, 25, .16); color-scheme: light }
+.mv-dark {
+  --bg: #101216; --surface: #1a1d23; --surface-2: #252931;
+  --ink: #e8eaee; --ink-2: #a9b1bd; --line: #353a45; --control-line: #737c8c;
+  --accent: #b9a2f2; --on-accent: #17112b; --accent-soft: #2d2649;
+  --st-green: #44b877; --st-blue: #6a9ce6; --st-yellow: #ecc64a; --st-red: #e56a6a; --st-neutral: #9aa2ae;
+  --st-on: #0d0f12; --st-on-yellow: #0d0f12; --st-ring: #0d0f12;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 6px 18px rgba(0, 0, 0, .45); color-scheme: dark }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--sans); }
+.page { max-width: 1320px; margin: 0 auto; padding-block: 32px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 48px; }
+.page h1 { font-size: 28px; line-height: 1.2; margin: 0 0 8px; font-weight: 650; letter-spacing: -.01em; text-wrap: balance; }
+.page h2 { font-size: 20px; line-height: 1.25; margin: 0; font-weight: 650; text-wrap: balance; }
+.page p { margin: 0; max-width: 68ch; color: var(--ink-2); }
+.page p strong { color: var(--ink); font-weight: 600; }
+.eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); font-weight: 600; }
+.intro { display: flex; flex-direction: column; gap: 12px; }
+.sec { display: flex; flex-direction: column; gap: 16px; }
+.sec-head { display: flex; flex-direction: column; gap: 6px; }
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 16px; }
+.phones { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; }
+.phones figure { max-width: 300px; width: 100%; justify-self: center; }
+figure { margin: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+figcaption { font-size: 13px; color: var(--ink-2); }
+figcaption b { color: var(--ink); font-weight: 600; }
+.fit { position: relative; overflow: hidden; width: 100%; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
+.fit > * { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.fit.phone { border-radius: 22px; border-width: 3px; border-color: var(--control-line); }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0; border-top: 1px solid var(--line); }
+.facts div { padding: 12px 16px 12px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; }
+.facts dt, .facts .k { font-size: 12px; color: var(--ink-2); }
+.facts .v { font: 600 20px/1.2 var(--num); font-variant-numeric: tabular-nums; }
+.facts .v small { font: 400 13px var(--sans); color: var(--ink-2); }
+.tablewrap { overflow-x: auto; }
+table.t { border-collapse: collapse; font-size: 13px; min-width: 560px; width: 100%; }
+table.t th, table.t td { text-align: left; padding: 7px 12px 7px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.t th { font-size: 12px; color: var(--ink-2); font-weight: 600; }
+table.t td.n, table.t th.n { text-align: right; font-family: var(--num); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.swatches { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px; }
+.sw { background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.sw-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chipx { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 999px; font-size: 13px; background: var(--surface); border: 1px solid var(--line); }
+.dot { width: 12px; height: 12px; border-radius: 3px; background: var(--s); flex: none; }
+.type-scale { display: flex; flex-direction: column; gap: 4px; }
+.type-scale span { display: flex; align-items: baseline; gap: 12px; }
+.type-scale i { font: 12px var(--num); color: var(--ink-2); font-style: normal; width: 64px; flex: none; }
+.note { font-size: 13px; color: var(--ink-2); border-left: 2px solid var(--control-line); padding-left: 12px; max-width: 72ch; }
+
+/* ---------- The product mock-up (everything below is the proposal itself) ---------- */
+.mv { background: var(--bg); color: var(--ink); font: 14px/1.35 var(--sans); display: flex; flex-direction: column; overflow: hidden; }
+.mv button { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: default; }
+.s-done { --s: var(--st-green); --so: var(--st-on); } .s-prog { --s: var(--st-blue); --so: var(--st-on); }
+.s-plan { --s: var(--st-yellow); --so: var(--st-on-yellow); } .s-pause { --s: var(--st-red); --so: var(--st-on); }
+.s-review { --s: var(--st-neutral); --so: var(--st-on); }
+.mv-top { height: 44px; flex: none; display: flex; align-items: center; gap: 16px; padding: 0 12px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.mv-brand { font-weight: 700; letter-spacing: -.01em; font-size: 15px; }
+.mv-seg { display: flex; height: 100%; gap: 4px; }
+.mv-seg button { padding: 0 12px; height: 100%; color: var(--ink-2); font-weight: 500; border-bottom: 2px solid transparent; border-top: 2px solid transparent; }
+.mv-seg button[aria-current] { color: var(--ink); font-weight: 650; border-bottom-color: var(--accent); }
+.mv-file { color: var(--ink-2); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
+.mv-file b { color: var(--ink); font-weight: 600; }
+.mv-acts { display: flex; align-items: center; gap: 8px; margin-left: auto; flex: none; }
+.mv-pill { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px; border-radius: 999px; font-size: 12px; color: var(--ink-2); border: 1px solid var(--line); background: var(--surface); white-space: nowrap; }
+.mv-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--control-line); }
+.mv .btn { height: 30px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--control-line); background: var(--surface); font-weight: 500; white-space: nowrap; }
+.mv .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+.mv-body { flex: 1; display: flex; min-height: 0; }
+.mv-dock { flex: none; background: var(--surface); display: flex; flex-direction: column; min-height: 0; }
+.mv-dock.left { width: 288px; border-right: 1px solid var(--line); } .mv-dock.right { width: 264px; border-left: 1px solid var(--line); }
+.mv-rail { width: 44px; flex: none; background: var(--surface); border-right: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; padding-top: 8px; gap: 4px; }
+.mv-rail .ib { width: 32px; height: 32px; }
+.dock-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px 6px; font-weight: 650; font-size: 13px; }
+.dock-head small { font-weight: 400; color: var(--ink-2); font: 12px var(--num); }
+.dock-search { margin: 0 12px 8px; height: 30px; border: 1px solid var(--control-line); border-radius: 6px; display: flex; align-items: center; padding: 0 10px; color: var(--ink-2); font-size: 13px; background: var(--surface); }
+.grp { padding: 10px 12px 4px; font-size: 12px; color: var(--ink-2); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.row { display: flex; align-items: center; gap: 10px; padding: 0 12px; height: 34px; font-size: 14px; }
+.row.sel { background: var(--accent-soft); box-shadow: inset 2px 0 0 var(--accent); }
+.row .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .yr { font: 12px var(--num); color: var(--ink-2); }
+.badge { min-width: 26px; height: 22px; padding: 0 5px; border-radius: 6px; background: var(--s); color: var(--so); font: 700 12.5px/22px var(--sans); text-align: center; font-variant-numeric: tabular-nums; flex: none; }
+.mv-stage { flex: 1; position: relative; min-width: 0; background: var(--map-land); overflow: hidden; }
+.mv-stage > svg.map { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.mk { position: absolute; transform: translate(-50%, -50%); min-width: 32px; height: 27px; padding: 0 6px; border-radius: 8px; background: var(--s); color: var(--so); font: 700 13.5px/27px var(--sans); text-align: center; box-shadow: 0 0 0 2px var(--st-ring), 0 2px 5px rgba(0, 0, 0, .4); font-variant-numeric: tabular-nums; }
+.mk.sel { box-shadow: 0 0 0 2px var(--st-ring), 0 0 0 5px var(--accent), 0 2px 5px rgba(0, 0, 0, .4); }
+.float { position: absolute; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }
+.tools { left: 12px; top: 12px; display: flex; flex-direction: column; padding: 4px; gap: 2px; }
+.ib { width: 36px; height: 36px; border-radius: 6px; display: grid; place-items: center; color: var(--ink); }
+.ib svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.ib.on { background: var(--accent); color: var(--on-accent); }
+.tools hr { width: 24px; border: 0; border-top: 1px solid var(--line); margin: 2px auto; }
+.zoom { right: 12px; bottom: 12px; display: flex; flex-direction: column; padding: 4px; gap: 2px; }
+.legend { left: 12px; bottom: 12px; padding: 8px 12px; display: flex; align-items: center; gap: 14px; font-size: 13px; flex-wrap: wrap; max-width: 70%; }
+.legend b { font-weight: 650; font-size: 12px; color: var(--ink-2); letter-spacing: .04em; text-transform: uppercase; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.inview { right: 12px; top: 12px; width: 232px; padding-bottom: 6px; }
+.inview .row { height: 30px; font-size: 13px; }
+.card { width: 264px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.card h4 { margin: 0; font-size: 16px; font-weight: 650; display: flex; align-items: center; gap: 8px; }
+.card dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 14px; font-size: 13px; }
+.card dt { color: var(--ink-2); } .card dd { margin: 0; } .card dd.n { font-family: var(--num); font-variant-numeric: tabular-nums; }
+.status { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.modes { left: 50%; top: 12px; transform: translateX(-50%); display: flex; padding: 3px; gap: 2px; border-radius: 999px; }
+.modes button { height: 28px; padding: 0 14px; border-radius: 999px; font-weight: 500; color: var(--ink-2); }
+.modes button[aria-current] { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+
+/* Schedule */
+.sched { flex: 1; min-width: 0; background: var(--surface); position: relative; display: flex; flex-direction: column; padding: 56px 20px 52px 0; }
+.sch-axis, .sch-line, .sch-grp { display: grid; grid-template-columns: var(--namew) 1fr; }
+.sch-axis { height: 28px; border-bottom: 1px solid var(--line); font: 12px var(--num); color: var(--ink-2); }
+.yrs { display: grid; grid-template-columns: repeat(12, 1fr); align-items: center; }
+.yrs span { padding-left: 4px; border-left: 1px solid var(--line); height: 100%; display: flex; align-items: center; }
+.sch-rows { position: relative; flex: 1; }
+.sch-grp { height: 30px; align-items: end; padding-bottom: 4px; }
+.sch-grp b { padding-left: 20px; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-2); }
+.sch-line { height: 28px; align-items: center; }
+.sch-name { display: flex; align-items: center; gap: 8px; padding-left: 20px; min-width: 0; font-size: 14px; }
+.sch-name .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chev { width: 16px; height: 16px; flex: none; color: var(--ink-2); }
+.chev svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.track { position: relative; height: 100%; }
+.bar { position: absolute; top: 7px; height: 14px; border-radius: 4px; background: var(--s); }
+.work { position: absolute; top: 7px; height: 14px; background: repeating-linear-gradient(135deg, var(--surface) 0 2px, transparent 2px 6px); opacity: .75; }
+.sub .bar { top: 10px; height: 8px; background: color-mix(in srgb, var(--s) 40%, var(--surface)); box-shadow: inset 0 0 0 1.5px var(--s); }
+.sub .sch-name { padding-left: 62px; font-size: 13px; color: var(--ink-2); }
+.grid { position: absolute; top: 0; bottom: 0; right: 0; left: var(--namew); display: grid; grid-template-columns: repeat(12, 1fr); pointer-events: none; }
+.grid i { border-left: 1px solid var(--line); opacity: .55; }
+.today { position: absolute; top: -6px; bottom: 0; width: 0; border-left: 2px dashed var(--ink); }
+.today b { position: absolute; top: -20px; left: -2px; transform: translateX(-50%); font: 600 11px var(--sans); background: var(--ink); color: var(--surface); padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
+.event { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px solid var(--ink-2); }
+.event b { position: absolute; bottom: 4px; left: 4px; font: 500 12px var(--sans); background: var(--surface); border: 1px solid var(--control-line); padding: 1px 7px; border-radius: 999px; white-space: nowrap; color: var(--ink); }
+
+/* Phone */
+.ph .mv-top { height: 48px; padding: 0 4px 0 12px; gap: 8px; }
+.ph .mv-seg button { padding: 0 9px; font-size: 14px; }
+.ph .ib { width: 44px; height: 44px; }
+.ph-bar { height: 56px; flex: none; background: var(--surface); border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: space-around; padding: 0 4px; }
+.ph-bar .ib { flex-direction: column; display: flex; align-items: center; justify-content: center; gap: 2px; font-size: 10.5px; width: 56px; height: 48px; color: var(--ink-2); }
+.ph-bar .ib.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.ph .legend { max-width: none; right: 64px; padding: 0 12px; height: 44px; gap: 10px; flex-wrap: nowrap; overflow: hidden; }
+.ph .mk { min-width: 34px; height: 29px; line-height: 29px; }
+.sheet { position: absolute; left: 8px; right: 8px; bottom: 64px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; min-height: 52px; }
+.sheet .nm { font-weight: 600; flex: 1; }
+.ph .sched { padding: 60px 0 0 0; --namew: 0px; }
+.ph .sch-axis { grid-template-columns: 1fr; font-size: 11px; height: 26px; }
+.ph .sch-grp { height: 40px; grid-template-columns: 1fr; padding-bottom: 6px; background: var(--surface); position: relative; }
+.ph .sch-grp b { padding-left: 14px; font-size: 12px; }
+.ph .sch-line { height: 48px; grid-template-columns: 1fr; align-items: stretch; grid-template-rows: 26px 22px; }
+.ph .sch-name { padding: 0 14px; font-size: 14px; position: relative; justify-content: space-between; }
+.ph .sch-name .lhs { display: flex; gap: 8px; align-items: center; min-width: 0; background: var(--surface); padding-right: 6px; }
+.ph .bar { top: 2px; height: 12px; } .ph .work { top: 2px; height: 12px; }
+.ph .grid { left: 0; }
+.ph .today b { top: -16px; }
+
+/* Document page */
+.paper { background: var(--paper); color: var(--paper-ink); font: 13px/1.35 var(--sans); padding: 38px 45px; display: grid; grid-template-rows: auto 1fr auto; gap: 14px; }
+.paper header { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 1.5px solid var(--paper-ink); padding-bottom: 8px; }
+.paper h3 { margin: 0; font-size: 24px; font-weight: 650; letter-spacing: -.01em; }
+.paper header span, .paper footer { font-size: 12px; color: var(--paper-ink-2); }
+.paper-body { display: grid; grid-template-columns: 1fr 300px; gap: 22px; min-height: 0; }
+.paper .mv-stage { border: 1px solid var(--paper-line); border-radius: 0; --st-green: #1f7a4a; --st-blue: #2a62b0; --st-yellow: #e0b31f; --st-red: #bf3434; --st-neutral: #5f6876; --st-on: #fff; --st-on-yellow: #16181d; --st-ring: #fff; }
+.paper aside { display: flex; flex-direction: column; gap: 14px; --st-green: #1f7a4a; --st-blue: #2a62b0; --st-yellow: #e0b31f; --st-red: #bf3434; --st-neutral: #5f6876; --st-on: #fff; --st-on-yellow: #16181d; }
+.paper h5 { margin: 0 0 6px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--paper-ink-2); font-weight: 600; }
+.paper .prow { display: grid; grid-template-columns: 30px 1fr auto; gap: 8px; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--paper-line); font-size: 13px; }
+.paper .prow .yr { font: 12px var(--num); color: var(--paper-ink-2); }
+.paper .pleg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; font-size: 13px; }
+.paper .pleg span { display: flex; gap: 6px; align-items: center; }
+.paper footer { display: flex; justify-content: space-between; border-top: 1px solid var(--paper-line); padding-top: 8px; }
+</style>
+</head>
+<body style="margin:0">
+<div class="page">
+  <div class="intro">
+    <span class="eyebrow">Design consultation · proposal for direction approval · nothing here is implemented</span>
+    <h1>The map is the page</h1>
+    <p>Today the stage is one of several boxes on the page: at 1920×1080 the Map segment gives it <strong>37.5 %</strong> of the screen, at 1280×720 <strong>22.7 %</strong>. This proposal keeps one 44 px bar and hands everything else to the map. Panels dock, fold to a rail, or float on the stage; the toolbars become one strip on the stage's edge; the legend rides on the map.</p>
+    <p>Every frame below is a static picture drawn with the demo scenario's seven fictional items. The map artwork stands in for the user's own image and is the same in both themes, as it would be in use.</p>
+  </div>
+
+  <section class="sec">
+    <div class="sec-head"><span class="eyebrow">Stage share of the screen · Map segment</span><h2>What the direction buys, by screen</h2></div>
+    <div class="facts">
+      <div><span class="k">3440×1440 · both panels docked</span><span class="v">81.4 % <small>from 61.8</small></span></div>
+      <div><span class="k">1920×1080 · both panels docked</span><span class="v">68.3 % <small>from 37.5</small></span></div>
+      <div><span class="k">1440×900 · list docked</span><span class="v">76.1 % <small>from 25.1</small></span></div>
+      <div><span class="k">1280×720 · list folded to a rail</span><span class="v">90.7 % <small>from 22.7</small></span></div>
+      <div><span class="k">1024×768 · panels as drawers</span><span class="v">94.3 % <small>from 12.1</small></span></div>
+      <div><span class="k">390×844 · phone</span><span class="v">87.7 % <small>from 68.7</small></span></div>
+    </div>
+    <p class="note">Proposed figures are arithmetic from the proposed chrome sizes (44 px bar, 288 px list, 264 px In view, 44 px rail, 48 + 56 px phone bars). Today's figures are measured on the v1.15.1 build. With every panel folded the stage reaches 93 to 97 % on any desktop screen.</p>
+  </section>
+
+  <section class="sec">
+    <div class="sec-head"><span class="eyebrow">Map segment · desktop 1440×900</span><h2>One bar, one strip, one docked list</h2>
+      <p>The two toolbars become a tool strip on the stage. The legend and In view float on the map and fold away. The offline notice is a pill in the bar, not a row. Selection is violet, so the active tab can no longer be mistaken for a green marker.</p></div>
+    <div class="pair">
+      <figure><div class="fit" data-w="1440" data-h="900" data-view="map" data-theme="light" data-bp="l"></div><figcaption><b>Light.</b> List docked at 288 px; stage 1152×856.</figcaption></figure>
+      <figure><div class="fit" data-w="1440" data-h="900" data-view="map" data-theme="dark" data-bp="l"></div><figcaption><b>Dark.</b> The same picture on dark chrome; marker rings turn dark.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-head"><span class="eyebrow">Presentation · Timeline · desktop 1440×900</span><h2>The schedule, on the same ground</h2>
+      <p>The ruled pins are kept as they are: 28 px lanes, the two-state line (name opens the card, chevron expands), the hatched work phase, the 2 px dashed today line, events as hairlines with chips, the used-only legend. Only the surroundings change.</p></div>
+    <div class="pair">
+      <figure><div class="fit" data-w="1440" data-h="900" data-view="sched" data-theme="light"></div><figcaption><b>Light.</b> Garden path is expanded to its two activities.</figcaption></figure>
+      <figure><div class="fit" data-w="1440" data-h="900" data-view="sched" data-theme="dark"></div><figcaption><b>Dark.</b></figcaption></figure>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-head"><span class="eyebrow">Phone · 390×844</span><h2>Top bar, stage, tool bar</h2>
+      <p>The header drops from 101 px to 48 px by putting the segments in the bar. The two 44 px toolbar rows become one 56 px bar at the thumb. Schedule lines stay 48 px with 40 px headings; touch targets stay 44 px or more.</p></div>
+    <div class="phones">
+      <figure><div class="fit phone" data-w="390" data-h="844" data-view="phmap" data-theme="light"></div><figcaption><b>Map, light.</b></figcaption></figure>
+      <figure><div class="fit phone" data-w="390" data-h="844" data-view="phmap" data-theme="dark"></div><figcaption><b>Map, dark.</b></figcaption></figure>
+      <figure><div class="fit phone" data-w="390" data-h="844" data-view="phsched" data-theme="light"></div><figcaption><b>Timeline, light.</b></figcaption></figure>
+      <figure><div class="fit phone" data-w="390" data-h="844" data-view="phsched" data-theme="dark"></div><figcaption><b>Timeline, dark.</b></figcaption></figure>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-head"><span class="eyebrow">The two named extremes · shown in your theme</span><h2>3440×1440 and 1280×720</h2>
+      <p>On the ultrawide both panels dock and stay a fixed width; every extra pixel goes to the map and nothing is centred in a column. In the 1280×720 window the list folds to a 44 px rail and In view folds to its heading, and the page no longer scrolls.</p></div>
+    <figure><div class="fit" data-w="3440" data-h="1440" data-view="map" data-bp="xl"></div><figcaption><b>3440×1440.</b> List 288 px left, In view 264 px right, stage 2888×1396. Drawn to scale, so the type is small here.</figcaption></figure>
+    <figure><div class="fit" data-w="1280" data-h="720" data-view="map" data-bp="m"></div><figcaption><b>1280×720.</b> Rail 44 px, stage 1236×676, with the selected item's card open.</figcaption></figure>
+  </section>
+
+  <section class="sec">
+    <div class="sec-head"><span class="eyebrow">Document · A4 landscape</span><h2>A page that reads at arm's length</h2>
+      <p>The map takes the page; the legend and the numbered list sit in one column beside it. Nothing on the page is set below 9 pt. Today's timeline figure uses 7 pt.</p></div>
+    <figure><div class="fit" data-w="1123" data-h="794" data-view="paper"></div><figcaption><b>Map page.</b> Paper is white in both themes.</figcaption></figure>
+  </section>
+
+  <section class="sec">
+    <div class="sec-head"><span class="eyebrow">Tokens</span><h2>The system behind the frames</h2>
+      <p>Six type sizes replace nineteen. One spacing scale (2, 4, 8, 12, 16, 24, 32) replaces 34 literal lengths. Two radii and a pill replace thirteen. Control borders rise from 1.6:1 to above 3:1.</p></div>
+    <div class="swatches">
+      <div class="sw mv-light"><div class="sw-row"><b>Light</b></div>
+        <div class="sw-row"><span class="chipx s-done"><i class="dot"></i>Completed</span><span class="chipx s-prog"><i class="dot"></i>In progress</span><span class="chipx s-plan"><i class="dot"></i>Planned</span><span class="chipx s-pause"><i class="dot"></i>Paused</span><span class="chipx s-review"><i class="dot"></i>Under review</span></div>
+        <div class="sw-row mv"><button class="btn primary">Selection</button><button class="btn">Control</button><span style="color:var(--ink-2)">Secondary text</span></div></div>
+      <div class="sw mv-dark"><div class="sw-row"><b>Dark</b></div>
+        <div class="sw-row"><span class="chipx s-done"><i class="dot"></i>Completed</span><span class="chipx s-prog"><i class="dot"></i>In progress</span><span class="chipx s-plan"><i class="dot"></i>Planned</span><span class="chipx s-pause"><i class="dot"></i>Paused</span><span class="chipx s-review"><i class="dot"></i>Under review</span></div>
+        <div class="sw-row mv" style="background:none"><button class="btn primary">Selection</button><button class="btn">Control</button><span style="color:var(--ink-2)">Secondary text</span></div></div>
+      <div class="sw"><div class="sw-row"><b>Type scale</b></div>
+        <div class="type-scale">
+          <span><i>12</i><span style="font-size:12px">Labels and axis years</span></span>
+          <span><i>13</i><span style="font-size:13px">Dense lists and captions</span></span>
+          <span><i>14</i><span style="font-size:14px">Body and controls</span></span>
+          <span><i>16</i><span style="font-size:16px;font-weight:650">Card titles</span></span>
+          <span><i>20</i><span style="font-size:20px;font-weight:650">Dialog headings</span></span>
+          <span><i>28</i><span style="font-size:28px;font-weight:650;line-height:1.1">Start page</span></span>
+        </div></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var items = [
+    { n: 1, name: 'North gate', area: 'Park district', st: 'done', a: 2026, b: 2028, x: 36, y: 13 },
+    { n: 2, name: 'Garden path', area: 'Park district', st: 'prog', a: 2029, b: 2032, x: 30, y: 33 },
+    { n: 3, name: 'Park fountain', area: 'Park district', st: 'plan', a: 2032, b: 2034, x: 36, y: 41 },
+    { n: 4, name: 'Lookout terrace', area: 'Park district', st: 'review', a: 2031, b: 2033, x: 25, y: 44 },
+    { n: 5, name: 'River steps', area: 'Riverside', st: 'prog', a: 2030, b: 2033, x: 76, y: 57 },
+    { n: 6, name: 'East bridge', area: 'Riverside', st: 'pause', a: 2028, b: 2034, x: 84, y: 36 },
+    { n: 7, name: 'Lake jetty', area: 'Lakeside', st: 'done', a: 2025, b: 2027, x: 22, y: 70 }
+  ];
+  var areas = ['Park district', 'Riverside', 'Lakeside'];
+  var legendAll = [['done', 'Completed'], ['prog', 'In progress'], ['plan', 'Planned'], ['pause', 'Paused'], ['review', 'Under review']];
+  var ic = {
+    select: '<svg viewBox="0 0 20 20"><path d="M5 3l10 6-4.5 1.2L13 15l-2 1-2.4-4.7L5 14z"/></svg>',
+    text: '<svg viewBox="0 0 20 20"><path d="M4 5h12M10 5v11"/></svg>',
+    line: '<svg viewBox="0 0 20 20"><path d="M4 16L16 4"/></svg>',
+    poly: '<svg viewBox="0 0 20 20"><path d="M4 8l6-5 6 5-2 8H6z"/></svg>',
+    rect: '<svg viewBox="0 0 20 20"><rect x="3.5" y="5" width="13" height="10" rx="1"/></svg>',
+    circ: '<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="6.5"/></svg>',
+    plus: '<svg viewBox="0 0 20 20"><path d="M10 4v12M4 10h12"/></svg>',
+    minus: '<svg viewBox="0 0 20 20"><path d="M4 10h12"/></svg>',
+    fit: '<svg viewBox="0 0 20 20"><path d="M4 8V4h4M16 8V4h-4M4 12v4h4M16 12v4h-4"/></svg>',
+    menu: '<svg viewBox="0 0 20 20"><path d="M4 6h12M4 10h12M4 14h12"/></svg>',
+    list: '<svg viewBox="0 0 20 20"><path d="M7 5h9M7 10h9M7 15h9M3.5 5h.5M3.5 10h.5M3.5 15h.5"/></svg>',
+    right: '<svg viewBox="0 0 20 20"><path d="M8 5l5 5-5 5"/></svg>',
+    down: '<svg viewBox="0 0 20 20"><path d="M5 8l5 5 5-5"/></svg>',
+    more: '<svg viewBox="0 0 20 20"><path d="M5 10h.1M10 10h.1M15 10h.1" stroke-width="2.6"/></svg>'
+  };
+  var mapSvg = '<svg class="map" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">' +
+    '<defs><pattern id="PID" width="150" height="110" patternUnits="userSpaceOnUse" patternTransform="rotate(-6)"><rect x="9" y="9" width="132" height="92" rx="3" fill="var(--map-block)"/></pattern></defs>' +
+    '<rect width="1600" height="1000" fill="var(--map-land)"/><rect x="-200" y="-200" width="2000" height="1400" fill="url(#PID)"/>' +
+    '<path d="M330 150 L640 120 L700 470 L360 520 Z" fill="var(--map-park)"/>' +
+    '<ellipse cx="300" cy="900" rx="360" ry="210" fill="var(--map-water)"/>' +
+    '<path d="M1400 -20 C1340 220 1260 420 1320 620 S1480 880 1460 1020" fill="none" stroke="var(--map-water)" stroke-width="96" stroke-linecap="round"/>' +
+    '<path d="M-20 600 L1620 440" stroke="var(--map-road)" stroke-width="20" fill="none"/><path d="M820 -20 L900 1020" stroke="var(--map-road)" stroke-width="20" fill="none"/>' +
+    '<path d="M1180 372 L1440 352" stroke="var(--map-road)" stroke-width="16" fill="none"/>' +
+    '<g fill="var(--map-label)" font-family="Georgia, serif" font-style="italic" font-size="26"><text x="430" y="250">Park district</text><text x="1040" y="700">Riverside</text><text x="330" y="840">Lakeside</text></g></svg>';
+  var uid = 0;
+  function map() { return mapSvg.replace(/PID/g, 'blk' + (++uid)); }
+  function markers(sel) { return items.map(function (i) { return '<span class="mk s-' + i.st + (i.n === sel ? ' sel' : '') + '" style="left:' + i.x + '%;top:' + i.y + '%">' + i.n + '</span>'; }).join(''); }
+  function legend(used) {
+    var l = legendAll.filter(function (e) { return !used || items.some(function (i) { return i.st === e[0]; }); });
+    return '<div class="float legend"><b>Status</b>' + l.map(function (e) { return '<span class="s-' + e[0] + '"><i class="dot"></i>' + e[1] + '</span>'; }).join('') + '</div>';
+  }
+  function rows(sel, years) {
+    return areas.map(function (a) {
+      return '<div class="grp">' + a + '</div>' + items.filter(function (i) { return i.area === a; }).map(function (i) {
+        return '<div class="row s-' + i.st + (i.n === sel ? ' sel' : '') + '"><span class="badge">' + i.n + '</span><span class="nm">' + i.name + '</span>' + (years ? '<span class="yr">' + i.a + '–' + String(i.b).slice(2) + '</span>' : '') + '</div>';
+      }).join('');
+    }).join('');
+  }
+  function top(seg, phone) {
+    var segs = ['List', 'Map', phone ? 'Present' : 'Presentation'];
+    return '<div class="mv-top">' + (phone ? '' : '<span class="mv-brand">MapVibes</span>') +
+      '<div class="mv-seg">' + segs.map(function (s, k) { return '<button' + (k === seg ? ' aria-current="page"' : '') + '>' + s + '</button>'; }).join('') + '</div>' +
+      (phone ? '<span class="mv-file"></span>' : '<span class="mv-file"><b>Demo scenario</b> · unsaved changes</span>') +
+      '<div class="mv-acts">' + (phone ? '<span class="mv-pill">Unsaved</span><button class="ib" aria-label="Menu">' + ic.menu + '</button>' : '<span class="mv-pill">Offline</span><button class="btn">Export</button><button class="btn primary">Save</button><button class="ib" aria-label="Menu">' + ic.menu + '</button>') + '</div></div>';
+  }
+  function tools() {
+    return '<div class="float tools"><button class="ib on" aria-label="Select">' + ic.select + '</button><button class="ib" aria-label="Text">' + ic.text + '</button><button class="ib" aria-label="Line">' + ic.line + '</button><button class="ib" aria-label="Polygon">' + ic.poly + '</button><button class="ib" aria-label="Rectangle">' + ic.rect + '</button><button class="ib" aria-label="Circle">' + ic.circ + '</button><hr><button class="ib" aria-label="More map tools">' + ic.more + '</button></div>';
+  }
+  function zoom() { return '<div class="float zoom"><button class="ib" aria-label="Zoom in">' + ic.plus + '</button><button class="ib" aria-label="Zoom out">' + ic.minus + '</button><button class="ib" aria-label="Fit">' + ic.fit + '</button></div>'; }
+  function card(style) {
+    return '<div class="float card" style="' + style + '"><h4 class="s-prog"><span class="badge">5</span>River steps</h4><span class="status s-prog"><i class="dot"></i>In progress</span>' +
+      '<dl><dt>Area</dt><dd>Riverside</dd><dt>Programme</dt><dd>Green links</dd><dt>Years</dt><dd class="n">2030–2033</dd><dt>Budget</dt><dd class="n">1 690 thousand</dd></dl></div>';
+  }
+  function mapView(bp) {
+    var left = bp === 'm'
+      ? '<div class="mv-rail"><button class="ib" aria-label="Open the list">' + ic.list + '</button></div>'
+      : '<aside class="mv-dock left"><div class="dock-head">Items <small>7 of 7 placed</small></div><div class="dock-search">Filter items</div>' + rows(5, true) + '</aside>';
+    var inview = '<div class="dock-head">In view <small>7</small></div>' + items.map(function (i) { return '<div class="row s-' + i.st + '"><span class="badge">' + i.n + '</span><span class="nm">' + i.name + '</span></div>'; }).join('');
+    var right = bp === 'xl' ? '<aside class="mv-dock right">' + inview + '</aside>' : '';
+    var floatIn = bp === 'l' ? '<div class="float inview">' + inview + '</div>' : bp === 'm' ? '<div class="float inview" style="padding-bottom:0"><div class="dock-head" style="padding-bottom:10px">In view <small>7</small></div></div>' : '';
+    var c = bp === 'xl' ? 'left:calc(76% + 28px);top:calc(57% - 30px)' : bp === 'm' ? 'right:calc(24% + 30px);top:calc(57% - 150px)' : 'right:calc(24% + 30px);top:calc(57% - 40px)';
+    return top(1) + '<div class="mv-body">' + left + '<div class="mv-stage">' + map() + markers(5) + tools() + zoom() + legend(false) + floatIn + card(c) + '</div>' + right + '</div>';
+  }
+  function pct(v) { return (v * 100).toFixed(3) + '%'; }
+  var TODAY = (2026 + 316 / 365 - 2025) / 12;
+  function line(i, phone, open) {
+    var l = (i.a - 2025) / 12, w = (i.b - i.a + 1) / 12;
+    var work = i.n === 2 ? '<span class="work" style="left:' + pct(l + 1 / 12) + ';width:' + pct(1.5 / 12) + '"></span>' : i.n === 6 ? '<span class="work" style="left:' + pct(l + 3 / 12) + ';width:' + pct(2 / 12) + '"></span>' : '';
+    var track = '<div class="track"><span class="bar" style="left:' + pct(l) + ';width:' + pct(w) + '"></span>' + work + '</div>';
+    var chev = '<span class="chev">' + (open ? ic.down : ic.right) + '</span>';
+    var name = phone
+      ? '<div class="sch-name"><span class="lhs"><span class="badge">' + i.n + '</span><span class="nm">' + i.name + '</span></span>' + chev + '</div>'
+      : '<div class="sch-name">' + chev + '<span class="badge">' + i.n + '</span><span class="nm">' + i.name + '</span></div>';
+    return '<div class="sch-line s-' + i.st + '">' + name + track + '</div>';
+  }
+  function sub(i, name, a, b) { return '<div class="sch-line sub s-' + i.st + '"><div class="sch-name"><span class="nm">' + name + '</span></div><div class="track"><span class="bar" style="left:' + pct((a - 2025) / 12) + ';width:' + pct((b - a) / 12) + '"></span></div></div>'; }
+  function sched(phone) {
+    var yrs = ''; for (var y = 2025; y <= 2036; y++) yrs += '<span>' + (phone ? (y % 2 ? "'" + String(y).slice(2) : '') : y) + '</span>';
+    var grid = ''; for (var k = 0; k < 12; k++) grid += '<i></i>';
+    var body = areas.map(function (a) {
+      return '<div class="sch-grp"><b>' + a + '</b></div>' + items.filter(function (i) { return i.area === a; }).map(function (i) {
+        var open = !phone && i.n === 2;
+        return line(i, phone, open) + (open ? sub(i, 'Ground works', 2029, 2030.5) + sub(i, 'Planting and paving', 2030.5, 2033) : '');
+      }).join('');
+    }).join('');
+    var overlay = '<div class="grid">' + grid + '<span class="event" style="left:' + pct(5.4 / 12) + '"><b>' + (phone ? 'Review' : 'Programme review') + '</b></span><span class="today" style="left:' + pct(TODAY) + '"><b>Today</b></span></div>';
+    return top(2, phone) + '<div class="mv-body"><div class="sched"' + (phone ? '' : ' style="--namew:260px"') + '>' +
+      '<div class="float modes"><button>Map</button><button aria-current="true">Timeline</button><button>Costs</button></div>' +
+      '<div class="sch-axis">' + (phone ? '' : '<span></span>') + '<div class="yrs">' + yrs + '</div></div>' +
+      '<div class="sch-rows">' + overlay + body + '</div>' + (phone ? '' : legend(true)) + '</div></div>';
+  }
+  function phoneMap() {
+    return top(1, true) + '<div class="mv-body"><div class="mv-stage">' + map() + markers(5) +
+      '<div class="float legend" style="bottom:124px"><b>Status</b><span class="s-done"><i class="dot"></i>Completed</span><span class="s-prog"><i class="dot"></i>In progress</span><span class="chev">' + ic.right + '</span></div>' +
+      '<div class="float zoom" style="bottom:124px;padding:0"><button class="ib" aria-label="Fit">' + ic.fit + '</button></div>' +
+      '<div class="float sheet s-prog"><span class="badge">5</span><span class="nm">River steps</span><span class="status"><i class="dot"></i>In progress</span></div>' +
+      '</div></div><div class="ph-bar"><button class="ib on">' + ic.select + 'Select</button><button class="ib">' + ic.text + 'Text</button><button class="ib">' + ic.line + 'Line</button><button class="ib">' + ic.rect + 'Shape</button><button class="ib">' + ic.list + 'Items</button><button class="ib">' + ic.more + 'More</button></div>';
+  }
+  function paper() {
+    return '<header><h3>Demo scenario</h3><span>Map · status on 12 November 2026</span></header><div class="paper-body"><div class="mv-stage">' + map() + markers(0) + '</div><aside>' +
+      '<div><h5>Status</h5><div class="pleg">' + legendAll.map(function (e) { return '<span class="s-' + e[0] + '"><i class="dot"></i>' + e[1] + '</span>'; }).join('') + '</div></div>' +
+      '<div><h5>Items</h5>' + items.map(function (i) { return '<div class="prow s-' + i.st + '"><span class="badge">' + i.n + '</span><span>' + i.name + '</span><span class="yr">' + i.a + '–' + i.b + '</span></div>'; }).join('') + '</div></aside></div>' +
+      '<footer><span>MapVibes · made locally, no data left this computer</span><span>Page 1 of 3</span></footer>';
+  }
+  document.querySelectorAll('.fit').forEach(function (f) {
+    var w = +f.dataset.w, h = +f.dataset.h, v = f.dataset.view, t = f.dataset.theme;
+    var s = document.createElement('div');
+    s.style.width = w + 'px'; s.style.height = h + 'px';
+    if (v === 'paper') { s.className = 'paper'; s.innerHTML = paper(); }
+    else {
+      s.className = 'mv' + (t ? ' mv-' + t : '') + (v.indexOf('ph') === 0 ? ' ph' : '');
+      s.innerHTML = v === 'map' ? mapView(f.dataset.bp) : v === 'sched' ? sched(false) : v === 'phmap' ? phoneMap() : sched(true);
+    }
+    f.style.aspectRatio = w + ' / ' + h;
+    f.appendChild(s);
+    var fitNow = function () { s.style.transform = 'scale(' + (f.clientWidth / w) + ')'; };
+    fitNow();
+    if (window.ResizeObserver) new ResizeObserver(fitNow).observe(f); else window.addEventListener('resize', fitNow);
+  });
+})();
+</script>
+</body>
+</html>
