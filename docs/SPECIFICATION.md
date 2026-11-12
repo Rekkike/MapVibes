@@ -1,6 +1,6 @@
 # MapVibes — Functional Specification
 
-Status: v1.15.1 — the hygiene pass (a patch: hardening and cleanup, no functional change): the amendments below are recorded before implementation and are the design of record for the pass; the delivered state and its measured figures are in the changelog below.
+Status: v1.16.0 — the structure pass, the first of the four passes of the redesign (behaviour-preserving; no visual change of any kind and no functional change): the amendment below is recorded before implementation and is the design of record for the pass; the delivered state and its measured figures are in the changelog below.
 
 MapVibes is a static, client-side web application: a spreadsheet-to-map visualisation tool. It has no backend, no database, and no server-side processing. Everything runs locally in the browser.
 
@@ -137,6 +137,18 @@ Out of scope: everything else on the shelf -- the full redesign (the next and fi
 2. The lint gate is two-tier by the owner's ruling of this pass: src/ carries the full ruled set (recommended-type-checked with no-explicit-any and the no-unsafe-* family) and is fully clean; tests/ keeps curly, eqeqeq, no-unused-vars, and no-floating-promises as errors, while no-explicit-any and the no-unsafe-* family are relaxed there only (447 findings at adoption, dominated by JSON.parse fixtures and typed test helpers). A future pass with room may tighten the test tier; the relaxed findings are a watch item, never a blocker.
 
 ## Changelog
+
+### v1.16.0
+
+Pass 27, the structure pass: the first of the four passes of the redesign ruled by the owner (structure, tokens, layout, and then the phone, the viewer, and the documents). This entry is opened before implementation and is the design of record for the pass; the delivered state and its measured figures are added to it at delivery.
+
+The amendment. The pass is the behaviour-preserving decomposition of src/main.ts into modules. No functional requirement changes; no pin moves; no string changes; nothing visible changes. The desktop baseline of v1.3.1 stays in force, unchanged, and its green run is the proof that the decomposition changed nothing: this is its last duty before the layout pass retires it.
+
+1. The migration, smallest coupling first, one module per commit: a shared context module (the state, the element lookup, and the translation helpers); the open-map fetch; save and open; the documents; the export, the viewer, and the comparison; the activities dialog, and then the details and the comments; the annotations; the map stage and the markers; the presentation, the card, the legend, and the schedule; the list and the columns. src/main.ts keeps the wiring and re-exports its seventeen current exports, so that no test file changes. The actual seams govern: a module whose extraction would force a behaviour change is stopped and reported, not forced.
+2. The painters' structural unification, the honest part only: the schedule figure's constants and the day-to-position and lane-packing helpers unify behind the shared model (src/timeline.ts, src/economics.ts). The rendering itself does not unify: the screen paints with CSS layout and the documents with absolute coordinates.
+3. The proof, at every step: type checking; the full UI suite with no test file edited; the build regression tests; the desktop baseline unchanged and green. A baseline difference, a UI test needing an edit, or any string change is a stop, reported, never a silent deviation. No new browser pins are expected, since nothing observable changes.
+
+The module map (files, lines, and responsibilities, measured at delivery): to be filled at delivery.
 
 ### v1.15.1
 
