@@ -50,7 +50,18 @@ describe('design tokens and theming (FR-29)', () => {
   });
 
   test('spacing and radius come from shared tokens', () => {
-    for (const token of ['--space-2', '--space-4', '--space-8', '--space-12', '--space-16', '--space-24', '--space-32', '--radius', '--radius-sm', '--radius-pill']) {
+    for (const token of [
+      '--space-2',
+      '--space-4',
+      '--space-8',
+      '--space-12',
+      '--space-16',
+      '--space-24',
+      '--space-32',
+      '--radius',
+      '--radius-sm',
+      '--radius-pill',
+    ]) {
       expect(light[token]).toBeDefined();
     }
     expect(css.match(/border-radius:\s*\d+px/g)).toBeNull();
