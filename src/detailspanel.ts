@@ -7,8 +7,6 @@ import { renderDetails, type DetailField, type DetailLabels, type DetailModel } 
 import { SERIES_ROLES } from './economics';
 import { formatArea, trueArea } from './annotations';
 import {
-  annotationName,
-  areaLocale,
   colourLabel,
   detailValueInput,
   economicsFor,
@@ -16,7 +14,6 @@ import {
   fitToContent,
   itemLabel,
   labelOf,
-  linkedRow,
   mapView,
   narrowApplication,
   numberLabel,
@@ -30,6 +27,7 @@ import {
 import { el, fill, rowById, rowId, state } from './appstate';
 import { markDirty } from './workfile';
 import { openActivityCorrection, openActivityDialog } from './activitydialog';
+import { annotationName, areaLocale, linkedRow } from './annotationpanel';
 
 // Details panel (FR-7): the complete data of one item, open in the
 // Information and Map segments, following the selection and the live data.

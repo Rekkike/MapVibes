@@ -25,8 +25,6 @@ import { formatDate, readDate } from './dates';
 import { todayDay } from './clock';
 import { SERIES_ROLES } from './economics';
 import {
-  annotationShown,
-  areaLocale,
   colourLabels,
   effectiveSeries,
   effectiveSymbols,
@@ -47,6 +45,7 @@ import { el, fill, rowById, state } from './appstate';
 import { PDF_FILE, PPTX_FILE, writeFile } from './workfile';
 import { formatSize } from './exportdialog';
 import { workPhaseOf } from './activitydialog';
+import { annotationShown, areaLocale } from './annotationpanel';
 
 // Document exports (FR-12, FR-50 to FR-52): the visible presentation stage
 // and the table of the shown items, as a PDF or a PowerPoint document. The
