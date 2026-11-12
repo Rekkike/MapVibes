@@ -260,13 +260,23 @@ describe('the header collapsed into a menu (FR-71 as amended)', () => {
     expect([byId('menu-toggle').textContent, byId('menu-toggle').getAttribute('aria-label')]).toEqual(['Meny', 'Meny, osparade ändringar']);
   });
 
-  test('above the threshold nothing is moved: the header keeps its controls where they were', async () => {
+  test('above the narrow classes the bar keeps the work controls and its Menu holds the rest (FR-71 as amended in v2.0.0)', async () => {
     await mountApp();
     await flush();
-    expect(byId('app-menu').children).toHaveLength(0);
+    // The Menu of the medium class and above: the demo's reset, Open work,
+    // Share work, the language, and the theme.
+    expect([...byId('app-menu').children].map((e) => e.id || e.querySelector('select')!.id)).toEqual([
+      'demo-reset',
+      'work-open',
+      'work-share',
+      'select-language',
+      'select-theme',
+    ]);
+    // The work controls, with Save work, stay in the bar.
     expect(byId('work-controls').parentElement!.classList.contains('controls')).toBe(true);
-    expect(byId('demo-reset').parentElement!.id).toBe('app-header');
-    expect(byId('menu-toggle').hidden).toBe(true);
+    expect(byId('work-save').parentElement!.id).toBe('work-controls');
+    expect(byId('demo-badge').parentElement!.id).toBe('app-header');
+    expect(byId('app-menu').dataset.state).toBe('closed');
   });
 });
 
@@ -299,9 +309,19 @@ describe('leaving the narrow layout (FR-71)', () => {
     for (const l of listeners) {
       l();
     }
-    expect(order()).toEqual(['demo-badge<header', 'demo-reset<header', 'work-controls<header', 'select-language<header', 'select-theme<header']);
+    // Leaving the narrow classes: the badge and the work controls return to
+    // the bar, in their order; the reset, the language, and the theme are in
+    // the Menu of the classes above (FR-71 as amended in v2.0.0), with Open
+    // work and Share work.
+    expect(order()).toEqual(['demo-badge<header', 'work-controls<header', 'demo-reset<menu', 'select-language<menu', 'select-theme<menu']);
     expect(byId('work-controls').parentElement!.classList.contains('controls')).toBe(true);
-    expect(byId('app-menu').children).toHaveLength(0);
+    expect([...byId('app-menu').children].map((e) => e.id || e.querySelector('select')!.id)).toEqual([
+      'demo-reset',
+      'work-open',
+      'work-share',
+      'select-language',
+      'select-theme',
+    ]);
   });
 });
 

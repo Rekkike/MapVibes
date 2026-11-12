@@ -64,9 +64,9 @@ describe('PowerPoint export (FR-12, FR-51, FR-52)', () => {
     await flush();
   });
 
-  test('the action sits in the Presentation toolbar; the dialog states what the document holds', async () => {
+  test('the action sits in the Export menu of the bar (FR-81); the dialog states what the document holds', async () => {
     expect(byId('pptx-open').textContent).toBe('Export PowerPoint');
-    expect(byId('pptx-open').parentElement!.id).toBe('presentation-toolbar');
+    expect(byId('pptx-open').parentElement!.id).toBe('bar-export-menu');
     byId('pptx-open').click();
     await settle();
     expect(byId('document-heading').textContent).toBe('Export PowerPoint');
