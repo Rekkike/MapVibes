@@ -6,9 +6,10 @@ import { type ActivityImport, activityId, type StoredActivity } from './workstat
 import { parsePdfPages, parseRows, type ActivityDraft, type ActivityField, type ActivityTable } from './activityparse';
 import { readPdfText } from './pdftext';
 import { readDate } from './dates';
-import { hideDialog, renderMapItems, showDialog } from './main';
+import { hideDialog, showDialog } from './main';
 import { el, fill, rowById, state } from './appstate';
 import { markDirty } from './workfile';
+import { renderMapItems } from './mapstage';
 
 // The activities import dialog (FR-76): choose a PDF, the table is
 // recognised generically, the columns are proposed and assigned by the user,

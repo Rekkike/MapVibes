@@ -29,7 +29,6 @@ import {
   effectiveSeries,
   effectiveSymbols,
   hideDialog,
-  itemLabel,
   itemSpan,
   labelOf,
   numbered,
@@ -46,6 +45,7 @@ import { PDF_FILE, PPTX_FILE, writeFile } from './workfile';
 import { formatSize } from './exportdialog';
 import { workPhaseOf } from './activitydialog';
 import { annotationShown, areaLocale } from './annotationpanel';
+import { itemLabel } from './mapstage';
 
 // Document exports (FR-12, FR-50 to FR-52): the visible presentation stage
 // and the table of the shown items, as a PDF or a PowerPoint document. The

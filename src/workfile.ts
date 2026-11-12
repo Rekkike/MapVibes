@@ -7,12 +7,10 @@ import { type Problem, parseWorkState, serialiseWorkState, SUGGESTED_FILE_NAME, 
 import { SUGGESTED_EXPORT_NAME } from './exportfile';
 import { newAnnotationId, type Annotation } from './annotations';
 import {
-  closePdf,
   currentCostsView,
   currentTimelineView,
   demoLoaded,
   effectiveSeries,
-  mapView,
   renderList,
   restoreCostsView,
   restoreTimelineView,
@@ -20,11 +18,11 @@ import {
   setEventMessage,
   setPresetMessage,
   setSegment,
-  showMapError,
 } from './main';
 import { el, state } from './appstate';
 import { cloneSeries, isHtmlFile, openExportForComparison } from './exportdialog';
 import { workPhaseOf } from './activitydialog';
+import { closePdf, mapView, showMapError } from './mapstage';
 
 // The number of changes made, and its value when the demo finished loading,
 // so that a reset of an untouched demo needs no confirmation (FR-56).
