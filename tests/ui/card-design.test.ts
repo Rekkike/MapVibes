@@ -105,7 +105,9 @@ describe('content-first card (FR-37): stylesheet', () => {
   });
 
   test('the type scale is compact with a 16 pixel floor', () => {
-    const size = (selector: string) => Number(/font-size: ([\d.]+)rem;/.exec(rule(selector))![1]);
+    // A size is one of the six type tokens, named by its pixels (FR-29 as
+    // amended in v1.17.0); in rem here.
+    const size = (selector: string) => Number(/font-size: var\(--text-(\d+)\);/.exec(rule(selector))![1]) / 16;
     expect(size('.presentation-card .details-title')).toBeLessThanOrEqual(1.5);
     for (const selector of [
       '.presentation-card',

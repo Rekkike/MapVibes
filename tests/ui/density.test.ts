@@ -122,9 +122,11 @@ const DENSE = [
 
 describe('information density (FR-42): stylesheet', () => {
   test('the dense spacing scale is tight and the type stays legible', () => {
-    expect(['--dense-1', '--dense-2', '--dense-3'].map((t) => rem(root[t]))).toEqual([0.125, 0.25, 0.5]);
-    expect(rem(root['--dense-font'])).toBeGreaterThanOrEqual(0.875);
-    expect(rem(root['--dense-label'])).toBeGreaterThanOrEqual(0.75);
+    // The dense scale is the low end of the one spacing scale, and the dense
+    // type is two of the six sizes (FR-29 as amended in v1.17.0).
+    expect(['--space-2', '--space-4', '--space-8'].map((t) => rem(root[t]))).toEqual([0.125, 0.25, 0.5]);
+    expect(rem(root['--text-14'])).toBeGreaterThanOrEqual(0.875);
+    expect(rem(root['--text-12'])).toBeGreaterThanOrEqual(0.75);
     expect(Number(root['--dense-line'])).toBeLessThanOrEqual(1.4);
   });
 
@@ -149,7 +151,7 @@ describe('information density (FR-42): stylesheet', () => {
       if (spacing.length === 0) {
         continue;
       }
-      expect(spacing.join(' '), selector).toMatch(/var\(--dense-[123]\)|^0$/);
+      expect(spacing.join(' '), selector).toMatch(/var\(--space-(2|4|8)\)|^0$/);
     }
   });
 
@@ -170,7 +172,7 @@ describe('information density (FR-42): stylesheet', () => {
 
   test('the new operator surfaces set the dense type size (v1.1.0)', () => {
     for (const selector of ['.glance-columns', '#annotation-toolbar', '#annotation-inspector']) {
-      expect(declarations(selector)['font-size'], selector).toBe('var(--dense-font)');
+      expect(declarations(selector)['font-size'], selector).toBe('var(--text-14)');
     }
     // A programme heading is one line; its entries are indented beneath it.
     expect(declarations('.glance-group-name')['white-space']).toBe('nowrap');
@@ -183,8 +185,10 @@ describe('information density (FR-42): stylesheet', () => {
   });
 
   test('the presentation data card is the exception: no density rule applies to it', () => {
+    // The dense type (12 to 14 pixels) and the scale's smallest step never
+    // apply to the card.
     for (const rule of rules) {
-      const dense = /var\(--dense-/.test(rule.body);
+      const dense = /var\(--text-1[234]\)|var\(--space-2\)/.test(rule.body);
       if (dense) {
         for (const s of rule.selectors) {
           expect(s, s).not.toContain('presentation-card');
@@ -193,7 +197,7 @@ describe('information density (FR-42): stylesheet', () => {
     }
     // Its field wrappers take no part in its grid.
     expect(declarations('.presentation-card .card-field').display).toBe('contents');
-    expect(rem(declarations('.presentation-card .details-title')['font-size'])).toBe(1.375);
+    expect(rem(declarations('.presentation-card .details-title')['font-size'])).toBe(1.25);
     expect(rem(declarations('.presentation-card .card-value')['font-size'])).toBe(1);
   });
 });

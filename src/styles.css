@@ -58,6 +58,8 @@
   --radius-pill: 999px;
   /* A hairline: the width of a border, where two borders overlap. */
   --hairline: 1px;
+  /* The width of the details panel and of the data card: a dimension. */
+  --details-width: 24rem;
   /* The layers, in today's stacking order, lowest first. */
   --layer-under: -1;
   --layer-raised: 1;
@@ -960,10 +962,10 @@ input[type='text'] {
 .presentation-card {
   position: absolute;
   z-index: var(--layer-card);
-  width: min(24rem, calc(100% - 2 * var(--space-16)));
+  width: min(var(--details-width), calc(100% - 2 * var(--space-16)));
   max-height: calc(100% - 2 * var(--space-16));
   overflow: auto;
-  padding: var(--space-16) calc(1.25 * var(--space-16));
+  padding: var(--space-16);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--panel);
@@ -1435,7 +1437,7 @@ input[type='text'] {
   right: var(--space-16);
   bottom: var(--space-16);
   z-index: var(--layer-panel);
-  width: min(24rem, calc(100vw - 2 * var(--space-16)));
+  width: min(var(--details-width), calc(100vw - 2 * var(--space-16)));
   overflow: auto;
   padding: var(--space-16);
   border: 1px solid var(--border);
@@ -1639,7 +1641,7 @@ input[type='text'] {
 
 @media (min-width: 60rem) {
   html[data-details='open']:not([data-segment='presentation']) #app-main {
-    padding-right: calc(min(24rem, 100vw - 2 * var(--space-16)) + 2 * var(--space-16));
+    padding-right: calc(min(var(--details-width), 100vw - var(--space-32)) + var(--space-32));
   }
 }
 
@@ -1678,7 +1680,7 @@ input[type='text'] {
 #export-panel ul,
 #document-panel ul {
   margin: 0;
-  padding-left: calc(1.25 * var(--space-16));
+  padding-left: var(--space-16);
 }
 
 #export-size,
@@ -2462,7 +2464,7 @@ button.secondary-action {
 
 #role-help-list {
   margin: 0;
-  padding-left: calc(1.25 * var(--space-8));
+  padding-left: var(--space-8);
 }
 
 .role-help-status {
@@ -2534,7 +2536,7 @@ button.secondary-action {
   max-height: calc(100vh - 4rem);
   overflow: auto;
   overscroll-behavior: contain;
-  padding: var(--space-16) calc(1.25 * var(--space-16));
+  padding: var(--space-16);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--panel);

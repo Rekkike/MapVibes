@@ -105,13 +105,13 @@ describe('presentation data card legibility (FR-37)', () => {
     }
   });
 
-  test('its text keeps at least 4.5:1 contrast in both themes, whatever the background', () => {
+  test('its text keeps at least 7:1 contrast in both themes, whatever the background (as amended in v1.17.0)', () => {
     // The card's text sits on the card's own opaque colour, so the contrast
     // does not depend on the background image (also checked in a browser
     // over light and dark backgrounds; see the changelog).
     for (const theme of [light, dark]) {
-      expect(contrast(theme['--fg'], theme['--panel'])).toBeGreaterThanOrEqual(4.5);
-      expect(contrast(theme['--muted'], theme['--panel'])).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(theme['--fg'], theme['--panel'])).toBeGreaterThanOrEqual(7);
+      expect(contrast(theme['--muted'], theme['--panel'])).toBeGreaterThanOrEqual(7);
     }
     // Labels, dates, and empty values use the muted colour; nothing else.
     for (const selector of ['.details-label', '.details-comment-date', '.details-value.is-empty']) {
@@ -121,7 +121,7 @@ describe('presentation data card legibility (FR-37)', () => {
 
   test('the card stays within the stage and scrolls when its content is long', () => {
     expect(card.position).toBe('absolute');
-    expect(card['max-height']).toBe('calc(100% - 2 * var(--space-3))');
+    expect(card['max-height']).toBe('calc(100% - 2 * var(--space-16))');
     expect(card.overflow).toBe('auto');
   });
 });
@@ -129,9 +129,13 @@ describe('presentation data card legibility (FR-37)', () => {
 describe('projection typography (FR-37) and details typography (FR-7)', () => {
   test('the card uses a compact scale with a 16 pixel floor (v1.1.0)', () => {
     const title = rem(declarations('.presentation-card .details-title')['font-size']);
-    expect(title).toBeGreaterThan(1.125);
+    // On the six sizes (FR-29 as amended in v1.17.0) the title is 20 pixels
+    // (it was 22) and the note is 16 (it was 18, which the scale does not
+    // have).
+    expect(title).toBe(1.25);
     expect(title).toBeLessThanOrEqual(1.5);
-    expect(rem(declarations('.presentation-card .card-note')['font-size'])).toBe(1.125);
+    expect(rem(declarations('.presentation-card .card-note')['font-size'])).toBe(1);
+    expect(title).toBeGreaterThan(rem(declarations('.presentation-card .card-note')['font-size']));
     for (const selector of [
       '.presentation-card',
       '.presentation-card .card-label',

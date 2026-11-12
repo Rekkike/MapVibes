@@ -159,7 +159,7 @@ describe('annotation labels on the map (FR-47 as amended in v1.4.0)', () => {
       expect(doc.getElementById(content)!.contains(doc.getElementById(labels))).toBe(true);
     }
     const rule = /^\.annotation-label \{([^}]*)\}/m.exec(css)![1];
-    expect(rule).toMatch(/font-size: var\(--label-size, var\(--dense-font\)\);/);
+    expect(rule).toMatch(/font-size: var\(--label-size, var\(--text-14\)\);/);
     // The labels move with the scaled map; the glide of their own is gone,
     // while the markers keep theirs.
     expect(css).not.toMatch(/\.annotation-label[^{]*\{[^}]*transition/);

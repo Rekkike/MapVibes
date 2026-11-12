@@ -50,7 +50,7 @@ describe('design tokens and theming (FR-29)', () => {
   });
 
   test('spacing and radius come from shared tokens', () => {
-    for (const token of ['--space-1', '--space-2', '--space-3', '--radius', '--radius-pill']) {
+    for (const token of ['--space-2', '--space-4', '--space-8', '--space-12', '--space-16', '--space-24', '--space-32', '--radius', '--radius-sm', '--radius-pill']) {
       expect(light[token]).toBeDefined();
     }
     expect(css.match(/border-radius:\s*\d+px/g)).toBeNull();
@@ -76,11 +76,14 @@ describe('design tokens and theming (FR-29)', () => {
     }
   });
 
-  test('foreground, muted, and warning text meet 4.5:1 against the panel in both themes', () => {
+  test('foreground, muted, warning, and error text meet 7:1 against the panel and the ground in both themes (as amended in v1.17.0)', () => {
     for (const theme of [light, dark]) {
-      expect(contrast(theme['--fg'], theme['--panel'])).toBeGreaterThanOrEqual(4.5);
-      expect(contrast(theme['--muted'], theme['--panel'])).toBeGreaterThanOrEqual(4.5);
-      expect(contrast(theme['--warning'], theme['--panel'])).toBeGreaterThanOrEqual(4.5);
+      for (const ground of ['--panel', '--bg']) {
+        expect(contrast(theme['--fg'], theme[ground])).toBeGreaterThanOrEqual(7);
+        expect(contrast(theme['--muted'], theme[ground])).toBeGreaterThanOrEqual(7);
+        expect(contrast(theme['--warning'], theme[ground])).toBeGreaterThanOrEqual(7);
+        expect(contrast(theme['--error'], theme[ground])).toBeGreaterThanOrEqual(7);
+      }
     }
   });
 
@@ -96,11 +99,11 @@ describe('design tokens and theming (FR-29)', () => {
 
   test('the at-a-glance panel keeps a compact density (FR-28)', () => {
     const rule = css.slice(css.indexOf('.glance-entry {'), css.indexOf('}', css.indexOf('.glance-entry {')));
-    expect(rule).toMatch(/padding:\s*var\(--space-1\)\s+var\(--space-2\);/);
-    expect(rule).toMatch(/gap:\s*var\(--space-2\);/);
-    expect(rule).toMatch(/font-size:\s*0\.875rem;/);
+    expect(rule).toMatch(/padding:\s*var\(--space-4\)\s+var\(--space-8\);/);
+    expect(rule).toMatch(/gap:\s*var\(--space-8\);/);
+    expect(rule).toMatch(/font-size:\s*var\(--text-14\);/);
     const list = css.slice(css.indexOf('.glance-list {'), css.indexOf('}', css.indexOf('.glance-list {')));
-    expect(list).toMatch(/gap:\s*var\(--space-1\);/);
+    expect(list).toMatch(/gap:\s*var\(--space-4\);/);
   });
 
   test('rendered OpenStreetMap backgrounds keep legible edges against the land colour (FR-31)', async () => {

@@ -107,10 +107,10 @@ describe('configurable at-a-glance columns (FR-46)', () => {
   test('the values sit beside the name on the entry line, under the dense scale', () => {
     const css = readFileSync(join(process.cwd(), 'src', 'styles.css'), 'utf8');
     expect(css).toMatch(/\.glance-values \{[^}]*margin-left: auto;/);
-    expect(css).toMatch(/\.glance-values \.glance-value \+ \.glance-value \{[^}]*margin-left: var\(--dense-3\);/);
+    expect(css).toMatch(/\.glance-values \.glance-value \+ \.glance-value \{[^}]*margin-left: var\(--space-8\);/);
     // The name has priority; the values end in an ellipsis.
     expect(css).toMatch(/\.glance-text \.glance-name \{[^}]*min-width: 55%;/);
     expect(css).toMatch(/\.glance-values \{[^}]*text-overflow: ellipsis;/);
-    expect(css).toMatch(/\.glance-columns ul \{[^}]*gap: var\(--dense-1\) var\(--dense-3\);/);
+    expect(css).toMatch(/\.glance-columns ul \{[^}]*gap: var\(--space-2\) var\(--space-8\);/);
   });
 });
