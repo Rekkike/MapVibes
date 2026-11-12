@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
+import { pressExport, setSelect, showPanel } from './chrome';
 
 // Round trip of the interactive export (FR-11, FR-14, FR-38, FR-39) through
 // the built single-file page in headless Chromium, offline: the application
@@ -51,7 +52,7 @@ beforeAll(async () => {
   const { page } = await newPage();
   await page.goto(`file://${BUILT}`);
   await page.evaluate(() => delete (window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker);
-  await page.selectOption('#select-language', 'en');
+  await setSelect(page, 'select-language', 'en');
   await page.setInputFiles('#file-input', join(EXAMPLE, 'example.xlsx'));
   await page.selectOption('.role-select[data-header="ID"]', 'identifier');
   await page.selectOption('.role-select[data-header="Group"]', 'area');
@@ -71,8 +72,9 @@ beforeAll(async () => {
   }
   await page.click('#tab-presentation');
   // Switch off A-05 (the third placed item).
+  await showPanel(page, 'toggle-visibility');
   await page.locator('.visibility-toggle').nth(2).uncheck();
-  await page.click('#export-open');
+  await pressExport(page, 'export-open');
   const [download] = await Promise.all([page.waitForEvent('download'), page.click('#export-go')]);
   exported = join(dir, 'mapvibes-presentation.html');
   await download.saveAs(exported);
@@ -173,7 +175,7 @@ describe('the exported file in a browser, offline (FR-11, FR-38)', () => {
   test('the exported file opens back in the application for comparison', async () => {
     const { page, errors } = await newPage();
     await page.goto(`file://${BUILT}`);
-    await page.selectOption('#select-language', 'en');
+    await setSelect(page, 'select-language', 'en');
     await page.setInputFiles('#file-input', join(EXAMPLE, 'example.xlsx'));
     await page.selectOption('.role-select[data-header="ID"]', 'identifier');
     await page.setInputFiles('#work-file-input', exported);

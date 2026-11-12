@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
+import { pressExport, setSelect } from './chrome';
 
 // The label rule on both stages and in the exported viewer (FR-47 and FR-57
 // as amended in v1.4.0, superseding the v1.3.1 constant-size ruling for
@@ -55,7 +56,7 @@ async function demo(): Promise<Page> {
   const page = await context.newPage();
   await page.goto(`file://${BUILT}`);
   await page.evaluate(() => delete (window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker);
-  await page.selectOption('#select-language', 'en');
+  await setSelect(page, 'select-language', 'en');
   await page.click('#load-demo');
   await page.waitForFunction(() => document.querySelectorAll('#marker-layer .marker').length === 11);
   return page;
@@ -206,7 +207,7 @@ describe('labels scale with the map, printed relative to the sheet; markers keep
     await page.click(PRESENTATION.fit);
     await page.waitForTimeout(400);
     const app = await measure(page, PRESENTATION);
-    await page.click('#export-open');
+    await pressExport(page, 'export-open');
     const [download] = await Promise.all([page.waitForEvent('download'), page.click('#export-go')]);
     const file = join(mkdtempSync(join(tmpdir(), 'mapvibes-labels-')), 'presentation.html');
     await download.saveAs(file);

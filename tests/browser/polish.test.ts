@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
+import { pressExport, setSelect } from './chrome';
 
 // The polish pass (v1.3.0) in a real layout, headless Chromium, offline, with
 // the full-test demo: the export absence of what is not chosen (FR-53), the
@@ -45,7 +46,7 @@ async function demo(): Promise<{ page: Page; errors: string[] }> {
   page.on('pageerror', (e) => errors.push(String(e)));
   await page.goto(`file://${BUILT}`);
   await page.evaluate(() => delete (window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker);
-  await page.selectOption('#select-language', 'en');
+  await setSelect(page, 'select-language', 'en');
   await page.click('#load-demo');
   await page.waitForFunction(() => document.querySelectorAll('#marker-layer .marker').length === 11);
   await page.click('#map-fit');
@@ -68,7 +69,7 @@ describe('the polish pass in a browser (v1.3.0)', () => {
     await page.click('#details-panel .details-comment-add');
     await page.click('#details-panel .details-close');
     await page.click('#tab-presentation');
-    await page.click('#export-open');
+    await pressExport(page, 'export-open');
     // Leave out the Lakeside area (the lake jetty with its footprint, the
     // boathouse with its comments) and the Note column.
     await page.locator('.export-area-toggle[data-area="Lakeside"]').uncheck();
@@ -197,7 +198,7 @@ describe('the polish pass in a browser (v1.3.0)', () => {
         return { x: (stage.clientWidth / 2 - x) / scale, y: (stage.clientHeight / 2 - y) / scale };
       });
     const before = await centre(page);
-    await page.click('#export-open');
+    await pressExport(page, 'export-open');
     const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#export-go')]);
     const file = join(mkdtempSync(join(tmpdir(), 'mapvibes-polish-')), 'presentation.html');
     await dl.saveAs(file);

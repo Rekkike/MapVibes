@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { chromium, type Browser, type Page } from 'playwright';
+import { setSelect } from './chrome';
 
 // Information density (FR-42) in a real layout: the built page with the
 // full-test demo loaded, in headless Chromium, offline, in both themes.
@@ -30,8 +31,8 @@ async function demoPage(theme: 'light' | 'dark'): Promise<Page> {
   await context.setOffline(true);
   const page = await context.newPage();
   await page.goto(`file://${BUILT}`);
-  await page.selectOption('#select-language', 'en');
-  await page.selectOption('#select-theme', theme);
+  await setSelect(page, 'select-language', 'en');
+  await setSelect(page, 'select-theme', theme);
   await page.click('#load-demo');
   await page.waitForFunction(() => document.querySelectorAll('#marker-layer .marker').length === 11);
   return page;

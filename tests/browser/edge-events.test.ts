@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { chromium, type Browser, type Page } from 'playwright';
+import { pressExport, setSelect } from './chrome';
 
 // The edge indicators (FR-80 as amended in v1.11.1) in a real layout,
 // headless Chromium, offline: the demo is loaded, two fictional events are
@@ -38,7 +39,7 @@ beforeAll(async () => {
   const page = await context.newPage();
   await page.goto(`file://${BUILT}`);
   await page.evaluate(() => delete (window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker);
-  await page.selectOption('#select-language', 'en');
+  await setSelect(page, 'select-language', 'en');
   await page.click('#load-demo');
   await page.waitForFunction(() => document.querySelectorAll('#row-table-body tr').length === 12);
   // Two fictional events beyond the items' span, through the events panel.
@@ -58,7 +59,7 @@ beforeAll(async () => {
   await page.click('#tab-presentation');
   await page.click('#pres-mode-timeline');
   await page.waitForFunction(() => document.querySelectorAll('#presentation-timeline .timeline-line').length === 12, undefined, { timeout: 30000 });
-  await page.click('#export-open');
+  await pressExport(page, 'export-open');
   const [download] = await Promise.all([page.waitForEvent('download'), page.click('#export-go')]);
   exported = join(dir, 'presentation.html');
   await download.saveAs(exported);

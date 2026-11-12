@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { chromium, devices, type Browser, type Page } from 'playwright';
+import { pressExport, setSelect } from './chrome';
 
 // The timeline (FR-66 to FR-70) and the date cells read as dates (FR-1 as
 // amended) in a real layout, headless Chromium, offline: the application at
@@ -58,7 +59,7 @@ describe('the timeline in the application (FR-66, FR-67, FR-70)', () => {
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(String(e)));
     await page.goto(`file://${BUILT}`);
-    await page.selectOption('#select-language', 'en');
+    await setSelect(page, 'select-language', 'en');
     await page.setInputFiles('#file-input', join(EXAMPLE, 'example-dates.xlsx'));
     await page.waitForSelector('.role-select[data-header="Start"]');
     // The date cells read as dates, never as their serial numbers.
@@ -165,7 +166,7 @@ describe('the timeline in the application (FR-66, FR-67, FR-70)', () => {
     page.on('pageerror', (e) => errors.push(String(e)));
     await page.goto(`file://${BUILT}`);
     await page.evaluate(() => delete (window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker);
-    await page.selectOption('#select-language', 'en');
+    await setSelect(page, 'select-language', 'en');
     await page.click('#load-demo');
     await page.waitForFunction(() => document.querySelectorAll('#map-stage .marker').length === 11);
     await page.click('#tab-presentation');
@@ -174,7 +175,7 @@ describe('the timeline in the application (FR-66, FR-67, FR-70)', () => {
     expect((await lines(page)).length).toBe(12);
     // All twelve lines fit the desktop stage: "In view" lists them all.
     expect(await page.$$eval('#presentation-glance-list .glance-entry', (e) => e.length)).toBe(12);
-    await page.click('#export-open');
+    await pressExport(page, 'export-open');
     const [download] = await Promise.all([page.waitForEvent('download'), page.click('#export-go')]);
     exported = join(mkdtempSync(join(tmpdir(), 'mapvibes-timeline-')), 'presentation.html');
     await download.saveAs(exported);

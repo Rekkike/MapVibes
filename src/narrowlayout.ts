@@ -1,7 +1,7 @@
 // The narrow layout of the application and of the exported viewer: the
 // overlay module's start, the dialogs, and the moved controls.
 import { MapView } from './mapview';
-import { NARROW_QUERY, NarrowDialogs, NarrowViewer, type NarrowDialogSpec } from './narrowviewer';
+import { NARROW_QUERY, NarrowDialogs, NarrowViewer, VIEWER_NARROW_QUERY, type NarrowDialogSpec } from './narrowviewer';
 import { el, state } from './appstate';
 import { layoutShell, startShell } from './shell';
 import { fetchAbort } from './fetchpanel';
@@ -218,7 +218,7 @@ function layoutAnnotationControls(): void {
 export function startNarrowViewer(): void {
   narrowStage = presentationView?.stageSize() ?? null;
   narrow = new NarrowViewer(
-    window.matchMedia(NARROW_QUERY),
+    window.matchMedia(VIEWER_NARROW_QUERY),
     [
       { toggle: el<HTMLButtonElement>('toggle-glance'), panel: el('presentation-glance') },
       { toggle: el<HTMLButtonElement>('toggle-legend'), panel: el('presentation-legend') },
