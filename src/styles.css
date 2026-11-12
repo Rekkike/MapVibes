@@ -3240,7 +3240,7 @@ button.timeline-plot-control:hover > .timeline-indicator,
   max-width: none;
   padding: 0;
   background: transparent;
-  font-size: 0.625rem;
+  font-size: var(--text-12);
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
@@ -3329,7 +3329,7 @@ button.timeline-plot-control:hover > .timeline-indicator,
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   background: var(--panel);
   color: var(--fg);
-  font-size: 0.6875rem;
+  font-size: var(--text-12);
   line-height: 15px;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -3340,7 +3340,7 @@ button.timeline-plot-control:hover > .timeline-indicator,
 }
 
 .timeline-event-more {
-  width: 28px;
+  width: 31px;
   margin-left: var(--space-2);
   padding: 0;
   border-color: var(--control-line);
@@ -3354,7 +3354,7 @@ button.timeline-plot-control:hover > .timeline-indicator,
    to the nearest of them. It takes no extra height: it sits in the strip's
    first row at the plot's end. */
 .timeline-event-edge {
-  width: 28px;
+  width: 31px;
   padding: 0;
   border-color: var(--control-line);
   border-radius: var(--radius-pill);
@@ -3653,7 +3653,7 @@ html[data-segment='presentation'] #presentation-legend .legend-swatch.legend-pha
 html[data-segment='presentation'] #presentation-legend .legend-swatch.marker-icon {
   width: 1rem;
   height: 1rem;
-  font-size: 0.6rem;
+  font-size: var(--text-12);
 }
 
 /* The persistent "In view" column, narrowed and quieter. */
@@ -4620,7 +4620,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     --timeline-name-row: 24px;
     --timeline-lane: 24px;
     --timeline-badge: 1.125rem;
-    --timeline-badge-font: 0.6875rem;
+    --timeline-badge-font: var(--text-12);
     /* The narrow plot is 20 pixels (the 40-pixel line holds a 20-pixel name
        row above it): 4-pixel segments, 2-pixel gaps, 1-pixel padding, three
        rows (tops 1, 7, 13, bottom 17 of 20). */
@@ -4700,6 +4700,13 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     height: 10px;
   }
 
+  /* The amount figures keep their 10 pixels here (the owner's ruling in
+     v2.0.0): a phone's year cells are too narrow for larger figures. The
+     one size outside the six, until the pass that re-rules this chrome. */
+  html[data-mode='viewer'] .timeline-seg[data-kind='amount'] > .timeline-seg-label {
+    font-size: 0.625rem;
+  }
+
   html[data-mode='viewer'] .timeline-point {
     --timeline-point-size: 10px;
   }
@@ -4716,11 +4723,11 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   }
 
   html[data-mode='viewer'] #app-version {
-    font-size: 0.6875rem;
+    font-size: var(--text-12);
   }
 
   html[data-mode='viewer'] #viewer-badge {
-    font-size: 0.6875rem;
+    font-size: var(--text-12);
     color: var(--muted);
     border: 1px solid var(--border);
     border-radius: var(--radius-pill);
@@ -5193,7 +5200,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     --timeline-name-row: 24px;
     --timeline-lane: 24px;
     --timeline-badge: 1.125rem;
-    --timeline-badge-font: 0.6875rem;
+    --timeline-badge-font: var(--text-12);
     --timeline-seg-h: 4px;
     --timeline-seg-gap: 2px;
     --timeline-seg-pad: 1px;
@@ -5268,6 +5275,13 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   html:not([data-mode='viewer']) .timeline-bar {
     top: calc(50% - 5px);
     height: 10px;
+  }
+
+  /* The amount figures keep their 10 pixels here (the owner's ruling in
+     v2.0.0): a phone's year cells are too narrow for larger figures. The
+     one size outside the six, until the pass that re-rules this chrome. */
+  html:not([data-mode='viewer']) .timeline-seg[data-kind='amount'] > .timeline-seg-label {
+    font-size: 0.625rem;
   }
 
   html:not([data-mode='viewer']) .timeline-point {

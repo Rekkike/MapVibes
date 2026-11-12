@@ -126,11 +126,19 @@ describe('the costs model (FR-79)', () => {
   });
 
   test('the figure stands after the fill where the cell has room, inside a fill wide enough, else nowhere', () => {
-    // A 63-pixel cell, a three-character figure (18 pixels).
+    // A 63-pixel cell, a three-character figure (21.6 pixels: the figures are
+    // 12 pixels since v2.0.0, 7.2 a character; they were 10 pixels, 6 a
+    // character).
     expect(amountLabelPlace(63, 0.36, 3)).toBe('outside');
     expect(amountLabelPlace(63, 0.9, 3)).toBe('inside');
-    // A five-character figure after a half fill does not fit; inside it does.
-    expect(amountLabelPlace(63, 0.6, 5)).toBe('inside');
+    // A five-character figure (36 pixels) after a fill of seven tenths does
+    // not fit; inside it does.
+    expect(amountLabelPlace(63, 0.7, 5)).toBe('inside');
+    // The fitting cost of the larger figures: a fill of six tenths held the
+    // five-character figure before v2.0.0 and no longer does.
+    expect(amountLabelPlace(63, 0.6, 5)).toBe('none');
+    // The compact and short classes keep the 10-pixel figures, 6 a character.
+    expect(amountLabelPlace(63, 0.6, 5, 6)).toBe('inside');
     // A narrow cell holds neither.
     expect(amountLabelPlace(20, 0.5, 3)).toBe('none');
   });
@@ -183,7 +191,9 @@ describe('the events layout (FR-80)', () => {
   });
 
   test('a chip is as wide as its label needs, up to a longest chip', () => {
-    expect(eventChipWidth('Review')).toBe(53);
-    expect(eventChipWidth('x'.repeat(200))).toBe(160);
+    // 12-pixel text since v2.0.0: 7.1 pixels a character and a longest chip
+    // of 175 (they were 6.5 and 160 for 11-pixel text).
+    expect(eventChipWidth('Review')).toBe(57);
+    expect(eventChipWidth('x'.repeat(200))).toBe(175);
   });
 });

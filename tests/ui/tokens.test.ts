@@ -205,21 +205,19 @@ describe('everything is drawn from the tokens (FR-29 as amended in v1.17.0)', ()
     }
   });
 
-  // The recorded exception: the schedule's smallest labels keep their sizes
-  // until the layout pass re-rules the schedule's geometry.
-  const SMALL = ['0.6rem', '0.625rem', '0.6875rem'];
-
-  test('every font size is one of the six, the recorded exception aside', () => {
+  // The recorded exception of v1.17.0 (the schedule's smallest labels) is
+  // resolved in v2.0.0 but for one size, by the owner's ruling: the amount
+  // figures keep 10 pixels in the two narrow blocks, where a phone's year
+  // cells are too narrow for larger ones.
+  test('every font size is one of the six, the narrow amount figures aside', () => {
     const sizes = declarations.filter((d) => d.property === 'font-size').map((d) => d.value);
     expect(sizes.length).toBeGreaterThan(90);
     const allowed = /^(var\(--text-(12|13|14|16|20|28)\)|inherit|var\(--label-size, var\(--text-14\)\)|var\(--timeline-badge-font, var\(--text-13\)\))$/;
     const others = sizes.filter((v) => !allowed.test(v));
-    expect(others.sort()).toEqual(['0.625rem', '0.6875rem', '0.6875rem', '0.6875rem', '0.6rem']);
+    expect(others).toEqual(['0.625rem', '0.625rem']);
+    expect(rulesText.match(/\.timeline-seg\[data-kind='amount'\] > \.timeline-seg-label \{\s*font-size: 0\.625rem;/g)).toHaveLength(2);
     const badge = declarations.filter((d) => d.property === '--timeline-badge-font').map((d) => d.value);
-    expect(badge).toEqual(['0.6875rem', '0.6875rem']);
-    for (const v of [...others, ...badge]) {
-      expect(SMALL).toContain(v);
-    }
+    expect(badge).toEqual(['var(--text-12)', 'var(--text-12)']);
     // The font shorthand only inherits.
     expect(declarations.filter((d) => d.property === 'font').every((d) => d.value === 'inherit')).toBe(true);
   });
