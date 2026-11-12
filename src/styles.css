@@ -1,75 +1,111 @@
 :root {
-  --bg: #f6f7f9;
-  --fg: #1a1c20;
+  /* The token system (FR-29 as amended; docs/redesign/mockup.html is the
+     direction of record and every colour below is its value). Ground and
+     ink: the ground, the surface (panels), the secondary surface, the text
+     and the secondary text, the hairline and the control border. */
+  --bg: #f3f4f7;
   --panel: #ffffff;
-  --border: #c9ced6;
-  --accent: #2f6f4f;
-  --muted: #5a6270;
-  --error: #a02020;
-  --warning: #8a5300;
+  --surface-2: #e9ecf1;
+  --fg: #16181d;
+  --muted: #4a5261;
+  --border: #c5cad3;
+  --control-line: #737c8c;
+  /* The one selection colour, in the hue the four item colours leave open;
+     it always comes with a shape (an underline, a ring, or a fill). */
+  --accent: #5a3aa8;
   --on-accent: #ffffff;
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 1rem;
-  --radius: 6px;
-  --radius-sm: 4px;
-  --radius-pill: 999px;
-  --stage-bg: #e9ecf0;
-  --input-bg: #f3f6fa;
-  --marker-green: #287a4d;
-  --marker-blue: #2f66b3;
+  --accent-soft: #ebe5f8;
+  /* Derived for the raised bar (lightness only, each hue kept). */
+  --error: #a02020;
+  --warning: #774700;
+  --stage-bg: #e9ecf1;
+  --input-bg: #ffffff;
+  /* The four item colours and the marker's parts. */
+  --marker-green: #1f7a4a;
+  --marker-blue: #2a62b0;
   --marker-yellow: #e0b31f;
-  --marker-red: #c03a3a;
+  --marker-red: #bf3434;
   --marker-text: #ffffff;
-  --marker-text-on-yellow: #1a1c20;
+  --marker-text-on-yellow: #16181d;
   --marker-ring: #ffffff;
+  --marker-neutral: #5f6876;
+  --marker-halo: #3a3f47;
+  --marker-on-neutral: #ffffff;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
   --shadow-offset: 0 1px 1.5px;
   --shadow-colour: rgba(0, 0, 0, 0.45);
-  --marker-neutral: #6b7380;
-  --marker-halo: #3a3f47;
-  --marker-on-neutral: #ffffff;
-  --card-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.22);
+  --card-shadow: 0 1px 2px rgba(15, 18, 25, 0.18), 0 6px 18px rgba(15, 18, 25, 0.16);
   --outline-black: #000000;
   --outline-white: #ffffff;
+  /* The six type sizes: 12, 13, 14, 16, 20, and 28 pixels. */
+  --text-12: 0.75rem;
+  --text-13: 0.8125rem;
+  --text-14: 0.875rem;
+  --text-16: 1rem;
+  --text-20: 1.25rem;
+  --text-28: 1.75rem;
+  /* The one spacing scale: 2, 4, 8, 12, 16, 24, and 32 pixels. */
+  --space-2: 0.125rem;
+  --space-4: 0.25rem;
+  --space-8: 0.5rem;
+  --space-12: 0.75rem;
+  --space-16: 1rem;
+  --space-24: 1.5rem;
+  --space-32: 2rem;
+  /* Two radii and a pill. */
+  --radius: 8px;
+  --radius-sm: 4px;
+  --radius-pill: 999px;
+  /* A hairline: the width of a border, where two borders overlap. */
+  --hairline: 1px;
+  /* The layers, in today's stacking order, lowest first. */
+  --layer-under: -1;
+  --layer-raised: 1;
+  --layer-selected: 2;
+  --layer-dragging: 3;
+  --layer-schedule: 4;
+  --layer-card: 6;
+  --layer-panel: 20;
+  --layer-sheet: 30;
+  --layer-inspector: 35;
+  --layer-overlay: 40;
+  --layer-dialog: 45;
   --motion-quick: 160ms;
   --motion-view: 240ms;
   --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
-  /* The dense spacing scale and type of the operator's surfaces (FR-42). */
-  --dense-1: 0.125rem;
-  --dense-2: 0.25rem;
-  --dense-3: 0.5rem;
-  --dense-font: 0.875rem;
-  --dense-label: 0.75rem;
+  /* The line height of the operator's dense surfaces (FR-42). */
   --dense-line: 1.35;
 }
 
 html[data-theme='dark'] {
-  --bg: #14161a;
-  --fg: #e6e8ec;
-  --panel: #1d2025;
-  --border: #3a3f47;
-  --accent: #4f9f77;
-  --muted: #9aa2ae;
-  --error: #e08080;
+  --bg: #101216;
+  --panel: #1a1d23;
+  --surface-2: #252931;
+  --fg: #e8eaee;
+  --muted: #a9b1bd;
+  --border: #353a45;
+  --control-line: #737c8c;
+  --accent: #b9a2f2;
+  --on-accent: #17112b;
+  --accent-soft: #2d2649;
+  --error: #e49292;
   --warning: #f0b45a;
-  --on-accent: #0d1410;
-  --stage-bg: #101215;
-  --input-bg: #23272d;
-  --marker-green: #3fae6e;
-  --marker-blue: #4f86d6;
-  --marker-yellow: #e8c040;
-  --marker-red: #dc5a5a;
+  --stage-bg: #252931;
+  --input-bg: #1a1d23;
+  --marker-green: #44b877;
+  --marker-blue: #6a9ce6;
+  --marker-yellow: #ecc64a;
+  --marker-red: #e56a6a;
   --marker-text: #0d0f12;
   --marker-text-on-yellow: #0d0f12;
   --marker-ring: #0d0f12;
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
-  --shadow-offset: 0 1px 1.5px;
-  --shadow-colour: rgba(0, 0, 0, 0.8);
   --marker-neutral: #9aa2ae;
   --marker-halo: #0d0f12;
   --marker-on-neutral: #0d0f12;
-  --card-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.6);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  --shadow-offset: 0 1px 1.5px;
+  --shadow-colour: rgba(0, 0, 0, 0.8);
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 6px 18px rgba(0, 0, 0, 0.45);
   /* The annotation outlines are black and white in both themes (FR-47). */
   --outline-black: #000000;
   --outline-white: #ffffff;
@@ -90,14 +126,14 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-8) var(--space-16);
   border-bottom: 1px solid var(--border);
   background: var(--panel);
 }
 
 #app-version {
-  margin-left: var(--space-1);
-  font-size: 0.85rem;
+  margin-left: var(--space-4);
+  font-size: var(--text-14);
   font-variant-numeric: tabular-nums;
   color: var(--muted);
 }
@@ -109,41 +145,41 @@ body {
 
 .controls {
   display: flex;
-  gap: var(--space-3);
+  gap: var(--space-16);
 }
 
 #work-controls {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-8);
 }
 
 #work-dirty {
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-4) var(--space-8);
   border: 1px solid var(--warning);
   border-radius: var(--radius-pill);
   color: var(--warning);
-  font-size: 0.85rem;
+  font-size: var(--text-14);
   font-weight: 600;
 }
 
 .controls label {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--space-8);
 }
 
 #segment-nav {
   display: flex;
-  gap: var(--space-1);
+  gap: var(--space-4);
 }
 
 .segment-tab {
-  border: 1px solid var(--border);
+  border: 1px solid var(--control-line);
   background: var(--bg);
   color: var(--fg);
   border-radius: var(--radius);
-  padding: var(--space-1) var(--space-3);
+  padding: var(--space-4) var(--space-16);
 }
 
 .segment-tab[aria-selected='true'] {
@@ -160,7 +196,7 @@ button:focus-visible {
 }
 
 #app-main {
-  padding: var(--space-3);
+  padding: var(--space-16);
   min-height: calc(100vh - 3.5rem);
 }
 
@@ -179,7 +215,7 @@ button:focus-visible {
   min-height: 30rem;
   display: grid;
   grid-template-columns: minmax(11rem, 16rem) minmax(0, 1fr) minmax(11rem, 15rem);
-  gap: var(--space-3);
+  gap: var(--space-16);
 }
 
 #list-area,
@@ -191,7 +227,7 @@ button:focus-visible {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: var(--space-3);
+  padding: var(--space-16);
   overflow: auto;
 }
 
@@ -208,8 +244,8 @@ button:focus-visible {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-2);
+  gap: var(--space-8);
+  margin-bottom: var(--space-8);
 }
 
 .toolbar-separator {
@@ -276,7 +312,7 @@ button:focus-visible {
 #map-empty,
 .stage-empty {
   position: absolute;
-  inset: var(--space-3);
+  inset: var(--space-16);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -289,7 +325,7 @@ button:focus-visible {
 
 h2 {
   margin-top: 0;
-  font-size: 1.1rem;
+  font-size: var(--text-16);
 }
 
 .hidden {
@@ -317,9 +353,9 @@ h2 {
 #drop-zone {
   border: 2px dashed var(--border);
   border-radius: var(--radius);
-  padding: var(--space-3);
+  padding: var(--space-16);
   text-align: center;
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-8);
 }
 
 #drop-zone.dragover {
@@ -329,28 +365,28 @@ h2 {
 #row-table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-8);
 }
 
 #row-table th,
 #row-table td {
   border: 1px solid var(--border);
-  padding: 0.25rem 0.5rem;
+  padding: var(--space-4) var(--space-8);
   text-align: left;
 }
 
 #list-toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: var(--space-8);
   align-items: center;
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-8);
 }
 
 #list-counts {
   display: flex;
-  gap: var(--space-3);
-  margin-bottom: 0.5rem;
+  gap: var(--space-16);
+  margin-bottom: var(--space-8);
   color: var(--muted);
 }
 
@@ -358,8 +394,8 @@ h2 {
 #list-totals {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-1) var(--space-3);
-  margin: -0.25rem 0 0.5rem;
+  gap: var(--space-4) var(--space-16);
+  margin: calc(-1 * var(--space-4)) 0 var(--space-8);
   color: var(--muted);
 }
 
@@ -382,7 +418,7 @@ th.sortable {
   display: inline-block;
   width: 1rem;
   height: 1rem;
-  border-radius: 50%;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--border);
   cursor: pointer;
 }
@@ -432,7 +468,7 @@ th.sortable {
 .legend-swatch::after {
   content: '';
   position: absolute;
-  z-index: -1;
+  z-index: var(--layer-under);
   clip-path: var(--marker-clip);
 }
 
@@ -461,7 +497,7 @@ th.sortable {
 
 .marker.marker-shape-triangle,
 .marker-badge.marker-shape-triangle {
-  padding-top: 0.6rem;
+  padding-top: var(--space-8);
 }
 
 .marker-layer {
@@ -478,8 +514,8 @@ th.sortable {
   position: relative;
   min-width: 1.75rem;
   height: 1.75rem;
-  padding: 0 var(--space-1);
-  font-size: 0.8rem;
+  padding: 0 var(--space-4);
+  font-size: var(--text-13);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -496,11 +532,11 @@ th.sortable {
 .marker.selected {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
-  z-index: 2;
+  z-index: var(--layer-selected);
 }
 
 .marker.dragging {
-  z-index: 3;
+  z-index: var(--layer-dragging);
 }
 
 .marker:focus-visible {
@@ -522,15 +558,15 @@ th.sortable {
   overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-4);
 }
 
 .placement-item {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--border);
+  gap: var(--space-8);
+  padding: var(--space-4) var(--space-8);
+  border: 1px solid var(--control-line);
   border-radius: var(--radius);
   background: var(--panel);
   cursor: grab;
@@ -549,7 +585,7 @@ th.sortable {
 }
 
 .placement-status {
-  font-size: 0.8rem;
+  font-size: var(--text-13);
   color: var(--muted);
 }
 
@@ -567,9 +603,9 @@ button {
   cursor: pointer;
   color: var(--fg);
   background: var(--panel);
-  border: 1px solid var(--border);
+  border: 1px solid var(--control-line);
   border-radius: var(--radius);
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-4) var(--space-8);
 }
 
 button:hover:not(:disabled) {
@@ -586,18 +622,18 @@ input[type='text'] {
   font: inherit;
   color: var(--fg);
   background: var(--panel);
-  border: 1px solid var(--border);
+  border: 1px solid var(--control-line);
   border-radius: var(--radius);
-  padding: var(--space-1);
+  padding: var(--space-4);
 }
 
 #pdf-panel {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  gap: var(--space-8);
+  margin-bottom: var(--space-8);
+  padding: var(--space-8) var(--space-16);
   border: 1px solid var(--accent);
   border-radius: var(--radius);
   background: var(--panel);
@@ -606,7 +642,7 @@ input[type='text'] {
 #pdf-panel label {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-4);
 }
 
 #pdf-heading {
@@ -619,9 +655,9 @@ input[type='text'] {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-3);
-  margin-top: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  gap: var(--space-16);
+  margin-top: var(--space-8);
+  padding: var(--space-8) var(--space-16);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--panel);
@@ -634,7 +670,7 @@ input[type='text'] {
 .legend-list {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-3);
+  gap: var(--space-16);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -643,7 +679,7 @@ input[type='text'] {
 .legend-entry {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-8);
 }
 
 .legend-swatch {
@@ -661,7 +697,7 @@ input[type='text'] {
   border-left: 2px dashed var(--fg);
   border-radius: 0;
   background: transparent;
-  margin-left: 0.4rem;
+  margin-left: var(--space-8);
 }
 
 .legend-swatch.legend-today-swatch::before,
@@ -695,7 +731,7 @@ input[type='text'] {
   height: 0.6rem;
   box-sizing: border-box;
   border: 0;
-  border-radius: calc(var(--radius-sm) / 2);
+  border-radius: var(--radius-sm);
   background: var(--fg);
 }
 
@@ -726,7 +762,7 @@ input[type='text'] {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-16);
 }
 
 .legend-group-label {
@@ -736,7 +772,7 @@ input[type='text'] {
 .visibility-control {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-8);
   width: 100%;
   min-width: 0;
 }
@@ -744,7 +780,7 @@ input[type='text'] {
 #marker-shape-label {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-4);
 }
 
 /* In-list column headings (FR-1): sort control above the role control. */
@@ -773,9 +809,9 @@ input[type='text'] {
 }
 
 .role-select {
-  margin-top: var(--space-1);
+  margin-top: var(--space-4);
   max-width: 100%;
-  font-size: 0.8rem;
+  font-size: var(--text-13);
   font-weight: 400;
   color: var(--muted);
 }
@@ -794,9 +830,9 @@ input[type='text'] {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-2);
-  padding-bottom: var(--space-2);
+  gap: var(--space-8);
+  margin-bottom: var(--space-8);
+  padding-bottom: var(--space-8);
   border-bottom: 1px solid var(--border);
 }
 
@@ -816,15 +852,15 @@ input[type='text'] {
   overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-4);
 }
 
 .visibility-item {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--border);
+  gap: var(--space-8);
+  padding: var(--space-4) var(--space-8);
+  border: 1px solid var(--control-line);
   border-radius: var(--radius);
 }
 
@@ -858,7 +894,7 @@ input[type='text'] {
 }
 
 .glance-count {
-  font-size: 0.85rem;
+  font-size: var(--text-14);
   font-weight: 400;
   color: var(--muted);
 }
@@ -870,16 +906,16 @@ input[type='text'] {
   overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-4);
 }
 
 .glance-entry {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-8);
   width: 100%;
-  padding: var(--space-1) var(--space-2);
-  font-size: 0.875rem;
+  padding: var(--space-4) var(--space-8);
+  font-size: var(--text-14);
   line-height: 1.3;
   text-align: left;
 }
@@ -897,7 +933,7 @@ input[type='text'] {
 }
 
 .glance-area {
-  font-size: 0.8rem;
+  font-size: var(--text-13);
   color: var(--muted);
 }
 
@@ -910,7 +946,7 @@ input[type='text'] {
 .marker.highlighted {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
-  z-index: 2;
+  z-index: var(--layer-selected);
 }
 
 /* Presentation data card (FR-35, FR-37): view-only, opaque so that its text
@@ -918,17 +954,17 @@ input[type='text'] {
    subtle entrance and exit. */
 .presentation-card {
   position: absolute;
-  z-index: 6;
-  width: min(24rem, calc(100% - 2 * var(--space-3)));
-  max-height: calc(100% - 2 * var(--space-3));
+  z-index: var(--layer-card);
+  width: min(24rem, calc(100% - 2 * var(--space-16)));
+  max-height: calc(100% - 2 * var(--space-16));
   overflow: auto;
-  padding: var(--space-3) calc(1.25 * var(--space-3));
+  padding: var(--space-16) calc(1.25 * var(--space-16));
   border: 1px solid var(--border);
-  border-radius: calc(2 * var(--radius));
+  border-radius: var(--radius);
   background: var(--panel);
   color: var(--fg);
   box-shadow: var(--card-shadow);
-  font-size: 1rem;
+  font-size: var(--text-16);
   line-height: 1.45;
   cursor: auto;
   user-select: text;
@@ -957,37 +993,37 @@ input[type='text'] {
 .presentation-card .card-header {
   display: flex;
   align-items: flex-start;
-  gap: var(--space-2);
-  margin-bottom: var(--space-2);
+  gap: var(--space-8);
+  margin-bottom: var(--space-8);
 }
 
 .presentation-card .details-title {
-  font-size: 1.375rem;
+  font-size: var(--text-20);
   line-height: 1.25;
 }
 
 .presentation-card .card-headliners {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
+  gap: var(--space-8);
+  margin-bottom: var(--space-16);
 }
 
 .presentation-card .card-note {
   margin: 0;
-  font-size: 1.125rem;
+  font-size: var(--text-16);
   line-height: 1.45;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
 .presentation-card .details-comment-list {
-  gap: var(--space-2);
+  gap: var(--space-8);
   margin: 0;
 }
 
 .presentation-card .details-comment {
-  padding: 0 0 0 var(--space-2);
+  padding: 0 0 0 var(--space-8);
   border: none;
   border-left: 3px solid var(--accent);
   border-radius: 0;
@@ -995,15 +1031,15 @@ input[type='text'] {
 
 .presentation-card .details-comment-date,
 .presentation-card .details-comment-text {
-  font-size: 1rem;
+  font-size: var(--text-16);
 }
 
 .presentation-card .card-fields {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
-  gap: var(--space-1) var(--space-3);
+  gap: var(--space-4) var(--space-16);
   margin: 0;
-  padding-top: var(--space-2);
+  padding-top: var(--space-8);
   border-top: 1px solid var(--border);
 }
 
@@ -1013,13 +1049,13 @@ input[type='text'] {
 
 .presentation-card .card-label {
   color: var(--muted);
-  font-size: 1rem;
+  font-size: var(--text-16);
   font-weight: 600;
 }
 
 .presentation-card .card-value {
   margin: 0;
-  font-size: 1rem;
+  font-size: var(--text-16);
   overflow-wrap: anywhere;
 }
 
@@ -1028,7 +1064,7 @@ input[type='text'] {
 .footprint-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-4);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1037,7 +1073,7 @@ input[type='text'] {
 .footprint {
   display: flex;
   justify-content: space-between;
-  gap: var(--space-2);
+  gap: var(--space-8);
   min-width: 0;
 }
 
@@ -1053,41 +1089,41 @@ input[type='text'] {
 }
 
 .details-footprints {
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-16);
 }
 
 .details-panel .details-footprints {
-  margin-bottom: var(--dense-2);
+  margin-bottom: var(--space-4);
 }
 
 .details-panel .footprint-list {
-  gap: var(--dense-1);
+  gap: var(--space-2);
 }
 
 .presentation-card .card-footprints {
-  padding-top: var(--space-2);
+  padding-top: var(--space-8);
   border-top: 1px solid var(--border);
 }
 
 .presentation-card .card-footprints .details-subheading,
 .presentation-card .footprint {
-  font-size: 1rem;
+  font-size: var(--text-16);
 }
 
 /* Projection typography (FR-37): the Presentation segment reads from a
    distance. (The quiet chrome of v1.9.0 overrides this while the segment is
    shown; see the quiet presentation chrome section below.) */
 #segment-presentation {
-  font-size: 1.125rem;
+  font-size: var(--text-16);
 }
 
 #segment-presentation .glance-entry,
 #segment-presentation .legend {
-  font-size: 1.0625rem;
+  font-size: var(--text-16);
 }
 
 #segment-presentation .glance-area {
-  font-size: 0.9375rem;
+  font-size: var(--text-14);
 }
 
 /* Smooth viewport motion (FR-36, FR-37): zooming by control or wheel, fitting,
@@ -1117,9 +1153,9 @@ input[type='text'] {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-2);
-  padding-bottom: var(--space-2);
+  gap: var(--space-8);
+  margin-bottom: var(--space-8);
+  padding-bottom: var(--space-8);
   border-bottom: 1px solid var(--border);
 }
 
@@ -1131,8 +1167,8 @@ input[type='text'] {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
-  margin: 0 0 var(--space-2);
+  gap: var(--space-8);
+  margin: 0 0 var(--space-8);
 }
 
 #row-table td.editable {
@@ -1149,7 +1185,7 @@ input[type='text'] {
 .cell-input {
   border: none;
   background: var(--input-bg);
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-4) var(--space-8);
 }
 
 .cell-input:focus {
@@ -1158,8 +1194,8 @@ input[type='text'] {
 }
 
 .column-name-input {
-  margin-top: var(--space-1);
-  font-size: 0.8rem;
+  margin-top: var(--space-4);
+  font-size: var(--text-13);
   border-radius: var(--radius);
 }
 
@@ -1171,9 +1207,9 @@ input[type='text'] {
 #fetch-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  margin-bottom: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  gap: var(--space-8);
+  margin-bottom: var(--space-8);
+  padding: var(--space-8) var(--space-16);
   border: 2px dashed var(--warning);
   border-radius: var(--radius);
   background: var(--panel);
@@ -1187,7 +1223,7 @@ input[type='text'] {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-8);
 }
 
 #fetch-heading {
@@ -1195,11 +1231,11 @@ input[type='text'] {
 }
 
 .network-badge {
-  padding: 0 var(--space-2);
+  padding: 0 var(--space-8);
   border: 1px solid var(--warning);
   border-radius: var(--radius-pill);
   color: var(--warning);
-  font-size: 0.8rem;
+  font-size: var(--text-13);
   font-weight: 600;
 }
 
@@ -1213,7 +1249,7 @@ input[type='text'] {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-4);
 }
 
 .fetch-result {
@@ -1229,7 +1265,7 @@ input[type='text'] {
 /* Fetch usability: labelled rectangle edges, busy state. */
 #fetch-bbox-row {
   margin: 0;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-8) var(--space-16);
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
@@ -1239,19 +1275,19 @@ input[type='text'] {
 }
 
 #fetch-bbox-row .notice {
-  margin: 0 0 var(--space-1);
+  margin: 0 0 var(--space-4);
 }
 
 .fetch-edges {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-  gap: var(--space-2);
+  gap: var(--space-8);
 }
 
 .fetch-edge {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-4);
 }
 
 .fetch-edge input[aria-invalid='true'] {
@@ -1265,7 +1301,7 @@ input[type='text'] {
   display: inline-block;
   width: 0.8em;
   height: 0.8em;
-  margin-right: var(--space-1);
+  margin-right: var(--space-4);
   border: 2px solid var(--muted);
   border-top-color: transparent;
   border-radius: var(--radius-pill);
@@ -1290,13 +1326,13 @@ input[type='text'] {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
-  gap: var(--space-2);
-  margin-bottom: var(--space-2);
+  gap: var(--space-8);
+  margin-bottom: var(--space-8);
 }
 
 .vocab-panel {
   flex: 1 1 20rem;
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-4) var(--space-8);
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
@@ -1307,7 +1343,7 @@ input[type='text'] {
 }
 
 .vocab-panel .notice {
-  margin: var(--space-1) 0;
+  margin: var(--space-4) 0;
 }
 
 .vocab-list {
@@ -1316,7 +1352,7 @@ input[type='text'] {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-4);
 }
 
 .vocab-item,
@@ -1324,11 +1360,11 @@ input[type='text'] {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-8);
 }
 
 .vocab-add {
-  margin-top: var(--space-2);
+  margin-top: var(--space-8);
 }
 
 .vocab-name {
@@ -1373,8 +1409,8 @@ input[type='text'] {
 
 .marker.marker-icon,
 .marker-badge.marker-icon {
-  gap: 1px;
-  padding: 0 0.35rem 0 0.3rem;
+  gap: var(--space-2);
+  padding: 0 var(--space-4) 0 var(--space-4);
 }
 
 .legend-swatch.marker-icon {
@@ -1383,7 +1419,7 @@ input[type='text'] {
   justify-content: center;
   width: 1.35rem;
   height: 1.35rem;
-  font-size: 0.8rem;
+  font-size: var(--text-13);
 }
 
 /* Details panel (FR-7, FR-10, FR-15): a drawer at the side of the
@@ -1391,32 +1427,32 @@ input[type='text'] {
 .details-panel {
   position: fixed;
   top: 4rem;
-  right: var(--space-3);
-  bottom: var(--space-3);
-  z-index: 20;
-  width: min(24rem, calc(100vw - 2 * var(--space-3)));
+  right: var(--space-16);
+  bottom: var(--space-16);
+  z-index: var(--layer-panel);
+  width: min(24rem, calc(100vw - 2 * var(--space-16)));
   overflow: auto;
-  padding: var(--space-3);
+  padding: var(--space-16);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--panel);
   color: var(--fg);
   box-shadow: var(--shadow);
-  font-size: 0.9375rem;
+  font-size: var(--text-14);
   line-height: 1.45;
 }
 
 .details-header {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
+  gap: var(--space-8);
+  margin-bottom: var(--space-16);
 }
 
 .details-title {
   flex: 1;
   margin: 0;
-  font-size: 1.25rem;
+  font-size: var(--text-20);
   font-weight: 650;
   line-height: 1.25;
   overflow-wrap: anywhere;
@@ -1430,19 +1466,19 @@ input[type='text'] {
 .details-fields {
   display: grid;
   grid-template-columns: minmax(6rem, max-content) minmax(0, 1fr);
-  gap: var(--space-1) var(--space-3);
-  margin: 0 0 var(--space-3);
+  gap: var(--space-4) var(--space-16);
+  margin: 0 0 var(--space-16);
 }
 
 .details-facts {
-  padding-bottom: var(--space-3);
+  padding-bottom: var(--space-16);
   border-bottom: 1px solid var(--border);
 }
 
 .details-facts dt,
 .details-label {
   color: var(--muted);
-  font-size: 0.8125rem;
+  font-size: var(--text-13);
   font-weight: 600;
   line-height: 1.8;
 }
@@ -1465,16 +1501,16 @@ input[type='text'] {
 }
 
 .details-subheading {
-  margin: 0 0 var(--space-2);
-  font-size: 1rem;
+  margin: 0 0 var(--space-8);
+  font-size: var(--text-16);
   font-weight: 650;
 }
 
 .details-comment-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  margin: 0 0 var(--space-2);
+  gap: var(--space-8);
+  margin: 0 0 var(--space-8);
   padding: 0;
   list-style: none;
 }
@@ -1482,8 +1518,8 @@ input[type='text'] {
 .details-comment {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
-  column-gap: var(--space-2);
-  padding: var(--space-2);
+  column-gap: var(--space-8);
+  padding: var(--space-8);
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
@@ -1501,8 +1537,8 @@ input[type='text'] {
   grid-column: 2;
   grid-row: 1 / span 2;
   align-self: start;
-  padding: 0 var(--space-1);
-  font-size: 0.8125rem;
+  padding: 0 var(--space-4);
+  font-size: var(--text-13);
 }
 
 .details-comment-date,
@@ -1514,7 +1550,7 @@ input[type='text'] {
 .details-comment-edited {
   display: block;
   color: var(--muted);
-  font-size: 0.8125rem;
+  font-size: var(--text-13);
   font-style: italic;
   font-variant-numeric: tabular-nums;
 }
@@ -1523,14 +1559,14 @@ input[type='text'] {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: var(--space-1);
-  margin-top: var(--space-1);
+  gap: var(--space-4);
+  margin-top: var(--space-4);
 }
 
 .details-comment-editor {
   flex: 1 1 100%;
   resize: vertical;
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-4) var(--space-8);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--input-bg);
@@ -1542,14 +1578,14 @@ input[type='text'] {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: var(--space-2);
+  gap: var(--space-8);
 }
 
 .details-comment-input {
   width: 100%;
   resize: vertical;
-  padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--border);
+  padding: var(--space-4) var(--space-8);
+  border: 1px solid var(--control-line);
   border-radius: var(--radius);
   background: var(--input-bg);
   color: var(--fg);
@@ -1564,20 +1600,20 @@ input[type='text'] {
 .details-comment-date {
   display: block;
   color: var(--muted);
-  font-size: 0.8125rem;
+  font-size: var(--text-13);
   font-variant-numeric: tabular-nums;
 }
 
 .details-comment-text {
   grid-column: 1;
-  margin: var(--space-1) 0 0;
+  margin: var(--space-4) 0 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
 #row-table .row-details {
   min-width: 2rem;
-  padding: 0 var(--space-1);
+  padding: 0 var(--space-4);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1591,14 +1627,14 @@ input[type='text'] {
 }
 
 .details-value .cell-input {
-  border: 1px solid var(--border);
+  border: 1px solid var(--control-line);
   border-radius: var(--radius);
   font: inherit;
 }
 
 @media (min-width: 60rem) {
   html[data-details='open']:not([data-segment='presentation']) #app-main {
-    padding-right: calc(min(24rem, 100vw - 2 * var(--space-3)) + 2 * var(--space-3));
+    padding-right: calc(min(24rem, 100vw - 2 * var(--space-16)) + 2 * var(--space-16));
   }
 }
 
@@ -1612,8 +1648,8 @@ input[type='text'] {
    before it is written. */
 #export-panel,
 #document-panel {
-  margin-bottom: var(--space-2);
-  padding: var(--space-3);
+  margin-bottom: var(--space-8);
+  padding: var(--space-16);
   border: 1px solid var(--accent);
   border-radius: var(--radius);
   background: var(--panel);
@@ -1625,19 +1661,19 @@ input[type='text'] {
 #export-panel h4,
 #document-panel h3,
 #document-panel h4 {
-  margin: 0 0 var(--space-2);
+  margin: 0 0 var(--space-8);
 }
 
 #export-panel h4,
 #document-panel h4 {
-  margin-top: var(--space-3);
-  font-size: 1rem;
+  margin-top: var(--space-16);
+  font-size: var(--text-16);
 }
 
 #export-panel ul,
 #document-panel ul {
   margin: 0;
-  padding-left: calc(1.25 * var(--space-3));
+  padding-left: calc(1.25 * var(--space-16));
 }
 
 #export-size,
@@ -1647,7 +1683,7 @@ input[type='text'] {
 
 .export-actions {
   display: flex;
-  gap: var(--space-2);
+  gap: var(--space-8);
 }
 
 #export-status:empty,
@@ -1658,11 +1694,11 @@ input[type='text'] {
 /* Exported viewer (FR-38): view-only; the list opens the data cards. */
 #viewer-badge,
 #demo-badge {
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-4) var(--space-8);
   border: 1px solid var(--border);
   border-radius: var(--radius-pill);
   color: var(--muted);
-  font-size: 0.875rem;
+  font-size: var(--text-14);
 }
 
 .item-open {
@@ -1681,8 +1717,8 @@ input[type='text'] {
    adopts positions. */
 #compare-panel,
 #activity-panel {
-  margin-bottom: var(--space-3);
-  padding: var(--space-3);
+  margin-bottom: var(--space-16);
+  padding: var(--space-16);
   border: 1px solid var(--accent);
   border-radius: var(--radius);
   background: var(--panel);
@@ -1713,11 +1749,11 @@ input[type='text'] {
 }
 
 #activity-phase-row {
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-8);
 }
 
 #activity-phase-row .hint {
-  margin: var(--space-1) 0 0;
+  margin: var(--space-4) 0 0;
 }
 
 .activity-edit-note {
@@ -1736,7 +1772,7 @@ input[type='text'] {
 #activity-roles .vocab-item label {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-8);
   width: 100%;
 }
 
@@ -1750,7 +1786,7 @@ input[type='text'] {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-8);
 }
 
 .compare-header {
@@ -1769,13 +1805,13 @@ input[type='text'] {
 #compare-groups {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
-  gap: var(--space-3);
-  margin: var(--space-3) 0;
+  gap: var(--space-16);
+  margin: var(--space-16) 0;
 }
 
 .compare-group h3 {
-  margin: 0 0 var(--space-2);
-  font-size: 1rem;
+  margin: 0 0 var(--space-8);
+  font-size: var(--text-16);
 }
 
 .compare-group ul {
@@ -1790,13 +1826,13 @@ input[type='text'] {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-1) 0;
+  gap: var(--space-8);
+  padding: var(--space-4) 0;
 }
 
 .compare-note {
   color: var(--muted);
-  font-size: 0.875rem;
+  font-size: var(--text-14);
 }
 
 /* Grouped numbering (FR-17): the mode and the key of the groups. */
@@ -1804,8 +1840,8 @@ input[type='text'] {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-2);
+  gap: var(--space-8);
+  margin-bottom: var(--space-8);
 }
 
 .warning-text {
@@ -1820,7 +1856,7 @@ input[type='text'] {
 
 /* The list grouped by area (FR-17): a heading row per section. */
 #row-table .group-row th {
-  padding: var(--space-1) 0;
+  padding: var(--space-4) 0;
   background: var(--panel);
   text-align: left;
   border-bottom: 1px solid var(--border);
@@ -1829,10 +1865,10 @@ input[type='text'] {
 .group-toggle {
   display: inline-flex;
   align-items: baseline;
-  gap: var(--space-2);
+  gap: var(--space-8);
   border: none;
   background: none;
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-4) var(--space-8);
   font-weight: 650;
 }
 
@@ -1849,7 +1885,7 @@ input[type='text'] {
 .group-count {
   color: var(--muted);
   font-weight: 400;
-  font-size: 0.875rem;
+  font-size: var(--text-14);
 }
 
 /* Information density (FR-42): the operator's surfaces are dense, with the
@@ -1857,87 +1893,87 @@ input[type='text'] {
    presentation data card is the deliberate exception and keeps its
    projection sizes (FR-37); nothing here applies to it. */
 .details-panel {
-  padding: var(--dense-3);
-  font-size: var(--dense-font);
+  padding: var(--space-8);
+  font-size: var(--text-14);
   line-height: var(--dense-line);
 }
 
 .details-panel .details-header {
-  gap: var(--dense-3);
-  margin-bottom: var(--dense-3);
+  gap: var(--space-8);
+  margin-bottom: var(--space-8);
 }
 
 .details-panel .details-title {
-  font-size: 1.0625rem;
+  font-size: var(--text-16);
 }
 
 .details-panel .details-facts {
   grid-template-columns: repeat(3, max-content minmax(0, 1fr));
   align-items: baseline;
-  gap: var(--dense-1) var(--dense-3);
-  margin-bottom: var(--dense-3);
-  padding-bottom: var(--dense-3);
+  gap: var(--space-2) var(--space-8);
+  margin-bottom: var(--space-8);
+  padding-bottom: var(--space-8);
 }
 
 .details-panel .details-facts dt,
 .details-panel .details-label {
-  font-size: var(--dense-label);
+  font-size: var(--text-12);
   line-height: 1.25;
 }
 
 .details-panel .details-fields {
   grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
-  gap: var(--dense-2) var(--dense-3);
-  margin-bottom: var(--dense-3);
+  gap: var(--space-4) var(--space-8);
+  margin-bottom: var(--space-8);
 }
 
 .details-panel .details-field {
   display: flex;
   flex-direction: column;
-  gap: var(--dense-1);
+  gap: var(--space-2);
   min-width: 0;
 }
 
 .details-panel .details-value .cell-input {
   width: 100%;
   min-width: 0;
-  padding: var(--dense-1) var(--dense-2);
+  padding: var(--space-2) var(--space-4);
 }
 
 .details-panel .details-subheading {
-  margin-bottom: var(--dense-2);
-  font-size: 0.9375rem;
+  margin-bottom: var(--space-4);
+  font-size: var(--text-14);
 }
 
 .details-panel .details-comment-list {
-  gap: var(--dense-2);
-  margin-bottom: var(--dense-2);
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
 }
 
 .details-panel .details-comment {
-  padding: var(--dense-2) var(--dense-3);
+  padding: var(--space-4) var(--space-8);
 }
 
 .details-panel .details-comment-date {
-  font-size: var(--dense-label);
+  font-size: var(--text-12);
 }
 
 .details-panel .details-comment-form {
-  gap: var(--dense-2);
+  gap: var(--space-4);
 }
 
 .details-panel .details-comment-input {
-  padding: var(--dense-2) var(--dense-3);
+  padding: var(--space-4) var(--space-8);
 }
 
 /* At-a-glance entries: one line per item, the area beside the name. */
 .glance-list {
-  gap: var(--dense-1);
+  gap: var(--space-2);
 }
 
 .glance-entry {
-  gap: var(--dense-3);
-  padding: var(--dense-1) var(--dense-2);
+  gap: var(--space-8);
+  padding: var(--space-2) var(--space-4);
   line-height: 1.25;
 }
 
@@ -1945,7 +1981,7 @@ input[type='text'] {
   flex: 1;
   flex-direction: row;
   align-items: baseline;
-  gap: var(--dense-3);
+  gap: var(--space-8);
 }
 
 .glance-name {
@@ -1966,32 +2002,32 @@ input[type='text'] {
 /* The data surfaces of the Map segment. */
 #placement-area,
 #map-glance {
-  padding: var(--dense-3);
+  padding: var(--space-8);
 }
 
 #placement-list {
-  gap: var(--dense-1);
+  gap: var(--space-2);
 }
 
 .placement-item {
-  gap: var(--dense-3);
-  padding: var(--dense-1) var(--dense-2);
-  font-size: var(--dense-font);
+  gap: var(--space-8);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-14);
   line-height: 1.25;
 }
 
 #map-toolbar {
-  gap: var(--dense-2) var(--dense-3);
-  margin-bottom: var(--dense-2);
+  gap: var(--space-4) var(--space-8);
+  margin-bottom: var(--space-4);
 }
 
 /* The dialogs. */
 #export-panel,
 #compare-panel,
 #document-panel {
-  margin-bottom: var(--dense-3);
-  padding: var(--dense-3);
-  font-size: var(--dense-font);
+  margin-bottom: var(--space-8);
+  padding: var(--space-8);
+  font-size: var(--text-14);
   line-height: var(--dense-line);
 }
 
@@ -2000,34 +2036,34 @@ input[type='text'] {
 .compare-group h3,
 #document-panel h3,
 #document-panel h4 {
-  margin: 0 0 var(--dense-2);
+  margin: 0 0 var(--space-4);
 }
 
 #export-panel h4,
 #document-panel h4 {
-  margin-top: var(--dense-3);
+  margin-top: var(--space-8);
 }
 
 #export-panel p,
 #document-panel p {
-  margin: 0 0 var(--dense-2);
+  margin: 0 0 var(--space-4);
 }
 
 #compare-groups {
-  gap: var(--dense-3);
-  margin: var(--dense-3) 0;
+  gap: var(--space-8);
+  margin: var(--space-8) 0;
 }
 
 .compare-entry {
-  gap: var(--dense-2);
-  padding: var(--dense-1) 0;
+  gap: var(--space-4);
+  padding: var(--space-2) 0;
 }
 
 #fetch-panel,
 #pdf-panel {
-  gap: var(--dense-2);
-  padding: var(--dense-2) var(--dense-3);
-  font-size: var(--dense-font);
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-8);
+  font-size: var(--text-14);
 }
 
 /* Program groups at a glance (FR-44): a compact heading per programme, its
@@ -2035,15 +2071,15 @@ input[type='text'] {
 .glance-group {
   display: flex;
   flex-direction: column;
-  gap: var(--dense-1);
+  gap: var(--space-2);
 }
 
 .glance-group-toggle {
   display: flex;
   align-items: baseline;
-  gap: var(--dense-3);
+  gap: var(--space-8);
   width: 100%;
-  padding: var(--dense-1) var(--dense-2);
+  padding: var(--space-2) var(--space-4);
   font-weight: 650;
   text-align: left;
   line-height: 1.25;
@@ -2082,9 +2118,9 @@ input[type='text'] {
 .glance-group-list {
   display: flex;
   flex-direction: column;
-  gap: var(--dense-1);
+  gap: var(--space-2);
   margin: 0;
-  padding: 0 0 0 var(--dense-3);
+  padding: 0 0 0 var(--space-8);
   list-style: none;
 }
 
@@ -2099,13 +2135,13 @@ input[type='text'] {
   text-overflow: ellipsis;
   margin-left: auto;
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: var(--text-13);
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
 
 .glance-values .glance-value + .glance-value {
-  margin-left: var(--dense-3);
+  margin-left: var(--space-8);
 }
 
 .glance-values .glance-area {
@@ -2113,15 +2149,15 @@ input[type='text'] {
 }
 
 .glance-columns {
-  margin-bottom: var(--dense-3);
-  font-size: var(--dense-font);
+  margin-bottom: var(--space-8);
+  font-size: var(--text-14);
 }
 
 .glance-columns ul {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
-  gap: var(--dense-1) var(--dense-3);
-  margin: var(--dense-2) 0;
+  gap: var(--space-2) var(--space-8);
+  margin: var(--space-4) 0;
   padding: 0;
   list-style: none;
 }
@@ -2129,7 +2165,7 @@ input[type='text'] {
 .glance-columns label {
   display: flex;
   align-items: center;
-  gap: var(--dense-2);
+  gap: var(--space-4);
 }
 
 /* The annotation layer (FR-47): shapes and lines in image coordinates inside
@@ -2206,8 +2242,8 @@ input[type='text'] {
   position: absolute;
   transform: translate(-50%, -50%);
   padding: 0 0.3em;
-  border-radius: 0.4em;
-  font-size: var(--label-size, var(--dense-font));
+  border-radius: var(--radius-sm);
+  font-size: var(--label-size, var(--text-14));
   font-weight: 650;
   line-height: 1.35;
   white-space: nowrap;
@@ -2238,9 +2274,9 @@ input[type='text'] {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dense-2) var(--dense-3);
-  margin-bottom: var(--dense-2);
-  font-size: var(--dense-font);
+  gap: var(--space-4) var(--space-8);
+  margin-bottom: var(--space-4);
+  font-size: var(--text-14);
 }
 
 #annotation-heading {
@@ -2249,7 +2285,7 @@ input[type='text'] {
 
 #annotation-tools {
   display: inline-flex;
-  gap: var(--dense-1);
+  gap: var(--space-2);
 }
 
 .annotation-tool[aria-pressed='true'] {
@@ -2313,12 +2349,12 @@ input[type='text'] {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dense-2) var(--dense-3);
-  margin-bottom: var(--dense-2);
-  padding: var(--dense-2) var(--dense-3);
+  gap: var(--space-4) var(--space-8);
+  margin-bottom: var(--space-4);
+  padding: var(--space-4) var(--space-8);
   border: 1px solid var(--accent);
   border-radius: var(--radius);
-  font-size: var(--dense-font);
+  font-size: var(--text-14);
 }
 
 #annotation-inspector-heading {
@@ -2326,14 +2362,14 @@ input[type='text'] {
 }
 
 #annotation-visibility-heading {
-  margin: var(--dense-3) 0 var(--dense-2);
-  font-size: 1rem;
+  margin: var(--space-8) 0 var(--space-4);
+  font-size: var(--text-16);
 }
 
 #annotation-visibility-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-4);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -2381,8 +2417,8 @@ button.secondary-action {
 #export-panel #export-columns {
   max-height: 14rem;
   overflow: auto;
-  margin: 0 0 var(--dense-2);
-  padding: var(--dense-2) var(--dense-3);
+  margin: 0 0 var(--space-4);
+  padding: var(--space-4) var(--space-8);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   list-style: none;
@@ -2391,7 +2427,7 @@ button.secondary-action {
 #export-panel #export-columns {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
-  gap: var(--dense-1) var(--dense-3);
+  gap: var(--space-2) var(--space-8);
   max-height: 8rem;
 }
 
@@ -2400,8 +2436,8 @@ button.secondary-action {
 }
 
 #export-panel .export-items {
-  margin: 0 0 var(--dense-2);
-  padding: 0 0 0 var(--dense-3);
+  margin: 0 0 var(--space-4);
+  padding: 0 0 0 var(--space-8);
   list-style: none;
 }
 
@@ -2409,19 +2445,19 @@ button.secondary-action {
 #export-columns label {
   display: flex;
   align-items: center;
-  gap: var(--dense-2);
+  gap: var(--space-4);
 }
 
 /* The role explanation (FR-55): one line per role; a role not assigned is
    marked, so that it explains itself. */
 #role-help {
-  margin-bottom: var(--dense-2);
-  font-size: var(--dense-font);
+  margin-bottom: var(--space-4);
+  font-size: var(--text-14);
 }
 
 #role-help-list {
   margin: 0;
-  padding-left: calc(1.25 * var(--dense-3));
+  padding-left: calc(1.25 * var(--space-8));
 }
 
 .role-help-status {
@@ -2448,8 +2484,8 @@ button.secondary-action {
 .details-panel .details-series-fields {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
-  gap: var(--dense-2) var(--dense-3);
-  margin: var(--dense-2) 0 0;
+  gap: var(--space-4) var(--space-8);
+  margin: var(--space-4) 0 0;
 }
 
 .details-economics {
@@ -2458,15 +2494,15 @@ button.secondary-action {
 
 /* Card fields (FR-62), chosen like the at-a-glance columns. */
 #card-fields {
-  margin-bottom: var(--dense-2);
-  font-size: var(--dense-font);
+  margin-bottom: var(--space-4);
+  font-size: var(--text-14);
 }
 
 #card-fields ul {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
-  gap: var(--dense-1) var(--dense-3);
-  margin: var(--dense-2) 0;
+  gap: var(--space-2) var(--space-8);
+  margin: var(--space-4) 0;
   padding: 0;
   list-style: none;
 }
@@ -2474,7 +2510,7 @@ button.secondary-action {
 #card-fields label {
   display: flex;
   align-items: center;
-  gap: var(--dense-2);
+  gap: var(--space-4);
 }
 
 .presentation-card .card-value.is-empty {
@@ -2486,20 +2522,20 @@ button.secondary-action {
    inside the row (solid for an outcome, an outline for a forecast). */
 .economics-overlay {
   position: fixed;
-  z-index: 40;
+  z-index: var(--layer-overlay);
   left: 50%;
   top: 50%;
-  width: min(40rem, calc(100vw - 2 * var(--space-3)));
+  width: min(40rem, calc(100vw - 2 * var(--space-16)));
   max-height: calc(100vh - 4rem);
   overflow: auto;
   overscroll-behavior: contain;
-  padding: var(--space-3) calc(1.25 * var(--space-3));
+  padding: var(--space-16) calc(1.25 * var(--space-16));
   border: 1px solid var(--border);
-  border-radius: calc(2 * var(--radius));
+  border-radius: var(--radius);
   background: var(--panel);
   color: var(--fg);
   box-shadow: var(--card-shadow);
-  font-size: 1rem;
+  font-size: var(--text-16);
   line-height: 1.45;
   opacity: 1;
   transform: translate(-50%, -50%);
@@ -2520,20 +2556,20 @@ button.secondary-action {
 .economics-header {
   display: flex;
   align-items: flex-start;
-  gap: var(--space-2);
-  margin-bottom: var(--space-2);
+  gap: var(--space-8);
+  margin-bottom: var(--space-8);
 }
 
 .economics-kicker {
   margin: 0;
   color: var(--muted);
-  font-size: 0.875rem;
+  font-size: var(--text-14);
   font-weight: 600;
 }
 
 .economics-title {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: var(--text-20);
   line-height: 1.25;
 }
 
@@ -2544,8 +2580,8 @@ button.secondary-action {
 .economics-totals {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
-  gap: var(--space-1) var(--space-3);
-  margin: 0 0 var(--space-2);
+  gap: var(--space-4) var(--space-16);
+  margin: 0 0 var(--space-8);
 }
 
 .economics-total {
@@ -2573,13 +2609,13 @@ button.secondary-action {
 
 .economics-total-detail {
   display: block;
-  font-size: 0.875rem;
+  font-size: var(--text-14);
 }
 
 .economics-span,
 .economics-texts {
-  margin: 0 0 var(--space-2);
-  font-size: 0.875rem;
+  margin: 0 0 var(--space-8);
+  font-size: var(--text-14);
 }
 
 .economics-amount.is-text {
@@ -2594,7 +2630,7 @@ button.secondary-action {
 
 .economics-table th,
 .economics-table td {
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-4) var(--space-8);
   border-top: 1px solid var(--border);
   text-align: right;
   vertical-align: top;
@@ -2603,7 +2639,7 @@ button.secondary-action {
 .economics-table thead th {
   border-top: none;
   color: var(--muted);
-  font-size: 0.875rem;
+  font-size: var(--text-14);
 }
 
 .economics-table .economics-year {
@@ -2618,7 +2654,7 @@ button.secondary-action {
 .economics-outside {
   display: block;
   color: var(--warning);
-  font-size: 0.75rem;
+  font-size: var(--text-12);
   font-weight: 400;
 }
 
@@ -2626,19 +2662,19 @@ button.secondary-action {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 0 var(--space-2);
+  gap: 0 var(--space-8);
 }
 
 .economics-kind {
-  font-size: 0.8125rem;
+  font-size: var(--text-13);
 }
 
 .economics-bar {
   display: block;
   box-sizing: border-box;
   height: 0.4rem;
-  margin: 0.2rem 0 0 auto;
-  border-radius: 0.2rem;
+  margin: var(--space-4) 0 0 auto;
+  border-radius: var(--radius-sm);
   background: var(--accent);
 }
 
@@ -2648,7 +2684,7 @@ button.secondary-action {
 }
 
 .card-economics {
-  margin-top: var(--space-2);
+  margin-top: var(--space-8);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2661,13 +2697,13 @@ button.secondary-action {
 /* Year series and economics (FR-63): one line per proposed series, with its
    use and, once used, its total column; the currency unit below. */
 #series-panel {
-  margin-bottom: var(--dense-2);
-  font-size: var(--dense-font);
+  margin-bottom: var(--space-4);
+  font-size: var(--text-14);
 }
 
 .series-item {
   flex-wrap: wrap;
-  gap: var(--dense-1) var(--dense-2);
+  gap: var(--space-2) var(--space-4);
 }
 
 .series-years {
@@ -2678,8 +2714,8 @@ button.secondary-action {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dense-1) var(--dense-2);
-  margin: var(--dense-2) 0 0;
+  gap: var(--space-2) var(--space-4);
+  margin: var(--space-4) 0 0;
 }
 
 #currency-unit {
@@ -2688,8 +2724,8 @@ button.secondary-action {
 
 /* Reset demo (FR-56): a small action beside the demo label. */
 #demo-reset {
-  padding: 0 var(--space-2);
-  font-size: 0.8rem;
+  padding: 0 var(--space-8);
+  font-size: var(--text-13);
   white-space: nowrap;
 }
 
@@ -2730,18 +2766,18 @@ html[data-mode='viewer']:not([data-started]) #segment-presentation {
    run, hidden at once where it does, and shown again if the application has
    not started after its timer. */
 #boot-notice {
-  margin: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  margin: var(--space-8);
+  padding: var(--space-8) var(--space-16);
   border: 2px solid var(--warning);
   border-radius: var(--radius);
   background: var(--panel);
   color: var(--fg);
-  font-size: 1rem;
+  font-size: var(--text-16);
   line-height: 1.45;
 }
 
 #boot-notice p {
-  margin: var(--space-1) 0;
+  margin: var(--space-4) 0;
   overflow-wrap: anywhere;
 }
 
@@ -2768,7 +2804,7 @@ html[data-boot='failed'] #boot-notice {
 }
 
 .pres-mode-button + .pres-mode-button {
-  margin-left: -1px;
+  margin-left: calc(-1 * var(--hairline));
 }
 
 .pres-mode-button:last-child {
@@ -2792,7 +2828,7 @@ html[data-boot='failed'] #boot-notice {
    font. */
 #pres-order {
   box-sizing: border-box;
-  height: calc(1lh + 2 * var(--space-1) + 2px);
+  height: calc(1lh + 2 * var(--space-4) + 2px);
   padding-block: 0;
 }
 
@@ -2821,7 +2857,7 @@ html[data-boot='failed'] #boot-notice {
   --timeline-lane-bar-h: 14px;
   position: absolute;
   inset: 0;
-  z-index: 4;
+  z-index: var(--layer-schedule);
   display: flex;
   flex-direction: column;
   background: var(--panel);
@@ -2841,7 +2877,7 @@ html[data-boot='failed'] #boot-notice {
   height: 1.75rem;
   padding-right: var(--timeline-gutter, 0px);
   border-bottom: 1px solid var(--border);
-  font-size: var(--dense-label);
+  font-size: var(--text-12);
   color: var(--muted);
 }
 
@@ -2856,7 +2892,7 @@ html[data-boot='failed'] #boot-notice {
   bottom: 0;
   display: flex;
   align-items: center;
-  padding-left: var(--space-1);
+  padding-left: var(--space-4);
   border-left: 1px solid var(--border);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -2905,8 +2941,8 @@ html[data-boot='failed'] #boot-notice {
   display: flex;
   align-items: flex-end;
   height: var(--timeline-heading, var(--timeline-line));
-  padding: 0 var(--space-2);
-  font-size: var(--dense-label);
+  padding: 0 var(--space-8);
+  font-size: var(--text-12);
   font-weight: 700;
   color: var(--muted);
 }
@@ -2936,8 +2972,11 @@ html[data-boot='failed'] #boot-notice {
   cursor: pointer;
 }
 
+/* The room the expand control takes beside the name: a dimension of the
+   control, not a spacing. */
 .timeline-entry[data-expandable='true'] > .timeline-chip {
-  padding-right: 2.25rem;
+  --timeline-control-room: 2.25rem;
+  padding-right: var(--timeline-control-room);
 }
 
 .timeline-plot-control {
@@ -2969,12 +3008,12 @@ button.timeline-plot-control {
   box-sizing: border-box;
   min-width: 1.25rem;
   height: 18px;
-  padding: 0 5px;
-  border: 1px solid var(--border);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--control-line);
   border-radius: var(--radius-pill);
   background: var(--panel);
   color: var(--muted);
-  font-size: var(--dense-label);
+  font-size: var(--text-12);
   line-height: 16px;
   text-align: center;
 }
@@ -3000,17 +3039,17 @@ button.timeline-plot-control:hover > .timeline-indicator,
 .timeline-name {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-4);
   min-width: 0;
-  padding: 0 var(--space-2);
-  font-size: var(--dense-font);
+  padding: 0 var(--space-8);
+  font-size: var(--text-14);
 }
 
 .timeline-name .marker-badge {
   flex: none;
   min-width: var(--timeline-badge, 1.75rem);
   height: var(--timeline-badge, 1.75rem);
-  font-size: var(--timeline-badge-font, 0.8rem);
+  font-size: var(--timeline-badge-font, var(--text-13));
 }
 
 .timeline-title {
@@ -3025,7 +3064,7 @@ button.timeline-plot-control:hover > .timeline-indicator,
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: var(--dense-label);
+  font-size: var(--text-12);
   color: var(--muted);
 }
 
@@ -3045,7 +3084,7 @@ button.timeline-plot-control:hover > .timeline-indicator,
   top: calc(50% - 7px);
   height: 14px;
   min-width: 3px;
-  border-radius: calc(var(--radius) / 2);
+  border-radius: var(--radius-sm);
   background: var(--marker-fill);
 }
 
@@ -3056,7 +3095,7 @@ button.timeline-plot-control:hover > .timeline-indicator,
   position: absolute;
   height: var(--timeline-seg-h);
   min-width: 3px;
-  border-radius: calc(var(--radius) / 2);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--marker-fill);
   background: var(--input-bg);
   overflow: hidden;
@@ -3081,11 +3120,11 @@ button.timeline-plot-control:hover > .timeline-indicator,
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: 0 4px;
-  border-radius: calc(var(--radius-sm) / 2);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-sm);
   background: var(--panel);
   color: var(--fg);
-  font-size: var(--dense-label);
+  font-size: var(--text-12);
   line-height: 1.4;
 }
 
@@ -3097,7 +3136,7 @@ button.timeline-plot-control:hover > .timeline-indicator,
   display: none;
   white-space: nowrap;
   color: var(--fg);
-  font-size: var(--dense-label);
+  font-size: var(--text-12);
   pointer-events: none;
 }
 
@@ -3130,7 +3169,7 @@ button.timeline-plot-control:hover > .timeline-indicator,
 
 .timeline-seg[data-kind='amount'] > .timeline-seg-fill {
   box-sizing: border-box;
-  border-radius: calc(var(--radius) / 2);
+  border-radius: var(--radius-sm);
 }
 
 /* The budget (FR-79, D7 as revised in v1.14.0): one style everywhere -- a
@@ -3140,7 +3179,7 @@ button.timeline-plot-control:hover > .timeline-indicator,
 .timeline-seg[data-series='budget'] > .timeline-seg-fill {
   box-sizing: border-box;
   border: 1.5px solid var(--marker-fill);
-  border-radius: calc(var(--radius) / 2);
+  border-radius: var(--radius-sm);
   background: transparent;
 }
 
@@ -3213,7 +3252,7 @@ button.timeline-plot-control:hover > .timeline-indicator,
   --marker-text: var(--panel);
   position: sticky;
   top: 0;
-  z-index: 2;
+  z-index: var(--layer-selected);
   display: grid;
   grid-template-columns: var(--timeline-name) 1fr;
   align-items: center;
@@ -3271,7 +3310,7 @@ button.timeline-plot-control:hover > .timeline-indicator,
   top: calc(var(--row, 0) * 20px + 2px);
   box-sizing: border-box;
   height: 17px;
-  padding: 0 6px;
+  padding: 0 var(--space-4);
   overflow: hidden;
   border: 1px solid var(--fg);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
@@ -3289,9 +3328,9 @@ button.timeline-plot-control:hover > .timeline-indicator,
 
 .timeline-event-more {
   width: 28px;
-  margin-left: 2px;
+  margin-left: var(--space-2);
   padding: 0;
-  border-color: var(--border);
+  border-color: var(--control-line);
   border-radius: var(--radius-pill);
   color: var(--muted);
   text-align: center;
@@ -3304,7 +3343,7 @@ button.timeline-plot-control:hover > .timeline-indicator,
 .timeline-event-edge {
   width: 28px;
   padding: 0;
-  border-color: var(--border);
+  border-color: var(--control-line);
   border-radius: var(--radius-pill);
   color: var(--muted);
   text-align: center;
@@ -3319,7 +3358,7 @@ button.timeline-plot-control:hover > .timeline-indicator,
   top: 0;
   bottom: 0;
   width: 0;
-  margin-left: -1px;
+  margin-left: calc(-1 * var(--hairline));
   border-left: 2px dashed var(--fg);
   pointer-events: none;
 }
@@ -3340,7 +3379,7 @@ button.timeline-plot-control:hover > .timeline-indicator,
   bottom: 0;
   left: var(--timeline-name);
   right: var(--timeline-gutter, 0px);
-  z-index: 3;
+  z-index: var(--layer-dragging);
   overflow: hidden;
   pointer-events: none;
 }
@@ -3373,17 +3412,18 @@ button.timeline-plot-control:hover > .timeline-indicator,
 /* A marked point: an item of which only the start or the end is known. */
 .timeline-point {
   position: absolute;
-  top: calc(50% - 6px);
-  width: 12px;
-  height: 12px;
-  margin-left: -6px;
+  --timeline-point-size: 12px;
+  top: calc(50% - var(--timeline-point-size) / 2);
+  width: var(--timeline-point-size);
+  height: var(--timeline-point-size);
+  margin-left: calc(var(--timeline-point-size) / -2);
   border: 2px solid var(--marker-fill);
   background: var(--panel);
   transform: rotate(45deg);
 }
 
 .timeline-message {
-  margin: var(--space-3);
+  margin: var(--space-16);
 }
 
 /* ==== The quiet presentation chrome (v1.9.0, FR-37 and FR-38 as amended) ====
@@ -3398,73 +3438,73 @@ button.timeline-plot-control:hover > .timeline-indicator,
    presentation segment is shown; the card keeps its 16 pixel floor and the
    timeline's lines their own sizes. */
 html[data-segment='presentation'] #segment-presentation {
-  font-size: 0.8125rem;
+  font-size: var(--text-13);
 }
 
 html[data-segment='presentation'] #segment-presentation .glance-entry,
 html[data-segment='presentation'] #segment-presentation .legend {
-  font-size: 0.8125rem;
+  font-size: var(--text-13);
 }
 
 html[data-segment='presentation'] #segment-presentation .glance-area {
-  font-size: 0.75rem;
+  font-size: var(--text-12);
 }
 
 html[data-segment='presentation'] #app-header {
-  padding: 4px 12px;
+  padding: var(--space-4) var(--space-12);
 }
 
 html[data-segment='presentation'] #app-name {
-  font-size: 0.875rem;
+  font-size: var(--text-14);
   font-weight: 600;
 }
 
 html[data-segment='presentation'] #app-version {
-  font-size: 0.75rem;
+  font-size: var(--text-12);
 }
 
 html[data-segment='presentation'] #viewer-badge {
-  font-size: 0.75rem;
+  font-size: var(--text-12);
   color: var(--muted);
   border: 1px solid var(--border);
   border-radius: var(--radius-pill);
-  padding: 1px 8px;
+  padding: var(--space-2) var(--space-8);
 }
 
 html[data-segment='presentation'] #app-header .controls {
-  gap: 10px;
-  font-size: 0.8125rem;
+  gap: var(--space-8);
+  font-size: var(--text-13);
 }
 
 html[data-segment='presentation'] #app-header .controls label {
-  gap: 4px;
+  gap: var(--space-4);
 }
 
 html[data-segment='presentation'] #app-header select {
-  font-size: 0.8125rem;
-  padding: 2px 4px;
+  font-size: var(--text-13);
+  padding: var(--space-2) var(--space-4);
 }
 
 html[data-segment='presentation'] .segment-tab {
-  padding: 2px 8px;
-  font-size: 0.8125rem;
+  padding: var(--space-2) var(--space-8);
+  font-size: var(--text-13);
 }
 
 html[data-segment='presentation'] #work-controls {
-  gap: 6px;
+  gap: var(--space-4);
 }
 
 html[data-segment='presentation'] #work-controls button {
-  padding: 2px 8px;
-  font-size: 0.8125rem;
+  padding: var(--space-2) var(--space-8);
+  font-size: var(--text-13);
 }
 
 html[data-segment='presentation'] #app-main {
-  padding: 10px;
+  padding: var(--space-8);
 }
 
 html[data-segment='presentation'] #segment-presentation {
-  gap: 10px;
+  gap: var(--space-8);
   height: calc(100vh - 3.5rem);
 }
 
@@ -3480,7 +3520,7 @@ html:not([data-mode='viewer'])[data-segment='presentation'] #segment-presentatio
 }
 
 html[data-segment='presentation'] #presentation-area {
-  padding: 10px;
+  padding: var(--space-8);
   border-radius: var(--radius-sm);
 }
 
@@ -3495,21 +3535,21 @@ html[data-segment='presentation'] #presentation-heading {
 }
 
 html[data-segment='presentation'] #presentation-toolbar {
-  gap: 6px;
-  margin-bottom: 6px;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
 }
 
 /* Ghost controls: transparent until hovered or focused; the active view
    switch keeps the one accent fill. */
 html[data-segment='presentation'] #presentation-toolbar button {
-  padding: 2px 8px;
+  padding: var(--space-2) var(--space-8);
   background: transparent;
   border-color: transparent;
   border-radius: var(--radius-sm);
 }
 
 html[data-segment='presentation'] #presentation-toolbar button:hover:not(:disabled) {
-  border-color: var(--border);
+  border-color: var(--control-line);
   background: var(--panel);
 }
 
@@ -3531,15 +3571,15 @@ html[data-segment='presentation'] #presentation-toolbar button.primary-action {
 }
 
 html[data-segment='presentation'] #pres-order-label {
-  gap: 4px;
+  gap: var(--space-4);
 }
 
 html[data-segment='presentation'] #pres-order {
-  font-size: 0.8125rem;
+  font-size: var(--text-13);
 }
 
 html[data-segment='presentation'] #presentation-toolbar #pres-zoom-level {
-  font-size: 0.75rem;
+  font-size: var(--text-12);
   min-width: 3rem;
 }
 
@@ -3553,33 +3593,33 @@ html[data-segment='presentation'] #presentation-stage {
 
 /* The export dialogs are operator surfaces (FR-42), not presentation chrome. */
 html[data-segment='presentation'] :is(#export-panel, #document-panel) {
-  font-size: 1rem;
+  font-size: var(--text-16);
 }
 
 /* The compact legend (FR-75's used-only entries, quieter type and swatches). */
 html[data-segment='presentation'] #presentation-legend {
-  gap: 10px;
-  margin-top: 6px;
-  padding: 4px 10px;
+  gap: var(--space-8);
+  margin-top: var(--space-4);
+  padding: var(--space-4) var(--space-8);
   border-radius: var(--radius-sm);
 }
 
 html[data-segment='presentation'] #presentation-legend .legend-heading,
 html[data-segment='presentation'] #presentation-legend .legend-group-label,
 html[data-segment='presentation'] #presentation-legend .legend-label {
-  font-size: 0.75rem;
+  font-size: var(--text-12);
 }
 
 html[data-segment='presentation'] #presentation-legend .legend-group {
-  gap: 10px;
+  gap: var(--space-8);
 }
 
 html[data-segment='presentation'] #presentation-legend .legend-list {
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 html[data-segment='presentation'] #presentation-legend .legend-entry {
-  gap: 4px;
+  gap: var(--space-4);
 }
 
 html[data-segment='presentation'] #presentation-legend .legend-swatch {
@@ -3605,21 +3645,21 @@ html[data-segment='presentation'] #presentation-legend .legend-swatch.marker-ico
 
 /* The persistent "In view" column, narrowed and quieter. */
 html[data-segment='presentation'] #presentation-glance {
-  padding: 10px;
+  padding: var(--space-8);
   border-radius: var(--radius-sm);
 }
 
 html[data-segment='presentation'] #presentation-glance .glance-heading {
-  font-size: 0.8125rem;
+  font-size: var(--text-13);
 }
 
 html[data-segment='presentation'] #presentation-glance .glance-list {
-  gap: 3px;
+  gap: var(--space-2);
 }
 
 html[data-segment='presentation'] #presentation-glance .glance-entry {
-  padding: 3px 6px;
-  gap: 6px;
+  padding: var(--space-2) var(--space-4);
+  gap: var(--space-4);
 }
 
 /* ==== Narrow viewer layout (FR-58) ====
@@ -3638,19 +3678,19 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   html[data-mode='viewer'] #app-header {
     flex: none;
     flex-wrap: wrap;
-    gap: var(--space-1) var(--space-2);
-    padding: var(--space-1) var(--space-2);
+    gap: var(--space-4) var(--space-8);
+    padding: var(--space-4) var(--space-8);
   }
 
   html[data-mode='viewer'] #app-header .controls {
     flex-wrap: wrap;
-    gap: var(--space-1) var(--space-2);
-    font-size: 0.875rem;
+    gap: var(--space-4) var(--space-8);
+    font-size: var(--text-14);
   }
 
   html[data-mode='viewer'] #viewer-badge {
     min-width: 0;
-    font-size: 0.8rem;
+    font-size: var(--text-13);
   }
 
   /* The selects keep their names for assistive technology only. */
@@ -3669,7 +3709,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     flex-direction: column;
     flex: 1 1 auto;
     min-height: 0;
-    padding: var(--space-1);
+    padding: var(--space-4);
   }
 
   html[data-mode='viewer'] #segment-presentation {
@@ -3679,7 +3719,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     height: auto;
     min-height: 0;
     gap: 0;
-    font-size: 1rem;
+    font-size: var(--text-16);
   }
 
   /* Before the application starts (FR-38 as amended in v1.5.0), the static
@@ -3691,7 +3731,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   html[data-mode='viewer'] #presentation-area {
     flex: 1 1 auto;
     min-height: 0;
-    padding: var(--space-1);
+    padding: var(--space-4);
   }
 
   html[data-mode='viewer'] #presentation-heading {
@@ -3704,14 +3744,14 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   }
 
   html[data-mode='viewer'] #presentation-toolbar {
-    gap: var(--space-1);
-    margin-bottom: var(--space-1);
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
   }
 
   /* The compact toggle bar of the two overlays. */
   html[data-mode='viewer'] #viewer-toggles {
     display: flex;
-    gap: var(--space-1);
+    gap: var(--space-4);
     margin-left: auto;
   }
 
@@ -3731,17 +3771,17 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   html[data-mode='viewer'] #presentation-glance,
   html[data-mode='viewer'] #presentation-legend {
     position: fixed;
-    z-index: 30;
-    left: var(--space-2);
-    right: var(--space-2);
-    bottom: var(--space-2);
+    z-index: var(--layer-sheet);
+    left: var(--space-8);
+    right: var(--space-8);
+    bottom: var(--space-8);
     max-height: 60dvh;
     margin: 0;
     overflow: auto;
     overscroll-behavior: contain;
-    padding: var(--space-3);
+    padding: var(--space-16);
     border: 1px solid var(--border);
-    border-radius: calc(2 * var(--radius));
+    border-radius: var(--radius);
     background: var(--panel);
     box-shadow: var(--card-shadow);
     opacity: 1;
@@ -3766,10 +3806,10 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
 
   /* The card docks at the bottom of the stage, with its own scrolling. */
   html[data-mode='viewer'] .presentation-card {
-    left: var(--space-2);
-    right: var(--space-2);
+    left: var(--space-8);
+    right: var(--space-8);
     top: auto;
-    bottom: var(--space-2);
+    bottom: var(--space-8);
     width: auto;
     max-height: min(60%, 26rem);
     overflow-y: auto;
@@ -3778,13 +3818,13 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
 
   /* The economics view as a bottom sheet (FR-64). */
   html[data-mode='viewer'] .economics-overlay {
-    left: var(--space-2);
-    right: var(--space-2);
+    left: var(--space-8);
+    right: var(--space-8);
     top: auto;
-    bottom: var(--space-2);
+    bottom: var(--space-8);
     width: auto;
     max-height: 85dvh;
-    padding: var(--space-3);
+    padding: var(--space-16);
     transform: none;
   }
 
@@ -3864,7 +3904,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     flex-direction: row;
     align-items: center;
     justify-content: flex-start;
-    gap: var(--space-1);
+    gap: var(--space-4);
   }
 
   html[data-mode='viewer'] .timeline-axis {
@@ -3890,17 +3930,17 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   }
 
   html[data-mode='viewer'] .timeline-entry[data-expandable='true'] > .timeline-chip {
-    padding-right: 2.75rem;
+    --timeline-control-room: 2.75rem;
   }
 
   html[data-mode='viewer'] .timeline-indicator {
     top: auto;
-    right: var(--space-2);
+    right: var(--space-8);
     bottom: calc(100% + 3px);
   }
 
   html[data-mode='viewer'] .timeline-name {
-    font-size: 0.8125rem;
+    font-size: var(--text-13);
     line-height: 1.25rem;
   }
 
@@ -3910,21 +3950,18 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   }
 
   html[data-mode='viewer'] .timeline-point {
-    top: calc(50% - 5px);
-    width: 10px;
-    height: 10px;
-    margin-left: -5px;
+    --timeline-point-size: 10px;
   }
 
   /* The quiet chrome (v1.9.0, FR-58 as amended): compact header, ghost
      toolbar controls, compact legend overlay; the stage takes the rest. */
   html[data-mode='viewer'] #app-header {
-    padding: 3px 8px;
-    gap: 3px 8px;
+    padding: var(--space-2) var(--space-8);
+    gap: var(--space-2) var(--space-8);
   }
 
   html[data-mode='viewer'] #app-name {
-    font-size: 0.8125rem;
+    font-size: var(--text-13);
   }
 
   html[data-mode='viewer'] #app-version {
@@ -3936,34 +3973,34 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     color: var(--muted);
     border: 1px solid var(--border);
     border-radius: var(--radius-pill);
-    padding: 1px 6px;
+    padding: var(--space-2) var(--space-4);
   }
 
   html[data-mode='viewer'] #app-header .controls {
-    font-size: 0.75rem;
-    gap: 3px 8px;
+    font-size: var(--text-12);
+    gap: var(--space-2) var(--space-8);
   }
 
   html[data-mode='viewer'] #app-header select {
-    font-size: 0.75rem;
-    padding: 2px 2px;
+    font-size: var(--text-12);
+    padding: var(--space-2) var(--space-2);
   }
 
   html[data-mode='viewer'] #app-main {
-    padding: 4px;
+    padding: var(--space-4);
   }
 
   html[data-mode='viewer'] #presentation-area {
-    padding: 4px;
+    padding: var(--space-4);
   }
 
   html[data-mode='viewer'] #presentation-toolbar {
-    gap: 4px;
-    margin-bottom: 4px;
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
   }
 
   html[data-mode='viewer'] #presentation-toolbar button {
-    padding: 2px 7px;
+    padding: var(--space-2) var(--space-8);
   }
 
   html[data-mode='viewer'] #presentation-toolbar .icon-button {
@@ -3971,31 +4008,31 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   }
 
   html[data-mode='viewer'] #viewer-toggles {
-    gap: 4px;
+    gap: var(--space-4);
   }
 
   html[data-mode='viewer'] #presentation-legend {
-    padding: 10px;
-    gap: 8px;
+    padding: var(--space-8);
+    gap: var(--space-8);
     max-height: 50dvh;
   }
 
   html[data-mode='viewer'] #presentation-legend .legend-heading,
   html[data-mode='viewer'] #presentation-legend .legend-group-label,
   html[data-mode='viewer'] #presentation-legend .legend-label {
-    font-size: 0.75rem;
+    font-size: var(--text-12);
   }
 
   html[data-mode='viewer'] #presentation-legend .legend-group {
-    gap: 8px;
+    gap: var(--space-8);
   }
 
   html[data-mode='viewer'] #presentation-legend .legend-list {
-    gap: 6px;
+    gap: var(--space-4);
   }
 
   html[data-mode='viewer'] #presentation-legend .legend-entry {
-    gap: 4px;
+    gap: var(--space-4);
   }
 
   html[data-mode='viewer'] #presentation-legend .legend-swatch {
@@ -4014,15 +4051,15 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   }
 
   html[data-mode='viewer'] #presentation-glance {
-    padding: 10px;
+    padding: var(--space-8);
   }
 
   html[data-mode='viewer'] #presentation-glance .glance-heading {
-    font-size: 0.8125rem;
+    font-size: var(--text-13);
   }
 
   html[data-mode='viewer'] #presentation-glance .glance-entry {
-    padding: 3px 6px;
+    padding: var(--space-2) var(--space-4);
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -4051,8 +4088,8 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
      Menu overlay while the narrow layout is in force. */
   html:not([data-mode='viewer']) #app-header {
     flex-wrap: wrap;
-    gap: var(--space-1) var(--space-2);
-    padding: var(--space-1) var(--space-2);
+    gap: var(--space-4) var(--space-8);
+    padding: var(--space-4) var(--space-8);
   }
 
   html:not([data-mode='viewer']) #app-title {
@@ -4063,7 +4100,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   html:not([data-mode='viewer']) #menu-toggle {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-1);
+    gap: var(--space-4);
     order: 1;
   }
 
@@ -4071,7 +4108,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     content: '';
     width: 0.5rem;
     height: 0.5rem;
-    border-radius: 50%;
+    border-radius: var(--radius-pill);
     background: var(--warning);
   }
 
@@ -4085,13 +4122,13 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     min-width: 0;
     padding-inline: 0;
     overflow: hidden;
-    font-size: 0.8125rem;
+    font-size: var(--text-13);
     white-space: nowrap;
     text-overflow: ellipsis;
   }
 
   html:not([data-mode='viewer']) #app-version {
-    font-size: 0.75rem;
+    font-size: var(--text-12);
   }
 
   /* The Menu overlay's content: one control or group per row. */
@@ -4099,19 +4136,19 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: var(--space-2);
+    gap: var(--space-8);
   }
 
   html:not([data-mode='viewer']) #app-menu > label {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-2);
+    gap: var(--space-8);
   }
 
   html:not([data-mode='viewer']) #app-menu #work-controls {
     flex-wrap: wrap;
-    gap: var(--space-1) var(--space-2);
+    gap: var(--space-4) var(--space-8);
   }
 
   html:not([data-mode='viewer']) #app-menu #demo-badge {
@@ -4124,7 +4161,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
 
   html:not([data-mode='viewer']) #app-main {
     min-height: 0;
-    padding: var(--space-2);
+    padding: var(--space-8);
   }
 
   html:not([data-mode='viewer']) .segment {
@@ -4160,13 +4197,13 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     flex-direction: column;
     height: auto;
     min-height: 0;
-    gap: var(--space-2);
+    gap: var(--space-8);
   }
 
   html:not([data-mode='viewer']) #map-area,
   html:not([data-mode='viewer']) #presentation-area {
     order: -1;
-    padding: var(--space-1);
+    padding: var(--space-4);
   }
 
   html:not([data-mode='viewer']) #map-heading,
@@ -4185,8 +4222,8 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   html:not([data-mode='viewer']) #annotation-toolbar,
   html:not([data-mode='viewer']) #presentation-toolbar {
     flex-wrap: nowrap;
-    gap: var(--space-1);
-    margin-bottom: var(--space-1);
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
     overflow-x: auto;
     overscroll-behavior-x: contain;
     scrollbar-width: none;
@@ -4201,7 +4238,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     display: flex;
     flex: none;
     align-items: center;
-    gap: var(--space-1);
+    gap: var(--space-4);
   }
 
   html:not([data-mode='viewer']) .stage {
@@ -4274,9 +4311,9 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     display: flex;
     flex: none;
     align-items: center;
-    gap: var(--space-2);
-    margin-bottom: var(--space-1);
-    padding: var(--space-1) var(--space-2);
+    gap: var(--space-8);
+    margin-bottom: var(--space-4);
+    padding: var(--space-4) var(--space-8);
     border: 1px solid var(--accent);
     border-radius: var(--radius);
     background: var(--input-bg);
@@ -4298,15 +4335,15 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
      width and the name wraps. */
   html:not([data-mode='viewer']) #details-panel {
     top: auto;
-    left: var(--space-2);
-    right: var(--space-2);
-    bottom: var(--space-2);
-    z-index: 35;
+    left: var(--space-8);
+    right: var(--space-8);
+    bottom: var(--space-8);
+    z-index: var(--layer-inspector);
     width: auto;
     max-height: min(75dvh, 44rem);
     overflow-y: auto;
     overscroll-behavior: contain;
-    border-radius: calc(2 * var(--radius));
+    border-radius: var(--radius);
     box-shadow: var(--card-shadow);
   }
 
@@ -4321,7 +4358,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   html:not([data-mode='viewer']) #details-panel textarea.cell-input {
     width: 100%;
     box-sizing: border-box;
-    padding: var(--space-2);
+    padding: var(--space-8);
     resize: none;
     overflow: hidden;
     font: inherit;
@@ -4373,10 +4410,10 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
 
   /* The card docks at the bottom of the stage, with its own scrolling. */
   html:not([data-mode='viewer']) .presentation-card {
-    left: var(--space-2);
-    right: var(--space-2);
+    left: var(--space-8);
+    right: var(--space-8);
     top: auto;
-    bottom: var(--space-2);
+    bottom: var(--space-8);
     width: auto;
     max-height: min(60%, 26rem);
     overflow-y: auto;
@@ -4385,13 +4422,13 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
 
   /* The economics view as a bottom sheet (FR-64). */
   html:not([data-mode='viewer']) .economics-overlay {
-    left: var(--space-2);
-    right: var(--space-2);
+    left: var(--space-8);
+    right: var(--space-8);
     top: auto;
-    bottom: var(--space-2);
+    bottom: var(--space-8);
     width: auto;
     max-height: 85dvh;
-    padding: var(--space-3);
+    padding: var(--space-16);
     transform: none;
   }
 
@@ -4437,7 +4474,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     flex-direction: row;
     align-items: center;
     justify-content: flex-start;
-    gap: var(--space-1);
+    gap: var(--space-4);
   }
 
   html:not([data-mode='viewer']) .timeline-axis {
@@ -4463,17 +4500,17 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   }
 
   html:not([data-mode='viewer']) .timeline-entry[data-expandable='true'] > .timeline-chip {
-    padding-right: 2.75rem;
+    --timeline-control-room: 2.75rem;
   }
 
   html:not([data-mode='viewer']) .timeline-indicator {
     top: auto;
-    right: var(--space-2);
+    right: var(--space-8);
     bottom: calc(100% + 3px);
   }
 
   html:not([data-mode='viewer']) .timeline-name {
-    font-size: 0.8125rem;
+    font-size: var(--text-13);
     line-height: 1.25rem;
   }
 
@@ -4483,10 +4520,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   }
 
   html:not([data-mode='viewer']) .timeline-point {
-    top: calc(50% - 5px);
-    width: 10px;
-    height: 10px;
-    margin-left: -5px;
+    --timeline-point-size: 10px;
   }
 
   /* Inside an overlay a list does not scroll on its own: the overlay does. */
@@ -4502,7 +4536,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   html:not([data-mode='viewer']) #viewer-toggles {
     display: flex;
     flex: none;
-    gap: var(--space-1);
+    gap: var(--space-4);
   }
 
   html:not([data-mode='viewer']) :is(#menu-toggle, .narrow-toggle, .viewer-toggle)[aria-expanded='true'] {
@@ -4515,17 +4549,17 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
      pattern (FR-58, FR-72). */
   html:not([data-mode='viewer']) :is(#app-menu, #placement-area, #map-glance, #map-legend, #visibility-area, #presentation-glance, #presentation-legend) {
     position: fixed;
-    z-index: 30;
-    left: var(--space-2);
-    right: var(--space-2);
-    bottom: var(--space-2);
+    z-index: var(--layer-sheet);
+    left: var(--space-8);
+    right: var(--space-8);
+    bottom: var(--space-8);
     max-height: 60dvh;
     margin: 0;
     overflow: auto;
     overscroll-behavior: contain;
-    padding: var(--space-3);
+    padding: var(--space-16);
     border: 1px solid var(--border);
-    border-radius: calc(2 * var(--radius));
+    border-radius: var(--radius);
     background: var(--panel);
     box-shadow: var(--card-shadow);
     opacity: 1;
@@ -4554,17 +4588,17 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
      and the four style controls live in it (moved there by the layout). */
   html:not([data-mode='viewer']) #annotation-inspector {
     position: fixed;
-    z-index: 35;
-    left: var(--space-2);
-    right: var(--space-2);
-    bottom: var(--space-2);
+    z-index: var(--layer-inspector);
+    left: var(--space-8);
+    right: var(--space-8);
+    bottom: var(--space-8);
     max-height: min(45dvh, 22rem);
     margin: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding: var(--space-3);
+    padding: var(--space-16);
     border: 1px solid var(--accent);
-    border-radius: calc(2 * var(--radius));
+    border-radius: var(--radius);
     background: var(--panel);
     box-shadow: var(--card-shadow);
     opacity: 1;
@@ -4590,7 +4624,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     display: flex;
     flex: none;
     align-items: center;
-    gap: var(--space-1);
+    gap: var(--space-4);
   }
 
   /* The six dialogs as overlays (FR-71 and FR-72 as amended in v1.15.0):
@@ -4604,11 +4638,11 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
      foot, so that every step keeps a Cancel or Close in view. */
   html:not([data-mode='viewer']) :is(#fetch-panel, #pdf-panel, #document-panel, #export-panel, #compare-panel, #activity-panel):not(.hidden) {
     position: fixed;
-    z-index: 45;
+    z-index: var(--layer-dialog);
     display: flex;
     flex-direction: column;
     margin: 0;
-    padding: var(--space-3);
+    padding: var(--space-16);
     overflow-y: auto;
     overscroll-behavior: contain;
     background: var(--panel);
@@ -4616,12 +4650,12 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   }
 
   html:not([data-mode='viewer']) :is(#fetch-panel, #pdf-panel, #document-panel):not(.hidden) {
-    left: var(--space-2);
-    right: var(--space-2);
-    bottom: var(--space-2);
+    left: var(--space-8);
+    right: var(--space-8);
+    bottom: var(--space-8);
     max-height: 75dvh;
     border: 1px solid var(--border);
-    border-radius: calc(2 * var(--radius));
+    border-radius: var(--radius);
   }
 
   html:not([data-mode='viewer']) :is(#export-panel, #compare-panel, #activity-panel):not(.hidden) {
@@ -4635,12 +4669,12 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     display: flex;
     flex: none;
     align-items: center;
-    gap: var(--space-2);
+    gap: var(--space-8);
     position: sticky;
     top: 0;
-    z-index: 1;
-    margin: calc(-1 * var(--space-3)) calc(-1 * var(--space-3)) var(--space-2);
-    padding: var(--space-3);
+    z-index: var(--layer-raised);
+    margin: calc(-1 * var(--space-16)) calc(-1 * var(--space-16)) var(--space-8);
+    padding: var(--space-16);
     background: var(--panel);
     border-bottom: 1px solid var(--border);
   }
@@ -4650,12 +4684,12 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     flex: none;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-2);
+    gap: var(--space-8);
     position: sticky;
     bottom: 0;
-    z-index: 1;
-    margin: var(--space-2) calc(-1 * var(--space-3)) calc(-1 * var(--space-3));
-    padding: var(--space-2) var(--space-3);
+    z-index: var(--layer-raised);
+    margin: var(--space-8) calc(-1 * var(--space-16)) calc(-1 * var(--space-16));
+    padding: var(--space-8) var(--space-16);
     background: var(--panel);
     border-top: 1px solid var(--border);
   }
@@ -4691,23 +4725,23 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
      amended): the toolbar's controls and gaps quiet down; the 44-pixel
      editing minimum above still binds every control. */
   html:not([data-mode='viewer'])[data-segment='presentation'] #presentation-toolbar {
-    gap: 4px;
-    margin-bottom: 4px;
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
   }
 
   html:not([data-mode='viewer'])[data-segment='presentation'] #presentation-toolbar button {
-    padding: 2px 7px;
+    padding: var(--space-2) var(--space-8);
   }
 
   html:not([data-mode='viewer'])[data-segment='presentation'] #presentation-legend {
-    padding: 10px;
-    gap: 8px;
+    padding: var(--space-8);
+    gap: var(--space-8);
   }
 
   html:not([data-mode='viewer'])[data-segment='presentation'] #presentation-legend .legend-heading,
   html:not([data-mode='viewer'])[data-segment='presentation'] #presentation-legend .legend-group-label,
   html:not([data-mode='viewer'])[data-segment='presentation'] #presentation-legend .legend-label {
-    font-size: 0.75rem;
+    font-size: var(--text-12);
   }
 
   html:not([data-mode='viewer'])[data-segment='presentation'] #presentation-legend .legend-swatch {
@@ -4721,11 +4755,11 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   }
 
   html:not([data-mode='viewer'])[data-segment='presentation'] #presentation-glance {
-    padding: 10px;
+    padding: var(--space-8);
   }
 
   html:not([data-mode='viewer'])[data-segment='presentation'] #presentation-glance .glance-entry {
-    padding: 3px 6px;
+    padding: var(--space-2) var(--space-4);
   }
 
   @media (prefers-reduced-motion: reduce) {
