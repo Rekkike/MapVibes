@@ -3,6 +3,7 @@
 import { MapView } from './mapview';
 import { NARROW_QUERY, NarrowDialogs, NarrowViewer, type NarrowDialogSpec } from './narrowviewer';
 import { el, state } from './appstate';
+import { layoutShell, startShell } from './shell';
 import { fetchAbort } from './fetchpanel';
 import { closeDocumentDialog } from './documentdialog';
 import { closeComparison, closeExportDialog } from './exportdialog';
@@ -131,6 +132,16 @@ export function startNarrowApplication(): void {
     enabled: () => document.documentElement.dataset.mode !== 'viewer',
   });
   refitNarrowStages();
+  // The layout of the classes above the narrow ones (FR-81), started after
+  // the overlays so that a change of class clears their state first. A fold
+  // changes the stage's size: what is in view is found again.
+  startShell({
+    narrow: () => appNarrow?.refresh(),
+    resized: () => {
+      renderMapItems();
+      renderPresentation();
+    },
+  });
 }
 
 // The resize and orientation refit (FR-71), in the narrow layout only (the
@@ -159,33 +170,11 @@ export function refitNarrowStages(): void {
 }
 
 // The header's controls that the narrow layout moves into the Menu overlay
-// (FR-71), each with an anchor marking its place in the header, so that
-// leaving the narrow layout puts it back exactly where it was.
-let headerAnchors: Array<{ item: HTMLElement; anchor: Comment }> | null = null;
-
+// (FR-71), and the controls that the classes above it place elsewhere
+// (FR-81): the shell moves them, each with an anchor marking its place, so
+// that a change of class puts everything back exactly where it was.
 function layoutHeader(): void {
-  if (headerAnchors === null) {
-    const items = [el('demo-badge'), el('demo-reset'), el('work-controls'), el('select-language').closest('label')!, el('select-theme').closest('label')!];
-    headerAnchors = items.map((item) => {
-      const anchor = document.createComment('menu');
-      item.before(anchor);
-      return { item, anchor };
-    });
-  }
-  const menu = el('app-menu');
-  if (narrowApplication()) {
-    for (const { item } of headerAnchors) {
-      if (item.parentElement !== menu) {
-        menu.appendChild(item);
-      }
-    }
-  } else {
-    for (const { item, anchor } of headerAnchors) {
-      if (item.previousSibling !== anchor) {
-        anchor.after(item);
-      }
-    }
-  }
+  layoutShell();
 }
 
 // The four style controls of the annotation toolbar (FR-47 as amended in
