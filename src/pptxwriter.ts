@@ -123,16 +123,16 @@ function theme(): string {
   return (
     `${DECLARATION}<a:theme xmlns:a="${NS.a}" name="MapVibes"><a:themeElements>` +
     `<a:clrScheme name="MapVibes"><a:dk1><a:sysClr val="windowText" lastClr="000000"/></a:dk1><a:lt1><a:sysClr val="window" lastClr="FFFFFF"/></a:lt1>` +
-    colour('dk2', '1A1C20') +
-    colour('lt2', 'F6F7F9') +
-    colour('accent1', '287A4D') +
-    colour('accent2', '2F66B3') +
+    colour('dk2', '16181D') +
+    colour('lt2', 'F3F4F7') +
+    colour('accent1', '1F7A4A') +
+    colour('accent2', '2A62B0') +
     colour('accent3', 'E0B31F') +
-    colour('accent4', 'C03A3A') +
-    colour('accent5', '6B7380') +
+    colour('accent4', 'BF3434') +
+    colour('accent5', '5F6876') +
     colour('accent6', '3A3F47') +
-    colour('hlink', '2F66B3') +
-    colour('folHlink', '6B7380') +
+    colour('hlink', '2A62B0') +
+    colour('folHlink', '5F6876') +
     `</a:clrScheme>` +
     `<a:fontScheme name="MapVibes"><a:majorFont>${fonts}</a:majorFont><a:minorFont>${fonts}</a:minorFont></a:fontScheme>` +
     `<a:fmtScheme name="MapVibes"><a:fillStyleLst>${solid}${solid}${solid}</a:fillStyleLst>` +
@@ -171,7 +171,7 @@ function picture(name: string, description: string, rid: string): string {
 }
 
 function run(text: string, size: number, bold: boolean, lang: string): string {
-  return `<a:r><a:rPr lang="${xmlText(lang)}" sz="${Math.round(size * 100)}"${bold ? ' b="1"' : ''} dirty="0"><a:solidFill><a:srgbClr val="1A1C20"/></a:solidFill><a:latin typeface="Arial"/></a:rPr><a:t>${xmlText(text)}</a:t></a:r>`;
+  return `<a:r><a:rPr lang="${xmlText(lang)}" sz="${Math.round(size * 100)}"${bold ? ' b="1"' : ''} dirty="0"><a:solidFill><a:srgbClr val="16181D"/></a:solidFill><a:latin typeface="Arial"/></a:rPr><a:t>${xmlText(text)}</a:t></a:r>`;
 }
 
 function titleBox(text: string, c: PptxContent): string {
@@ -186,7 +186,7 @@ function titleBox(text: string, c: PptxContent): string {
 function cell(text: string, c: PptxContent, bold: boolean, shade: string | null): string {
   const pad = emu(c.padding);
   const border = (side: string) =>
-    `<a:${side} w="6350" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:srgbClr val="C9CED6"/></a:solidFill><a:prstDash val="solid"/></a:${side}>`;
+    `<a:${side} w="6350" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:srgbClr val="C5CAD3"/></a:solidFill><a:prstDash val="solid"/></a:${side}>`;
   const none = (side: string) => `<a:${side} w="0"><a:noFill/></a:${side}>`;
   // Each line of the cell is a paragraph of its own, so that the lines
   // break where the layout broke them.
@@ -216,7 +216,7 @@ function table(t: PptxTableSlide, c: PptxContent): string {
     `<p:xfrm><a:off x="${emu(c.margin)}" y="${emu(c.margin + c.titleHeight)}"/><a:ext cx="${total}" cy="${height}"/></p:xfrm>` +
     `<a:graphic><a:graphicData uri="${NS.table}"><a:tbl><a:tblPr firstRow="1" bandRow="1"/>` +
     `<a:tblGrid>${widths.map((w) => `<a:gridCol w="${w}"/>`).join('')}</a:tblGrid>` +
-    row(t.headings, t.headingHeight, true, 'EEF0F3') +
+    row(t.headings, t.headingHeight, true, 'E9ECF1') +
     t.rows.map((r, i) => row(r, t.rowHeights[i], false, i % 2 === 1 ? 'F8F9FB' : null)).join('') +
     `</a:tbl></a:graphicData></a:graphic></p:graphicFrame>`
   );
