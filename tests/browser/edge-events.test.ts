@@ -135,7 +135,8 @@ describe.each([
         ['after', '+1', 'Events after the shown window: 2042-06: Far review'],
       ]);
       for (const e of m.edges) {
-        expect(e.w).toBe(28);
+        // 31 pixels since v2.0.0 (28 before): the chip holds 12-pixel text.
+        expect(e.w).toBe(31);
         expect(e.h).toBe(17);
         expect(e.top).toBeCloseTo(2, 0);
       }

@@ -4333,6 +4333,39 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     bottom: var(--space-12);
   }
 
+  /* Below 960 pixels the bar tightens so that it stays one row: closer
+     controls, and the offline pill as its dot alone (its words stay its
+     name and its title). */
+  @media (max-width: 59.999rem) {
+    html:not([data-mode='viewer']) #app-header {
+      gap: var(--space-8);
+      padding: 0 var(--space-8);
+    }
+
+    html:not([data-mode='viewer']) #app-header .segment-tab {
+      padding: 0 var(--space-8);
+    }
+
+    html:not([data-mode='viewer']) #bar-offline {
+      position: relative;
+      width: 1.5rem;
+      padding: 0;
+      overflow: hidden;
+      text-indent: 2rem;
+      white-space: nowrap;
+    }
+
+    html:not([data-mode='viewer']) #bar-offline::before {
+      position: absolute;
+      inset: 0;
+      margin: auto;
+    }
+
+    html:not([data-mode='viewer']) :is(#bar-export, #work-save) {
+      padding: 0 var(--space-8);
+    }
+  }
+
   /* A coarse pointer keeps its 44-pixel targets. */
   @media (pointer: coarse) {
     html:not([data-mode='viewer']) :is(#menu-toggle, #map-more, #toggle-items, #toggle-visibility, #toggle-map-glance, #toggle-glance, #map-fit, #pres-fit, #pres-reset, .annotation-tool[data-tool]),
