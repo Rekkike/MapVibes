@@ -12,19 +12,7 @@ import { drawSymbol, isSymbol, SYMBOLS, symbolClasses, type MarkerSymbol } from 
 import { placedMarkers, placeMarker, pruneMarkers, removeMarker, type PlacedMarker } from './markers';
 import { BUTTON_ZOOM_FACTOR, screenToImage, type Point } from './viewport';
 import { AnnotationLayer, DrawingTools } from './annotationlayer';
-import {
-  closeNarrowOverlay,
-  effectiveSymbols,
-  hideDialog,
-  MAX_IMPORT_BYTES,
-  narrowApplication,
-  numbered,
-  numberLabel,
-  showDialog,
-  symbolLabel,
-  symbolOf,
-  symbolSource,
-} from './main';
+import { closeNarrowOverlay, effectiveSymbols, hideDialog, narrowApplication, showDialog, symbolLabel, symbolOf, symbolSource } from './main';
 import { el, fill, ROW_DRAG_TYPE, rowById, rowId, state } from './appstate';
 import { markDirty, readText, renderWorkStatus } from './workfile';
 import { renderComparison } from './exportdialog';
@@ -43,6 +31,7 @@ import {
   wireAnnotationToolbar,
 } from './annotationpanel';
 import { applyHighlight, renderGlance, renderLegends, renderPresentation, setHover, syncPresentationBackground } from './presentationstage';
+import { MAX_IMPORT_BYTES, numbered, numberLabel } from './listpanel';
 
 export let mapView: MapView | null = null;
 

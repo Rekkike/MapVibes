@@ -35,12 +35,7 @@ import {
   colourLabels,
   effectiveSeries,
   effectiveSymbols,
-  groupedNumbering,
-  labelOf,
   narrowViewer,
-  numbered,
-  numberLabel,
-  renderList,
   shownProgramGroups,
   symbolLabels,
   symbolOf,
@@ -54,6 +49,7 @@ import { activityDialog, closeActivityDialog, confirmActivityImport, onActivityF
 import { CARD_ROLES, detailModel } from './detailspanel';
 import { areaLocale, renderAnnotationVisibility, renderPresentationAnnotations, setPresentationAnnotations } from './annotationpanel';
 import { itemLabel, mapView, markerLabel, renderMapItems } from './mapstage';
+import { groupedNumbering, labelOf, numbered, numberLabel, renderList } from './listpanel';
 
 // What the visible items carry (FR-75): the used-only filter of the
 // Presentation segment's legend and of the exported viewer's. An item without

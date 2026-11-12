@@ -24,7 +24,7 @@ import { buildTimeline, fitWindow } from './timeline';
 import { formatDate, readDate } from './dates';
 import { todayDay } from './clock';
 import { SERIES_ROLES } from './economics';
-import { colourLabels, effectiveSeries, effectiveSymbols, hideDialog, labelOf, numbered, showDialog, shownProgramGroups, symbolLabels } from './main';
+import { colourLabels, effectiveSeries, effectiveSymbols, hideDialog, showDialog, shownProgramGroups, symbolLabels } from './main';
 import { el, fill, rowById, state } from './appstate';
 import { PDF_FILE, PPTX_FILE, writeFile } from './workfile';
 import { formatSize } from './exportdialog';
@@ -32,6 +32,7 @@ import { workPhaseOf } from './activitydialog';
 import { annotationShown, areaLocale } from './annotationpanel';
 import { itemLabel } from './mapstage';
 import { itemSpan, presentationLegendUse, presentationView, scheduleEvents, timelineItems } from './presentationstage';
+import { labelOf, numbered } from './listpanel';
 
 // Document exports (FR-12, FR-50 to FR-52): the visible presentation stage
 // and the table of the shown items, as a PDF or a PowerPoint document. The

@@ -6,24 +6,14 @@ import { addComment, commentsOf, editComment, formatCommentDate, removeComment }
 import { renderDetails, type DetailField, type DetailLabels, type DetailModel } from './details';
 import { SERIES_ROLES } from './economics';
 import { formatArea, trueArea } from './annotations';
-import {
-  colourLabel,
-  detailValueInput,
-  effectiveSeries,
-  fitToContent,
-  labelOf,
-  narrowApplication,
-  numberLabel,
-  statusCell,
-  symbolLabel,
-  symbolOf,
-} from './main';
+import { colourLabel, effectiveSeries, narrowApplication, symbolLabel, symbolOf } from './main';
 import { el, fill, rowById, rowId, state } from './appstate';
 import { markDirty } from './workfile';
 import { openActivityCorrection, openActivityDialog } from './activitydialog';
 import { annotationName, areaLocale, linkedRow } from './annotationpanel';
 import { itemLabel, mapView, renderMapItems } from './mapstage';
 import { economicsFor, openEconomics, shownCardColumns } from './presentationstage';
+import { detailValueInput, fitToContent, labelOf, numberLabel, statusCell } from './listpanel';
 
 // Details panel (FR-7): the complete data of one item, open in the
 // Information and Map segments, following the selection and the live data.
