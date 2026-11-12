@@ -14,7 +14,7 @@ import { currentCounters, el, fill, state } from './appstate';
 import { initialiseFetch } from './fetchpanel';
 import { applyWorkState, markDirty, openWorkFile, readText, renderWorkStatus, reportOpenFailure, saveWork, setWorkMessage, shareWork } from './workfile';
 import { renderDocument } from './documentdialog';
-import { adoptPositions, captureExport, closeComparison, renderExport, selectAllDiffering, setComparison } from './exportdialog';
+import { adoptPositions, captureExport, closeComparison, renderExport, selectAllDiffering, setComparison, setExportPageBuilder } from './exportdialog';
 import { renderActivityDialog } from './activitydialog';
 import { openDetails } from './detailspanel';
 import { initialiseMapView, renderMapItems, renderPlacing } from './mapstage';
@@ -275,6 +275,7 @@ export function exportPage(now: Date = new Date()): string | null {
   const notice = [t.noticeTitle, t.noticeReason, fill(t.noticeRoutes, { address: HOSTED_ADDRESS, action: t.openPresentation }), t.noticeData];
   return embedDataIsland(writeStaticViewerState(page, state.prefs.lang, notice), serialiseExport(captureExport().data, now));
 }
+setExportPageBuilder(exportPage);
 
 // Open presentation, read-only (FR-60): an exported presentation chosen by
 // the user is shown in the viewer. The file is read locally; its HTML is
