@@ -9,14 +9,11 @@ import { formatArea, trueArea } from './annotations';
 import {
   colourLabel,
   detailValueInput,
-  economicsFor,
   effectiveSeries,
   fitToContent,
   labelOf,
   narrowApplication,
   numberLabel,
-  openEconomics,
-  shownCardColumns,
   statusCell,
   symbolLabel,
   symbolOf,
@@ -26,6 +23,7 @@ import { markDirty } from './workfile';
 import { openActivityCorrection, openActivityDialog } from './activitydialog';
 import { annotationName, areaLocale, linkedRow } from './annotationpanel';
 import { itemLabel, mapView, renderMapItems } from './mapstage';
+import { economicsFor, openEconomics, shownCardColumns } from './presentationstage';
 
 // Details panel (FR-7): the complete data of one item, open in the
 // Information and Map segments, following the selection and the live data.

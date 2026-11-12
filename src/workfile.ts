@@ -6,23 +6,12 @@ import { commentsOf, restoreComments } from './comments';
 import { type Problem, parseWorkState, serialiseWorkState, SUGGESTED_FILE_NAME, WorkStateError, type WorkState } from './workstate';
 import { SUGGESTED_EXPORT_NAME } from './exportfile';
 import { newAnnotationId, type Annotation } from './annotations';
-import {
-  currentCostsView,
-  currentTimelineView,
-  demoLoaded,
-  effectiveSeries,
-  renderList,
-  restoreCostsView,
-  restoreTimelineView,
-  setDemoLoaded,
-  setEventMessage,
-  setPresetMessage,
-  setSegment,
-} from './main';
+import { demoLoaded, effectiveSeries, renderList, setDemoLoaded, setEventMessage, setPresetMessage, setSegment } from './main';
 import { el, state } from './appstate';
 import { cloneSeries, isHtmlFile, openExportForComparison } from './exportdialog';
 import { workPhaseOf } from './activitydialog';
 import { closePdf, mapView, showMapError } from './mapstage';
+import { currentCostsView, currentTimelineView, restoreCostsView, restoreTimelineView } from './presentationstage';
 
 // The number of changes made, and its value when the demo finished loading,
 // so that a reset of an untouched demo needs no confirmation (FR-56).

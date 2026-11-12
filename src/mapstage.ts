@@ -13,7 +13,6 @@ import { placedMarkers, placeMarker, pruneMarkers, removeMarker, type PlacedMark
 import { BUTTON_ZOOM_FACTOR, screenToImage, type Point } from './viewport';
 import { AnnotationLayer, DrawingTools } from './annotationlayer';
 import {
-  applyHighlight,
   closeNarrowOverlay,
   effectiveSymbols,
   hideDialog,
@@ -21,15 +20,10 @@ import {
   narrowApplication,
   numbered,
   numberLabel,
-  renderGlance,
-  renderLegends,
-  renderPresentation,
-  setHover,
   showDialog,
   symbolLabel,
   symbolOf,
   symbolSource,
-  syncPresentationBackground,
 } from './main';
 import { el, fill, ROW_DRAG_TYPE, rowById, rowId, state } from './appstate';
 import { markDirty, readText, renderWorkStatus } from './workfile';
@@ -48,6 +42,7 @@ import {
   setMapAnnotations,
   wireAnnotationToolbar,
 } from './annotationpanel';
+import { applyHighlight, renderGlance, renderLegends, renderPresentation, setHover, syncPresentationBackground } from './presentationstage';
 
 export let mapView: MapView | null = null;
 
