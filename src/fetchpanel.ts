@@ -13,9 +13,9 @@ import {
   type FetchErrorCode,
   type PlaceResult,
 } from './openmap';
-import { hideDialog, showDialog } from './main';
 import { el, state } from './appstate';
 import { showMapError, useOsmText } from './mapstage';
+import { hideDialog, showDialog } from './narrowlayout';
 
 // Open-map fetch, FR-31: the application's only network operation, made
 // only from this panel, by explicit button presses. While a request runs the

@@ -10,7 +10,6 @@ import { isRole, listColumnOrder, roleOfColumn, ROLES, type Role } from './roles
 import { strings, type Strings } from './i18n';
 import { areaGroups, programLabels } from './grouping';
 import { DEFAULT_CURRENCY_UNIT } from './economics';
-import { narrowApplication } from './main';
 import { currentCounters, el, fill, rowId, state } from './appstate';
 import { markDirty, renderWorkStatus } from './workfile';
 import { renderComparison } from './exportdialog';
@@ -44,6 +43,7 @@ import {
   vocabValues,
 } from './columnpanels';
 import { demoLoaded, setDemoAnnotationIds, setDemoEventIds, setDemoLang, setDemoLoaded } from './demoload';
+import { narrowApplication } from './narrowlayout';
 
 // Import cap (FR-1 and FR-25): a spreadsheet or PDF file larger than this is
 // refused before it is read, mirroring the OpenStreetMap and presentation-open

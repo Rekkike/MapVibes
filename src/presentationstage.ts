@@ -30,7 +30,6 @@ import { formatDate, readDate } from './dates';
 import { todayDay } from './clock';
 import { readAmount, economicsOf, informationTotals, SERIES_ROLES, yearOfValue, type Economics, type SeriesAssignments, type SeriesRole } from './economics';
 import { AnnotationLayer } from './annotationlayer';
-import { closeNarrowOverlay, narrowViewer } from './main';
 import { el, fill, rowById, rowId, state } from './appstate';
 import { markDirty } from './workfile';
 import { closeDocumentDialog, openDocumentDialog, runDocumentExport } from './documentdialog';
@@ -41,6 +40,7 @@ import { areaLocale, renderAnnotationVisibility, renderPresentationAnnotations, 
 import { itemLabel, mapView, markerLabel, renderMapItems } from './mapstage';
 import { groupedNumbering, labelOf, numbered, numberLabel, renderList } from './listpanel';
 import { colourLabels, effectiveSeries, effectiveSymbols, shownProgramGroups, symbolLabels, symbolOf, symbolSource } from './columnpanels';
+import { closeNarrowOverlay, narrowViewer } from './narrowlayout';
 
 // What the visible items carry (FR-75): the used-only filter of the
 // Presentation segment's legend and of the exported viewer's. An item without

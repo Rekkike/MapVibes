@@ -6,7 +6,6 @@ import { commentsOf, restoreComments } from './comments';
 import { type Problem, parseWorkState, serialiseWorkState, SUGGESTED_FILE_NAME, WorkStateError, type WorkState } from './workstate';
 import { SUGGESTED_EXPORT_NAME } from './exportfile';
 import { newAnnotationId, type Annotation } from './annotations';
-import { setSegment } from './main';
 import { el, state } from './appstate';
 import { cloneSeries, isHtmlFile, openExportForComparison } from './exportdialog';
 import { workPhaseOf } from './activitydialog';
@@ -15,6 +14,7 @@ import { currentCostsView, currentTimelineView, restoreCostsView, restoreTimelin
 import { renderList } from './listpanel';
 import { effectiveSeries, setEventMessage, setPresetMessage } from './columnpanels';
 import { demoLoaded, setDemoLoaded } from './demoload';
+import { setSegment } from './segmentswitch';
 
 // The number of changes made, and its value when the demo finished loading,
 // so that a reset of an untouched demo needs no confirmation (FR-56).

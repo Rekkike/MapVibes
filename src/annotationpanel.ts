@@ -15,13 +15,13 @@ import {
   type Outline,
 } from './annotations';
 import { AnnotationLayer, DrawingTools, type DrawingTool } from './annotationlayer';
-import { narrowApplication } from './main';
 import { el, fill, rowById, rowId, state } from './appstate';
 import { markDirty } from './workfile';
 import { itemLabel, mapView, renderMapItems } from './mapstage';
 import { presentationView } from './presentationstage';
 import { numbered } from './listpanel';
 import { colourLabel } from './columnpanels';
+import { narrowApplication } from './narrowlayout';
 
 // The annotation layer (FR-47): drawn and edited on the Map stage, shown
 // view-only on the Presentation stage.

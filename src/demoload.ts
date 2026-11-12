@@ -9,13 +9,13 @@ import { placeMarker } from './markers';
 import { activityId } from './workstate';
 import { DEMO_MAP_TEXT, demoCounterparts, demoScenario, demoWorkbook } from './demo';
 import { newAnnotationId, type Annotation } from './annotations';
-import { setSegment } from './main';
 import { el, state } from './appstate';
 import { changeCount, markDirty, setWorkMessage, workMessage } from './workfile';
 import { mapView, useOsmText } from './mapstage';
 import { restoreCostsView, restoreTimelineView } from './presentationstage';
 import { applyImport, renderList } from './listpanel';
 import { setEventMessage } from './columnpanels';
+import { setSegment } from './segmentswitch';
 
 // The full-test demo (FR-41): the fictional example scenario, loaded through
 // the normal paths: the demo's column preset is saved, the demo list is
