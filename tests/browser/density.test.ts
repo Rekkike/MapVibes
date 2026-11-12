@@ -89,7 +89,7 @@ describe('dense operator surfaces in a real layout (FR-42)', () => {
       expect(Math.max(...layout.gaps)).toBeLessThanOrEqual(8);
       expect(layout.scrolls).toBe(false);
       expect(layout.labelSize).toBeGreaterThanOrEqual(12);
-      expect(contrast(layout.labelColour, layout.background)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(layout.labelColour, layout.background)).toBeGreaterThanOrEqual(7);
       await page.context().close();
     });
 
@@ -117,7 +117,7 @@ describe('dense operator surfaces in a real layout (FR-42)', () => {
           parseFloat(getComputedStyle(n).fontSize),
         );
       });
-      expect(sizes[0]).toBe(22);
+      expect(sizes[0]).toBe(20);
       expect(sizes.length).toBeGreaterThan(3);
       expect(Math.min(...sizes)).toBeGreaterThanOrEqual(16);
       await page.context().close();

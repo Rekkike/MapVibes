@@ -25,7 +25,7 @@ describe('the marker size band (FR-57)', () => {
     const rule = /^\.marker,\n\.marker-badge \{([^}]*)\}/m.exec(css)![1];
     expect(rule).toMatch(/min-width: 1\.75rem;/);
     expect(rule).toMatch(/height: 1\.75rem;/);
-    expect(rule).toMatch(/font-size: 0\.8rem;/);
+    expect(rule).toMatch(/font-size: var\(--text-13\);/);
     expect(css).not.toMatch(/\.marker[^{]*\{[^}]*transform:\s*[^;]*scale\(/);
   });
 
