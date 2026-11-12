@@ -7,7 +7,7 @@
 // "No dates", last, with no bar; a value that cannot be read is kept as
 // typed, to be shown on the line.
 
-import { readDate, type DateReading } from './dates';
+import { dateOfDay, readDate, type DateReading } from './dates';
 import type { PresentationOrder } from './workstate';
 import type { SeriesRole } from './economics';
 
@@ -413,4 +413,98 @@ export function layoutEvents(
     out.push(chip);
   }
   return out;
+}
+
+// The figure's shared geometry: what the screen's view (CSS layout) and the
+// documents' painter (absolute coordinates) both compute before they draw.
+// Only the geometry is shared; each paints in its own way.
+
+export interface DayWindow {
+  from: number;
+  to: number;
+}
+
+// Where a day falls in a window, as a share of its length: 0 at the
+// window's start, 1 at its end. The screen multiplies it by 100 (a
+// percentage) or by the plot's width in pixels, the documents by the plot's
+// width in page units.
+export function dayShare(window: DayWindow, day: number): number {
+  return (day - window.from) / (window.to - window.from);
+}
+
+// The steps of the axis, and the least room a tick needs.
+const DAY = 1;
+const STEPS: Array<{ unit: 'day' | 'month' | 'year'; n: number; days: number }> = [
+  { unit: 'day', n: 1, days: DAY },
+  { unit: 'day', n: 7, days: 7 },
+  { unit: 'month', n: 1, days: 30.4 },
+  { unit: 'month', n: 3, days: 91.3 },
+  { unit: 'month', n: 6, days: 182.6 },
+  { unit: 'year', n: 1, days: 365.25 },
+  { unit: 'year', n: 2, days: 730.5 },
+  { unit: 'year', n: 5, days: 1826 },
+  { unit: 'year', n: 10, days: 3652 },
+  { unit: 'year', n: 25, days: 9131 },
+  { unit: 'year', n: 50, days: 18262 },
+];
+const MIN_TICK_PX = 64;
+
+// The ticks of the axis: the first day of each year, month, or week shown.
+export function ticks(window: DayWindow, width: number): Array<{ day: number; unit: 'day' | 'month' | 'year' }> {
+  const pxPerDay = width / Math.max(1e-9, window.to - window.from);
+  const step = STEPS.find((s) => s.days * pxPerDay >= MIN_TICK_PX) ?? STEPS[STEPS.length - 1];
+  const out: Array<{ day: number; unit: 'day' | 'month' | 'year' }> = [];
+  const first = dateOfDay(Math.floor(window.from));
+  if (step.unit === 'year') {
+    let y = Math.ceil(first.year / step.n) * step.n;
+    for (;;) {
+      const day = Date.UTC(y, 0, 1) / 86_400_000;
+      if (day > window.to) {
+        break;
+      }
+      if (day >= window.from) {
+        out.push({ day, unit: 'year' });
+      }
+      y += step.n;
+      if (out.length > 500) {
+        break;
+      }
+    }
+  } else if (step.unit === 'month') {
+    let m = first.year * 12 + Math.floor((first.month - 1) / step.n) * step.n;
+    for (;;) {
+      const day = Date.UTC(Math.floor(m / 12), m % 12, 1) / 86_400_000;
+      if (day > window.to) {
+        break;
+      }
+      if (day >= window.from) {
+        out.push({ day, unit: 'month' });
+      }
+      m += step.n;
+      if (out.length > 500) {
+        break;
+      }
+    }
+  } else {
+    // Weeks start on Mondays (1970-01-01 was a Thursday).
+    let day = Math.ceil(window.from);
+    if (step.n === 7) {
+      day += (((4 - day) % 7) + 7) % 7;
+    }
+    for (; day <= window.to && out.length <= 500; day += step.n) {
+      out.push({ day, unit: 'day' });
+    }
+  }
+  return out;
+}
+
+// An event's label chip (FR-80): its width is estimated from its characters
+// (11-pixel text, 6 pixels of padding either side), up to a longest chip
+// that ends in an ellipsis. The documents scale it to page units.
+const EVENT_CHAR_PX = 6.5;
+const EVENT_PAD_PX = 14;
+const EVENT_MAX_PX = 160;
+
+export function eventChipWidth(label: string): number {
+  return Math.min(EVENT_MAX_PX, Math.ceil(label.length * EVENT_CHAR_PX) + EVENT_PAD_PX);
 }

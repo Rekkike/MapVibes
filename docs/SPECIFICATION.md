@@ -1,6 +1,6 @@
 # MapVibes — Functional Specification
 
-Status: v1.15.1 — the hygiene pass (a patch: hardening and cleanup, no functional change): the amendments below are recorded before implementation and are the design of record for the pass; the delivered state and its measured figures are in the changelog below.
+Status: v1.16.0 — the structure pass, the first of the four passes of the redesign (behaviour-preserving; no visual change of any kind and no functional change): the amendment below is recorded before implementation and is the design of record for the pass; the delivered state and its measured figures are in the changelog below.
 
 MapVibes is a static, client-side web application: a spreadsheet-to-map visualisation tool. It has no backend, no database, and no server-side processing. Everything runs locally in the browser.
 
@@ -137,6 +137,49 @@ Out of scope: everything else on the shelf -- the full redesign (the next and fi
 2. The lint gate is two-tier by the owner's ruling of this pass: src/ carries the full ruled set (recommended-type-checked with no-explicit-any and the no-unsafe-* family) and is fully clean; tests/ keeps curly, eqeqeq, no-unused-vars, and no-floating-promises as errors, while no-explicit-any and the no-unsafe-* family are relaxed there only (447 findings at adoption, dominated by JSON.parse fixtures and typed test helpers). A future pass with room may tighten the test tier; the relaxed findings are a watch item, never a blocker.
 
 ## Changelog
+
+### v1.16.0
+
+Pass 27, the structure pass: the first of the four passes of the redesign ruled by the owner (structure, tokens, layout, and then the phone, the viewer, and the documents). This entry is opened before implementation and is the design of record for the pass; the delivered state and its measured figures are added to it at delivery.
+
+The amendment. The pass is the behaviour-preserving decomposition of src/main.ts into modules. No functional requirement changes; no pin moves; no string changes; nothing visible changes. The desktop baseline of v1.3.1 stays in force, unchanged, and its green run is the proof that the decomposition changed nothing: this is its last duty before the layout pass retires it.
+
+1. The migration, smallest coupling first, one module per commit: a shared context module (the state, the element lookup, and the translation helpers); the open-map fetch; save and open; the documents; the export, the viewer, and the comparison; the activities dialog, and then the details and the comments; the annotations; the map stage and the markers; the presentation, the card, the legend, and the schedule; the list and the columns. src/main.ts keeps the wiring and re-exports its seventeen current exports, so that no test file changes. The actual seams govern: a module whose extraction would force a behaviour change is stopped and reported, not forced.
+2. The painters' structural unification, the honest part only: the schedule figure's constants and the day-to-position and lane-packing helpers unify behind the shared model (src/timeline.ts, src/economics.ts). The rendering itself does not unify: the screen paints with CSS layout and the documents with absolute coordinates.
+3. The proof, at every step: type checking; the full UI suite with no test file edited; the build regression tests; the desktop baseline unchanged and green. A baseline difference, a UI test needing an edit, or any string change is a stop, reported, never a silent deviation. No new browser pins are expected, since nothing observable changes.
+
+Delivered state and measured figures. src/main.ts is 633 lines (586 of code), down from 7,771 (6,806 of code); it keeps the wiring (the start, the event wiring, the static text, the language and the theme), the export page, the opening of a presentation file, and the viewer's start, and it re-exports its seventeen exports, so that no test file is edited. No module imports src/main.ts. The source is 69 TypeScript files and 21,315 lines (55 files and 21,001 lines before). The built single file is 2,717,339 bytes; the same build from the sources before the pass is 2,717,065 bytes (274 bytes more: the setters, the one registration, and the re-exports).
+
+The method. The decomposition was made by a codemod over the original src/main.ts, written with the TypeScript compiler's own parser and checker and kept outside the repository: every top-level declaration is carried to its module as its original text, comments included; an export keyword is added where another module refers to it; the imports are regenerated from the references the checker resolves. The codemod found that no top-level initialiser of src/main.ts depends on another top-level declaration, so the order in which the modules are evaluated cannot change a value. Two kinds of text differ from the original, both without effect on behaviour: (a) thirteen module-level bindings are assigned from a module other than their own (an imported binding cannot be assigned), so each such assignment is written as a call to a one-line setter beside the binding (setWorkMessage, setEventMessage, setPresetMessage, setDemoLoaded, setDemoLang, setDemoAnnotationIds, setDemoEventIds, setMapAnnotations, setPresentationAnnotations, setDrawingTools, setAnnotationDraft, setViewerView, and setComparison); every such assignment was a statement of its own; (b) the export dialog calls the export page through a builder that src/main.ts registers at load (setExportPageBuilder), because the export page must stay in src/main.ts (below) and the dialog must not import the entry module.
+
+The module map (lines; lines of code; top-level declarations):
+
+| Module | Lines | Code | Declarations | Responsibility |
+| --- | --- | --- | --- | --- |
+| src/main.ts | 633 | 586 | 15 | The wiring, the static text, the language and the theme, the export page, opening a presentation file, the viewer's start; the re-exports. |
+| src/appstate.ts | 208 | 155 | 8 | The shared context: the state and its type, the element lookup, the row lookups, the counters, the template helper. |
+| src/fetchpanel.ts | 263 | 240 | 19 | The open-map fetch dialog (FR-31); the network operation itself stays in src/openmap.ts. |
+| src/workfile.ts | 482 | 422 | 25 | Saving and opening the work state (FR-13): capture, write, share, applying an opened file. |
+| src/documentdialog.ts | 470 | 414 | 20 | The documents (PDF and PowerPoint): the preparation and the dialog. |
+| src/exportdialog.ts | 662 | 589 | 33 | The export capture and dialog, and the comparison with an exported file. |
+| src/activitydialog.ts | 543 | 489 | 15 | The activities dialog: the import and the hand corrections. |
+| src/detailspanel.ts | 315 | 277 | 11 | The details panel and the comments. |
+| src/annotationpanel.ts | 489 | 423 | 31 | The annotations: the layers, the inspector, the visibility list, the toolbar. |
+| src/mapstage.ts | 611 | 553 | 29 | The map stage: the view, the markers and their placement, the backgrounds, the controls. |
+| src/presentationstage.ts | 1,228 | 1,054 | 67 | The Presentation segment: the stage, the at-a-glance panel, the card, the legends, the economics overlay, the schedule views. |
+| src/listpanel.ts | 836 | 716 | 33 | The list: import, manual rows and columns, numbering, sections, the table, cell editing. |
+| src/columnpanels.ts | 771 | 689 | 51 | The column panels: series roles, presets, symbols and colours, numbering, the vocabularies, the events. |
+| src/demoload.ts | 251 | 216 | 13 | The demo (FR-41): loading, following the language, resetting. |
+| src/narrowlayout.ts | 257 | 205 | 19 | The narrow layout of the application and of the viewer. |
+| src/segmentswitch.ts | 36 | 29 | 1 | Switching between the segments. |
+
+The seams that governed (deviations from the consultation's plan, each forced by an existing pin and none a behaviour change). (1) The export page stays in src/main.ts: the network test pins the one use of the hosted address to that file. (2) Opening a presentation file and the viewer's start stay in src/main.ts with it: they call the static text and the theme, which are wiring. (3) The consultation's ten steps became fourteen commits and one closing commit: the list and the columns took three (the list, the column panels, the demo), the details followed the activities dialog as its own commit, and the narrow layout and the segment switch, unclassified in the consultation, closed the migration. (4) During the migration a module not yet reached could be imported from src/main.ts by a module already moved; the last such import was removed by the closing commit. The modules import one another in cycles, as the functions of one file called one another before; every such use happens at call time, after every module has been evaluated.
+
+The painters' structural unification, the honest part only. The axis steps and ticks, the event chip's width with its three constants, and dayShare (a day's place in a window as a share of its length) are in src/timeline.ts; the documents' painter (src/documenttimeline.ts) no longer imports the screen's view. The amount's format (formatAmount, EconomicsFormat) and yearRangesText, which replaces three identical local copies, are in src/economics.ts. The views re-export the names the existing tests import. The arithmetic is the same expression in the same order. Lane packing was already shared (layoutLanes, layoutEvents in src/timeline.ts) and needed no change; the label placement in the screen's view keeps its own pixel helper, because it receives the window's length and not the window. The rendering does not unify: the screen paints with CSS layout and the documents with absolute coordinates.
+
+Verification. At each of the sixteen steps (the fourteen migration commits, the closing commit, and the painters): type checking; ESLint and Prettier; the unit suite (417); the full UI suite (738 tests in 93 files) with no test file edited; the build; the build regression tests (10); and the desktop baseline of v1.3.1, unchanged and green, under the release workflow's font. No file under tests/ differs from v1.15.1. At delivery, the full local gate in chunked invocations, with every browser suite (168 tests) under the release workflow's font. No string changed (translation parity unchanged); no pin moved; no new pin was needed.
+
+Notices. (1) The desktop baseline's reference build depends on the installed dependencies, so the local reference was rebuilt from the v1.3.1 tag after the lock file's dependencies were installed; its hash then equals the recorded one. (2) The codemod is a tool of the pass and is not part of the repository.
 
 ### v1.15.1
 

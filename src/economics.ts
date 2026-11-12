@@ -322,6 +322,25 @@ export function yearRanges(years: number[]): Array<[number, number]> {
   return out;
 }
 
+// The ranges as text, as every surface spells a composition out.
+export function yearRangesText(years: number[]): string {
+  return yearRanges(years)
+    .map(([a, b]) => (a === b ? String(a) : `${a}–${b}`))
+    .join(', ');
+}
+
+// How an amount is written: the locale's digits and the work's currency
+// unit. Shared by the screen's overlay and the documents' pages.
+export interface EconomicsFormat {
+  locale: string;
+  unit: string;
+}
+
+export function formatAmount(value: number, decimals: number, format: EconomicsFormat): string {
+  const number = new Intl.NumberFormat(format.locale, { minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(value);
+  return format.unit === '' ? number : `${number} ${format.unit}`;
+}
+
 // The Information totals (FR-69): over the given items, the budget total and
 // the outcome-and-forecast total, each item's total following the economics
 // view (the file's figure where it is a number, else the sum of its years),

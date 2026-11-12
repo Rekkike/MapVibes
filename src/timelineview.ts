@@ -6,13 +6,16 @@
 // Pointer and wheel events stop here, so that the stage's map underneath
 // neither pans nor zooms.
 
-import { dateOfDay, formatDate, readDate } from './dates';
+import { formatDate, readDate } from './dates';
 import {
   amountShare,
   clampWindow,
+  dayShare,
+  eventChipWidth,
   EVENT_ROWS,
   fitWindow,
   layoutEvents,
+  ticks,
   zoomWindow,
   type ScheduleEvent,
   type CostsAmount,
@@ -22,6 +25,10 @@ import {
   type TimelineSpan,
 } from './timeline';
 import type { SeriesRole } from './economics';
+
+// The shared geometry lives with the model; these two stay importable from
+// here.
+export { eventChipWidth, ticks };
 
 // {placeholder} substitution, as in i18n.
 function fill(template: string, values: Record<string, string | number>): string {
@@ -94,21 +101,6 @@ export interface TimelineCallbacks {
 
 type Window = { from: number; to: number };
 
-const DAY = 1;
-const STEPS: Array<{ unit: 'day' | 'month' | 'year'; n: number; days: number }> = [
-  { unit: 'day', n: 1, days: DAY },
-  { unit: 'day', n: 7, days: 7 },
-  { unit: 'month', n: 1, days: 30.4 },
-  { unit: 'month', n: 3, days: 91.3 },
-  { unit: 'month', n: 6, days: 182.6 },
-  { unit: 'year', n: 1, days: 365.25 },
-  { unit: 'year', n: 2, days: 730.5 },
-  { unit: 'year', n: 5, days: 1826 },
-  { unit: 'year', n: 10, days: 3652 },
-  { unit: 'year', n: 25, days: 9131 },
-  { unit: 'year', n: 50, days: 18262 },
-];
-const MIN_TICK_PX = 64;
 // The packed sub-lane rows shown in a collapsed line (FR-78): the item's own
 // span is row 0; spans in later lanes collapse into the "+n" badge. The
 // geometry: 7-pixel segments with 2-pixel gaps and 2-pixel padding on a wide
@@ -132,9 +124,6 @@ const LANE_LABEL_CHAR_PX = 6.5;
 // An event's label chip (FR-80): its width is estimated from its characters
 // (11-pixel text, 6 pixels of padding either side), up to a longest chip
 // that ends in an ellipsis; a "+n" chip beside it takes a fixed room.
-const EVENT_CHAR_PX = 6.5;
-const EVENT_PAD_PX = 14;
-const EVENT_MAX_PX = 160;
 const EVENT_MORE_PX = 30;
 // The edge indicators (the follow-up amendment): a small chip at each end of the events
 // strip counting the events beyond the shown window, in the "+n" chip's own
@@ -144,10 +133,6 @@ const EVENT_EDGE_RESERVE_PX = 30;
 // Where a tap on an edge chip brings the nearest event into the window: this
 // share of the window's length inside the edge it lies beyond.
 const EVENT_EDGE_MARGIN = 0.05;
-
-export function eventChipWidth(label: string): number {
-  return Math.min(EVENT_MAX_PX, Math.ceil(label.length * EVENT_CHAR_PX) + EVENT_PAD_PX);
-}
 
 const AMOUNT_CHAR_PX = 6;
 const AMOUNT_GAP_PX = 3;
@@ -173,55 +158,6 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
     node.textContent = text;
   }
   return node;
-}
-
-// The ticks of the axis: the first day of each year, month, or week shown.
-export function ticks(window: Window, width: number): Array<{ day: number; unit: 'day' | 'month' | 'year' }> {
-  const pxPerDay = width / Math.max(1e-9, window.to - window.from);
-  const step = STEPS.find((s) => s.days * pxPerDay >= MIN_TICK_PX) ?? STEPS[STEPS.length - 1];
-  const out: Array<{ day: number; unit: 'day' | 'month' | 'year' }> = [];
-  const first = dateOfDay(Math.floor(window.from));
-  if (step.unit === 'year') {
-    let y = Math.ceil(first.year / step.n) * step.n;
-    for (;;) {
-      const day = Date.UTC(y, 0, 1) / 86_400_000;
-      if (day > window.to) {
-        break;
-      }
-      if (day >= window.from) {
-        out.push({ day, unit: 'year' });
-      }
-      y += step.n;
-      if (out.length > 500) {
-        break;
-      }
-    }
-  } else if (step.unit === 'month') {
-    let m = first.year * 12 + Math.floor((first.month - 1) / step.n) * step.n;
-    for (;;) {
-      const day = Date.UTC(Math.floor(m / 12), m % 12, 1) / 86_400_000;
-      if (day > window.to) {
-        break;
-      }
-      if (day >= window.from) {
-        out.push({ day, unit: 'month' });
-      }
-      m += step.n;
-      if (out.length > 500) {
-        break;
-      }
-    }
-  } else {
-    // Weeks start on Mondays (1970-01-01 was a Thursday).
-    let day = Math.ceil(window.from);
-    if (step.n === 7) {
-      day += (((4 - day) % 7) + 7) % 7;
-    }
-    for (; day <= window.to && out.length <= 500; day += step.n) {
-      out.push({ day, unit: 'day' });
-    }
-  }
-  return out;
 }
 
 export class TimelineView {
@@ -738,7 +674,7 @@ export class TimelineView {
   private position(): void {
     const { from, to } = this.current;
     const length = to - from;
-    const pct = (day: number) => ((day - from) / length) * 100;
+    const pct = (day: number) => dayShare({ from, to }, day) * 100;
     const cs = getComputedStyle(this.root);
     // A length from the stylesheet, a stated zero included.
     const css = (name: string, fallback: number) => {
