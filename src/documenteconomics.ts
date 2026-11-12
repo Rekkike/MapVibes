@@ -8,8 +8,8 @@
 // with every amount. An item without economics is simply absent. Pure: no
 // DOM, no state; drawn through the Painter like the other page kinds.
 
-import { economicsOf, yearRanges, type Economics, type SeriesAssignments } from './economics';
-import { formatAmount, type EconomicsFormat, type EconomicsLabels } from './economicsview';
+import { economicsOf, formatAmount, yearRangesText, type Economics, type EconomicsFormat, type SeriesAssignments } from './economics';
+import type { EconomicsLabels } from './economicsview';
 import {
   drawFooter,
   layoutTable,
@@ -166,10 +166,6 @@ function totalsLines(block: EconomicsBlock, labels: EconomicsPageLabels, fmt: Ec
     }
     out.push(wrapValue(text, width, 'regular', e.totalsFont, e.totalsMaxLines).length);
   };
-  const rangesText = (years: number[]) =>
-    yearRanges(years)
-      .map(([a, b]) => (a === b ? String(a) : `${a}–${b}`))
-      .join(', ');
   if (block.economics.budget) {
     total(labels.budget, block.economics.budget, null);
   }
@@ -179,13 +175,13 @@ function totalsLines(block: EconomicsBlock, labels: EconomicsPageLabels, fmt: Ec
     if (outcomeYears.length > 0 && forecastYears.length > 0) {
       detail = fill(labels.composition, {
         outcome: labels.outcome,
-        outcomeYears: rangesText(outcomeYears),
+        outcomeYears: yearRangesText(outcomeYears),
         forecast: labels.forecast,
-        forecastYears: rangesText(forecastYears),
+        forecastYears: yearRangesText(forecastYears),
       });
     } else if (outcomeYears.length > 0 || forecastYears.length > 0) {
       const only = outcomeYears.length > 0;
-      detail = fill(labels.compositionOnly, { series: only ? labels.outcome : labels.forecast, years: rangesText(only ? outcomeYears : forecastYears) });
+      detail = fill(labels.compositionOnly, { series: only ? labels.outcome : labels.forecast, years: yearRangesText(only ? outcomeYears : forecastYears) });
     }
     total(labels.track, block.economics.track, detail);
   }
@@ -373,10 +369,6 @@ function totalsText(block: EconomicsBlock, labels: EconomicsPageLabels, fmt: Eco
     }
     out.push(...wrapValue(text, width, 'regular', e.totalsFont, e.totalsMaxLines));
   };
-  const rangesText = (years: number[]) =>
-    yearRanges(years)
-      .map(([a, b]) => (a === b ? String(a) : `${a}–${b}`))
-      .join(', ');
   if (block.economics.budget) {
     total(labels.budget, block.economics.budget, null);
   }
@@ -386,13 +378,13 @@ function totalsText(block: EconomicsBlock, labels: EconomicsPageLabels, fmt: Eco
     if (outcomeYears.length > 0 && forecastYears.length > 0) {
       detail = fill(labels.composition, {
         outcome: labels.outcome,
-        outcomeYears: rangesText(outcomeYears),
+        outcomeYears: yearRangesText(outcomeYears),
         forecast: labels.forecast,
-        forecastYears: rangesText(forecastYears),
+        forecastYears: yearRangesText(forecastYears),
       });
     } else if (outcomeYears.length > 0 || forecastYears.length > 0) {
       const only = outcomeYears.length > 0;
-      detail = fill(labels.compositionOnly, { series: only ? labels.outcome : labels.forecast, years: rangesText(only ? outcomeYears : forecastYears) });
+      detail = fill(labels.compositionOnly, { series: only ? labels.outcome : labels.forecast, years: yearRangesText(only ? outcomeYears : forecastYears) });
     }
     total(labels.track, block.economics.track, detail);
   }

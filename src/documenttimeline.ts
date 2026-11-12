@@ -15,8 +15,11 @@ import type { LegendSection } from './legend';
 import { fitText, textWidth } from './pdfwriter';
 import type { MarkerSymbol } from './symbols';
 import {
+  dayShare,
+  eventChipWidth,
   fitWindow,
   layoutEvents,
+  ticks,
   type EventChip,
   type ScheduleEvent,
   type TimelineItem,
@@ -25,7 +28,6 @@ import {
   type TimelineRow,
   type TimelineSpan,
 } from './timeline';
-import { eventChipWidth, ticks } from './timelineview';
 
 // A timeline item as the figure needs it: the badge's symbol beside the name.
 export interface FigureItem extends TimelineItem {
@@ -195,7 +197,7 @@ export function layoutTimeline(fig: TimelineFigure, frame: PageFrame, f = FIGURE
   const inWindow = fig.events.filter((e) => e.day >= window.from && e.day <= window.to);
   const scale = f.eventChipScale;
   const chips = layoutEvents(
-    inWindow.map((event) => ({ event, x: ((event.day - window.from) / (window.to - window.from)) * plotWidth, width: eventChipWidth(event.label) * scale })),
+    inWindow.map((event) => ({ event, x: dayShare(window, event.day) * plotWidth, width: eventChipWidth(event.label) * scale })),
     plotWidth,
     f.eventMoreWidth * scale,
     2,
@@ -262,7 +264,7 @@ export function layoutTimeline(fig: TimelineFigure, frame: PageFrame, f = FIGURE
 
 // The x position of a day in the plot, in page units.
 function dayX(layout: TimelineLayout, day: number): number {
-  return layout.plotX + ((day - layout.window.from) / (layout.window.to - layout.window.from)) * layout.plotWidth;
+  return layout.plotX + dayShare(layout.window, day) * layout.plotWidth;
 }
 
 // A hatched band (the work phase, FR-78): diagonal strokes inside a clip, as

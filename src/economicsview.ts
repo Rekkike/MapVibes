@@ -3,7 +3,10 @@
 // named and a bar inside the row, and the two totals. Rendering only: the
 // figures come from economicsOf, the words from the caller.
 
-import { yearRanges, type Economics, type Reading } from './economics';
+import { formatAmount, yearRangesText, type Economics, type EconomicsFormat, type Reading } from './economics';
+
+// The amount's format lives with the model; it stays importable from here.
+export { formatAmount, type EconomicsFormat };
 
 export interface EconomicsLabels {
   // The item's name, and the view's own heading.
@@ -27,11 +30,6 @@ export interface EconomicsLabels {
   span: string;
 }
 
-export interface EconomicsFormat {
-  locale: string;
-  unit: string;
-}
-
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
   if (className) {
@@ -43,19 +41,8 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
   return node;
 }
 
-export function formatAmount(value: number, decimals: number, format: EconomicsFormat): string {
-  const number = new Intl.NumberFormat(format.locale, { minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(value);
-  return format.unit === '' ? number : `${number} ${format.unit}`;
-}
-
 function fill(template: string, values: Record<string, string>): string {
   return template.replace(/\{(\w+)\}/g, (_, k: string) => values[k] ?? '');
-}
-
-function rangesText(years: number[]): string {
-  return yearRanges(years)
-    .map(([a, b]) => (a === b ? String(a) : `${a}–${b}`))
-    .join(', ');
 }
 
 // A cell's content: the amount, "–" for no value (never zero), or the value
@@ -120,13 +107,13 @@ export function renderEconomics(container: HTMLElement, e: Economics, labels: Ec
     if (outcomeYears.length > 0 && forecastYears.length > 0) {
       detail = fill(labels.composition, {
         outcome: labels.outcome,
-        outcomeYears: rangesText(outcomeYears),
+        outcomeYears: yearRangesText(outcomeYears),
         forecast: labels.forecast,
-        forecastYears: rangesText(forecastYears),
+        forecastYears: yearRangesText(forecastYears),
       });
     } else if (outcomeYears.length > 0 || forecastYears.length > 0) {
       const only = outcomeYears.length > 0;
-      detail = fill(labels.compositionOnly, { series: only ? labels.outcome : labels.forecast, years: rangesText(only ? outcomeYears : forecastYears) });
+      detail = fill(labels.compositionOnly, { series: only ? labels.outcome : labels.forecast, years: yearRangesText(only ? outcomeYears : forecastYears) });
     }
     total(labels.track, e.track, detail);
   }
