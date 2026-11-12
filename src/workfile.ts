@@ -21,10 +21,10 @@ import {
   setPresetMessage,
   setSegment,
   showMapError,
-  workPhaseOf,
 } from './main';
 import { el, state } from './appstate';
 import { cloneSeries, isHtmlFile, openExportForComparison } from './exportdialog';
+import { workPhaseOf } from './activitydialog';
 
 // The number of changes made, and its value when the demo finished loading,
 // so that a reset of an untouched demo needs no confirmation (FR-56).
