@@ -10,29 +10,7 @@ import { isRole, listColumnOrder, roleOfColumn, ROLES, type Role } from './roles
 import { strings, type Strings } from './i18n';
 import { areaGroups, programLabels } from './grouping';
 import { DEFAULT_CURRENCY_UNIT } from './economics';
-import {
-  applyPreset,
-  colourLabel,
-  demoLoaded,
-  narrowApplication,
-  renderColourPanel,
-  renderEventPanel,
-  renderNumbering,
-  renderPresets,
-  renderSeriesPanel,
-  renderStatusPanel,
-  renderSymbolPanel,
-  renderVocabPanel,
-  setColumnRole,
-  setDemoAnnotationIds,
-  setDemoEventIds,
-  setDemoLang,
-  setDemoLoaded,
-  setPresetMessage,
-  VALUE_VOCABULARIES,
-  vocabularyOfColumn,
-  vocabValues,
-} from './main';
+import { demoLoaded, narrowApplication, setDemoAnnotationIds, setDemoEventIds, setDemoLang, setDemoLoaded } from './main';
 import { currentCounters, el, fill, rowId, state } from './appstate';
 import { markDirty, renderWorkStatus } from './workfile';
 import { renderComparison } from './exportdialog';
@@ -48,6 +26,23 @@ import {
   restoreCostsView,
   restoreTimelineView,
 } from './presentationstage';
+import {
+  applyPreset,
+  colourLabel,
+  renderColourPanel,
+  renderEventPanel,
+  renderNumbering,
+  renderPresets,
+  renderSeriesPanel,
+  renderStatusPanel,
+  renderSymbolPanel,
+  renderVocabPanel,
+  setColumnRole,
+  setPresetMessage,
+  VALUE_VOCABULARIES,
+  vocabularyOfColumn,
+  vocabValues,
+} from './columnpanels';
 
 // Import cap (FR-1 and FR-25): a spreadsheet or PDF file larger than this is
 // refused before it is read, mirroring the OpenStreetMap and presentation-open

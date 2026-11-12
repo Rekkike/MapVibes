@@ -11,12 +11,13 @@ import { ExportError, parseExport, type ExportData } from './exportfile';
 import { readDataIsland } from './singlefile';
 import { compareItems, type CompareItem, type Comparison } from './reconcile';
 import { SERIES_ROLES, type SeriesAssignment, type SeriesAssignments } from './economics';
-import { exportPage, hideDialog, showDialog, shownProgramGroups } from './main';
+import { exportPage, hideDialog, showDialog } from './main';
 import { el, fill, rowById, rowId, state } from './appstate';
 import { captureWorkState, EXPORT_FILE, markDirty, renderWorkStatus, reportOpenFailure, setWorkMessage, writeFile } from './workfile';
 import { itemLabel, mapView, renderMapItems } from './mapstage';
 import { presentationView } from './presentationstage';
 import { groupedNumbering, labelOf, numbered, numberLabel } from './listpanel';
+import { shownProgramGroups } from './columnpanels';
 
 // The interactive export (FR-11, FR-39): the work state the presentation
 // shows, without the rows removed from the list, the items switched off for
