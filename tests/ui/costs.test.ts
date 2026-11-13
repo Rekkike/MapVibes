@@ -167,7 +167,7 @@ describe('the costs view (FR-79)', () => {
     expect(view.to).toBeLessThan(dayNumber(2033, 1, 1));
     const year = new Date(view.from * 86_400_000).getUTCFullYear();
     expect([view.from, view.to]).toEqual([dayNumber(year, 1, 1), dayNumber(year + 1, 1, 1)]);
-    expect(Number(byId('pres-zoom-level').textContent!.replace('%', ''))).toBeGreaterThan(100);
+    expect(Number(byId('pres-zoom-level').textContent.replace('%', ''))).toBeGreaterThan(100);
     // The timeline's own view is untouched.
     expect(app.captureWorkState().timelineView).toBeNull();
     byId('pres-fit').click();

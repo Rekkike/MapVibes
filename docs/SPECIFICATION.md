@@ -151,7 +151,27 @@ The amendments.
 4. Verification before change (the directive's unit 2): the today mark of v2.1.0 was probed against the axis's own ticks before any change, with the clock set to 13 November 2026 at noon. In both views, on a phone (390 by 844) and a desktop (1,440 by 900), the mark's position as a fraction of the axis's 2025 to 2030 interval was 0.3733 and 0.3732 against an expected 0.3732, and at 1,440 by 900 its fraction of the year 2026 was 0.8671 against 0.8671. The mark was not misplaced; the defect was its legibility at the phone's grading (ticks at 2025, 2030, and 2035 only). No defect commit precedes the ladder.
 5. Out of this pass: any chrome change; the zoom readout's content; the list's content design; any functional requirement beyond the ladder. No dependency changes.
 
-Delivered state and measured figures: to be filled at delivery.
+Delivered state and measured figures.
+
+What was built. The shared model (src/timeline.ts) holds the ladder as pure functions: the calendar unit of a level containing a day (anchorWindow), the ladder without anchors wider than the fit, the anchor a window is at, the settling onto the nearest anchor by the logarithm of the length (free above the widest anchor), the button step, the limits of one calendar month and the fit, and the axis's grade with its graded ticks. The schedule view (src/timelineview.ts) steps the ladder on the buttons, settles a pinch and a drag on release, the wheel and a sideways wheel after 250 milliseconds, the edge chip's pan at once, with a travel of 240 milliseconds or instantly with the reduced-motion preference; it grades the axis and shades today's day cell at the month level. The exported viewer shares the view class and the buttons, so the ladder applies there with no code of its own. No string was added: the axis's labels are the interface language's own calendar names (en-GB, sv-SE). The documents keep their fitted pages and their own ticks.
+
+The visible span of each level on the demo, measured in the browser from the axis's dated ticks at 1,440 by 900, stepping in from the fitted view, in the timeline and in the costs view alike (the fit centres on 2031, so the anchors are those containing its centre; the edge chip pans to today):
+
+| Level | Window | Span |
+| --- | --- | --- |
+| Fit | 23 August 2024 to 13 May 2037 | 4,646 days |
+| Year | 1 January 2031 to 1 January 2032 | 365 days |
+| Half-year | 1 July 2031 to 1 January 2032 | 184 days |
+| Quarter | 1 October 2031 to 1 January 2032 | 92 days |
+| Month | 1 November 2031 to 1 December 2031 | 30 days |
+
+At the month level at today (13 November 2026), the axis reads 1 Nov, 8, 15, 22, 29, 1 Dec on the phone and the desktop alike, the mark stands at 0.4167 of the window (12.5 of 30 days) in both views, and today's day cell is 13 pixels wide on a 390-pixel phone and 42 on a 1,440-pixel desktop.
+
+The pin edits, itemised. Functional pins of the old zoom model, changed by the ruled amendment: tests/unit/timeline.test.ts (the limits: one calendar month and the fit, where it pinned 14 days and four times the fit); tests/ui/costs.test.ts (one button step lands on a calendar year, where it pinned a factor of 1.25 and the readout "125%"). New: tests/browser/schedule-zoom.test.ts (9 tests, the clock set to 13 November 2026 at noon): the ladder's anchors on calendar boundaries in their order, out and back to the fit, on a desktop and a phone in both views, with no overflow and no page scroll at any level; the wheel's and the pan's settling, with and without reduced motion; the axis grade at every level in both languages; the today mark at today's place at the fit and at the month with its day cell, in the application and in the exported viewer, measured against the axis's own dated ticks (each tick now carries its day). The existing no-overflow and no-scroll pins (tests/browser/layout.test.ts) hold unchanged.
+
+Verification: type checking; ESLint on both tiers; Prettier; the unit suite (419 tests); the full UI suite (759 tests in 95 files); the build and the build regression tests (10 tests); the python-pptx round trip; and every browser suite (221 tests in 21 files) run locally under the release workflow's font, offline, before the merge, as the new gate rule requires. Translation parity is exact; no string was added. No dependency changed.
+
+Notices. (1) The pre-existing chrome of v2.1.0 on a phone: the floating view switch covers the schedule's axis labels until the quiet chrome withdraws after four seconds of stillness; no chrome changes in this pass, so it is reported, not changed. (2) The zoom readout's content is unchanged and reads large at the deeper levels (1,273 per cent at the year, 15,487 at the month on the demo); the readout is the owner's open eye item. (3) The costs view at the month level can show no fill in a line: an amount is a width fill from the start of its year cell, so a late month may lie beyond the fill; this is FR-79's honest styling, not a defect. (4) At the month, quarter, and half-year levels the axis carries no year; the window's year is read from the edge chips, the card, or a step out.
 
 ### v2.1.0
 
