@@ -223,13 +223,32 @@ describe('the tool strip, the floating controls, and the legend (FR-6, FR-81)', 
     await page.context().close();
   }, 60_000);
 
-  test('the legend is folded by default, unfolds on the stage at its lower left, and does not move with the panned view', async () => {
+  test('the legend is open by default from 768 pixels, on the stage at its lower left, folds by its control, and does not move with the panned view', async () => {
+    // Open by default in the medium class and above (the owner's ruling), in
+    // both segments; folded in the compact class, where it is an overlay.
+    for (const [width, height] of [
+      [768, 1024],
+      [1440, 900],
+    ]) {
+      const wide = await openDemo(width, height);
+      expect(await wide.isVisible('#map-legend'), `${width}`).toBe(true);
+      expect(await wide.getAttribute('#toggle-map-legend', 'aria-expanded')).toBe('true');
+      await wide.evaluate(() => document.getElementById('tab-presentation')!.click());
+      await wide.waitForTimeout(300);
+      expect(await wide.isVisible('#presentation-legend'), `${width} presentation`).toBe(true);
+      await wide.context().close();
+    }
+    const phone = await openDemo(390, 844);
+    expect(await phone.isVisible('#map-legend')).toBe(false);
+    await phone.context().close();
     const page = await openDemo(1440, 900);
-    expect(await page.isVisible('#map-legend')).toBe(false);
     const stage = await box(page, '#map-stage');
     const control = await box(page, '#toggle-map-legend');
     expect(control.x - stage.x).toBeLessThanOrEqual(16);
     expect(stage.y + stage.height - (control.y + control.height)).toBeLessThanOrEqual(16);
+    // Its control folds it and unfolds it again.
+    await page.click('#toggle-map-legend');
+    expect(await page.isVisible('#map-legend')).toBe(false);
     await page.click('#toggle-map-legend');
     const before = await box(page, '#map-legend');
     expect(before.x).toBeGreaterThanOrEqual(stage.x);

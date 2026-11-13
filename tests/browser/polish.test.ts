@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
-import { pressExport, setSelect } from './chrome';
+import { foldLegend, pressExport, setSelect } from './chrome';
 
 // The polish pass (v1.3.0) in a real layout, headless Chromium, offline, with
 // the full-test demo: the export absence of what is not chosen (FR-53), the
@@ -101,6 +101,8 @@ describe('the polish pass in a browser (v1.3.0)', () => {
 
   test('holding Shift keeps a drawn line horizontal; holding Ctrl keeps a dragged shape on its axis (FR-47)', async () => {
     const { page, errors } = await demo();
+    // The line is drawn low on the stage, where the open legend floats.
+    await foldLegend(page);
     const stage = await box(page, '#map-stage');
     const X = (f: number) => stage.x + stage.width * f;
     const Y = (f: number) => stage.y + stage.height * f;
