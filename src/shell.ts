@@ -54,10 +54,10 @@ export function layoutClass(): LayoutClass {
   return queries.xwide.matches ? 'xwide' : queries.wide.matches ? 'wide' : 'medium';
 }
 
-// Whether the layout of FR-81 is in force: the application (not the viewer)
-// in the medium class or above.
+// Whether the layout of FR-81 is in force: the medium class or above, in the
+// application and in the exported viewer alike (v2.1.0).
 export function shellActive(): boolean {
-  return !q().narrow.matches && !viewerMode();
+  return !q().narrow.matches;
 }
 
 // --- The moved controls ----------------------------------------------------
@@ -93,6 +93,9 @@ function buildMoves(): Move[] {
   const theme = el('select-theme').closest('label')!;
   const inMenu = (narrow: boolean, shell: boolean) => (mode: Mode) =>
     ((mode === 'narrow' || mode === 'compact') && narrow) || ((mode === 'medium' || mode === 'wide') && shell) ? menu : null;
+  // The viewer keeps its language and theme selects in its bar at every
+  // class (FR-20); in the viewer nothing moves into a Menu overlay.
+  const staysInBar = (mode: Mode) => (viewerMode() && (mode === 'narrow' || mode === 'compact') ? null : inMenu(true, true)(mode));
   // The short class's rail (v2.1.0, the owner's ruling): the header itself is
   // the 56-pixel rail, carrying the segment switch and, in the stage segments,
   // that segment's tools and zoom, one icon deep; what the rail's height
@@ -107,8 +110,8 @@ function buildMoves(): Move[] {
     move('work-controls', inMenu(true, false)),
     move('work-open', inMenu(false, true)),
     move('work-share', inMenu(false, true)),
-    move(language, inMenu(true, true)),
-    move(theme, inMenu(true, true)),
+    move(language, staysInBar),
+    move(theme, staysInBar),
     // The exports: in the bar's Export menu in the medium and wide classes,
     // in the Menu overlay on the phone and behind the short class's rail
     // menu control, where the bar has no Export (the mockup's phone frames,
@@ -183,7 +186,7 @@ function buildMoves(): Move[] {
 function placeControls(): void {
   moves ??= buildMoves();
   const cls = layoutClass();
-  const mode: Mode = viewerMode() ? null : cls === 'short' ? 'narrow' : cls === 'compact' ? 'compact' : cls === 'medium' ? 'medium' : 'wide';
+  const mode: Mode = cls === 'short' ? 'narrow' : cls === 'compact' ? 'compact' : cls === 'medium' ? 'medium' : 'wide';
   if (mode === placed && state.segment === placedSegment) {
     return;
   }
