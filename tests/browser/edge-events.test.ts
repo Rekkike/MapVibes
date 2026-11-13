@@ -125,6 +125,11 @@ async function readStrip(page: Page, view: 'timeline' | 'costs') {
       labels,
       hairlines: [...root.querySelectorAll<HTMLElement>('.timeline-event-line')].map((l) => l.dataset.eventId),
       zoom: (document.querySelector('#pres-zoom-level') as HTMLElement).textContent,
+      span: ((r: HTMLElement) => {
+        const t = [...r.querySelectorAll<HTMLElement>('.timeline-tick')];
+        const [a, b] = [t[0], t[t.length - 1]];
+        return ((Number(b.dataset.day) - Number(a.dataset.day)) * 100) / (parseFloat(b.style.left) - parseFloat(a.style.left));
+      })(root),
     };
   }, view);
 }
@@ -178,6 +183,11 @@ describe.each([
         const root = document.querySelector<HTMLElement>(`#presentation-${v}`)!;
         return {
           zoom: (document.querySelector('#pres-zoom-level') as HTMLElement).textContent,
+          span: ((r: HTMLElement) => {
+            const t = [...r.querySelectorAll<HTMLElement>('.timeline-tick')];
+            const [a, b] = [t[0], t[t.length - 1]];
+            return ((Number(b.dataset.day) - Number(a.dataset.day)) * 100) / (parseFloat(b.style.left) - parseFloat(a.style.left));
+          })(root),
           edges: [...root.querySelectorAll<HTMLElement>('.timeline-event-edge')].map((c) => `${c.dataset.side}:${c.textContent}`),
           labels: [...root.querySelectorAll<HTMLElement>('.timeline-event-chip:not(.timeline-event-edge)')].map((c) => c.textContent),
           hairlines: [...root.querySelectorAll<HTMLElement>('.timeline-event-line')].map((l) => l.dataset.eventId),
@@ -185,7 +195,10 @@ describe.each([
         };
       }, view);
       // The window panned at the same zoom; the far event is drawn; the right edge chip is gone.
-      expect(after.zoom).toBe(before.zoom);
+      // Since v2.2.1 the readout names the window, which a pan changes, so
+      // the same zoom is read as the same window length, from the axis.
+      expect(after.zoom).not.toBe(before.zoom);
+      expect(after.span).toBeCloseTo(before.span, 0); // within half a day: the ticks sit at three-decimal percentages
       expect(after.hairlines).toContain('e4');
       expect(after.labels).toContain('Far review');
       expect(after.edges).toEqual(['before:+1']);

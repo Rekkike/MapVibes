@@ -96,12 +96,16 @@ describe('the timeline in the application (FR-66, FR-67, FR-70)', () => {
     expect(await page.textContent('#presentation-timeline .timeline-typed')).toBe('Start: 15/03/2024');
     // Ctrl with the wheel zooms time; a sideways wheel pans; Fit returns.
     const body = (await page.locator('#presentation-timeline .timeline-body').boundingBox())!;
+    // Since v2.2.1 the readout names the visible window: the fitted window's
+    // years before, a narrower window after zooming in, the same years after Fit.
+    const fitted = (await page.textContent('#pres-zoom-level'))!;
+    expect(fitted).toMatch(/^\d{4}–\d{4}$/);
     await page.mouse.move(body.x + body.width * 0.6, body.y + body.height - 20);
     await page.keyboard.down('Control');
     await page.mouse.wheel(0, -300);
     await page.keyboard.up('Control');
     await page.waitForTimeout(100);
-    expect(Number((await page.textContent('#pres-zoom-level'))!.replace('%', ''))).toBeGreaterThan(100);
+    expect(await page.textContent('#pres-zoom-level')).not.toBe(fitted);
     const before = await firstBarLeft(page);
     await page.mouse.wheel(200, 0);
     await page.waitForTimeout(100);
@@ -114,7 +118,7 @@ describe('the timeline in the application (FR-66, FR-67, FR-70)', () => {
     await page.mouse.up();
     expect(await firstBarLeft(page)).toBeGreaterThan(panned + 50);
     await page.click('#pres-fit');
-    expect(await page.textContent('#pres-zoom-level')).toBe('100%');
+    expect(await page.textContent('#pres-zoom-level')).toBe(fitted);
     // The map underneath did not move.
     expect(await page.evaluate(() => getComputedStyle(document.getElementById('presentation-marker-layer')!).visibility)).toBe('hidden');
     // A line's chip opens the card beside it, within the stage; Escape closes it.
@@ -244,12 +248,15 @@ describe('the timeline in the application (FR-66, FR-67, FR-70)', () => {
           expect(overflows).toBe(true);
         }
         if (overflows) {
+          const fitted = await page.evaluate(() => document.getElementById('pres-zoom-level')!.textContent);
+          expect(fitted).toMatch(/^\d{4}–\d{4}$/);
           const body = (await page.locator('#presentation-timeline .timeline-body').boundingBox())!;
           await page.mouse.move(body.x + body.width / 2, body.y + body.height / 2);
           await page.mouse.wheel(0, 120);
           await page.waitForTimeout(250);
           expect(await scroller.evaluate((x) => x.scrollTop)).toBeGreaterThan(0);
-          expect(await page.evaluate(() => document.getElementById('pres-zoom-level')!.textContent)).toBe('100%');
+          // A vertical scroll leaves the window as it was (the readout names it since v2.2.1).
+          expect(await page.evaluate(() => document.getElementById('pres-zoom-level')!.textContent)).toBe(fitted);
         }
         await page.tap('#toggle-glance');
         await page.waitForTimeout(300);
