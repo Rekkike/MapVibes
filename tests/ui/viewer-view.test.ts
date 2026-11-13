@@ -3,8 +3,10 @@ import { byId, flush, mountApp, placeExampleMarkers, stubImageDecoding, stubStag
 import { parseExport } from '../../src/exportfile';
 import { readDataIsland } from '../../src/singlefile';
 
-// The exported viewer restores the view the file carries (FR-38 as amended
-// in v1.3.0): the position and zoom of the presentation at export.
+// The exported viewer opens fitted to its stage (FR-38 as amended in this
+// pass, the refit on open): the position and zoom the file carries are not
+// restored on opening; the view the file was exported with (map, timeline,
+// costs) still is.
 
 async function viewer(page: string): Promise<void> {
   const doc = new DOMParser().parseFromString(page, 'text/html');
@@ -19,8 +21,8 @@ async function viewer(page: string): Promise<void> {
   await flush();
 }
 
-describe('the exported view is restored (FR-38)', () => {
-  test('the viewer opens at the exported position and zoom, not fitted', async () => {
+describe('the exported viewer opens fitted to its stage (FR-38 as amended)', () => {
+  test('the viewer opens fitted, not at the exported zoom; Fit view still fits', async () => {
     const app = await mountApp({ singleFile: true });
     await placeExampleMarkers([[0, 100, 100]]);
     byId('tab-presentation').click();
@@ -35,22 +37,28 @@ describe('the exported view is restored (FR-38)', () => {
     expect(data.stage).toEqual({ width: 800, height: 600 });
     await viewer(page);
     expect(document.documentElement.dataset.mode).toBe('viewer');
-    expect(byId('presentation-content').style.transform).toBe(zoomed);
+    // The refit on open: fitted to the stage the viewer opens on.
+    expect(byId('presentation-content').style.transform).toBe(fitted);
     // Fit view still fits.
     byId('pres-fit').click();
     expect(byId('presentation-content').style.transform).toBe(fitted);
   });
 
-  test('a file without the stage size (exported before v1.3.0) still opens at its saved view', async () => {
+  test('a file without the stage size (exported before v1.3.0) also opens fitted', async () => {
     const app = await mountApp({ singleFile: true });
     await placeExampleMarkers([[0, 100, 100]]);
     byId('tab-presentation').click();
     await flush();
+    const fitted = byId('presentation-content').style.transform;
     byId('pres-zoom-in').click();
     const zoomed = byId('presentation-content').style.transform;
+    expect(zoomed).not.toBe(fitted);
     const page = app.exportPage()!.replace(/,\s*"stage": \{\s*"width": 800,\s*"height": 600\s*\}/, '');
     expect(parseExport(readDataIsland(new DOMParser().parseFromString(page, 'text/html'))!).stage).toBeUndefined();
     await viewer(page);
-    expect(byId('presentation-content').style.transform).toBe(zoomed);
+    byId('pres-fit').click();
+    const refitted = byId('presentation-content').style.transform;
+    expect(refitted).not.toBe(zoomed);
+    expect(refitted).toBe(fitted);
   });
 });

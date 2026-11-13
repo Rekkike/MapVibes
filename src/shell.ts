@@ -126,8 +126,9 @@ function buildMoves(): Move[] {
     move('pres-mode', shortSegment('presentation')),
     move('pres-zoom', shortSegment('presentation')),
     move('map-toggles', (mode: Mode) => (mode === 'compact' ? el('annotation-toolbar') : mode === 'narrow' ? menu : null)),
-    move('presentation-toggles', (mode: Mode) => (mode === 'narrow' ? menu : null)),
-    move('viewer-toggles', (mode: Mode) => (mode === 'narrow' ? menu : null)),
+    move('presentation-toggles', (mode: Mode) => (mode === 'narrow' && !viewerMode() ? menu : null)),
+    // In the viewer's short class the toggles ride in the rail itself.
+    move('viewer-toggles', (mode: Mode) => (mode === 'narrow' ? (viewerMode() ? el('app-header') : menu) : null)),
     move('pres-order-label', (mode: Mode) => (mode === 'narrow' ? menu : null)),
     // Behind the tool strip's "more".
     ...['map-load', 'fetch-open', 'fetch-offline', 'map-reset', 'marker-selection', 'marker-shape-label', 'marker-remove'].map((id) =>
@@ -287,6 +288,7 @@ export function layoutShell(): void {
 // cannot hold goes behind its own menu control, in priority order — the zoom
 // group first, then the tool strip — and returns when there is room again.
 function placeShortRail(): void {
+  // In the viewer the rail scrolls instead of hiding its overflow.
   if (layoutClass() !== 'short' || viewerMode()) {
     return;
   }

@@ -5247,6 +5247,218 @@ html[data-idle='true'] #toggle-glance {
   }
 }
 
+
+/* ==== The exported viewer's chrome in the compact and short classes (v2.1.0,
+   the viewer crossed to the five classes) ====
+   In the compact class the bar is one 48-pixel row (the export's badge and
+   the language and theme selects, no brand), the stage full-bleed under it,
+   and the view switch and zoom floating on the stage as in the wider
+   classes; the overlays open from the floating toggle pill. In the short
+   class the header is the 56-pixel side rail, carrying the view switch, zoom
+   and fit, and the toggles, one icon deep, as in the application (the
+   owner's ruling). Every rule is scoped to the viewer. */
+@media (max-width: 47.999rem) and (min-height: 31.25rem) {
+  html[data-mode='viewer'] body {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  html[data-mode='viewer'] body #app-header {
+    flex-wrap: nowrap;
+    height: 3rem;
+    min-height: 3rem;
+    padding: 0 var(--space-4) 0 var(--space-12);
+    gap: var(--space-8);
+  }
+
+  html[data-mode='viewer'] body #app-title {
+    display: none;
+  }
+
+  html[data-mode='viewer'] body #viewer-badge {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    padding: 0;
+    border: 0;
+    font-size: var(--text-12);
+    color: var(--muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  html[data-mode='viewer'] body #app-header .controls {
+    gap: var(--space-4);
+  }
+
+  html[data-mode='viewer'] body #app-header .controls label {
+    gap: var(--space-2);
+    font-size: var(--text-12);
+  }
+
+  html[data-mode='viewer'] body #app-header select {
+    font-size: var(--text-12);
+  }
+
+  html[data-mode='viewer'] body #app-main {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  html[data-mode='viewer'] body #segment-presentation {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  html[data-mode='viewer'] body #presentation-area {
+    position: relative;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  html[data-mode='viewer'] body #presentation-stage {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  /* The view switch and the toggles float as one pill at the stage's top
+     centre; zoom floats at its lower right. */
+  html[data-mode='viewer'] body #presentation-toolbar {
+    position: absolute;
+    top: var(--space-8);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: var(--layer-card);
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: var(--space-4);
+    max-width: calc(100% - var(--space-16));
+    margin: 0;
+    padding: var(--space-2) var(--space-4);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    background: var(--panel);
+    box-shadow: var(--card-shadow);
+    white-space: nowrap;
+  }
+
+  html[data-mode='viewer'] body #pres-zoom {
+    position: absolute;
+    right: var(--space-8);
+    bottom: var(--space-8);
+    z-index: var(--layer-card);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0;
+    padding: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--panel);
+    box-shadow: var(--card-shadow);
+  }
+}
+
+@media (max-height: 31.249rem) {
+  html[data-mode='viewer'] body {
+    display: flex;
+    flex-direction: row;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  /* The header is the side rail (the owner's ruling for the short class). */
+  html[data-mode='viewer'] body #app-header {
+    flex: none;
+    width: 3.5rem;
+    height: 100dvh;
+    min-height: 0;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-4) 0;
+    border-bottom: 0;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+
+  html[data-mode='viewer'] body #app-title,
+  html[data-mode='viewer'] body #viewer-badge {
+    display: none;
+  }
+
+  html[data-mode='viewer'] body #app-main {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+  }
+
+  html[data-mode='viewer'] body #presentation-toolbar {
+    display: none;
+  }
+
+  html[data-mode='viewer'] body #app-header :is(#pres-mode, #pres-zoom, #viewer-toggles) {
+    position: static;
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+
+  html[data-mode='viewer'] body #app-header .pres-mode-button,
+  html[data-mode='viewer'] body #app-header #pres-zoom .icon-button,
+  html[data-mode='viewer'] body #app-header .viewer-toggle {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    height: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0;
+    font-size: var(--text-12);
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    border-radius: var(--radius-sm);
+  }
+
+  html[data-mode='viewer'] body #app-header .controls {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  html[data-mode='viewer'] body #app-header .controls label {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    font-size: var(--text-12);
+  }
+
+  html[data-mode='viewer'] body :is(#presentation-glance, #presentation-legend) {
+    left: calc(3.5rem + var(--space-8));
+  }
+}
+
 /* ==== Narrow viewer layout (FR-58) ====
    Every rule after this marker lies inside the one media block below, on the
    query of src/narrowviewer.ts, and applies to the exported viewer only; a
