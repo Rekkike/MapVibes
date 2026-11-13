@@ -819,9 +819,17 @@ export function renderPresentation(): void {
   el('presentation-empty').classList.toggle('hidden', has || onTimeline);
 }
 
+// The readout between the zoom buttons: the visible window in the schedule
+// views (FR-67 as amended in v2.2.1), the map's zoom percentage in the map
+// view.
 function renderZoomLevel(): void {
-  const percent = timelineMode() ? (schedule()?.zoomPercent() ?? 100) : Math.round((presentationView?.viewport.scale ?? 1) * 100);
-  el('pres-zoom-level').textContent = `${percent}%`;
+  const view = timelineMode() ? schedule() : null;
+  if (view) {
+    const t = strings(state.prefs.lang);
+    el('pres-zoom-level').textContent = view.windowLabel(areaLocale(), { quarter: t.zoomQuarter, half: t.zoomHalf });
+    return;
+  }
+  el('pres-zoom-level').textContent = `${Math.round((presentationView?.viewport.scale ?? 1) * 100)}%`;
 }
 
 // Choosing an entry of the "In view" list opens the item's card; in the

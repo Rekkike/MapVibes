@@ -4154,6 +4154,12 @@ html .annotation-tool[data-tool='line'] {
 
   html:not([data-mode='viewer']) :is(#map-zoom-level, #pres-zoom-level) {
     min-width: 0;
+    /* The schedule views' readout says the window (FR-67 as amended in
+       v2.2.1): it wraps within the zoom group's column. */
+    max-width: 4.5rem;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.2;
     color: var(--muted);
     font-size: var(--text-12);
     font-variant-numeric: tabular-nums;
@@ -4746,6 +4752,14 @@ html .annotation-tool[data-tool='line'] {
     white-space: nowrap;
   }
 
+  /* The schedule views reserve the switch's strip (FR-67 as amended in
+     v2.2.1): the axis begins directly below the floating chrome's zone (the
+     switch is 8 pixels from the top and 50 tall), so that the switch never
+     covers its labels, before or after the idle withdrawal. */
+  html:not([data-mode='viewer'])[data-layout='compact'] #presentation-stage .timeline {
+    top: calc(var(--space-8) + 3.125rem);
+  }
+
   html:not([data-mode='viewer'])[data-layout='compact'] #presentation-toolbar .pres-mode-button {
     border-radius: var(--radius-pill);
   }
@@ -5171,6 +5185,12 @@ html[data-idle='true'] #toggle-glance {
 
   html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) #pres-zoom-level {
     min-width: 0;
+    /* The schedule views' readout says the window (FR-67 as amended in
+       v2.2.1): it wraps within the zoom group's column. */
+    max-width: 4.5rem;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.2;
     color: var(--muted);
     font-size: var(--text-12);
     font-variant-numeric: tabular-nums;
@@ -5374,6 +5394,14 @@ html[data-idle='true'] #toggle-glance {
 
   /* The view switch and the toggles float as one pill at the stage's top
      centre; zoom floats at its lower right. */
+  /* The schedule views reserve the switch's strip (FR-67 as amended in
+     v2.2.1): the axis begins directly below the floating chrome's zone (the
+     switch is 8 pixels from the top and 50 tall), so that the switch never
+     covers its labels, before or after the idle withdrawal. */
+  html[data-mode='viewer'][data-layout='compact'] body #presentation-stage .timeline {
+    top: calc(var(--space-8) + 3.125rem);
+  }
+
   html[data-mode='viewer'][data-layout='compact'] body #presentation-toolbar {
     position: absolute;
     top: var(--space-8);

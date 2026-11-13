@@ -19,6 +19,7 @@ import {
   zoomWindow,
   settleWindow,
   axisGrade,
+  windowLabel,
   gradedTicks,
   stepWindow,
   type ScheduleEvent,
@@ -308,6 +309,11 @@ export class TimelineView {
     this.chosen = true;
     this.position();
     this.callbacks.onViewChanged();
+  }
+
+  // The readout's label: the visible window (FR-67 as amended in v2.2.1).
+  windowLabel(locale: string, codes: { quarter: string; half: string }): string {
+    return windowLabel(this.current, locale, codes);
   }
 
   // One step of the zoom buttons along the ladder (FR-67 as amended in
@@ -897,16 +903,19 @@ export class TimelineView {
     // month names at the quarter and the half-year; years beyond.
     const all = gradedTicks(this.current, this.plotWidth());
     this.root.dataset.grade = axisGrade(this.current);
-    const format = (t: { day: number; unit: string; monthStart?: boolean }) => {
+    const format = (t: { day: number; unit: string; monthStart?: boolean; withYear?: boolean }) => {
       const d = new Date(t.day * 86_400_000);
       if (t.unit === 'year') {
         return String(d.getUTCFullYear());
       }
+      // The year beside the month's name on the first label and every
+      // January (FR-67 as amended in v2.2.1).
+      const year = t.withYear ? { year: 'numeric' as const } : {};
       if (t.unit === 'month') {
-        return new Intl.DateTimeFormat(locale, { month: 'short', timeZone: 'UTC' }).format(d);
+        return new Intl.DateTimeFormat(locale, { month: 'short', ...year, timeZone: 'UTC' }).format(d);
       }
-      if (t.monthStart) {
-        return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(d);
+      if (t.monthStart || t.withYear) {
+        return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', ...year, timeZone: 'UTC' }).format(d);
       }
       return String(d.getUTCDate());
     };

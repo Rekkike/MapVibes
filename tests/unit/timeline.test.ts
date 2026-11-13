@@ -1,5 +1,17 @@
 import { describe, expect, test } from 'vitest';
-import { areaRanks, buildTimeline, clampWindow, fitWindow, layoutLanes, orderEntries, zoomWindow, type TimelineItem } from '../../src/timeline';
+import {
+  anchorWindow,
+  areaRanks,
+  buildTimeline,
+  clampWindow,
+  fitWindow,
+  gradedTicks,
+  layoutLanes,
+  orderEntries,
+  windowLabel,
+  zoomWindow,
+  type TimelineItem,
+} from '../../src/timeline';
 import { ticks } from '../../src/timelineview';
 import { dayNumber } from '../../src/dates';
 
@@ -149,5 +161,40 @@ describe('activities in the timeline model (FR-78)', () => {
     expect(m.lines[0].spans).toHaveLength(1);
     expect(m.lines[0].lanes).toBe(1);
     expect(m.lines[0].activitySpans).toEqual([]);
+  });
+});
+
+// The readout and the axis's years (FR-67 as amended in v2.2.1).
+describe('the readout says the window; the axis carries the year', () => {
+  const codes = { en: { quarter: 'Q{n} {year}', half: 'H{n} {year}' }, sv: { quarter: 'K{n} {year}', half: 'H{n} {year}' } };
+  const day = dayNumber(2031, 11, 13) + 0.5;
+
+  test('at each anchor and in the free range, in both languages', () => {
+    const labels = (locale: string, c: { quarter: string; half: string }) =>
+      (['month', 'quarter', 'half', 'year'] as const).map((level) => windowLabel(anchorWindow(level, day), locale, c));
+    expect(labels('en-GB', codes.en)).toEqual(['Nov 2031', 'Q4 2031', 'H2 2031', '2031']);
+    expect(labels('sv-SE', codes.sv)).toEqual(['nov. 2031', 'K4 2031', 'H2 2031', '2031']);
+    expect(windowLabel({ from: dayNumber(2024, 8, 23), to: dayNumber(2037, 5, 13) }, 'en-GB', codes.en)).toBe('2024\u20132037');
+  });
+
+  test('a window at no anchor shows its ends at the axis grade', () => {
+    expect(windowLabel({ from: dayNumber(2031, 11, 3), to: dayNumber(2031, 12, 3) }, 'en-GB', codes.en)).toBe('3 Nov \u2013 2 Dec 2031');
+    expect(windowLabel({ from: dayNumber(2031, 10, 1), to: dayNumber(2032, 2, 1) }, 'en-GB', codes.en)).toBe('Oct 2031 \u2013 Jan 2032');
+  });
+
+  test('the first label and every January carry the year at the day and month grades', () => {
+    const half = gradedTicks(anchorWindow('half', day), 1000).map((t) => [t.day, t.withYear ?? false]);
+    expect(half).toEqual([
+      [dayNumber(2031, 7, 1), true],
+      [dayNumber(2031, 8, 1), false],
+      [dayNumber(2031, 9, 1), false],
+      [dayNumber(2031, 10, 1), false],
+      [dayNumber(2031, 11, 1), false],
+      [dayNumber(2031, 12, 1), false],
+      [dayNumber(2032, 1, 1), true],
+    ]);
+    const month = gradedTicks(anchorWindow('month', day), 400);
+    expect(month[0]).toMatchObject({ day: dayNumber(2031, 11, 1), withYear: true, monthStart: true });
+    expect(month.slice(1).some((t) => t.withYear)).toBe(false);
   });
 });

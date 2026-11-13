@@ -37,6 +37,7 @@ vi.mock('../../src/raster', () => ({
 // English.
 const SAME_IN_BOTH: Record<string, string> = {
   appName: 'the product name',
+  zoomHalf: 'Swedish "halvår" is abbreviated H, as English "half-year" is (v2.2.1)',
   fetchAttribution: 'the attribution required by the OpenStreetMap licence',
   documentSlideFooter: 'a name, a version, and a date',
   roleStatus: 'Swedish "status"',
