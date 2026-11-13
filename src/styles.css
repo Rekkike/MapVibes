@@ -4753,11 +4753,11 @@ html .annotation-tool[data-tool='line'] {
   }
 
   /* The schedule views reserve the switch's strip (FR-67 as amended in
-     v2.2.1): the axis begins below the floating chrome's zone (the switch is
-     8 pixels from the top and 50 tall), so that the switch never covers its
-     labels, before or after the idle withdrawal. */
+     v2.2.1): the axis begins directly below the floating chrome's zone (the
+     switch is 8 pixels from the top and 50 tall), so that the switch never
+     covers its labels, before or after the idle withdrawal. */
   html:not([data-mode='viewer'])[data-layout='compact'] #presentation-stage .timeline {
-    top: calc(2 * var(--space-8) + 3.125rem);
+    top: calc(var(--space-8) + 3.125rem);
   }
 
   html:not([data-mode='viewer'])[data-layout='compact'] #presentation-toolbar .pres-mode-button {
@@ -5395,11 +5395,11 @@ html[data-idle='true'] #toggle-glance {
   /* The view switch and the toggles float as one pill at the stage's top
      centre; zoom floats at its lower right. */
   /* The schedule views reserve the switch's strip (FR-67 as amended in
-     v2.2.1): the axis begins below the floating chrome's zone (the switch is
-     8 pixels from the top and 50 tall), so that the switch never covers its
-     labels, before or after the idle withdrawal. */
+     v2.2.1): the axis begins directly below the floating chrome's zone (the
+     switch is 8 pixels from the top and 50 tall), so that the switch never
+     covers its labels, before or after the idle withdrawal. */
   html[data-mode='viewer'][data-layout='compact'] body #presentation-stage .timeline {
-    top: calc(2 * var(--space-8) + 3.125rem);
+    top: calc(var(--space-8) + 3.125rem);
   }
 
   html[data-mode='viewer'][data-layout='compact'] body #presentation-toolbar {
