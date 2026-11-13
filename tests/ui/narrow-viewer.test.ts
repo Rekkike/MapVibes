@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { byId, flush, mountApp, placeExampleMarkers, pointer, presentationMarkers, setRole, STAGE, stubImageDecoding, stubStageLayout } from './harness';
-import { NARROW_QUERY } from '../../src/narrowviewer';
+// The viewer keeps its own narrow viewport in v2.0.0 (FR-58 as amended).
+import { VIEWER_NARROW_QUERY as NARROW_QUERY } from '../../src/narrowviewer';
 
 // The narrow viewer layout's machinery (FR-58): two overlays, "In view" and
 // the legend, opened from the toggle bar one at a time, with the card's

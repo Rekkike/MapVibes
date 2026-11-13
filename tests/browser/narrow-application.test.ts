@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { chromium, devices, type Browser, type Page } from 'playwright';
+import { setSelect } from './chrome';
 
 // The narrow application layout (FR-71 to FR-74) in a real layout, headless
 // Chromium with phone and tablet profiles, offline, on the full-test demo:
@@ -35,7 +36,10 @@ const PROFILES = [
   ['iPhone 13 landscape', devices['iPhone 13 landscape'], 'landscape'],
   ['iPhone SE landscape', devices['iPhone SE landscape'], 'landscape'],
   ['Pixel 7 landscape', devices['Pixel 7 landscape'], 'landscape'],
-  ['iPad portrait', devices['iPad (gen 7)'], 'tablet'],
+  // A small tablet in portrait, 744 pixels wide: the widest device of the
+  // compact class since v2.0.0 (FR-58 as amended); the 810-pixel tablet of
+  // earlier versions is in the medium class now.
+  ['small tablet portrait', { ...devices['iPad (gen 7)'], viewport: { width: 744, height: 1133 } }, 'tablet'],
 ] as const;
 
 type Profile = (typeof PROFILES)[number][1];
@@ -50,7 +54,7 @@ async function openDemo(profile: Profile): Promise<{ page: Page; errors: string[
   await page.goto(`file://${BUILT}`);
   await page.tap('#menu-toggle');
   await page.waitForTimeout(250);
-  await page.selectOption('#select-language', 'en');
+  await setSelect(page, 'select-language', 'en');
   await page.keyboard.press('Escape');
   await page.waitForTimeout(250);
   await page.tap('#load-demo');

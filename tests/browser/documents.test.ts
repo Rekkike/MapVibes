@@ -6,6 +6,7 @@ import { chromium, type Browser, type BrowserContext, type Page } from 'playwrig
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import * as pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.mjs';
 import { unzipStored } from '../../src/zipwriter';
+import { pressExport, setSelect, showPanel } from './chrome';
 
 (globalThis as { pdfjsWorker?: unknown }).pdfjsWorker = pdfjsWorker;
 
@@ -47,7 +48,7 @@ async function demo(lang: 'en' | 'sv' = 'en'): Promise<{ page: Page; errors: str
   await page.goto(`file://${BUILT}`);
   // The download path, as in browsers without a save dialog.
   await page.evaluate(() => delete (window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker);
-  await page.selectOption('#select-language', lang);
+  await setSelect(page, 'select-language', lang);
   await page.click('#load-demo');
   await page.waitForFunction(() => document.querySelectorAll('#marker-layer .marker').length === 11);
   await page.click('#tab-presentation');
@@ -57,7 +58,7 @@ async function demo(lang: 'en' | 'sv' = 'en'): Promise<{ page: Page; errors: str
 }
 
 async function download(page: Page, button: '#pdf-open' | '#pptx-open'): Promise<{ name: string; bytes: Uint8Array }> {
-  await page.click(button);
+  await pressExport(page, button === '#pdf-open' ? 'pdf-open' : 'pptx-open');
   await page.waitForFunction(() => !(document.getElementById('document-go') as HTMLButtonElement).disabled, null, { timeout: 30_000 });
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#document-go')]);
   const path = await dl.path();
@@ -192,6 +193,7 @@ describe('document exports in a browser, offline (FR-50, FR-51)', () => {
   test('a switched-off item is absent from the timeline pages, the economics pages, and the table in both documents', async () => {
     const { page } = await demo();
     // The first item toggle is D-01's (North gate).
+    await showPanel(page, 'toggle-visibility');
     await page.locator('.visibility-toggle').first().click();
     const pdf = await download(page, '#pdf-open');
     const pages = await pdfPages(pdf.bytes);
@@ -242,7 +244,7 @@ describe('document exports in a browser, offline (FR-50, FR-51)', () => {
     await phone.click('#tab-presentation');
     await phone.click('#pres-fit');
     await phone.waitForTimeout(400);
-    await phone.click('#pdf-open');
+    await pressExport(phone, 'pdf-open');
     await phone.waitForFunction(() => !(document.getElementById('document-go') as HTMLButtonElement).disabled, null, { timeout: 30_000 });
     const contains = await phone.$$eval('#document-contains li', (lis) => lis.map((li) => li.textContent ?? ''));
     expect(contains).toContain('the timeline of the 12 shown items, fitted to the full span, on 2 pages');

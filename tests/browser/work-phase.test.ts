@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { chromium, type Browser, type Page } from 'playwright';
 import { parseWorkState, serialiseWorkState } from '../../src/workstate';
+import { pressExport, setSelect } from './chrome';
 
 // The work-phase marker (FR-78 as amended in v1.12.0) in a real layout,
 // headless Chromium, offline: a work state of schema 12 with two work phases
@@ -63,13 +64,13 @@ beforeAll(async () => {
   const page = await context.newPage();
   await page.goto(`file://${BUILT}`);
   await page.evaluate(() => delete (window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker);
-  await page.selectOption('#select-language', 'en');
+  await setSelect(page, 'select-language', 'en');
   await page.setInputFiles('#work-file-input', workFile);
   await page.waitForFunction(() => document.querySelectorAll('#row-table-body tr').length === 5);
   await page.click('#tab-presentation');
   await page.click('#pres-mode-timeline');
   await page.waitForFunction(() => document.querySelectorAll('#presentation-timeline .timeline-line').length === 5, undefined, { timeout: 30000 });
-  await page.click('#export-open');
+  await pressExport(page, 'export-open');
   const [download] = await Promise.all([page.waitForEvent('download'), page.click('#export-go')]);
   exported = join(dir, 'presentation.html');
   await download.saveAs(exported);

@@ -77,7 +77,10 @@ describe('export content selection (FR-53)', () => {
   afterEach(() => removeSaveDialog());
 
   test('the interactive export is the primary action; the documents sit beside it as secondary', () => {
-    const toolbar = [...byId('presentation-toolbar').querySelectorAll('button')].map((b) => b.id);
+    // The three exports are the bar's Export menu from the medium class
+    // upward (FR-81), in the same order.
+    const toolbar = [...byId('bar-export-menu').querySelectorAll('button')].map((b) => b.id);
+    expect(toolbar).toEqual(['export-open', 'pdf-open', 'pptx-open']);
     expect(toolbar.indexOf('export-open')).toBeLessThan(toolbar.indexOf('pdf-open'));
     expect(toolbar.indexOf('pdf-open')).toBeLessThan(toolbar.indexOf('pptx-open'));
     expect(byId('export-open').classList.contains('primary-action')).toBe(true);

@@ -499,11 +499,12 @@ export function ticks(window: DayWindow, width: number): Array<{ day: number; un
 }
 
 // An event's label chip (FR-80): its width is estimated from its characters
-// (11-pixel text, 6 pixels of padding either side), up to a longest chip
+// (12-pixel text since v2.0.0, the width per character and the longest
+// chip raised in proportion from the 11-pixel text of earlier versions), up to a longest chip
 // that ends in an ellipsis. The documents scale it to page units.
-const EVENT_CHAR_PX = 6.5;
+const EVENT_CHAR_PX = 7.1;
 const EVENT_PAD_PX = 14;
-const EVENT_MAX_PX = 160;
+const EVENT_MAX_PX = 175;
 
 export function eventChipWidth(label: string): number {
   return Math.min(EVENT_MAX_PX, Math.ceil(label.length * EVENT_CHAR_PX) + EVENT_PAD_PX);

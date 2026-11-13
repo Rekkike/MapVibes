@@ -124,21 +124,33 @@ const LANE_LABEL_CHAR_PX = 6.5;
 // An event's label chip (FR-80): its width is estimated from its characters
 // (11-pixel text, 6 pixels of padding either side), up to a longest chip
 // that ends in an ellipsis; a "+n" chip beside it takes a fixed room.
-const EVENT_MORE_PX = 30;
+const EVENT_MORE_PX = 33;
 // The edge indicators (the follow-up amendment): a small chip at each end of the events
 // strip counting the events beyond the shown window, in the "+n" chip's own
 // size and style. Its tap pans the window to the nearest of those events.
-const EVENT_EDGE_PX = 28;
-const EVENT_EDGE_RESERVE_PX = 30;
+const EVENT_EDGE_PX = 31;
+const EVENT_EDGE_RESERVE_PX = 33;
 // Where a tap on an edge chip brings the nearest event into the window: this
 // share of the window's length inside the edge it lies beyond.
 const EVENT_EDGE_MARGIN = 0.05;
 
-const AMOUNT_CHAR_PX = 6;
+// 12-pixel tabular figures since v2.0.0 (they were 10 pixels, 6 a figure).
+const AMOUNT_CHAR_PX = 7.2;
+const AMOUNT_CHAR_RATIO = 0.6;
 const AMOUNT_GAP_PX = 3;
 
-export function amountLabelPlace(cellPx: number, share: number, characters: number): 'outside' | 'inside' | 'none' {
-  const label = characters * AMOUNT_CHAR_PX;
+// The width of one figure of an amount, from the size its label is drawn
+// at: six tenths of it (7.2 pixels at 12, and 6 at the 10 pixels that the
+// compact and short classes keep). Where the size is not known (no layout),
+// the 12-pixel width.
+function figureWidth(mark: Element): number {
+  const label = mark.querySelector('.timeline-seg-label');
+  const size = label ? parseFloat(getComputedStyle(label).fontSize) : NaN;
+  return Number.isFinite(size) && size > 0 ? size * AMOUNT_CHAR_RATIO : AMOUNT_CHAR_PX;
+}
+
+export function amountLabelPlace(cellPx: number, share: number, characters: number, charPx = AMOUNT_CHAR_PX): 'outside' | 'inside' | 'none' {
+  const label = characters * charPx;
   const fill = cellPx * share;
   if (fill + AMOUNT_GAP_PX + label + AMOUNT_GAP_PX <= cellPx) {
     return 'outside';
@@ -746,7 +758,7 @@ export class TimelineView {
           mark.style.display = '';
           mark.style.height = `${spineH}px`;
           mark.style.top = `${(laneH - spineH) / 2}px`;
-          mark.dataset.label = amountLabelPlace(((b - a) / length) * plotW, Number(mark.dataset.share), mark.textContent?.length ?? 0);
+          mark.dataset.label = amountLabelPlace(((b - a) / length) * plotW, Number(mark.dataset.share), mark.textContent?.length ?? 0, figureWidth(mark));
           continue;
         }
         if (!expanded && mark.dataset.kind === 'activity') {
@@ -771,7 +783,7 @@ export class TimelineView {
         }
         if (mark.dataset.kind === 'amount') {
           const px = ((b - a) / length) * plotW;
-          mark.dataset.label = amountLabelPlace(px, Number(mark.dataset.share), mark.textContent?.length ?? 0);
+          mark.dataset.label = amountLabelPlace(px, Number(mark.dataset.share), mark.textContent?.length ?? 0, figureWidth(mark));
         }
       }
       this.placeLaneLabels(row, expanded, from, length, plotW, laneH);

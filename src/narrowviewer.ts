@@ -15,10 +15,24 @@
 // outside close the open overlay. The motion is in the stylesheet, with its
 // reduced-motion opt-out.
 
-// The narrow viewport: narrower than 56 rem (896 pixels, so that phones and
-// tablets in portrait are included), or a low landscape touch screen (a
-// phone turned sideways, up to 30 rem, 480 pixels, high).
-export const NARROW_QUERY = '(max-width: 56rem), (orientation: landscape) and (max-height: 30rem) and (pointer: coarse)';
+// The narrow viewport (FR-58 as amended in v2.0.0): the compact class,
+// narrower than 48 rem (768 pixels), or the short class, lower than 31.25 rem
+// (500 pixels) whatever the width or the pointer. The medium, wide, and extra
+// wide classes begin where it ends (FR-81).
+export const NARROW_QUERY = '(max-width: 47.999rem), (max-height: 31.249rem)';
+// The exported viewer keeps its own narrow viewport in this version (the
+// owner's ruling: the viewer is not moved onto boundaries it has no new
+// chrome for): narrower than 56 rem (896 pixels, so that phones and tablets
+// in portrait are included), or a low landscape touch screen (up to 30 rem,
+// 480 pixels, high). The pass that gives the viewer its new chrome carries it
+// across.
+export const VIEWER_NARROW_QUERY = '(max-width: 56rem), (orientation: landscape) and (max-height: 30rem) and (pointer: coarse)';
+// Within those classes: the wide class begins at 75 rem (1,200 pixels); the
+// items panel docks from 87.5 rem (1,400 pixels); the extra wide class begins
+// at 120 rem (1,920 pixels).
+export const WIDE_QUERY = '(min-width: 75rem)';
+export const DOCK_QUERY = '(min-width: 87.5rem)';
+export const XWIDE_QUERY = '(min-width: 120rem)';
 
 export interface Overlay {
   toggle: HTMLButtonElement;

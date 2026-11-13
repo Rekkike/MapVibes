@@ -1,4 +1,5 @@
 import './polyfills';
+import { refreshShell } from './shell';
 import { selfPage } from './selfsource';
 import type { ValueFilter } from './dataset';
 import { addStatus } from './vocab';
@@ -165,6 +166,13 @@ function renderStaticText(): void {
   // The narrow application's toggle bars (FR-72).
   el('map-toggles').setAttribute('aria-label', t.viewerPanels);
   el('toggle-items').textContent = t.placementHeading;
+  // The bar and the tool strip of the medium, wide, and extra wide classes
+  // (FR-81).
+  el('bar-export').textContent = t.barExport;
+  el('map-more').textContent = t.toolMore;
+  el('map-more').title = t.toolMore;
+  el('bar-offline').textContent = t.barOffline;
+  el('bar-offline').title = t.fetchOffline;
   el('toggle-map-glance').textContent = t.viewerToggleGlance;
   el('toggle-map-legend').textContent = t.viewerToggleLegend;
   el('toggle-visibility').textContent = t.visibilityHeading;
@@ -591,6 +599,7 @@ async function startViewer(text: string): Promise<void> {
   setSegment('presentation');
   // The application's overlays give way to the viewer's.
   appNarrow?.refresh();
+  refreshShell();
   startNarrowViewer();
 }
 

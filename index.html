@@ -44,6 +44,9 @@
           </select>
         </label>
       </div>
+      <span id="bar-offline" class="hidden" role="status"></span>
+      <button type="button" id="bar-export" aria-controls="bar-export-menu" hidden>Export</button>
+      <div id="bar-export-menu" role="group" aria-labelledby="bar-export" hidden></div>
       <div id="app-menu" role="group" aria-labelledby="menu-toggle" hidden></div>
     </header>
     <main id="app-main">
@@ -260,7 +263,10 @@
             <span id="marker-selection" class="notice">No marker selected</span>
             <label id="marker-shape-label"><span id="marker-shape-text">Shape</span> <select id="marker-shape"></select></label>
             <button type="button" id="marker-remove">Remove marker</button>
+            <button type="button" id="map-more" aria-controls="map-more-panel" hidden>More tools</button>
           </div>
+          <div id="map-more-panel" role="group" aria-labelledby="map-more" hidden></div>
+          <div id="map-zoom" role="group" hidden></div>
           <div id="annotation-toolbar" role="toolbar" aria-labelledby="annotation-heading">
             <span id="annotation-heading">Annotate</span>
             <div id="annotation-tools" role="group" aria-labelledby="annotation-heading">
@@ -411,6 +417,7 @@
               <button type="button" id="toggle-legend" class="viewer-toggle" aria-controls="presentation-legend">Legend</button>
             </span>
           </div>
+          <div id="pres-zoom" role="group" hidden></div>
           <div id="export-panel" class="hidden" role="dialog" aria-labelledby="export-heading">
             <div class="dialog-head">
               <h3 id="export-heading">Export presentation</h3>

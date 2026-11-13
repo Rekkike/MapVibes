@@ -159,6 +159,12 @@ body {
   gap: var(--space-8);
 }
 
+/* The offline pill belongs to the bar of the medium class and above
+   (FR-81); elsewhere the notice beside the fetch action says it. */
+#bar-offline {
+  display: none;
+}
+
 #work-dirty {
   padding: var(--space-4) var(--space-8);
   border: 1px solid var(--warning);
@@ -3234,7 +3240,7 @@ button.timeline-plot-control:hover > .timeline-indicator,
   max-width: none;
   padding: 0;
   background: transparent;
-  font-size: 0.625rem;
+  font-size: var(--text-12);
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
@@ -3323,7 +3329,7 @@ button.timeline-plot-control:hover > .timeline-indicator,
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   background: var(--panel);
   color: var(--fg);
-  font-size: 0.6875rem;
+  font-size: var(--text-12);
   line-height: 15px;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -3334,7 +3340,7 @@ button.timeline-plot-control:hover > .timeline-indicator,
 }
 
 .timeline-event-more {
-  width: 28px;
+  width: 31px;
   margin-left: var(--space-2);
   padding: 0;
   border-color: var(--control-line);
@@ -3348,7 +3354,7 @@ button.timeline-plot-control:hover > .timeline-indicator,
    to the nearest of them. It takes no extra height: it sits in the strip's
    first row at the plot's end. */
 .timeline-event-edge {
-  width: 28px;
+  width: 31px;
   padding: 0;
   border-color: var(--control-line);
   border-radius: var(--radius-pill);
@@ -3647,7 +3653,7 @@ html[data-segment='presentation'] #presentation-legend .legend-swatch.legend-pha
 html[data-segment='presentation'] #presentation-legend .legend-swatch.marker-icon {
   width: 1rem;
   height: 1rem;
-  font-size: 0.6rem;
+  font-size: var(--text-12);
 }
 
 /* The persistent "In view" column, narrowed and quieter. */
@@ -3667,6 +3673,777 @@ html[data-segment='presentation'] #presentation-glance .glance-list {
 html[data-segment='presentation'] #presentation-glance .glance-entry {
   padding: var(--space-2) var(--space-4);
   gap: var(--space-4);
+}
+
+/* ==== The layout of the medium, wide, and extra wide classes (FR-81) ====
+   The map is the page: one bar of 44 pixels, and everything else docks to,
+   floats on, or folds away from the stage. Every rule here is scoped to the
+   application (not the viewer) and lies inside this one media block, the
+   complement of the narrow query below; the compact and short classes and
+   the viewer keep their own rules. The controls that style alone cannot
+   place are moved by src/shell.ts. */
+@media (min-width: 48rem) and (min-height: 31.25rem) {
+  html:not([data-mode='viewer']) body {
+    display: grid;
+    grid-template-rows: 2.75rem minmax(0, 1fr);
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* -- The bar: one row of 44 pixels that never wraps. -- */
+  html:not([data-mode='viewer']) #app-header {
+    position: relative;
+    z-index: var(--layer-sheet);
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: var(--space-12);
+    height: 2.75rem;
+    min-width: 0;
+    padding: 0 var(--space-12);
+    white-space: nowrap;
+  }
+
+  html:not([data-mode='viewer']) #app-header .controls,
+  html:not([data-mode='viewer']) #work-controls {
+    display: contents;
+  }
+
+  html:not([data-mode='viewer']) #app-title {
+    order: 1;
+    flex: none;
+  }
+
+  /* The version shows from the wide class upward, where the bar has the
+     room. */
+  html:not([data-mode='viewer']) #app-version {
+    display: none;
+    font-size: var(--text-12);
+  }
+
+  html:not([data-mode='viewer']) #segment-nav {
+    order: 2;
+    flex: none;
+    display: flex;
+    gap: var(--space-4);
+    height: 100%;
+  }
+
+  /* The current segment: an underline in the selection colour, the shape
+     that goes with the colour. */
+  html:not([data-mode='viewer']) #app-header .segment-tab {
+    height: 100%;
+    padding: 0 var(--space-12);
+    border: 0;
+    border-radius: 0;
+    background: none;
+    color: var(--muted);
+    font-size: var(--text-14);
+    font-weight: 400;
+  }
+
+  html:not([data-mode='viewer']) #app-header .segment-tab[aria-selected='true'] {
+    background: none;
+    box-shadow: inset 0 -2px 0 var(--accent);
+    color: var(--fg);
+    font-weight: 650;
+  }
+
+  html:not([data-mode='viewer']) #demo-badge {
+    order: 3;
+    /* The first to give its room up. */
+    flex: 0 100 auto;
+    min-width: 0;
+    overflow: hidden;
+    padding: 0;
+    border: 0;
+    font-size: var(--text-13);
+    text-overflow: ellipsis;
+  }
+
+  html:not([data-mode='viewer']) #work-dirty {
+    order: 4;
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 var(--space-8);
+    font-size: var(--text-12);
+    line-height: 1.5rem;
+  }
+
+  /* The work's messages take the room that is left and end in an
+     ellipsis. */
+  html:not([data-mode='viewer']) #work-status {
+    order: 5;
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    font-size: var(--text-13);
+    text-overflow: ellipsis;
+  }
+
+  html:not([data-mode='viewer']) #bar-offline {
+    order: 6;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-4);
+    height: 1.5rem;
+    padding: 0 var(--space-8);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    color: var(--muted);
+    font-size: var(--text-12);
+  }
+
+  html:not([data-mode='viewer']) #bar-offline::before {
+    content: '';
+    width: 0.375rem;
+    height: 0.375rem;
+    border-radius: var(--radius-pill);
+    background: var(--control-line);
+  }
+
+  html:not([data-mode='viewer']) #bar-export,
+  html:not([data-mode='viewer']) #work-save {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    height: 1.875rem;
+    padding: 0 var(--space-12);
+    font-size: var(--text-14);
+  }
+
+  html:not([data-mode='viewer']) #bar-export {
+    order: 7;
+  }
+
+  html:not([data-mode='viewer']) #work-save {
+    order: 8;
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: 600;
+  }
+
+  html:not([data-mode='viewer']) #menu-toggle {
+    order: 9;
+  }
+
+  html:not([data-mode='viewer']) :is(#menu-toggle, #map-more, #map-fit, #pres-fit, #pres-reset, .annotation-tool[data-tool]) {
+    position: relative;
+  }
+
+  /* An icon button: its name stays for assistive technology, its text is
+     not drawn, and a glyph is drawn in its place. */
+  html:not([data-mode='viewer']) :is(#menu-toggle, #map-more, #toggle-items, #toggle-visibility, #toggle-map-glance, #toggle-glance, #map-fit, #pres-fit, #pres-reset, .annotation-tool[data-tool]) {
+    flex: none;
+    display: inline-grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    overflow: hidden;
+    border-color: transparent;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--fg);
+    /* The text is moved out of the box, not shrunk or made transparent. */
+    text-indent: 4rem;
+    white-space: nowrap;
+  }
+
+  html:not([data-mode='viewer']) :is(#menu-toggle, #map-more, #toggle-items, #toggle-visibility, #toggle-map-glance, #toggle-glance, #map-fit, #pres-fit, #pres-reset, .annotation-tool[data-tool])::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    width: 1.125rem;
+    height: 1.125rem;
+    margin: auto;
+    background: currentColor;
+    -webkit-mask: var(--glyph) center / contain no-repeat;
+    mask: var(--glyph) center / contain no-repeat;
+  }
+
+  html:not([data-mode='viewer']) :is(#menu-toggle, #map-more, #toggle-items, #toggle-visibility, #toggle-map-glance, #toggle-glance, #map-fit, #pres-fit, #pres-reset, .annotation-tool[data-tool]):hover:not(:disabled) {
+    border-color: var(--control-line);
+  }
+
+  html:not([data-mode='viewer']) #menu-toggle {
+    --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round'%3E%3Cpath d='M4 6h12M4 10h12M4 14h12'/%3E%3C/svg%3E");
+  }
+
+  html:not([data-mode='viewer']) :is(#toggle-items, #toggle-visibility) {
+    --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round'%3E%3Cpath d='M7 5h9M7 10h9M7 15h9M3.5 5h.5M3.5 10h.5M3.5 15h.5'/%3E%3C/svg%3E");
+  }
+
+  html:not([data-mode='viewer']) :is(#toggle-map-glance, #toggle-glance) {
+    --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 8l5 5 5-5'/%3E%3C/svg%3E");
+  }
+
+  html:not([data-mode='viewer']) :is(#toggle-map-glance, #toggle-glance)[aria-expanded='true'] {
+    --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5-5 5 5'/%3E%3C/svg%3E");
+  }
+
+  html:not([data-mode='viewer']) #map-more {
+    --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M5 10h.1M10 10h.1M15 10h.1'/%3E%3C/svg%3E");
+  }
+
+  html:not([data-mode='viewer']) :is(#map-fit, #pres-fit) {
+    --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 8V4h4M16 8V4h-4M4 12v4h4M16 12v4h-4'/%3E%3C/svg%3E");
+  }
+
+  html:not([data-mode='viewer']) #pres-reset {
+    --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 10a6 6 0 1 0 2-4.5M4 4v3.5h3.5'/%3E%3C/svg%3E");
+  }
+
+  html:not([data-mode='viewer']) .annotation-tool[data-tool='select'] {
+    --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 3l10 6-4.5 1.2L13 15l-2 1-2.4-4.7L5 14z'/%3E%3C/svg%3E");
+  }
+
+  html:not([data-mode='viewer']) .annotation-tool[data-tool='rectangle'] {
+    --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7'%3E%3Crect x='3.5' y='5' width='13' height='10' rx='1'/%3E%3C/svg%3E");
+  }
+
+  html:not([data-mode='viewer']) .annotation-tool[data-tool='circle'] {
+    --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7'%3E%3Ccircle cx='10' cy='10' r='6.5'/%3E%3C/svg%3E");
+  }
+
+  html:not([data-mode='viewer']) .annotation-tool[data-tool='polygon'] {
+    --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linejoin='round'%3E%3Cpath d='M4 8l6-5 6 5-2 8H6z'/%3E%3C/svg%3E");
+  }
+
+  html:not([data-mode='viewer']) .annotation-tool[data-tool='line'] {
+    --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round'%3E%3Cpath d='M4 16L16 4'/%3E%3C/svg%3E");
+  }
+
+  /* -- The bar's two menus and the tool strip's "more": closed until asked
+        for, one at a time. -- */
+  html:not([data-mode='viewer']) :is(#app-menu, #bar-export-menu, #map-more-panel) {
+    position: absolute;
+    z-index: var(--layer-dialog);
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-8);
+    width: 17rem;
+    padding: var(--space-12);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--panel);
+    box-shadow: var(--card-shadow);
+    font-size: var(--text-14);
+    white-space: normal;
+  }
+
+  html:not([data-mode='viewer']) :is(#app-menu, #bar-export-menu, #map-more-panel)[data-state='open'] {
+    display: flex;
+  }
+
+  html:not([data-mode='viewer']) :is(#app-menu, #bar-export-menu) {
+    top: calc(100% + var(--space-4));
+    right: var(--space-12);
+  }
+
+  html:not([data-mode='viewer']) #app-menu > label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-8);
+  }
+
+  html:not([data-mode='viewer']) #map-more-panel {
+    top: var(--space-12);
+    left: 4rem;
+  }
+
+  html:not([data-mode='viewer']) #map-more-panel #marker-shape-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-8);
+  }
+
+  html:not([data-mode='viewer']) #map-more-panel #fetch-offline {
+    margin: 0;
+    font-size: var(--text-13);
+  }
+
+  /* -- The page under the bar. -- */
+  html:not([data-mode='viewer']) #app-main {
+    position: relative;
+    min-height: 0;
+    padding: 0;
+    overflow: auto;
+  }
+
+  html:not([data-mode='viewer']) .segment {
+    min-height: 0;
+  }
+
+  html:not([data-mode='viewer']) :is(#segment-information, #compare-panel, #activity-panel) {
+    margin: var(--space-16);
+  }
+
+  html:not([data-mode='viewer']) :is(#segment-map, #segment-presentation),
+  html:not([data-mode='viewer'])[data-segment='presentation'] #segment-presentation {
+    position: relative;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* The three places of the segment's grid: a docked panel, the stage's
+     area, a docked "In view". What floats spans the whole. */
+  html:not([data-mode='viewer']) :is(#placement-area, #visibility-area) {
+    grid-area: 1 / 1;
+  }
+
+  html:not([data-mode='viewer']) .glance-panel {
+    grid-area: 1 / 1 / -1 / -1;
+  }
+
+  html:not([data-mode='viewer']) :is(#map-area, #presentation-area) {
+    grid-area: 1 / 2;
+    position: relative;
+    display: block;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+  }
+
+  html:not([data-mode='viewer']) :is(#map-heading, #presentation-heading, #annotation-heading) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* The stage takes everything that the bar and the docked panels leave. */
+  html:not([data-mode='viewer']) :is(#map-area, #presentation-area) > .stage {
+    position: absolute;
+    inset: 0;
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+  }
+
+  /* -- What floats on the stage. -- */
+  html:not([data-mode='viewer']) :is(#annotation-toolbar, #annotation-inspector, #map-zoom, #pres-zoom, #presentation-toolbar, #map-legend, #presentation-legend, #toggle-map-legend, #toggle-legend, #fetch-panel, #pdf-panel, #export-panel, #document-panel, #document-status, .glance-panel) {
+    position: absolute;
+    z-index: var(--layer-card);
+    margin: 0;
+    box-shadow: var(--card-shadow);
+  }
+
+  html:not([data-mode='viewer']) :is(#map-toolbar, #map-toggles, #presentation-toggles, #viewer-toggles) {
+    display: contents;
+  }
+
+  /* The tool strip: the drawing tools and "more", at the stage's upper
+     left. The options of the tool in use sit in the toolbar's own box,
+     beside the strip, while a drawing tool is chosen or an annotation is
+     selected. */
+  html:not([data-mode='viewer']) #annotation-toolbar {
+    top: var(--space-12);
+    left: 4rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-4) var(--space-8);
+    max-width: calc(100% - 21rem);
+    min-height: 2.75rem;
+    padding: var(--space-4) var(--space-8);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--panel);
+    font-size: var(--text-13);
+  }
+
+  html:not([data-mode='viewer'])[data-tool='select']:not([data-annotation='selected']) #annotation-toolbar {
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+  }
+
+  html:not([data-mode='viewer'])[data-tool='select']:not([data-annotation='selected']) #annotation-toolbar > :not(#annotation-tools) {
+    display: none;
+  }
+
+  html:not([data-mode='viewer']) #annotation-tools {
+    position: absolute;
+    top: -1px;
+    left: calc(-3.25rem - 1px);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--panel);
+    box-shadow: var(--card-shadow);
+  }
+
+  html:not([data-mode='viewer'])[data-tool='select']:not([data-annotation='selected']) #annotation-tools {
+    top: 0;
+    left: -3.25rem;
+  }
+
+  html:not([data-mode='viewer']) #annotation-tools .annotation-tool[aria-pressed='true'] {
+    border-color: var(--accent);
+    background: var(--accent);
+    box-shadow: none;
+    color: var(--on-accent);
+  }
+
+  html:not([data-mode='viewer']) #map-more {
+    margin-top: var(--space-4);
+  }
+
+  html:not([data-mode='viewer']) #annotation-inspector {
+    top: 4rem;
+    left: 4rem;
+    max-width: calc(100% - 21rem);
+  }
+
+  html:not([data-mode='viewer']) :is(#map-zoom, #pres-zoom) {
+    right: var(--space-12);
+    bottom: var(--space-12);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--panel);
+  }
+
+  html:not([data-mode='viewer']) :is(#map-zoom, #pres-zoom) .icon-button {
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border-color: transparent;
+    border-radius: var(--radius-sm);
+    font-size: var(--text-16);
+  }
+
+  html:not([data-mode='viewer']) :is(#map-zoom-level, #pres-zoom-level) {
+    min-width: 0;
+    color: var(--muted);
+    font-size: var(--text-12);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The legend (FR-6 as amended): on the stage's lower left, folded to its
+     control until asked for; chrome, outside the panned content. */
+  html:not([data-mode='viewer']) :is(#toggle-map-legend, #toggle-legend) {
+    bottom: var(--space-12);
+    left: var(--space-12);
+    display: inline-flex;
+    align-items: center;
+    height: 2.25rem;
+    padding: 0 var(--space-12);
+    border-color: var(--border);
+    background: var(--panel);
+    color: var(--fg);
+    font-size: var(--text-13);
+    font-weight: 600;
+  }
+
+  html:not([data-mode='viewer']) :is(#toggle-map-legend, #toggle-legend)[aria-expanded='true'] {
+    border-color: var(--accent);
+    box-shadow:
+      inset 0 0 0 1px var(--accent),
+      var(--card-shadow);
+  }
+
+  html:not([data-mode='viewer']) :is(#map-legend, #presentation-legend) {
+    bottom: 3.5rem;
+    left: var(--space-12);
+    display: none;
+    max-width: min(calc(100% - 6rem), 60rem);
+    max-height: calc(100% - 8rem);
+    overflow: auto;
+    font-size: var(--text-13);
+  }
+
+  html:not([data-mode='viewer']) :is(#map-legend, #presentation-legend)[data-fold='open'] {
+    display: flex;
+  }
+
+  /* -- The panels. -- */
+  html:not([data-mode='viewer']) :is(#placement-area, #visibility-area) {
+    position: relative;
+    width: 18rem;
+    padding: var(--space-12);
+    border: 0;
+    border-right: 1px solid var(--border);
+    border-radius: 0;
+  }
+
+  html:not([data-mode='viewer']) :is(#toggle-items, #toggle-visibility) {
+    position: absolute;
+    top: var(--space-4);
+    right: var(--space-4);
+  }
+
+  /* Folded, a panel is its control alone, floating at the stage's upper
+     left; open, it is a drawer over the map. */
+  html:not([data-mode='viewer']) :is(#placement-area, #visibility-area)[data-fold='closed'] {
+    position: absolute;
+    grid-area: 1 / 1 / -1 / -1;
+    z-index: var(--layer-card);
+    top: var(--space-12);
+    left: var(--space-12);
+    width: auto;
+    padding: var(--space-4);
+    overflow: visible;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--card-shadow);
+  }
+
+  html:not([data-mode='viewer']) :is(#placement-area, #visibility-area)[data-fold='closed'] > :not(.narrow-toggle) {
+    display: none;
+  }
+
+  html:not([data-mode='viewer']) :is(#placement-area, #visibility-area)[data-fold='closed'] > .narrow-toggle {
+    position: relative;
+    top: auto;
+    right: auto;
+  }
+
+  html:not([data-mode='viewer']) :is(#placement-area, #visibility-area)[data-fold='open'] {
+    position: absolute;
+    grid-area: 1 / 1 / -1 / -1;
+    z-index: var(--layer-panel);
+    top: 0;
+    bottom: 0;
+    left: 0;
+    box-shadow: var(--card-shadow);
+  }
+
+  /* While the items panel is folded to its floating control, the strip
+     starts below it. */
+  html:not([data-mode='viewer'])[data-fold-items='closed'] :is(#annotation-toolbar, #map-more-panel) {
+    top: 4rem;
+  }
+
+  html:not([data-mode='viewer'])[data-fold-items='closed'] #annotation-inspector {
+    top: 7.25rem;
+  }
+
+  html:not([data-mode='viewer']) #presentation-toolbar {
+    top: var(--space-12);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: var(--space-8);
+    padding: var(--space-2) var(--space-8) var(--space-2) var(--space-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    background: var(--panel);
+    white-space: nowrap;
+  }
+
+  html:not([data-mode='viewer']) #presentation-toolbar #export-separator {
+    display: none;
+  }
+
+  html:not([data-mode='viewer']) #presentation-toolbar .pres-mode-button {
+    border-radius: var(--radius-pill);
+  }
+
+  /* "In view": floating at the stage's upper right, folded to its heading
+     or unfolded. */
+  html:not([data-mode='viewer']) .glance-panel {
+    top: var(--space-12);
+    right: var(--space-12);
+    width: 14.5rem;
+    max-height: calc(100% - 5.5rem);
+    padding: var(--space-8) var(--space-12);
+  }
+
+  html:not([data-mode='viewer']) .glance-panel > .viewer-toggle,
+  html:not([data-mode='viewer']) .glance-panel > .narrow-toggle {
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+  }
+
+  html:not([data-mode='viewer']) .glance-panel[data-fold='closed'] {
+    overflow: hidden;
+  }
+
+  html:not([data-mode='viewer']) .glance-panel[data-fold='closed'] > :not(.glance-heading, .viewer-toggle, .narrow-toggle) {
+    display: none;
+  }
+
+  html:not([data-mode='viewer']) .glance-panel .glance-heading {
+    margin: 0;
+    padding-right: var(--space-32);
+    font-size: var(--text-13);
+    line-height: 1.75rem;
+  }
+
+  /* The dialogs keep their shapes and open over the stage. */
+  html:not([data-mode='viewer']) :is(#fetch-panel, #pdf-panel, #export-panel, #document-panel) {
+    z-index: var(--layer-dialog);
+    top: var(--space-12);
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(44rem, calc(100% - 1.5rem));
+    max-height: calc(100% - 1.5rem);
+    overflow: auto;
+  }
+
+  html:not([data-mode='viewer']) #document-status {
+    bottom: var(--space-12);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: var(--space-4) var(--space-12);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--panel);
+  }
+
+  html:not([data-mode='viewer']) #document-status:empty {
+    display: none;
+  }
+
+  /* The schedule views leave the view switch its room above them and the
+     legend's control its room below. */
+  html:not([data-mode='viewer']) #presentation-stage .timeline {
+    top: 3.5rem;
+    bottom: 3.5rem;
+  }
+
+  html:not([data-mode='viewer']) .details-panel {
+    top: 3.5rem;
+    right: var(--space-12);
+    bottom: var(--space-12);
+  }
+
+  /* Below 960 pixels the bar tightens so that it stays one row: closer
+     controls, and the offline pill as its dot alone (its words stay its
+     name and its title). */
+  @media (max-width: 59.999rem) {
+    html:not([data-mode='viewer']) #app-header {
+      gap: var(--space-8);
+      padding: 0 var(--space-8);
+    }
+
+    html:not([data-mode='viewer']) #app-header .segment-tab {
+      padding: 0 var(--space-8);
+    }
+
+    html:not([data-mode='viewer']) #bar-offline {
+      position: relative;
+      width: 1.5rem;
+      padding: 0;
+      overflow: hidden;
+      text-indent: 2rem;
+      white-space: nowrap;
+    }
+
+    html:not([data-mode='viewer']) #bar-offline::before {
+      position: absolute;
+      inset: 0;
+      margin: auto;
+    }
+
+    html:not([data-mode='viewer']) :is(#bar-export, #work-save) {
+      padding: 0 var(--space-8);
+    }
+  }
+
+  /* A coarse pointer keeps its 44-pixel targets. */
+  @media (pointer: coarse) {
+    html:not([data-mode='viewer']) :is(#menu-toggle, #map-more, #toggle-items, #toggle-visibility, #toggle-map-glance, #toggle-glance, #map-fit, #pres-fit, #pres-reset, .annotation-tool[data-tool]),
+    html:not([data-mode='viewer']) :is(#map-zoom, #pres-zoom) .icon-button {
+      width: 2.75rem;
+      height: 2.75rem;
+    }
+
+    html:not([data-mode='viewer']) :is(#toggle-map-legend, #toggle-legend) {
+      height: 2.75rem;
+    }
+
+    html:not([data-mode='viewer']) #annotation-tools {
+      left: calc(-3.75rem - 1px);
+    }
+
+    html:not([data-mode='viewer']) #annotation-toolbar,
+    html:not([data-mode='viewer']) #map-more-panel,
+    html:not([data-mode='viewer']) #annotation-inspector {
+      left: 4.5rem;
+    }
+  }
+}
+
+/* The wide class: from 1,200 pixels the folded items panel is a rail of 44
+   pixels beside the stage, and the open one docks. */
+@media (min-width: 75rem) and (min-height: 31.25rem) {
+  html:not([data-mode='viewer']) #app-version {
+    display: inline;
+  }
+
+  html:not([data-mode='viewer']) #placement-area[data-fold='closed'] {
+    position: relative;
+    grid-area: 1 / 1;
+    top: auto;
+    left: auto;
+    width: 2.75rem;
+    padding: var(--space-4) 0;
+    border: 0;
+    border-right: 1px solid var(--border);
+    border-radius: 0;
+    box-shadow: none;
+    text-align: center;
+  }
+
+  html:not([data-mode='viewer']) #placement-area[data-fold='open'] {
+    position: relative;
+    grid-area: 1 / 1;
+    z-index: var(--layer-raised);
+    box-shadow: none;
+  }
+
+  html:not([data-mode='viewer'])[data-fold-items='closed'] :is(#annotation-toolbar, #map-more-panel) {
+    top: var(--space-12);
+  }
+
+  html:not([data-mode='viewer'])[data-fold-items='closed'] #annotation-inspector {
+    top: 4rem;
+  }
+}
+
+/* The extra wide class: from 1,920 pixels the Map segment's "In view" docks
+   while it is open. */
+@media (min-width: 120rem) and (min-height: 31.25rem) {
+  html:not([data-mode='viewer']) #map-glance[data-fold='open'] {
+    position: relative;
+    grid-area: 1 / 3;
+    top: auto;
+    right: auto;
+    z-index: var(--layer-raised);
+    width: 16.5rem;
+    max-height: none;
+    padding: var(--space-12);
+    border: 0;
+    border-left: 1px solid var(--border);
+    border-radius: 0;
+    box-shadow: none;
+  }
 }
 
 /* ==== Narrow viewer layout (FR-58) ====
@@ -3876,7 +4653,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     --timeline-name-row: 24px;
     --timeline-lane: 24px;
     --timeline-badge: 1.125rem;
-    --timeline-badge-font: 0.6875rem;
+    --timeline-badge-font: var(--text-12);
     /* The narrow plot is 20 pixels (the 40-pixel line holds a 20-pixel name
        row above it): 4-pixel segments, 2-pixel gaps, 1-pixel padding, three
        rows (tops 1, 7, 13, bottom 17 of 20). */
@@ -3956,6 +4733,13 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     height: 10px;
   }
 
+  /* The amount figures keep their 10 pixels here (the owner's ruling in
+     v2.0.0): a phone's year cells are too narrow for larger figures. The
+     one size outside the six, until the pass that re-rules this chrome. */
+  html[data-mode='viewer'] .timeline-seg[data-kind='amount'] > .timeline-seg-label {
+    font-size: 0.625rem;
+  }
+
   html[data-mode='viewer'] .timeline-point {
     --timeline-point-size: 10px;
   }
@@ -3972,11 +4756,11 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   }
 
   html[data-mode='viewer'] #app-version {
-    font-size: 0.6875rem;
+    font-size: var(--text-12);
   }
 
   html[data-mode='viewer'] #viewer-badge {
-    font-size: 0.6875rem;
+    font-size: var(--text-12);
     color: var(--muted);
     border: 1px solid var(--border);
     border-radius: var(--radius-pill);
@@ -4083,7 +4867,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
    below the same threshold and on the same query as the viewer's block
    above, every rule scoped to the application (not the viewer). Above the
    threshold nothing here applies. */
-@media (max-width: 56rem), (orientation: landscape) and (max-height: 30rem) and (pointer: coarse) {
+@media (max-width: 47.999rem), (max-height: 31.249rem) {
   /* No horizontal overflow: the page is the viewport's width. */
   html:not([data-mode='viewer']) body {
     overflow-x: hidden;
@@ -4449,7 +5233,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     --timeline-name-row: 24px;
     --timeline-lane: 24px;
     --timeline-badge: 1.125rem;
-    --timeline-badge-font: 0.6875rem;
+    --timeline-badge-font: var(--text-12);
     --timeline-seg-h: 4px;
     --timeline-seg-gap: 2px;
     --timeline-seg-pad: 1px;
@@ -4524,6 +5308,13 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   html:not([data-mode='viewer']) .timeline-bar {
     top: calc(50% - 5px);
     height: 10px;
+  }
+
+  /* The amount figures keep their 10 pixels here (the owner's ruling in
+     v2.0.0): a phone's year cells are too narrow for larger figures. The
+     one size outside the six, until the pass that re-rules this chrome. */
+  html:not([data-mode='viewer']) .timeline-seg[data-kind='amount'] > .timeline-seg-label {
+    font-size: 0.625rem;
   }
 
   html:not([data-mode='viewer']) .timeline-point {

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { chromium, devices, type Browser, type Page } from 'playwright';
+import { pressExport, setSelect } from './chrome';
 
 // The quiet presentation chrome (v1.9.0, FR-37/FR-38 as amended), pinned in
 // a real layout, headless Chromium, offline, with the full-test demo exported
@@ -28,13 +29,13 @@ beforeAll(async () => {
   const page = await context.newPage();
   await page.goto(`file://${BUILT}`);
   await page.evaluate(() => delete (window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker);
-  await page.selectOption('#select-language', 'en');
+  await setSelect(page, 'select-language', 'en');
   await page.click('#load-demo');
   await page.waitForFunction(() => document.querySelectorAll('#marker-layer .marker').length === 11);
   await page.click('#tab-presentation');
   await page.click('#pres-fit');
   await page.waitForTimeout(300);
-  await page.click('#export-open');
+  await pressExport(page, 'export-open');
   const [download] = await Promise.all([page.waitForEvent('download'), page.click('#export-go')]);
   exported = join(mkdtempSync(join(tmpdir(), 'mapvibes-sleek-')), 'presentation.html');
   await download.saveAs(exported);
@@ -77,7 +78,7 @@ describe.each(PROFILES)('the quiet chrome on %s (v1.9.0)', (name, options, heade
   test('the header band and the stage share hold, in both views and both themes', async () => {
     for (const theme of ['light', 'dark'] as const) {
       const { page, errors } = await openViewer(options);
-      await page.selectOption('#select-theme', theme);
+      await setSelect(page, 'select-theme', theme);
       for (const view of ['map', 'timeline'] as const) {
         if (view === 'timeline') {
           await page.click('#pres-mode-timeline');

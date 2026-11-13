@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { chromium, type Browser, type Page } from 'playwright';
+import { setSelect } from './chrome';
 
 // The raised design bar in a real layout (FR-29 as amended in v1.17.0): in
 // both themes, at a desktop and a phone size, every visible text of an
@@ -149,18 +150,20 @@ describe('text contrast in a real layout (FR-29 as amended in v1.17.0)', () => {
     }, 120_000);
   }
 
-  test('the selection colour is the violet of the tokens, on the active tab and on the focus ring', async () => {
+  test('the selection colour is the violet of the tokens, as the underline of the current segment', async () => {
     const context = await browser.newContext({ viewport: { width: 1500, height: 950 } });
     await context.setOffline(true);
     const page = await context.newPage();
     await page.goto(`file://${BUILT}`);
-    await page.selectOption('#select-theme', 'light');
+    await setSelect(page, 'select-theme', 'light');
     const seen = await page.evaluate(() => {
       const tab = document.querySelector<HTMLElement>(".segment-tab[aria-selected='true']")!;
       tab.focus();
-      return { fill: getComputedStyle(tab).backgroundColor, text: getComputedStyle(tab).color };
+      return { underline: getComputedStyle(tab).boxShadow, text: getComputedStyle(tab).color };
     });
-    expect(seen).toEqual({ fill: 'rgb(90, 58, 168)', text: 'rgb(255, 255, 255)' });
+    // Since v2.0.0 the current segment is marked by an underline of two
+    // pixels in the selection colour, as the mockup draws it (it was a fill).
+    expect(seen).toEqual({ underline: 'rgb(90, 58, 168) 0px -2px 0px 0px inset', text: 'rgb(22, 24, 29)' });
     await context.close();
   });
 });

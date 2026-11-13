@@ -52,8 +52,8 @@ describe('interactive export (FR-11, FR-39)', () => {
     removeSaveDialog();
   });
 
-  test('the export action is in the Presentation segment', () => {
-    expect(byId('presentation-toolbar').contains(byId('export-open'))).toBe(true);
+  test('the export action is in the Export menu of the bar (FR-81)', () => {
+    expect(byId('bar-export-menu').contains(byId('export-open'))).toBe(true);
     expect(byId('export-open').textContent).toBe('Export presentation');
     expect(byId('export-panel').classList.contains('hidden')).toBe(true);
   });

@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { chromium, type Browser, type Page } from 'playwright';
+import { setSelect } from './chrome';
 
 // The at-a-glance end column (FR-46 as amended in v1.3.0) in a real layout:
 // fresh work shows the end values by default, and a version 6 work whose
@@ -32,7 +33,7 @@ async function open(): Promise<Page> {
   await context.setOffline(true);
   const page = await context.newPage();
   await page.goto(`file://${BUILT}`);
-  await page.selectOption('#select-language', 'en');
+  await setSelect(page, 'select-language', 'en');
   return page;
 }
 

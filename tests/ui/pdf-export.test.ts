@@ -87,9 +87,9 @@ describe('PDF export (FR-12, FR-50, FR-52)', () => {
     await flush();
   });
 
-  test('the action sits in the Presentation toolbar; the dialog states what the document holds before it is written', async () => {
+  test('the action sits in the Export menu of the bar (FR-81); the dialog states what the document holds before it is written', async () => {
     expect(byId('pdf-open').textContent).toBe('Export PDF');
-    expect(byId('pdf-open').parentElement!.id).toBe('presentation-toolbar');
+    expect(byId('pdf-open').parentElement!.id).toBe('bar-export-menu');
     await openPdf();
     expect(byId('document-panel').classList.contains('hidden')).toBe(false);
     expect(byId('document-heading').textContent).toBe('Export PDF');

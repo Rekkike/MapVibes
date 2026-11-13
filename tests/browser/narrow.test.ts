@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { chromium, devices, type Browser, type Page } from 'playwright';
+import { pressExport, setSelect } from './chrome';
 
 // The narrow viewer layout (FR-58) in a real layout, headless Chromium with
 // the device profiles of a phone in portrait and in landscape and a tablet
@@ -29,13 +30,13 @@ beforeAll(async () => {
   const page = await context.newPage();
   await page.goto(`file://${BUILT}`);
   await page.evaluate(() => delete (window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker);
-  await page.selectOption('#select-language', 'en');
+  await setSelect(page, 'select-language', 'en');
   await page.click('#load-demo');
   await page.waitForFunction(() => document.querySelectorAll('#marker-layer .marker').length === 11);
   await page.click('#tab-presentation');
   await page.click('#pres-fit');
   await page.waitForTimeout(300);
-  await page.click('#export-open');
+  await pressExport(page, 'export-open');
   const [download] = await Promise.all([page.waitForEvent('download'), page.click('#export-go')]);
   exported = join(mkdtempSync(join(tmpdir(), 'mapvibes-narrow-')), 'presentation.html');
   await download.saveAs(exported);

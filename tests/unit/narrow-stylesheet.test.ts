@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, test } from 'vitest';
-import { NARROW_QUERY } from '../../src/narrowviewer';
+import { NARROW_QUERY, VIEWER_NARROW_QUERY } from '../../src/narrowviewer';
 
 // Desktop safety of the stylesheet (Pass 13, unit 4; FR-58 as amended in
 // v1.8.0): every rule after the narrow-layout marker comment lies inside one
@@ -109,10 +109,10 @@ describe('the narrow media blocks (FR-58 as amended)', () => {
     expect(blocks(after)).toHaveLength(2);
   });
 
-  test('both queries are the query of the script', () => {
-    for (const block of blocks(after)) {
-      expect(block.query).toBe(NARROW_QUERY);
-    }
+  test('each query is the query of the script that drives its block', () => {
+    // The viewer keeps its own narrow viewport in v2.0.0; the application's
+    // is that of the compact and short classes (FR-58 as amended).
+    expect(blocks(after).map((block) => block.query)).toEqual([VIEWER_NARROW_QUERY, NARROW_QUERY]);
   });
 
   test('every rule of the first block applies to the viewer only, every rule of the second to the application only, and none sizes a marker', () => {

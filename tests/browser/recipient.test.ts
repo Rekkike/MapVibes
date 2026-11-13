@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { chromium, devices, type Browser, type BrowserContextOptions, type Page } from 'playwright';
+import { pressExport, setSelect } from './chrome';
 
 // The recipient problem (Pass 14) in a real browser, offline: the exported
 // file's static state (FR-38 as amended in v1.5.0), the no-scripts notice's
@@ -26,11 +27,11 @@ beforeAll(async () => {
   const page = await context.newPage();
   await page.goto(`file://${BUILT}`);
   await page.evaluate(() => delete (window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker);
-  await page.selectOption('#select-language', 'en');
+  await setSelect(page, 'select-language', 'en');
   await page.click('#load-demo');
   await page.waitForFunction(() => document.querySelectorAll('#marker-layer .marker').length === 11);
   await page.click('#tab-presentation');
-  await page.click('#export-open');
+  await pressExport(page, 'export-open');
   const [download] = await Promise.all([page.waitForEvent('download'), page.click('#export-go')]);
   exported = join(DIR, 'presentation.html');
   await download.saveAs(exported);
@@ -144,10 +145,10 @@ describe('Open presentation in the application (FR-60)', () => {
     // v1.8.0); on a wide viewport, in the header.
     if (await page.isVisible('#menu-toggle')) {
       await page.click('#menu-toggle');
-      await page.selectOption('#select-language', 'en');
+      await setSelect(page, 'select-language', 'en');
       await page.keyboard.press('Escape');
     } else {
-      await page.selectOption('#select-language', 'en');
+      await setSelect(page, 'select-language', 'en');
     }
     return { page, errors };
   }

@@ -14,7 +14,8 @@ import {
   stubStageLayout,
   textFile,
 } from './harness';
-import { NARROW_QUERY } from '../../src/narrowviewer';
+// The viewer keeps its own narrow viewport in v2.0.0 (FR-58 as amended).
+import { VIEWER_NARROW_QUERY as NARROW_QUERY } from '../../src/narrowviewer';
 import { en, sv } from '../../src/i18n';
 
 vi.mock('../../src/osmrender', () => ({

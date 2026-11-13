@@ -35,7 +35,10 @@ describe('reset demo (FR-56)', () => {
     await settle();
     expect(byId('demo-reset').classList.contains('hidden')).toBe(false);
     expect(byId('demo-reset').textContent).toBe('Reset demo');
-    expect(byId('demo-badge').nextElementSibling!.id).toBe('demo-reset');
+    // From the medium class upward the reset sits in the bar's Menu (FR-71 as
+    // amended in v2.0.0); the demo's badge stays in the bar.
+    expect(byId('demo-reset').parentElement!.id).toBe('app-menu');
+    expect(byId('demo-badge').parentElement!.id).toBe('app-header');
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     byId('tab-information').click();
     byId('start-empty').click();

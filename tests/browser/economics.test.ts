@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { chromium, devices, type Browser, type Page } from 'playwright';
+import { pressExport, setSelect } from './chrome';
 
 // The economics view (FR-64) in a real layout, headless Chromium, offline:
 // the example workbook with year series, its thirteen-year item as the
@@ -70,7 +71,7 @@ describe('the economics view in a browser (FR-64)', () => {
     page.on('pageerror', (e) => errors.push(String(e)));
     await page.goto(`file://${BUILT}`);
     await page.evaluate(() => delete (window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker);
-    await page.selectOption('#select-language', 'en');
+    await setSelect(page, 'select-language', 'en');
     await page.setInputFiles('#file-input', join(EXAMPLE, 'example-economics.xlsx'));
     await page.waitForSelector('.role-select[data-header="Start"]');
     for (const [h, r] of [
@@ -120,7 +121,7 @@ describe('the economics view in a browser (FR-64)', () => {
     await page.waitForFunction(() => document.getElementById('economics-overlay')!.dataset.state === 'closed');
     expect(await page.evaluate(() => document.activeElement?.className)).toBe('card-economics');
     expect(await page.getAttribute('#presentation-card', 'data-state')).toBe('open');
-    await page.click('#export-open');
+    await pressExport(page, 'export-open');
     const [download] = await Promise.all([page.waitForEvent('download'), page.click('#export-go')]);
     exported = join(mkdtempSync(join(tmpdir(), 'mapvibes-economics-')), 'presentation.html');
     await download.saveAs(exported);
