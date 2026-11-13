@@ -47,10 +47,13 @@ afterAll(async () => {
   await browser?.close();
 });
 
+// Since v2.1.0 the viewer crosses to the five classes (FR-58 as amended): a
+// phone in portrait is the compact class and a phone in landscape the short
+// class. A portrait tablet (768 to 820 pixels) is the medium class now; its
+// pins live in the sleek-chrome suite, re-derived to the new shares.
 const PROFILES = [
   ['phone portrait', devices['iPhone 13']],
   ['phone landscape', devices['iPhone 13 landscape']],
-  ['tablet portrait', devices['iPad (gen 7)']],
 ] as const;
 
 async function openViewer(profile: (typeof PROFILES)[number][1]): Promise<{ page: Page; errors: string[] }> {
@@ -78,6 +81,11 @@ async function overflowing(page: Page): Promise<string[]> {
     const out: string[] = [];
     for (const el of document.body.querySelectorAll('*')) {
       if (el.closest('.stage') && !el.classList.contains('stage')) {
+        continue;
+      }
+      // The floating toolbar pill scrolls sideways inside itself, as in the
+      // application; its clipped children are not overflow.
+      if (el.closest('#presentation-toolbar') && el.id !== 'presentation-toolbar') {
         continue;
       }
       if (el.getClientRects().length === 0 || getComputedStyle(el).visibility === 'hidden') {
@@ -135,16 +143,20 @@ describe.each(PROFILES)('the narrow viewer on a %s (FR-58)', (name, profile) => 
   test('the query matches, the stage occupies the viewport, and nothing overflows', async () => {
     const { page, errors } = await openViewer(profile);
     const v = viewport(page);
-    expect(await page.evaluate(() => matchMedia('(max-width: 56rem), (orientation: landscape) and (max-height: 30rem) and (pointer: coarse)').matches)).toBe(
-      true,
-    );
+    // The class in force (FR-58 as amended in v2.0.0 and v2.1.0): the phone
+    // in portrait is the compact class, the phone in landscape the short
+    // class.
+    const layout = await page.evaluate(() => document.documentElement.dataset.layout);
+    expect(layout).toBe(name === 'phone landscape' ? 'short' : 'compact');
+    expect(await page.evaluate(() => matchMedia('(max-width: 47.999rem), (max-height: 31.249rem)').matches)).toBe(true);
     // No page scroll in either direction.
     expect(await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.scrollHeight])).toEqual([v.width, v.height]);
     expect(await overflowing(page)).toEqual([]);
-    // The stage spans the width and reaches the bottom of the viewport; the
-    // header and the toolbar take the rest of the height.
+    // The stage spans the width (beside the short class's 56-pixel rail) and
+    // reaches the bottom of the viewport; the bar takes the rest of the
+    // height in the compact class.
     const stage = await box(page, '#presentation-stage');
-    expect(stage.width).toBeGreaterThanOrEqual(v.width - 24);
+    expect(stage.width).toBeGreaterThanOrEqual(v.width - (layout === 'short' ? 68 : 24));
     expect(v.height - (stage.y + stage.height)).toBeLessThanOrEqual(12);
     expect(stage.height).toBeGreaterThanOrEqual(v.height * (name === 'phone landscape' ? 0.5 : 0.7));
     // The side panels are out of the flow: no item list, and the overlays
@@ -290,17 +302,17 @@ describe.each(PROFILES)('the narrow viewer on a %s (FR-58)', (name, profile) => 
   }, 60_000);
 });
 
-describe('the landscape clause (FR-58)', () => {
-  test('a large phone turned sideways, wider than the width threshold, is narrow by the landscape clause', async () => {
+describe('the short class (FR-58 as amended in v2.0.0 and v2.1.0)', () => {
+  test('a large phone turned sideways, wider than the width threshold, is the short class by its height', async () => {
     const context = await browser.newContext({ viewport: { width: 932, height: 430 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3 });
     const page = await context.newPage();
     await page.goto(`file://${exported}`);
     await page.waitForFunction(() => document.documentElement.dataset.mode === 'viewer');
-    const [width, landscape] = await page.evaluate(() => [
-      matchMedia('(max-width: 56rem)').matches,
-      matchMedia('(orientation: landscape) and (max-height: 30rem) and (pointer: coarse)').matches,
-    ]);
-    expect([width, landscape]).toEqual([false, true]);
+    const [width, height] = await page.evaluate(() => [matchMedia('(max-width: 47.999rem)').matches, matchMedia('(max-height: 31.249rem)').matches]);
+    expect([width, height]).toEqual([false, true]);
+    expect(await page.evaluate(() => document.documentElement.dataset.layout)).toBe('short');
+    const rail = await box(page, '#app-header');
+    expect(rail.width).toBe(56);
     expect(await visibility(page, '#presentation-glance')).toBe('hidden/closed');
     expect(await page.isVisible('#toggle-glance')).toBe(true);
     await context.close();

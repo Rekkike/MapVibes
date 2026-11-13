@@ -34,7 +34,14 @@ export async function setSelect(page: Page, id: 'select-language' | 'select-them
 // Presses one of the three export actions.
 export async function pressExport(page: Page, id: 'export-open' | 'pdf-open' | 'pptx-open'): Promise<void> {
   if (!(await page.isVisible(`#${id}`))) {
-    await page.click('#bar-export');
+    // The bar's Export menu in the medium and wider classes; the Menu
+    // overlay in the compact and short classes, where the bar has no
+    // Export (v2.1.0).
+    if (await page.isVisible('#bar-export')) {
+      await page.click('#bar-export');
+    } else {
+      await page.click('#menu-toggle');
+    }
   }
   await page.click(`#${id}`);
 }

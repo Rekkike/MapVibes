@@ -3682,6 +3682,99 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
    complement of the narrow query below; the compact and short classes and
    the viewer keep their own rules. The controls that style alone cannot
    place are moved by src/shell.ts. */
+
+/* The icon buttons (the menu control, the tool strip and its "more", the
+   overlay toggles, the fit controls, the drawing tools): their name stays
+   for assistive technology, the text is not drawn, a glyph is drawn in its
+   place. At every class of the application, the compact and short classes
+   included (v2.1.0). */
+html:not([data-mode='viewer']) :is(#menu-toggle, #map-more, #map-fit, #pres-fit, #pres-reset, .annotation-tool[data-tool]) {
+  position: relative;
+}
+
+/* An icon button: its name stays for assistive technology, its text is
+   not drawn, and a glyph is drawn in its place. */
+html:not([data-mode='viewer']) :is(#menu-toggle, #map-more, #toggle-items, #toggle-visibility, #toggle-map-glance, #toggle-glance, #map-fit, #pres-fit, #pres-reset, .annotation-tool[data-tool]) {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  overflow: hidden;
+  border-color: transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--fg);
+  /* The text is moved out of the box, not shrunk or made transparent. */
+  text-indent: 4rem;
+  white-space: nowrap;
+}
+
+html:not([data-mode='viewer']) :is(#menu-toggle, #map-more, #toggle-items, #toggle-visibility, #toggle-map-glance, #toggle-glance, #map-fit, #pres-fit, #pres-reset, .annotation-tool[data-tool])::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: auto;
+  background: currentColor;
+  -webkit-mask: var(--glyph) center / contain no-repeat;
+  mask: var(--glyph) center / contain no-repeat;
+}
+
+html:not([data-mode='viewer']) :is(#menu-toggle, #map-more, #toggle-items, #toggle-visibility, #toggle-map-glance, #toggle-glance, #map-fit, #pres-fit, #pres-reset, .annotation-tool[data-tool]):hover:not(:disabled) {
+  border-color: var(--control-line);
+}
+
+html #menu-toggle {
+  --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round'%3E%3Cpath d='M4 6h12M4 10h12M4 14h12'/%3E%3C/svg%3E");
+}
+
+html :is(#toggle-items, #toggle-visibility) {
+  --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round'%3E%3Cpath d='M7 5h9M7 10h9M7 15h9M3.5 5h.5M3.5 10h.5M3.5 15h.5'/%3E%3C/svg%3E");
+}
+
+html :is(#toggle-map-glance, #toggle-glance) {
+  --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 8l5 5 5-5'/%3E%3C/svg%3E");
+}
+
+html :is(#toggle-map-glance, #toggle-glance)[aria-expanded='true'] {
+  --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5-5 5 5'/%3E%3C/svg%3E");
+}
+
+html #map-more {
+  --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M5 10h.1M10 10h.1M15 10h.1'/%3E%3C/svg%3E");
+}
+
+html :is(#map-fit, #pres-fit) {
+  --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 8V4h4M16 8V4h-4M4 12v4h4M16 12v4h-4'/%3E%3C/svg%3E");
+}
+
+html #pres-reset {
+  --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 10a6 6 0 1 0 2-4.5M4 4v3.5h3.5'/%3E%3C/svg%3E");
+}
+
+html .annotation-tool[data-tool='select'] {
+  --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 3l10 6-4.5 1.2L13 15l-2 1-2.4-4.7L5 14z'/%3E%3C/svg%3E");
+}
+
+html .annotation-tool[data-tool='rectangle'] {
+  --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7'%3E%3Crect x='3.5' y='5' width='13' height='10' rx='1'/%3E%3C/svg%3E");
+}
+
+html .annotation-tool[data-tool='circle'] {
+  --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7'%3E%3Ccircle cx='10' cy='10' r='6.5'/%3E%3C/svg%3E");
+}
+
+html .annotation-tool[data-tool='polygon'] {
+  --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linejoin='round'%3E%3Cpath d='M4 8l6-5 6 5-2 8H6z'/%3E%3C/svg%3E");
+}
+
+html .annotation-tool[data-tool='line'] {
+  --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round'%3E%3Cpath d='M4 16L16 4'/%3E%3C/svg%3E");
+}
+
 @media (min-width: 48rem) and (min-height: 31.25rem) {
   html:not([data-mode='viewer']) body {
     display: grid;
@@ -3830,92 +3923,6 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     order: 9;
   }
 
-  html:not([data-mode='viewer']) :is(#menu-toggle, #map-more, #map-fit, #pres-fit, #pres-reset, .annotation-tool[data-tool]) {
-    position: relative;
-  }
-
-  /* An icon button: its name stays for assistive technology, its text is
-     not drawn, and a glyph is drawn in its place. */
-  html:not([data-mode='viewer']) :is(#menu-toggle, #map-more, #toggle-items, #toggle-visibility, #toggle-map-glance, #toggle-glance, #map-fit, #pres-fit, #pres-reset, .annotation-tool[data-tool]) {
-    flex: none;
-    display: inline-grid;
-    place-items: center;
-    width: 2.25rem;
-    height: 2.25rem;
-    padding: 0;
-    overflow: hidden;
-    border-color: transparent;
-    border-radius: var(--radius-sm);
-    background: none;
-    color: var(--fg);
-    /* The text is moved out of the box, not shrunk or made transparent. */
-    text-indent: 4rem;
-    white-space: nowrap;
-  }
-
-  html:not([data-mode='viewer']) :is(#menu-toggle, #map-more, #toggle-items, #toggle-visibility, #toggle-map-glance, #toggle-glance, #map-fit, #pres-fit, #pres-reset, .annotation-tool[data-tool])::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    width: 1.125rem;
-    height: 1.125rem;
-    margin: auto;
-    background: currentColor;
-    -webkit-mask: var(--glyph) center / contain no-repeat;
-    mask: var(--glyph) center / contain no-repeat;
-  }
-
-  html:not([data-mode='viewer']) :is(#menu-toggle, #map-more, #toggle-items, #toggle-visibility, #toggle-map-glance, #toggle-glance, #map-fit, #pres-fit, #pres-reset, .annotation-tool[data-tool]):hover:not(:disabled) {
-    border-color: var(--control-line);
-  }
-
-  html:not([data-mode='viewer']) #menu-toggle {
-    --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round'%3E%3Cpath d='M4 6h12M4 10h12M4 14h12'/%3E%3C/svg%3E");
-  }
-
-  html:not([data-mode='viewer']) :is(#toggle-items, #toggle-visibility) {
-    --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round'%3E%3Cpath d='M7 5h9M7 10h9M7 15h9M3.5 5h.5M3.5 10h.5M3.5 15h.5'/%3E%3C/svg%3E");
-  }
-
-  html:not([data-mode='viewer']) :is(#toggle-map-glance, #toggle-glance) {
-    --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 8l5 5 5-5'/%3E%3C/svg%3E");
-  }
-
-  html:not([data-mode='viewer']) :is(#toggle-map-glance, #toggle-glance)[aria-expanded='true'] {
-    --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5-5 5 5'/%3E%3C/svg%3E");
-  }
-
-  html:not([data-mode='viewer']) #map-more {
-    --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M5 10h.1M10 10h.1M15 10h.1'/%3E%3C/svg%3E");
-  }
-
-  html:not([data-mode='viewer']) :is(#map-fit, #pres-fit) {
-    --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 8V4h4M16 8V4h-4M4 12v4h4M16 12v4h-4'/%3E%3C/svg%3E");
-  }
-
-  html:not([data-mode='viewer']) #pres-reset {
-    --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 10a6 6 0 1 0 2-4.5M4 4v3.5h3.5'/%3E%3C/svg%3E");
-  }
-
-  html:not([data-mode='viewer']) .annotation-tool[data-tool='select'] {
-    --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 3l10 6-4.5 1.2L13 15l-2 1-2.4-4.7L5 14z'/%3E%3C/svg%3E");
-  }
-
-  html:not([data-mode='viewer']) .annotation-tool[data-tool='rectangle'] {
-    --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7'%3E%3Crect x='3.5' y='5' width='13' height='10' rx='1'/%3E%3C/svg%3E");
-  }
-
-  html:not([data-mode='viewer']) .annotation-tool[data-tool='circle'] {
-    --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7'%3E%3Ccircle cx='10' cy='10' r='6.5'/%3E%3C/svg%3E");
-  }
-
-  html:not([data-mode='viewer']) .annotation-tool[data-tool='polygon'] {
-    --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linejoin='round'%3E%3Cpath d='M4 8l6-5 6 5-2 8H6z'/%3E%3C/svg%3E");
-  }
-
-  html:not([data-mode='viewer']) .annotation-tool[data-tool='line'] {
-    --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round'%3E%3Cpath d='M4 16L16 4'/%3E%3C/svg%3E");
-  }
 
   /* -- The bar's two menus and the tool strip's "more": closed until asked
         for, one at a time. -- */
@@ -4517,8 +4524,8 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     flex-wrap: nowrap;
     height: 3rem;
     min-height: 3rem;
-    padding: 0 var(--space-4) 0 var(--space-12);
-    gap: var(--space-8);
+    padding: 0;
+    gap: 0;
   }
 
   /* The phone's bar carries no brand, as the mockup's phone frames draw it. */
@@ -4538,12 +4545,12 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     flex: 1 1 0;
     height: 100%;
     min-width: 0;
-    padding: 0 var(--space-4);
+    padding: 0 var(--space-2);
     border: 0;
     border-radius: 0;
     background: none;
     color: var(--muted);
-    font-size: var(--text-14);
+    font-size: var(--text-12);
     font-weight: 400;
     white-space: nowrap;
     overflow: hidden;
@@ -4653,6 +4660,18 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     padding: 0 var(--space-4);
   }
 
+  /* The strip's "more" rides in the bar as an icon button (the base page
+     keeps its hidden attribute; the classes above show it through their own
+     icon-button rule). */
+  html:not([data-mode='viewer'])[data-layout='compact'] #annotation-tools #map-more {
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+  }
+
   html:not([data-mode='viewer'])[data-layout='compact'] #map-toggles {
     order: 2;
   }
@@ -4696,6 +4715,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     position: absolute;
     top: var(--space-8);
     left: 50%;
+    transform: translateX(-50%);
     z-index: var(--layer-card);
     order: 0;
     display: flex;
@@ -4783,7 +4803,10 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
    control. The stage owns everything else. Every rule is scoped to the
    application. */
 @media (max-height: 31.249rem) {
-  html:not([data-mode='viewer'])[data-layout='short'] body {
+  /* Per segment, so that this rule outranks the narrow block's body rule of
+     the same specificity that lays the page out in a column. */
+  html:not([data-mode='viewer'])[data-layout='short'][data-segment='map'] body,
+  html:not([data-mode='viewer'])[data-layout='short'][data-segment='presentation'] body {
     display: flex;
     flex-direction: row;
     height: 100dvh;
@@ -4797,6 +4820,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     height: 100dvh;
     min-height: 0;
     flex-direction: column;
+    flex-wrap: nowrap;
     align-items: center;
     justify-content: flex-start;
     gap: var(--space-2);
@@ -4814,6 +4838,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   html:not([data-mode='viewer'])[data-layout='short'] #segment-nav {
     flex: none;
     flex-direction: column;
+    align-self: stretch;
     width: 100%;
     height: auto;
     gap: var(--space-2);
@@ -4858,11 +4883,13 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     padding: 0;
   }
 
-  /* The tools and the zoom group ride in the rail, one icon deep. */
+  /* The tools and the zoom group ride in the rail, one icon deep. The zoom
+     groups keep relative positioning so that their absolutely positioned
+     level readout stays inside the rail. */
   html:not([data-mode='viewer'])[data-layout='short'] #app-header #annotation-tools,
   html:not([data-mode='viewer'])[data-layout='short'] #app-header #map-zoom,
   html:not([data-mode='viewer'])[data-layout='short'] #app-header #pres-zoom {
-    position: static;
+    position: relative;
     display: flex;
     flex: none;
     flex-direction: column;
@@ -4881,7 +4908,9 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
 
   html:not([data-mode='viewer'])[data-layout='short'] #app-header .annotation-tool,
   html:not([data-mode='viewer'])[data-layout='short'] #app-header #map-zoom .icon-button,
-  html:not([data-mode='viewer'])[data-layout='short'] #app-header #pres-zoom .icon-button {
+  html:not([data-mode='viewer'])[data-layout='short'] #app-header #pres-zoom .icon-button,
+  html:not([data-mode='viewer'])[data-layout='short'] #app-header #map-zoom-level,
+  html:not([data-mode='viewer'])[data-layout='short'] #app-header #pres-zoom-level {
     width: 2.75rem;
     min-width: 2.75rem;
     height: 2.75rem;
@@ -5390,6 +5419,7 @@ html[data-idle='true'] #toggle-glance {
     height: 100dvh;
     min-height: 0;
     flex-direction: column;
+    flex-wrap: nowrap;
     align-items: center;
     gap: var(--space-2);
     padding: var(--space-4) 0;
@@ -5411,12 +5441,37 @@ html[data-idle='true'] #toggle-glance {
     padding: 0;
   }
 
+  /* The stage is full-bleed beside the rail. */
+  html[data-mode='viewer'][data-layout='short'] body #segment-presentation {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  html[data-mode='viewer'][data-layout='short'] body #presentation-area {
+    position: relative;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  html[data-mode='viewer'][data-layout='short'] body #presentation-stage {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
   html[data-mode='viewer'][data-layout='short'] body #presentation-toolbar {
     display: none;
   }
 
   html[data-mode='viewer'][data-layout='short'] body #app-header :is(#pres-mode, #pres-zoom, #viewer-toggles) {
-    position: static;
+    /* Relative, not static: the zoom level readout is absolutely positioned
+       and would otherwise escape the rail and scroll the page. */
+    position: relative;
     display: flex;
     flex: none;
     flex-direction: column;
@@ -5431,6 +5486,7 @@ html[data-idle='true'] #toggle-glance {
 
   html[data-mode='viewer'][data-layout='short'] body #app-header .pres-mode-button,
   html[data-mode='viewer'][data-layout='short'] body #app-header #pres-zoom .icon-button,
+  html[data-mode='viewer'][data-layout='short'] body #app-header #pres-zoom-level,
   html[data-mode='viewer'][data-layout='short'] body #app-header .viewer-toggle {
     width: 2.75rem;
     min-width: 2.75rem;
@@ -5443,6 +5499,34 @@ html[data-idle='true'] #toggle-glance {
     border-radius: var(--radius-sm);
   }
 
+  /* Zoom and fit ride in the rail as icon buttons (the glyph variables are
+     set at the top level, for the application and the viewer alike). */
+  html[data-mode='viewer'][data-layout='short'] body #app-header #pres-zoom button {
+    position: relative;
+    flex: none;
+    display: inline-grid;
+    place-items: center;
+    width: 2.75rem;
+    min-width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    overflow: hidden;
+    text-indent: 4rem;
+    white-space: nowrap;
+  }
+
+  html[data-mode='viewer'][data-layout='short'] body #app-header #pres-zoom button::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    width: 1.125rem;
+    height: 1.125rem;
+    margin: auto;
+    background: currentColor;
+    -webkit-mask: var(--glyph) center / contain no-repeat;
+    mask: var(--glyph) center / contain no-repeat;
+  }
+
   html[data-mode='viewer'][data-layout='short'] body #app-header .controls {
     flex-direction: column;
     gap: var(--space-2);
@@ -5451,6 +5535,15 @@ html[data-idle='true'] #toggle-glance {
   html[data-mode='viewer'][data-layout='short'] body #app-header .controls label {
     writing-mode: vertical-rl;
     text-orientation: mixed;
+    font-size: var(--text-12);
+  }
+
+  /* The selects fit the rail's width. */
+  html[data-mode='viewer'][data-layout='short'] body #app-header .controls select {
+    width: 2.75rem;
+    min-width: 0;
+    max-width: 2.75rem;
+    padding: 0 var(--space-2);
     font-size: var(--text-12);
   }
 

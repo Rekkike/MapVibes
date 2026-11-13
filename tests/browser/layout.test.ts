@@ -205,12 +205,16 @@ describe("the short class's side rail (FR-71 as amended in v2.1.0, the owner's r
       // No top or bottom bar: the header is the rail alone.
       expect(rail.x).toBe(0);
       expect(rail.y).toBe(0);
-      // The segment switch, the map tools, and zoom and fit ride in the rail.
+      // The segment switch and the menu control ride in the rail; the map
+      // tools and zoom and fit ride in it where its height holds them and
+      // otherwise sit behind its menu control (the owner's ruling) — within
+      // the header's subtree either way.
       const nav = await box(page, '#segment-nav');
       expect(nav.x).toBeGreaterThanOrEqual(rail.x);
       expect(nav.x + nav.width).toBeLessThanOrEqual(rail.x + rail.width);
-      const tools = await box(page, '#annotation-tools');
-      expect(tools.x + tools.width).toBeLessThanOrEqual(rail.x + rail.width);
+      for (const id of ['annotation-tools', 'map-zoom']) {
+        expect(await page.evaluate((id) => document.getElementById(id)!.closest('#app-header') !== null, id), id).toBe(true);
+      }
       expect(await page.isVisible('#menu-toggle')).toBe(true);
       // The former tool rows are gone; the stage takes everything beside the rail.
       expect(await page.isVisible('#annotation-toolbar')).toBe(false);

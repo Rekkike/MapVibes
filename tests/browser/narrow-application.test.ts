@@ -127,6 +127,16 @@ async function state(page: Page, id: string): Promise<string> {
   return page.$eval(`#${id}`, (e) => `${getComputedStyle(e).visibility}/${(e as HTMLElement).dataset.state}`);
 }
 
+// In the short class whatever the rail's height cannot hold sits behind the
+// rail's own menu control (the owner's ruling, v2.1.0): open it first.
+async function tapControl(page: Page, id: string): Promise<void> {
+  if (!(await page.isVisible(`#${id}`))) {
+    await page.tap('#menu-toggle');
+    await page.waitForTimeout(250);
+  }
+  await page.tap(`#${id}`);
+}
+
 // A point of the stage from which two fingers, the given distance either
 // side of it, both start on the map itself: in the Map segment a finger on
 // a marker drags the marker and takes no part in a pinch (FR-36, v1.2.0).
@@ -205,7 +215,7 @@ describe.each(PROFILES)('the narrow application on the %s (FR-71 to FR-74)', (na
     // crossed to them too, so the old 896-pixel viewer query is retired).
     expect(await page.evaluate(() => matchMedia('(max-width: 47.999rem), (max-height: 31.249rem)').matches)).toBe(true);
     const header = await box(page, '#app-header');
-    if (kind === 'portrait') {
+    if (kind !== 'landscape') {
       // The compact class's phone chrome: one 48-pixel row with the
       // segments in the bar (v2.1.0).
       expect(header.height).toBe(48);
@@ -246,14 +256,15 @@ describe.each(PROFILES)('the narrow application on the %s (FR-71 to FR-74)', (na
         heights[stage] = Math.round(s.height);
         // The stage reaches the bottom of the viewport, less the margins —
         // less the 56-pixel bottom bar in the compact class's Map segment.
-        if (kind === 'portrait' && stage === 'map-stage') {
+        if (kind !== 'landscape' && stage === 'map-stage') {
           expect(v.height - (s.y + s.height), stage).toBe(56);
         } else {
           expect(v.height - (s.y + s.height), stage).toBeLessThanOrEqual(20);
         }
         // The Presentation segment's chrome floats on the stage: no tool row
-        // takes height (v2.1.0).
-        if (stage === 'presentation-stage') {
+        // takes height (v2.1.0). In the short class the toolbar is gone
+        // altogether; the switch rides in the rail.
+        if (stage === 'presentation-stage' && kind !== 'landscape') {
           expect((await box(page, '#presentation-toolbar')).height).toBeLessThanOrEqual(52);
         }
       }
@@ -273,34 +284,70 @@ describe.each(PROFILES)('the narrow application on the %s (FR-71 to FR-74)', (na
     const menu = await box(page, '#app-menu');
     const v = page.viewportSize()!;
     expect(menu.y + menu.height).toBeLessThanOrEqual(v.height + 0.5);
-    expect(await page.$$eval('#app-menu > *', (e) => e.map((x) => x.id || x.querySelector('select')!.id))).toEqual([
-      'demo-badge',
-      'demo-reset',
-      'work-controls',
-      'select-language',
-      'select-theme',
-    ]);
+    // v2.1.0: the three exports ride in the Menu overlay in the compact and
+    // short classes, where the bar has no Export. In the short class the
+    // rail's menu also holds the toggles and the order's control (the
+    // owner's ruling).
+    const menuItems = await page.$$eval('#app-menu > *', (e) => e.map((x) => x.id || x.querySelector('select')!.id));
+    if (kind === 'landscape') {
+      // The toggles and the order's control sit behind the rail's menu
+      // control, and whatever the rail's height cannot hold joins them
+      // there (the owner's ruling): the zoom group and the tool strip,
+      // in that priority order, depending on the viewport's height.
+      expect(menuItems.slice(0, 12)).toEqual([
+        'demo-badge',
+        'demo-reset',
+        'work-controls',
+        'select-language',
+        'select-theme',
+        'export-open',
+        'pdf-open',
+        'pptx-open',
+        'map-toggles',
+        'presentation-toggles',
+        'viewer-toggles',
+        'pres-order-label',
+      ]);
+      for (const extra of menuItems.slice(12)) {
+        expect(['map-zoom', 'annotation-tools']).toContain(extra);
+      }
+    } else {
+      // v2.1.0: the three exports ride in the Menu overlay in the compact
+      // class, where the bar has no Export.
+      expect(menuItems).toEqual(['demo-badge', 'demo-reset', 'work-controls', 'select-language', 'select-theme', 'export-open', 'pdf-open', 'pptx-open']);
+    }
     // Another overlay closes the menu.
-    await page.tap('#toggle-items');
+    await tapControl(page, 'toggle-items');
     await page.waitForTimeout(300);
     expect([await state(page, 'placement-area'), await state(page, 'app-menu')]).toEqual(['visible/open', 'hidden/closed']);
-    await page.tap('#toggle-items');
+    // In the short class the toggle sits in the rail's menu, so closing the
+    // overlay by its toggle would reopen the menu instead: Escape closes it.
+    if (kind === 'landscape') {
+      await page.keyboard.press('Escape');
+    } else {
+      await tapControl(page, 'toggle-items');
+    }
     await page.waitForTimeout(300);
     expect(await state(page, 'placement-area')).toBe('hidden/closed');
-    await page.tap('#toggle-map-legend');
+    await tapControl(page, 'toggle-map-legend');
     await page.keyboard.press('Escape');
     await page.waitForTimeout(300);
     expect(await state(page, 'map-legend')).toBe('hidden/closed');
-    expect(await page.evaluate(() => document.activeElement?.id)).toBe('toggle-map-legend');
-    // A tap outside, on the header's title.
-    await page.tap('#toggle-map-glance');
+    // In the short class the toggle sits behind the rail's menu control, so
+    // the focus return cannot land on it there.
+    if (kind !== 'landscape') {
+      expect(await page.evaluate(() => document.activeElement?.id)).toBe('toggle-map-legend');
+    }
+    // A tap outside, on a clear point of the stage (the compact and short
+    // classes' bar carries no brand to tap on).
+    await tapControl(page, 'toggle-map-glance');
     await page.waitForTimeout(300);
-    const title = await box(page, '#app-title');
-    await page.touchscreen.tap(title.x + 10, title.y + title.height / 2);
+    const spot = await freeCentre(page, '#map-stage', 0);
+    await page.touchscreen.tap(spot.x, spot.y);
     await page.waitForTimeout(300);
     expect(await state(page, 'map-glance')).toBe('hidden/closed');
     // "In view": choosing an entry closes it and opens the details sheet.
-    await page.tap('#toggle-map-glance');
+    await tapControl(page, 'toggle-map-glance');
     await page.waitForTimeout(300);
     expect(await page.locator('#map-glance-list .glance-entry').count()).toBeGreaterThan(0);
     await page.locator('#map-glance-list .glance-entry').first().tap();
@@ -313,7 +360,7 @@ describe.each(PROFILES)('the narrow application on the %s (FR-71 to FR-74)', (na
   test('tap-to-place places an unplaced item; the details sheet stays within the viewport and shows every value in full', async () => {
     const { page } = await openDemo(profile);
     await page.tap('#tab-map');
-    await page.tap('#toggle-items');
+    await tapControl(page, 'toggle-items');
     await page.waitForTimeout(300);
     const action = page.locator('#placement-list .placement-place');
     expect(await action.count()).toBe(1);
@@ -336,7 +383,7 @@ describe.each(PROFILES)('the narrow application on the %s (FR-71 to FR-74)', (na
       if (await page.$eval('#details-panel', (e) => !e.classList.contains('hidden'))) {
         await page.tap('#details-panel .details-close');
       }
-      await page.tap('#toggle-items');
+      await tapControl(page, 'toggle-items');
       await page.waitForTimeout(250);
       await page
         .locator('#placement-list .placement-item')
@@ -361,7 +408,7 @@ describe.each(PROFILES)('the narrow application on the %s (FR-71 to FR-74)', (na
   test('pan and pinch work on the map stage; the page does not move', async () => {
     const { page } = await openDemo(profile);
     await page.tap('#tab-map');
-    await page.tap('#map-fit');
+    await tapControl(page, 'map-fit');
     await page.waitForTimeout(400);
     const fitted = await scaleOf(page, 'map-content');
     await pinch(page, '#map-stage', 30, 110);
@@ -387,22 +434,29 @@ describe.each(PROFILES)('the narrow application on the %s (FR-71 to FR-74)', (na
       els.map((e) => [e.id, Math.round(e.getBoundingClientRect().x)] as [string, number]),
     );
     const at = Object.fromEntries(xs);
-    expect(at['pres-mode']).toBeLessThan(at['pres-order-label']);
-    expect(at['pres-order-label']).toBeLessThan(at['presentation-toggles']);
-    expect(at['presentation-toggles']).toBeLessThan(at['viewer-toggles']);
-    expect(at['viewer-toggles']).toBeLessThan(at['pres-zoom']);
+    // In the short class there is no floating toolbar pill: the view switch
+    // rides in the rail and the rest sit behind the rail's menu control.
+    if (kind !== 'landscape') {
+      expect(at['pres-mode']).toBeLessThan(at['pres-order-label']);
+      expect(at['pres-order-label']).toBeLessThan(at['presentation-toggles']);
+      expect(at['presentation-toggles']).toBeLessThan(at['viewer-toggles']);
+      // Zoom and fit float at the stage's lower right, below the pill.
+      const pill = await box(page, '#presentation-toolbar');
+      const zoom = await box(page, '#pres-zoom');
+      expect(zoom.y).toBeGreaterThanOrEqual(pill.y + pill.height - 1);
+    }
     expect(await page.isVisible('#export-open')).toBe(false);
     // The Legend toggle is reached by a sideways swipe where it does not fit.
     await page.locator('#toggle-legend').scrollIntoViewIfNeeded();
-    await page.tap('#toggle-legend');
+    await tapControl(page, 'toggle-legend');
     await page.waitForTimeout(300);
     expect(await state(page, 'presentation-legend')).toBe('visible/open');
     await page.keyboard.press('Escape');
     await page.waitForTimeout(250);
     // The card docks at the bottom of the stage.
-    await page.tap('#pres-fit');
+    await tapControl(page, 'pres-fit');
     await page.waitForTimeout(400);
-    await page.tap('#toggle-glance');
+    await tapControl(page, 'toggle-glance');
     await page.waitForTimeout(300);
     await page.locator('#presentation-glance-list .glance-entry').first().tap();
     await page.waitForTimeout(400);
@@ -416,7 +470,7 @@ describe.each(PROFILES)('the narrow application on the %s (FR-71 to FR-74)', (na
     await page.waitForTimeout(250);
     // The timeline: 48-pixel lines, the chip row over the plot (FR-58 as
     // noted in v1.14.0); a line's chip opens the docked card.
-    await page.tap('#pres-mode-timeline');
+    await tapControl(page, 'pres-mode-timeline');
     await page.waitForTimeout(400);
     const lines = await page.$$eval('#presentation-timeline .timeline-line', (ls) => ls.map((l) => l.getBoundingClientRect().height));
     expect(lines.length).toBe(12);

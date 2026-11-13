@@ -203,8 +203,9 @@ describe('document exports in a browser, offline (FR-50, FR-51)', () => {
     await page.locator('.visibility-toggle').first().click();
     const pdf = await download(page, '#pdf-open');
     const pages = await pdfPages(pdf.bytes);
-    const table = pages[pages.length - 1];
-    const schedule = pages.slice(1, -1).join('|');
+    // The table's last two pages: the columns in 2 parts.
+    const table = pages.slice(-2).join('|');
+    const schedule = pages.slice(1, -2).join('|');
     expect(table).not.toContain('D-01');
     expect(table).toContain('D-02');
     expect(schedule).not.toContain('North gate');

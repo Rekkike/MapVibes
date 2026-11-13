@@ -85,9 +85,11 @@ function move(id: string | HTMLElement, where: Move['where'], first = false): Mo
 
 function buildMoves(): Move[] {
   const menu = el('app-menu');
-  // The strip's placement, in the medium and wide classes and in the compact
-  // class, where the tool rows become the 56-pixel bottom bar (v2.1.0).
-  const strip = (target: () => HTMLElement) => (mode: Mode) => (mode === 'medium' || mode === 'wide' || mode === 'compact' ? target() : null);
+  // The strip's placement, in every class (v2.1.0): in the medium and wide
+  // classes the floating strip, in the compact class the 56-pixel bottom
+  // bar, in the short class the rail (or behind the rail's menu control,
+  // which placeShortRail arranges).
+  const strip = (target: () => HTMLElement) => (_mode: Mode) => target();
   const desk = (target: () => HTMLElement) => (mode: Mode) => (mode === 'medium' || mode === 'wide' ? target() : null);
   const language = el('select-language').closest('label')!;
   const theme = el('select-theme').closest('label')!;

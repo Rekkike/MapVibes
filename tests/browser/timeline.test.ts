@@ -211,10 +211,17 @@ describe('the timeline in the application (FR-66, FR-67, FR-70)', () => {
         for (const x of l.filter((x) => x.bar && x.top >= 0)) {
           expect(x.name!.bottom).toBeLessThanOrEqual(x.bar!.top + 0.5);
         }
-        // The switch on the row of the two toggles.
+        // The switch on the row of the two toggles in the compact class's
+        // pill; in the short class both ride in the rail, one icon deep.
         const mode = (await page.locator('#pres-mode').boundingBox())!;
         const toggles = (await page.locator('#viewer-toggles').boundingBox())!;
-        expect(Math.abs(mode.y - toggles.y)).toBeLessThanOrEqual(4);
+        const layout = await page.evaluate(() => document.documentElement.dataset.layout);
+        if (layout === 'short') {
+          expect(mode.x).toBeLessThan(56);
+          expect(toggles.x).toBeLessThan(56);
+        } else {
+          expect(Math.abs(mode.y - toggles.y)).toBeLessThanOrEqual(4);
+        }
         expect(await page.isVisible('#toggle-legend')).toBe(true);
         // "In view" lists the visible lines; an entry opens the card docked
         // at the bottom, within the viewport.

@@ -183,14 +183,13 @@ describe('the polish pass in a browser (v1.3.0)', () => {
     await page.close();
   }, 60_000);
 
-  test('the exported viewer opens at the exported view (FR-38)', async () => {
+  test('the exported viewer opens fitted to its stage (FR-38 as amended in v2.1.0: the refit on open)', async () => {
     const { page } = await demo();
     await page.click('#tab-presentation');
     await page.click('#pres-fit');
     await page.click('#pres-zoom-in');
     await page.click('#pres-zoom-in');
     await page.waitForTimeout(500);
-    const zoom = await page.textContent('#pres-zoom-level');
     // The map point at the centre of the stage.
     const centre = (p: Page) =>
       p.evaluate(() => {
@@ -199,7 +198,6 @@ describe('the polish pass in a browser (v1.3.0)', () => {
         const [x, y, scale] = [Number(m[1]), Number(m[2]), Number(m[3])];
         return { x: (stage.clientWidth / 2 - x) / scale, y: (stage.clientHeight / 2 - y) / scale };
       });
-    const before = await centre(page);
     await pressExport(page, 'export-open');
     const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#export-go')]);
     const file = join(mkdtempSync(join(tmpdir(), 'mapvibes-polish-')), 'presentation.html');
@@ -208,12 +206,16 @@ describe('the polish pass in a browser (v1.3.0)', () => {
     await viewer.goto(`file://${file}`);
     await viewer.waitForFunction(() => document.documentElement.dataset.mode === 'viewer');
     await viewer.waitForTimeout(800);
-    expect(await viewer.textContent('#pres-zoom-level')).toBe(zoom);
-    // The same map point at the centre of the viewer's stage, which may be of
-    // another size than the exporting one.
-    const after = await centre(viewer);
-    expect(after.x).toBeCloseTo(before.x, 0);
-    expect(after.y).toBeCloseTo(before.y, 0);
+    // The viewer opens fitted, not at the exported zoom: pressing Fit view
+    // changes nothing.
+    const openedZoom = await viewer.textContent('#pres-zoom-level');
+    const openedCentre = await centre(viewer);
+    await viewer.click('#pres-fit');
+    await viewer.waitForTimeout(500);
+    expect(await viewer.textContent('#pres-zoom-level')).toBe(openedZoom);
+    const fittedCentre = await centre(viewer);
+    expect(fittedCentre.x).toBeCloseTo(openedCentre.x, 0);
+    expect(fittedCentre.y).toBeCloseTo(openedCentre.y, 0);
     await viewer.close();
     await page.close();
   }, 60_000);

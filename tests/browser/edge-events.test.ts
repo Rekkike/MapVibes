@@ -84,7 +84,15 @@ async function openViewer(options: object): Promise<{ page: Page; errors: string
   return { page, errors };
 }
 
+// The quiet chrome withdraws when idle (v2.1.0) and returns on any
+// interaction: a pointer move wakes it before a click.
+async function wake(page: Page): Promise<void> {
+  await page.mouse.move(20, 20);
+  await page.waitForTimeout(120);
+}
+
 async function readStrip(page: Page, view: 'timeline' | 'costs') {
+  await wake(page);
   await page.locator(`#pres-mode-${view}`).scrollIntoViewIfNeeded();
   await page.click(`#pres-mode-${view}`);
   await page.waitForFunction((v) => (document.querySelector('#presentation-stage') as HTMLElement).dataset.view === v, view);
@@ -163,6 +171,7 @@ describe.each([
     const { page, errors } = await openViewer(options);
     for (const view of ['timeline', 'costs'] as const) {
       const before = await readStrip(page, view);
+      await wake(page);
       await page.click(`#presentation-${view} .timeline-event-edge[data-side="after"]`);
       await page.waitForTimeout(400);
       const after = await page.evaluate((v) => {
