@@ -4513,7 +4513,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
    float on or over the stage. Every rule is scoped to the application. */
 @media (max-width: 47.999rem) and (min-height: 31.25rem) {
   /* -- The header: one 48-pixel row, the segments in the bar. -- */
-  html:not([data-mode='viewer']) #app-header {
+  html:not([data-mode='viewer'])[data-layout='compact'] #app-header {
     flex-wrap: nowrap;
     height: 3rem;
     min-height: 3rem;
@@ -4522,11 +4522,11 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   }
 
   /* The phone's bar carries no brand, as the mockup's phone frames draw it. */
-  html:not([data-mode='viewer']) #app-title {
+  html:not([data-mode='viewer'])[data-layout='compact'] #app-title {
     display: none;
   }
 
-  html:not([data-mode='viewer']) #segment-nav {
+  html:not([data-mode='viewer'])[data-layout='compact'] #segment-nav {
     order: 0;
     flex: 1 1 auto;
     min-width: 0;
@@ -4534,7 +4534,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     gap: 0;
   }
 
-  html:not([data-mode='viewer']) #app-header .segment-tab {
+  html:not([data-mode='viewer'])[data-layout='compact'] #app-header .segment-tab {
     flex: 1 1 0;
     height: 100%;
     min-width: 0;
@@ -4550,14 +4550,14 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     text-overflow: ellipsis;
   }
 
-  html:not([data-mode='viewer']) #app-header .segment-tab[aria-selected='true'] {
+  html:not([data-mode='viewer'])[data-layout='compact'] #app-header .segment-tab[aria-selected='true'] {
     background: none;
     box-shadow: inset 0 -2px 0 var(--accent);
     color: var(--fg);
     font-weight: 650;
   }
 
-  html:not([data-mode='viewer']) #menu-toggle {
+  html:not([data-mode='viewer'])[data-layout='compact'] #menu-toggle {
     order: 1;
     flex: none;
     height: 100%;
@@ -4566,18 +4566,18 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   }
 
   /* -- The stage is full-bleed under the bar: no page padding around it. -- */
-  html:not([data-mode='viewer'])[data-segment='map'] #app-main,
-  html:not([data-mode='viewer'])[data-segment='presentation'] #app-main {
+  html:not([data-mode='viewer'])[data-layout='compact'][data-segment='map'] #app-main,
+  html:not([data-mode='viewer'])[data-layout='compact'][data-segment='presentation'] #app-main {
     padding: 0;
   }
 
-  html:not([data-mode='viewer'])[data-segment='map'] #segment-map,
-  html:not([data-mode='viewer'])[data-segment='presentation'] #segment-presentation {
+  html:not([data-mode='viewer'])[data-layout='compact'][data-segment='map'] #segment-map,
+  html:not([data-mode='viewer'])[data-layout='compact'][data-segment='presentation'] #segment-presentation {
     gap: 0;
   }
 
-  html:not([data-mode='viewer']) #map-area,
-  html:not([data-mode='viewer']) #presentation-area {
+  html:not([data-mode='viewer'])[data-layout='compact'] #map-area,
+  html:not([data-mode='viewer'])[data-layout='compact'] #presentation-area {
     position: relative;
     padding: 0;
     border: 0;
@@ -4586,22 +4586,22 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   }
 
   /* -- The Map segment: the stage first, the 56-pixel bar at the bottom. -- */
-  html:not([data-mode='viewer']) #map-stage {
+  html:not([data-mode='viewer'])[data-layout='compact'] #map-stage {
     order: -2;
   }
 
-  html:not([data-mode='viewer']) #place-banner:not(.hidden) {
+  html:not([data-mode='viewer'])[data-layout='compact'] #place-banner:not(.hidden) {
     order: -1;
     margin: var(--space-4) var(--space-4) 0;
   }
 
   /* The former map toolbar row is empty once the shell has moved its
      controls; the annotation toolbar is the bottom bar. */
-  html:not([data-mode='viewer']) #map-toolbar {
+  html:not([data-mode='viewer'])[data-layout='compact'] #map-toolbar {
     display: none;
   }
 
-  html:not([data-mode='viewer']) #annotation-toolbar {
+  html:not([data-mode='viewer'])[data-layout='compact'] #annotation-toolbar {
     order: 1;
     flex: none;
     display: flex;
@@ -4622,11 +4622,11 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     box-shadow: none;
   }
 
-  html:not([data-mode='viewer']) #annotation-toolbar > * {
+  html:not([data-mode='viewer'])[data-layout='compact'] #annotation-toolbar > * {
     flex: none;
   }
 
-  html:not([data-mode='viewer']) #annotation-heading {
+  html:not([data-mode='viewer'])[data-layout='compact'] #annotation-heading {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -4635,7 +4635,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     white-space: nowrap;
   }
 
-  html:not([data-mode='viewer']) #annotation-tools {
+  html:not([data-mode='viewer'])[data-layout='compact'] #annotation-tools {
     position: static;
     display: flex;
     flex: none;
@@ -4647,18 +4647,18 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     box-shadow: none;
   }
 
-  html:not([data-mode='viewer']) #annotation-tools .annotation-tool {
+  html:not([data-mode='viewer'])[data-layout='compact'] #annotation-tools .annotation-tool {
     min-width: 2.75rem;
     height: 2.75rem;
     padding: 0 var(--space-4);
   }
 
-  html:not([data-mode='viewer']) #map-toggles {
+  html:not([data-mode='viewer'])[data-layout='compact'] #map-toggles {
     order: 2;
   }
 
   /* The zoom group floats at the stage's lower right, above the bar. */
-  html:not([data-mode='viewer']) #map-zoom {
+  html:not([data-mode='viewer'])[data-layout='compact'] #map-zoom {
     position: absolute;
     right: var(--space-8);
     bottom: calc(3.5rem + var(--space-8));
@@ -4675,24 +4675,24 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     box-shadow: var(--card-shadow);
   }
 
-  html:not([data-mode='viewer']) #map-zoom .icon-button {
+  html:not([data-mode='viewer'])[data-layout='compact'] #map-zoom .icon-button {
     width: 2.25rem;
     height: 2.25rem;
     padding: 0;
   }
 
   /* The overlays and sheets open above the bar. */
-  html:not([data-mode='viewer'])[data-segment='map'] :is(#app-menu, #placement-area, #map-glance, #map-legend, #annotation-inspector, #fetch-panel, #pdf-panel) {
+  html:not([data-mode='viewer'])[data-layout='compact'][data-segment='map'] :is(#app-menu, #placement-area, #map-glance, #map-legend, #annotation-inspector, #fetch-panel, #pdf-panel) {
     bottom: calc(3.5rem + var(--space-8));
   }
 
-  html:not([data-mode='viewer'])[data-segment='map'] #details-panel {
+  html:not([data-mode='viewer'])[data-layout='compact'][data-segment='map'] #details-panel {
     bottom: calc(3.5rem + var(--space-8));
   }
 
   /* -- The Presentation segment: no tool row, the chrome floats on the
      stage, so that the bar alone takes height (the mockup's phone frames). -- */
-  html:not([data-mode='viewer']) #presentation-toolbar {
+  html:not([data-mode='viewer'])[data-layout='compact'] #presentation-toolbar {
     position: absolute;
     top: var(--space-8);
     left: 50%;
@@ -4715,11 +4715,11 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     white-space: nowrap;
   }
 
-  html:not([data-mode='viewer']) #presentation-toolbar .pres-mode-button {
+  html:not([data-mode='viewer'])[data-layout='compact'] #presentation-toolbar .pres-mode-button {
     border-radius: var(--radius-pill);
   }
 
-  html:not([data-mode='viewer']) #pres-zoom {
+  html:not([data-mode='viewer'])[data-layout='compact'] #pres-zoom {
     position: absolute;
     right: var(--space-8);
     bottom: var(--space-8);
@@ -4736,7 +4736,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     box-shadow: var(--card-shadow);
   }
 
-  html:not([data-mode='viewer']) #pres-zoom .icon-button {
+  html:not([data-mode='viewer'])[data-layout='compact'] #pres-zoom .icon-button {
     width: 2.25rem;
     height: 2.25rem;
     padding: 0;
@@ -4746,7 +4746,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
 /* The "more" panel as an overlay above the bottom bar, in the compact class
    only (v2.1.0). */
 @media (max-width: 47.999rem) and (min-height: 31.25rem) {
-  html:not([data-mode='viewer']) #map-more-panel {
+  html:not([data-mode='viewer'])[data-layout='compact'] #map-more-panel {
     position: fixed;
     z-index: var(--layer-sheet);
     left: var(--space-8);
@@ -4767,7 +4767,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     box-shadow: var(--card-shadow);
   }
 
-  html:not([data-mode='viewer']) #map-more-panel:not([data-state='open']) {
+  html:not([data-mode='viewer'])[data-layout='compact'] #map-more-panel:not([data-state='open']) {
     display: none;
   }
 }
@@ -4783,7 +4783,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
    control. The stage owns everything else. Every rule is scoped to the
    application. */
 @media (max-height: 31.249rem) {
-  html:not([data-mode='viewer']) body {
+  html:not([data-mode='viewer'])[data-layout='short'] body {
     display: flex;
     flex-direction: row;
     height: 100dvh;
@@ -4791,7 +4791,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   }
 
   /* The header is the rail: 56 pixels wide, the full height, one column. */
-  html:not([data-mode='viewer']) #app-header {
+  html:not([data-mode='viewer'])[data-layout='short'] #app-header {
     flex: none;
     width: 3.5rem;
     height: 100dvh;
@@ -4807,11 +4807,11 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     scrollbar-width: none;
   }
 
-  html:not([data-mode='viewer']) #app-title {
+  html:not([data-mode='viewer'])[data-layout='short'] #app-title {
     display: none;
   }
 
-  html:not([data-mode='viewer']) #segment-nav {
+  html:not([data-mode='viewer'])[data-layout='short'] #segment-nav {
     flex: none;
     flex-direction: column;
     width: 100%;
@@ -4819,7 +4819,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     gap: var(--space-2);
   }
 
-  html:not([data-mode='viewer']) #app-header .segment-tab {
+  html:not([data-mode='viewer'])[data-layout='short'] #app-header .segment-tab {
     width: 100%;
     height: auto;
     min-height: 2.75rem;
@@ -4841,7 +4841,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     justify-content: center;
   }
 
-  html:not([data-mode='viewer']) #app-header .segment-tab[aria-selected='true'] {
+  html:not([data-mode='viewer'])[data-layout='short'] #app-header .segment-tab[aria-selected='true'] {
     background: var(--accent-soft);
     box-shadow: inset 2px 0 0 var(--accent);
     color: var(--fg);
@@ -4849,7 +4849,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   }
 
   /* The rail's own menu control stays at the rail's foot. */
-  html:not([data-mode='viewer']) #menu-toggle {
+  html:not([data-mode='viewer'])[data-layout='short'] #menu-toggle {
     order: 99;
     flex: none;
     margin-top: auto;
@@ -4859,9 +4859,9 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   }
 
   /* The tools and the zoom group ride in the rail, one icon deep. */
-  html:not([data-mode='viewer']) #app-header #annotation-tools,
-  html:not([data-mode='viewer']) #app-header #map-zoom,
-  html:not([data-mode='viewer']) #app-header #pres-zoom {
+  html:not([data-mode='viewer'])[data-layout='short'] #app-header #annotation-tools,
+  html:not([data-mode='viewer'])[data-layout='short'] #app-header #map-zoom,
+  html:not([data-mode='viewer'])[data-layout='short'] #app-header #pres-zoom {
     position: static;
     display: flex;
     flex: none;
@@ -4875,13 +4875,13 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     box-shadow: none;
   }
 
-  html:not([data-mode='viewer']) #app-header #annotation-tools {
+  html:not([data-mode='viewer'])[data-layout='short'] #app-header #annotation-tools {
     flex-direction: column;
   }
 
-  html:not([data-mode='viewer']) #app-header .annotation-tool,
-  html:not([data-mode='viewer']) #app-header #map-zoom .icon-button,
-  html:not([data-mode='viewer']) #app-header #pres-zoom .icon-button {
+  html:not([data-mode='viewer'])[data-layout='short'] #app-header .annotation-tool,
+  html:not([data-mode='viewer'])[data-layout='short'] #app-header #map-zoom .icon-button,
+  html:not([data-mode='viewer'])[data-layout='short'] #app-header #pres-zoom .icon-button {
     width: 2.75rem;
     min-width: 2.75rem;
     height: 2.75rem;
@@ -4889,14 +4889,14 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     padding: 0;
   }
 
-  html:not([data-mode='viewer']) #app-header #pres-mode {
+  html:not([data-mode='viewer'])[data-layout='short'] #app-header #pres-mode {
     display: flex;
     flex: none;
     flex-direction: column;
     gap: var(--space-2);
   }
 
-  html:not([data-mode='viewer']) #app-header .pres-mode-button {
+  html:not([data-mode='viewer'])[data-layout='short'] #app-header .pres-mode-button {
     width: 2.75rem;
     min-width: 2.75rem;
     height: 2.75rem;
@@ -4909,7 +4909,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   }
 
   /* The stage segments are full-bleed beside the rail. */
-  html:not([data-mode='viewer']) #app-main {
+  html:not([data-mode='viewer'])[data-layout='short'] #app-main {
     flex: 1 1 auto;
     min-width: 0;
     min-height: 0;
@@ -4918,15 +4918,15 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     flex-direction: column;
   }
 
-  html:not([data-mode='viewer']) #segment-map,
-  html:not([data-mode='viewer']) #segment-presentation {
+  html:not([data-mode='viewer'])[data-layout='short'] #segment-map,
+  html:not([data-mode='viewer'])[data-layout='short'] #segment-presentation {
     flex: 1 1 auto;
     min-height: 0;
     gap: 0;
   }
 
-  html:not([data-mode='viewer']) #map-area,
-  html:not([data-mode='viewer']) #presentation-area {
+  html:not([data-mode='viewer'])[data-layout='short'] #map-area,
+  html:not([data-mode='viewer'])[data-layout='short'] #presentation-area {
     position: relative;
     padding: 0;
     border: 0;
@@ -4934,20 +4934,20 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     background: none;
   }
 
-  html:not([data-mode='viewer']) #map-toolbar,
-  html:not([data-mode='viewer']) #annotation-toolbar,
-  html:not([data-mode='viewer']) #presentation-toolbar {
+  html:not([data-mode='viewer'])[data-layout='short'] #map-toolbar,
+  html:not([data-mode='viewer'])[data-layout='short'] #annotation-toolbar,
+  html:not([data-mode='viewer'])[data-layout='short'] #presentation-toolbar {
     display: none;
   }
 
-  html:not([data-mode='viewer']) #map-stage,
-  html:not([data-mode='viewer']) #presentation-stage {
+  html:not([data-mode='viewer'])[data-layout='short'] #map-stage,
+  html:not([data-mode='viewer'])[data-layout='short'] #presentation-stage {
     flex: 1 1 auto;
     min-height: 0;
   }
 
   /* The overlays and sheets open over the stage, clear of the rail. */
-  html:not([data-mode='viewer']) :is(#app-menu, #placement-area, #map-glance, #map-legend, #visibility-area, #presentation-glance, #presentation-legend, #annotation-inspector, #fetch-panel, #pdf-panel, #map-more-panel, #details-panel) {
+  html:not([data-mode='viewer'])[data-layout='short'] :is(#app-menu, #placement-area, #map-glance, #map-legend, #visibility-area, #presentation-glance, #presentation-legend, #annotation-inspector, #fetch-panel, #pdf-panel, #map-more-panel, #details-panel) {
     left: calc(3.5rem + var(--space-8));
   }
 }
@@ -4979,7 +4979,7 @@ html[data-idle='true'] #toggle-glance {
    lower right, the legend at the lower left, "In view" at the upper right
    and docked from 1,920 pixels. Every rule is scoped to the viewer. */
 @media (min-width: 48rem) and (min-height: 31.25rem) {
-  html[data-mode='viewer'] body {
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) body {
     display: grid;
     grid-template-rows: 2.75rem minmax(0, 1fr);
     height: 100vh;
@@ -4988,7 +4988,7 @@ html[data-idle='true'] #toggle-glance {
 
   /* The bar: one row of 44 pixels, never wrapping, with the name and version,
      the export's badge, and the language and theme selects. */
-  html[data-mode='viewer'] #app-header {
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) #app-header {
     position: relative;
     z-index: var(--layer-sheet);
     flex-wrap: nowrap;
@@ -5000,15 +5000,15 @@ html[data-idle='true'] #toggle-glance {
     white-space: nowrap;
   }
 
-  html[data-mode='viewer'] #app-title {
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) #app-title {
     flex: none;
   }
 
-  html[data-mode='viewer'] #app-version {
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) #app-version {
     font-size: var(--text-12);
   }
 
-  html[data-mode='viewer'] #viewer-badge {
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) #viewer-badge {
     flex: 0 100 auto;
     min-width: 0;
     overflow: hidden;
@@ -5019,36 +5019,36 @@ html[data-idle='true'] #toggle-glance {
     text-overflow: ellipsis;
   }
 
-  html[data-mode='viewer'] #app-header .controls {
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) #app-header .controls {
     display: flex;
     gap: var(--space-8);
     margin-left: auto;
   }
 
-  html[data-mode='viewer'] #app-header .controls label {
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) #app-header .controls label {
     display: flex;
     align-items: center;
     gap: var(--space-4);
     font-size: var(--text-13);
   }
 
-  html[data-mode='viewer'] #app-header select {
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) #app-header select {
     font-size: var(--text-13);
   }
 
-  html[data-mode='viewer'] #app-main {
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) #app-main {
     min-height: 0;
     padding: 0;
   }
 
-  html[data-mode='viewer'] #segment-presentation {
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) #segment-presentation {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     min-height: 0;
     height: 100%;
   }
 
-  html[data-mode='viewer'] #presentation-area {
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) #presentation-area {
     position: relative;
     display: block;
     padding: 0;
@@ -5058,7 +5058,7 @@ html[data-idle='true'] #toggle-glance {
     overflow: hidden;
   }
 
-  html[data-mode='viewer'] #presentation-heading {
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) #presentation-heading {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -5068,26 +5068,26 @@ html[data-idle='true'] #toggle-glance {
   }
 
   /* The stage takes everything under the bar. */
-  html[data-mode='viewer'] #presentation-area > .stage {
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) #presentation-area > .stage {
     position: absolute;
     inset: 0;
     border-radius: 0;
   }
 
   /* -- What floats on the stage. -- */
-  html[data-mode='viewer'] :is(#presentation-toolbar, #pres-zoom, #presentation-legend, #toggle-legend, .glance-panel) {
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) :is(#presentation-toolbar, #pres-zoom, #presentation-legend, #toggle-legend, .glance-panel) {
     position: absolute;
     z-index: var(--layer-card);
     margin: 0;
     box-shadow: var(--card-shadow);
   }
 
-  html[data-mode='viewer'] :is(#presentation-toggles, #viewer-toggles) {
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) :is(#presentation-toggles, #viewer-toggles) {
     display: contents;
   }
 
   /* The view switch, a pill at the stage's top centre. */
-  html[data-mode='viewer'] #presentation-toolbar {
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) #presentation-toolbar {
     top: var(--space-12);
     left: 50%;
     transform: translateX(-50%);
@@ -5102,12 +5102,12 @@ html[data-idle='true'] #toggle-glance {
     white-space: nowrap;
   }
 
-  html[data-mode='viewer'] #presentation-toolbar .pres-mode-button {
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) #presentation-toolbar .pres-mode-button {
     border-radius: var(--radius-pill);
   }
 
   /* Zoom and fit, at the stage's lower right. */
-  html[data-mode='viewer'] #pres-zoom {
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) #pres-zoom {
     right: var(--space-12);
     bottom: var(--space-12);
     display: flex;
@@ -5120,7 +5120,7 @@ html[data-idle='true'] #toggle-glance {
     background: var(--panel);
   }
 
-  html[data-mode='viewer'] #pres-zoom .icon-button {
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) #pres-zoom .icon-button {
     width: 2.25rem;
     height: 2.25rem;
     padding: 0;
@@ -5129,7 +5129,7 @@ html[data-idle='true'] #toggle-glance {
     font-size: var(--text-16);
   }
 
-  html[data-mode='viewer'] #pres-zoom-level {
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) #pres-zoom-level {
     min-width: 0;
     color: var(--muted);
     font-size: var(--text-12);
@@ -5138,7 +5138,7 @@ html[data-idle='true'] #toggle-glance {
 
   /* The legend (FR-6 as amended): at the stage's lower left, folded to its
      control until asked for. */
-  html[data-mode='viewer'] #toggle-legend {
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) #toggle-legend {
     bottom: var(--space-12);
     left: var(--space-12);
     display: inline-flex;
@@ -5152,14 +5152,14 @@ html[data-idle='true'] #toggle-glance {
     font-weight: 600;
   }
 
-  html[data-mode='viewer'] #toggle-legend[aria-expanded='true'] {
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) #toggle-legend[aria-expanded='true'] {
     border-color: var(--accent);
     box-shadow:
       inset 0 0 0 1px var(--accent),
       var(--card-shadow);
   }
 
-  html[data-mode='viewer'] #presentation-legend {
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) #presentation-legend {
     bottom: 3.5rem;
     left: var(--space-12);
     display: none;
@@ -5173,13 +5173,13 @@ html[data-idle='true'] #toggle-glance {
     font-size: var(--text-13);
   }
 
-  html[data-mode='viewer'] #presentation-legend[data-fold='open'] {
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) #presentation-legend[data-fold='open'] {
     display: flex;
   }
 
   /* "In view": floating at the stage's upper right, folded to its heading or
      unfolded. */
-  html[data-mode='viewer'] .glance-panel {
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) .glance-panel {
     top: var(--space-12);
     right: var(--space-12);
     width: 14.5rem;
@@ -5190,21 +5190,21 @@ html[data-idle='true'] #toggle-glance {
     background: var(--panel);
   }
 
-  html[data-mode='viewer'] .glance-panel > .viewer-toggle {
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) .glance-panel > .viewer-toggle {
     position: absolute;
     top: var(--space-2);
     right: var(--space-2);
   }
 
-  html[data-mode='viewer'] .glance-panel[data-fold='closed'] {
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) .glance-panel[data-fold='closed'] {
     overflow: hidden;
   }
 
-  html[data-mode='viewer'] .glance-panel[data-fold='closed'] > :not(.glance-heading, .viewer-toggle) {
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) .glance-panel[data-fold='closed'] > :not(.glance-heading, .viewer-toggle) {
     display: none;
   }
 
-  html[data-mode='viewer'] .glance-panel .glance-heading {
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) .glance-panel .glance-heading {
     margin: 0;
     padding-right: var(--space-32);
     font-size: var(--text-13);
@@ -5258,14 +5258,14 @@ html[data-idle='true'] #toggle-glance {
    and fit, and the toggles, one icon deep, as in the application (the
    owner's ruling). Every rule is scoped to the viewer. */
 @media (max-width: 47.999rem) and (min-height: 31.25rem) {
-  html[data-mode='viewer'] body {
+  html[data-mode='viewer'][data-layout='compact'] body {
     display: flex;
     flex-direction: column;
     height: 100dvh;
     overflow: hidden;
   }
 
-  html[data-mode='viewer'] body #app-header {
+  html[data-mode='viewer'][data-layout='compact'] body #app-header {
     flex-wrap: nowrap;
     height: 3rem;
     min-height: 3rem;
@@ -5273,11 +5273,11 @@ html[data-idle='true'] #toggle-glance {
     gap: var(--space-8);
   }
 
-  html[data-mode='viewer'] body #app-title {
+  html[data-mode='viewer'][data-layout='compact'] body #app-title {
     display: none;
   }
 
-  html[data-mode='viewer'] body #viewer-badge {
+  html[data-mode='viewer'][data-layout='compact'] body #viewer-badge {
     flex: 1 1 auto;
     min-width: 0;
     overflow: hidden;
@@ -5289,20 +5289,20 @@ html[data-idle='true'] #toggle-glance {
     white-space: nowrap;
   }
 
-  html[data-mode='viewer'] body #app-header .controls {
+  html[data-mode='viewer'][data-layout='compact'] body #app-header .controls {
     gap: var(--space-4);
   }
 
-  html[data-mode='viewer'] body #app-header .controls label {
+  html[data-mode='viewer'][data-layout='compact'] body #app-header .controls label {
     gap: var(--space-2);
     font-size: var(--text-12);
   }
 
-  html[data-mode='viewer'] body #app-header select {
+  html[data-mode='viewer'][data-layout='compact'] body #app-header select {
     font-size: var(--text-12);
   }
 
-  html[data-mode='viewer'] body #app-main {
+  html[data-mode='viewer'][data-layout='compact'] body #app-main {
     padding: 0;
     display: flex;
     flex-direction: column;
@@ -5310,12 +5310,12 @@ html[data-idle='true'] #toggle-glance {
     min-height: 0;
   }
 
-  html[data-mode='viewer'] body #segment-presentation {
+  html[data-mode='viewer'][data-layout='compact'] body #segment-presentation {
     flex: 1 1 auto;
     min-height: 0;
   }
 
-  html[data-mode='viewer'] body #presentation-area {
+  html[data-mode='viewer'][data-layout='compact'] body #presentation-area {
     position: relative;
     padding: 0;
     border: 0;
@@ -5327,14 +5327,14 @@ html[data-idle='true'] #toggle-glance {
     min-height: 0;
   }
 
-  html[data-mode='viewer'] body #presentation-stage {
+  html[data-mode='viewer'][data-layout='compact'] body #presentation-stage {
     flex: 1 1 auto;
     min-height: 0;
   }
 
   /* The view switch and the toggles float as one pill at the stage's top
      centre; zoom floats at its lower right. */
-  html[data-mode='viewer'] body #presentation-toolbar {
+  html[data-mode='viewer'][data-layout='compact'] body #presentation-toolbar {
     position: absolute;
     top: var(--space-8);
     left: 50%;
@@ -5357,7 +5357,7 @@ html[data-idle='true'] #toggle-glance {
     white-space: nowrap;
   }
 
-  html[data-mode='viewer'] body #pres-zoom {
+  html[data-mode='viewer'][data-layout='compact'] body #pres-zoom {
     position: absolute;
     right: var(--space-8);
     bottom: var(--space-8);
@@ -5376,7 +5376,7 @@ html[data-idle='true'] #toggle-glance {
 }
 
 @media (max-height: 31.249rem) {
-  html[data-mode='viewer'] body {
+  html[data-mode='viewer'][data-layout='short'] body {
     display: flex;
     flex-direction: row;
     height: 100dvh;
@@ -5384,7 +5384,7 @@ html[data-idle='true'] #toggle-glance {
   }
 
   /* The header is the side rail (the owner's ruling for the short class). */
-  html[data-mode='viewer'] body #app-header {
+  html[data-mode='viewer'][data-layout='short'] body #app-header {
     flex: none;
     width: 3.5rem;
     height: 100dvh;
@@ -5399,23 +5399,23 @@ html[data-idle='true'] #toggle-glance {
     scrollbar-width: none;
   }
 
-  html[data-mode='viewer'] body #app-title,
-  html[data-mode='viewer'] body #viewer-badge {
+  html[data-mode='viewer'][data-layout='short'] body #app-title,
+  html[data-mode='viewer'][data-layout='short'] body #viewer-badge {
     display: none;
   }
 
-  html[data-mode='viewer'] body #app-main {
+  html[data-mode='viewer'][data-layout='short'] body #app-main {
     flex: 1 1 auto;
     min-width: 0;
     min-height: 0;
     padding: 0;
   }
 
-  html[data-mode='viewer'] body #presentation-toolbar {
+  html[data-mode='viewer'][data-layout='short'] body #presentation-toolbar {
     display: none;
   }
 
-  html[data-mode='viewer'] body #app-header :is(#pres-mode, #pres-zoom, #viewer-toggles) {
+  html[data-mode='viewer'][data-layout='short'] body #app-header :is(#pres-mode, #pres-zoom, #viewer-toggles) {
     position: static;
     display: flex;
     flex: none;
@@ -5429,9 +5429,9 @@ html[data-idle='true'] #toggle-glance {
     box-shadow: none;
   }
 
-  html[data-mode='viewer'] body #app-header .pres-mode-button,
-  html[data-mode='viewer'] body #app-header #pres-zoom .icon-button,
-  html[data-mode='viewer'] body #app-header .viewer-toggle {
+  html[data-mode='viewer'][data-layout='short'] body #app-header .pres-mode-button,
+  html[data-mode='viewer'][data-layout='short'] body #app-header #pres-zoom .icon-button,
+  html[data-mode='viewer'][data-layout='short'] body #app-header .viewer-toggle {
     width: 2.75rem;
     min-width: 2.75rem;
     height: 2.75rem;
@@ -5443,18 +5443,18 @@ html[data-idle='true'] #toggle-glance {
     border-radius: var(--radius-sm);
   }
 
-  html[data-mode='viewer'] body #app-header .controls {
+  html[data-mode='viewer'][data-layout='short'] body #app-header .controls {
     flex-direction: column;
     gap: var(--space-2);
   }
 
-  html[data-mode='viewer'] body #app-header .controls label {
+  html[data-mode='viewer'][data-layout='short'] body #app-header .controls label {
     writing-mode: vertical-rl;
     text-orientation: mixed;
     font-size: var(--text-12);
   }
 
-  html[data-mode='viewer'] body :is(#presentation-glance, #presentation-legend) {
+  html[data-mode='viewer'][data-layout='short'] body :is(#presentation-glance, #presentation-legend) {
     left: calc(3.5rem + var(--space-8));
   }
 }

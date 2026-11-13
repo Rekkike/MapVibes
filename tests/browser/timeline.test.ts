@@ -187,7 +187,8 @@ describe('the timeline in the application (FR-66, FR-67, FR-70)', () => {
     ['desktop', { viewport: { width: 1500, height: 950 } }, false],
     ['phone portrait', devices['iPhone 13'], true],
     ['phone landscape', devices['iPhone 13 landscape'], true],
-    ['tablet portrait', devices['iPad (gen 7)'], true],
+    // The portrait tablet is in the medium class since the viewer crossed to the five classes (v2.1.0): 28-pixel lines, the switch at the head of the floating toolbar.
+    ['tablet portrait', devices['iPad (gen 7)'], false],
   ] as const) {
     test(`the exported viewer on a ${name}: the timeline it was exported in, ${narrow ? '48-pixel lines with the chip row above the plot, the switch on the toggles row' : 'the switch at the head of the toolbar'}; both views`, async () => {
       const context = await browser.newContext({ ...profile });
@@ -229,9 +230,9 @@ describe('the timeline in the application (FR-66, FR-67, FR-70)', () => {
         // (FR-80) takes 42 pixels above the lines; the scroller is 440
         // pixels and the twelve lines (480 pixels) scroll in portrait too.
         // Since v1.14.0 the lines are 48 pixels (576 in all) and scroll.
-        if (name === 'phone portrait') {
-          expect(overflows).toBe(true);
-        }
+        // Since v2.1.0 the phone's stage grew (48-pixel bar, no tool row), so
+        // in portrait the twelve lines no longer overflow; in landscape
+        // (the side rail) they still do.
         if (name === 'phone landscape') {
           expect(overflows).toBe(true);
         }

@@ -201,15 +201,19 @@ describe.each(PROFILES)('the narrow application on the %s (FR-71 to FR-74)', (na
   test('the header is a menu, the stage fills what the header and the toolbars leave, nothing overflows, every control reaches 44 pixels', async () => {
     const { page, errors } = await openDemo(profile);
     const v = page.viewportSize()!;
-    expect(await page.evaluate(() => matchMedia('(max-width: 56rem), (orientation: landscape) and (max-height: 30rem) and (pointer: coarse)').matches)).toBe(
-      true,
-    );
+    // The compact and short classes (FR-58 as amended in v2.1.0: the viewer
+    // crossed to them too, so the old 896-pixel viewer query is retired).
+    expect(await page.evaluate(() => matchMedia('(max-width: 47.999rem), (max-height: 31.249rem)').matches)).toBe(true);
     const header = await box(page, '#app-header');
-    // About 52 pixels where one row fits, about 100 otherwise.
     if (kind === 'portrait') {
-      expect(header.height).toBeLessThanOrEqual(110);
+      // The compact class's phone chrome: one 48-pixel row with the
+      // segments in the bar (v2.1.0).
+      expect(header.height).toBe(48);
     } else {
-      expect(header.height).toBeLessThanOrEqual(60);
+      // The short class's side rail: the header is the 56-pixel rail, the
+      // full height of the viewport (v2.1.0, the owner's ruling).
+      expect(header.width).toBe(56);
+      expect(header.height).toBe(v.height);
     }
     // No header control covers another: a tap lands on the control under it.
     expect(
@@ -240,9 +244,15 @@ describe.each(PROFILES)('the narrow application on the %s (FR-71 to FR-74)', (na
       if (stage) {
         const s = await box(page, `#${stage}`);
         heights[stage] = Math.round(s.height);
-        // The stage reaches the bottom of the viewport, less the margins.
-        expect(v.height - (s.y + s.height), stage).toBeLessThanOrEqual(20);
-        // One toolbar row in the Presentation segment.
+        // The stage reaches the bottom of the viewport, less the margins —
+        // less the 56-pixel bottom bar in the compact class's Map segment.
+        if (kind === 'portrait' && stage === 'map-stage') {
+          expect(v.height - (s.y + s.height), stage).toBe(56);
+        } else {
+          expect(v.height - (s.y + s.height), stage).toBeLessThanOrEqual(20);
+        }
+        // The Presentation segment's chrome floats on the stage: no tool row
+        // takes height (v2.1.0).
         if (stage === 'presentation-stage') {
           expect((await box(page, '#presentation-toolbar')).height).toBeLessThanOrEqual(52);
         }
@@ -370,16 +380,18 @@ describe.each(PROFILES)('the narrow application on the %s (FR-71 to FR-74)', (na
     const { page } = await openDemo(profile);
     await page.tap('#tab-presentation');
     await page.waitForTimeout(400);
-    const xs = await page.$$eval(
-      ['#pres-mode', '#pres-order-label', '#presentation-toggles', '#viewer-toggles', '#pres-fit', '#export-open'].join(','),
-      (els) => els.map((e) => [e.id, Math.round(e.getBoundingClientRect().x)] as [string, number]),
+    // The view switch, the order, and the toggles lead the floating toolbar
+    // pill; zoom and fit float at the stage's lower right; the exports ride
+    // in the Menu overlay (v2.1.0: the phone's bar has no Export).
+    const xs = await page.$$eval(['#pres-mode', '#pres-order-label', '#presentation-toggles', '#viewer-toggles', '#pres-zoom'].join(','), (els) =>
+      els.map((e) => [e.id, Math.round(e.getBoundingClientRect().x)] as [string, number]),
     );
     const at = Object.fromEntries(xs);
     expect(at['pres-mode']).toBeLessThan(at['pres-order-label']);
     expect(at['pres-order-label']).toBeLessThan(at['presentation-toggles']);
     expect(at['presentation-toggles']).toBeLessThan(at['viewer-toggles']);
-    expect(at['viewer-toggles']).toBeLessThan(at['pres-fit']);
-    expect(at['pres-fit']).toBeLessThan(at['export-open']);
+    expect(at['viewer-toggles']).toBeLessThan(at['pres-zoom']);
+    expect(await page.isVisible('#export-open')).toBe(false);
     // The Legend toggle is reached by a sideways swipe where it does not fit.
     await page.locator('#toggle-legend').scrollIntoViewIfNeeded();
     await page.tap('#toggle-legend');
@@ -388,7 +400,6 @@ describe.each(PROFILES)('the narrow application on the %s (FR-71 to FR-74)', (na
     await page.keyboard.press('Escape');
     await page.waitForTimeout(250);
     // The card docks at the bottom of the stage.
-    await page.locator('#pres-fit').scrollIntoViewIfNeeded();
     await page.tap('#pres-fit');
     await page.waitForTimeout(400);
     await page.tap('#toggle-glance');
@@ -405,7 +416,6 @@ describe.each(PROFILES)('the narrow application on the %s (FR-71 to FR-74)', (na
     await page.waitForTimeout(250);
     // The timeline: 48-pixel lines, the chip row over the plot (FR-58 as
     // noted in v1.14.0); a line's chip opens the docked card.
-    await page.locator('#pres-mode-timeline').scrollIntoViewIfNeeded();
     await page.tap('#pres-mode-timeline');
     await page.waitForTimeout(400);
     const lines = await page.$$eval('#presentation-timeline .timeline-line', (ls) => ls.map((l) => l.getBoundingClientRect().height));

@@ -133,7 +133,8 @@ describe('the economics view in a browser (FR-64)', () => {
     ['desktop', { viewport: { width: 1500, height: 950 } }, false],
     ['phone portrait', devices['iPhone 13'], true],
     ['phone landscape', devices['iPhone 13 landscape'], true],
-    ['tablet portrait', devices['iPad (gen 7)'], true],
+    // The portrait tablet is in the medium class since the viewer crossed to the five classes (v2.1.0): the economics overlay is centred there.
+    ['tablet portrait', devices['iPad (gen 7)'], false],
   ] as const) {
     test(`in the exported viewer on a ${name}: ${narrow ? 'a bottom sheet within the viewport, scrolling inside' : 'centred'}`, async () => {
       const context = await browser.newContext({ ...profile });
