@@ -151,7 +151,36 @@ The amendments.
 4. The owner's rulings on the stops made before implementation. (a) Measured before implementation: on compact phones the switch (8 pixels from the stage's top, 50 pixels tall) covered all three axis labels at rest, in both views and both languages, and none after the four-second withdrawal; the owner chose the reserved strip over folding the switch, a folded switch at the top still covering the axis row. (e) The owner's ruling on a stop during implementation, a measurement revising the trade of (a): the trade first put to the owner (one line, 11 to 10 at 390 by 844 and 9 to 8 at 320 by 568) was arithmetic, not a measurement; measured in the build, a strip with an 8-pixel gap under the switch (the axis at 67 pixels) cost two lines in both views. The owner ruled the axis flush under the switch (the axis at 59 pixels, the switch's lower edge at 58, touching but covering no label), whose measured cost is one line in the timeline view (11 to 10 at 390 by 844, 9 to 8 at 320 by 568) and two in the costs view (10 to 8, 8 to 6). (b) The quarter and half-year readouts use unit codes, two new strings in each language: Q{n} and H{n} in English, K{n} and H{n} in Swedish, each with the year. (c) A window at no anchor shows its endpoints at the axis's grade. (d) The Map view keeps its percentage.
 5. Out of this pass: the step-in landing on the data's centre (the ruled behaviour), the costs view's empty fills at the month level (FR-79), the list's content design, the owner's other eye items, and any change to the ladder. No dependency changes; no chrome redesign.
 
-Delivered state and measured figures: to be filled at delivery.
+Delivered state and measured figures.
+
+What was built. The shared model (src/timeline.ts) gains windowLabel, the readout's text as a pure function of the window, the locale, and the two unit codes, and the graded ticks mark the first label and every January to carry the year. The view (src/timelineview.ts) formats the marked labels with the year beside the month's name; the readout (src/presentationstage.ts) shows the window in the schedule views and the zoom percentage in the Map view; in the wider classes the readout wraps within the zoom group's column (at most 4.5 rem). Two strings are new in each language: zoomQuarter (Q{n} {year} in English, K{n} {year} in Swedish) and zoomHalf (H{n} {year} in both, listed as a same-in-both exception: Swedish "halvår" is abbreviated H, as English "half-year" is). In the compact class the schedule views start their axis directly under the floating view switch, in the application and in the exported viewer.
+
+The readout and the axis, measured on the demo at 1,440 by 900, stepping in from the fitted view, in both views alike:
+
+| Level | Readout, English | Readout, Swedish | Axis, English |
+| --- | --- | --- | --- |
+| Fit | 2024–2037 | 2024–2037 | 2025 to 2037 |
+| Year | 2031 | 2031 | 2031, 2032 |
+| Half-year | H2 2031 | H2 2031 | Jul 2031, Aug, Sept, Oct, Nov, Dec, Jan 2032 |
+| Quarter | Q4 2031 | K4 2031 | Oct 2031, Nov, Dec, Jan 2032 |
+| Month | Nov 2031 | nov. 2031 | 1 Nov 2031, 8, 15, 22, 29, 1 Dec |
+
+A window at no anchor reads at the axis's grade (from the month, a wheel zoom before its settling pause: Oct – Dec 2026, then Q4 2026 once settled). The Map view's readout keeps its percentage (43 per cent on the demo).
+
+The height cost of the reserved strip, measured on the demo at the fitted view (lines fully visible; the axis at 1 pixel before, at 59 after):
+
+| Viewport | Timeline before | Timeline after | Costs before | Costs after |
+| --- | --- | --- | --- | --- |
+| 390 by 844 | 11 | 10 | 10 | 8 |
+| 320 by 568 | 9 | 8 | 8 | 6 |
+
+Before this pass the switch covered all three axis labels at rest on compact phones, in both views and both languages; after it, none, at rest and after the four-second withdrawal; the short class and the wider classes were clear before and stay clear.
+
+The pin edits, itemised. Rewritten by the amendments: tests/browser/schedule-zoom.test.ts (the grade pin of v2.2.0 now expects the year on the first label and every January); tests/ui/timeline.test.ts and tests/ui/costs.test.ts (the readout pins move from percentages to the window: the fitted window's years, a calendar year after one step). The parity table tests/ui/translation-parity.test.ts lists zoomHalf as same in both languages, with its reason. New: in tests/browser/schedule-zoom.test.ts, the readout at every level in both languages and both views in the application (with the Map view's percentage and a window at no anchor) and in the exported viewer, and the view switch clear of the axis labels at six classes (compact at 390 by 844 and 320 by 568, short, medium, wide, extra wide) in both languages and both views, at rest and after the withdrawal (8 new tests; 17 in the file); in tests/unit/timeline.test.ts, the readout at each anchor and in the free range in both languages, a window at no anchor, and the years on the graded ticks (3 new tests).
+
+Verification: type checking; ESLint on both tiers; Prettier; the unit suite (422 tests); the full UI suite (759 tests in 95 files); the build and the build regression tests (10 tests); the python-pptx round trip; and every browser suite (224 tests in 21 files) run locally under the release workflow's font, offline, before the merge, on the delivered flush strip. Translation parity is exact with the two new strings in both languages. No dependency changed; no chrome was redesigned.
+
+Notices. (1) The stop during implementation: the strip's trade first put to the owner was computed, not measured, and the measurement revised it; the owner's ruling (e) is recorded above. (2) On phones the readout is announced to assistive technology but not drawn, as v2.1.0's compact and short chrome hides it; no chrome changes in this pass, so the phone shows the window through the axis's year. (3) The year at the axis's right end: the tick at the window's end is the next unit's start and carries its own year when it is a January (for example Jan 2032 at the right edge of the fourth quarter of 2031).
 
 ### v2.2.0
 
