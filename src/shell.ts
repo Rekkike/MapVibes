@@ -39,6 +39,7 @@ function q(): Queries {
 }
 let popovers: NarrowViewer | null = null;
 let onChange: () => void = () => undefined;
+let onClassChange: () => void = () => undefined;
 
 function viewerMode(): boolean {
   return document.documentElement.dataset.mode === 'viewer';
@@ -322,8 +323,9 @@ function complement(list: MediaQueryList): MediaQueryList {
 // started, so that at a change of the class their state is cleared before
 // this module writes its own. The hook runs after a fold changes the stage's
 // size.
-export function startShell(hooks: { resized: () => void; narrow: () => void }): void {
+export function startShell(hooks: { resized: () => void; narrow: () => void; classChanged?: () => void }): void {
   onChange = hooks.resized;
+  onClassChange = hooks.classChanged ?? (() => undefined);
   const queries = q();
   // The bar's two menus and the tool strip's "more": one open at a time,
   // with the overlays' behaviour (Escape, a press outside, the focus).
@@ -344,17 +346,28 @@ export function startShell(hooks: { resized: () => void; narrow: () => void }): 
         layoutShell();
         if (!shellActive()) {
           hooks.narrow();
+        } else {
+          // The narrow query changing is a change of class (FR-58 as amended
+          // in v2.1.0): the saved map view is refitted in every class.
+          onClassChange();
         }
       },
       refit: () => undefined,
     },
   );
-  for (const list of [queries.short, queries.wide, queries.dock, queries.xwide]) {
+  for (const list of [queries.short, queries.wide, queries.xwide]) {
     list.addEventListener('change', () => {
       layoutShell();
       onChange();
+      // A change of class refits the saved map view (FR-58 as amended in
+      // v2.1.0); the docking width is within a class and does not.
+      onClassChange();
     });
   }
+  queries.dock.addEventListener('change', () => {
+    layoutShell();
+    onChange();
+  });
   // The short class's rail re-fits its contents on a resize within the class.
   window.addEventListener('resize', () => placeShortRail());
   for (const fold of FOLDS) {

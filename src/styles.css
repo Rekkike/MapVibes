@@ -4952,6 +4952,23 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   }
 }
 
+
+/* ==== The quiet chrome's idle withdrawal (v2.1.0, FR-37 and FR-38 as
+   amended; the owner's ruling) ====
+   On the Presentation segment's stage and in the exported viewer, the
+   floating chrome withdraws after four seconds of stillness and returns on
+   any interaction. There is no fade: the state toggles instantly, on the
+   same timer, with or without the reduced-motion preference — no transition
+   is declared for it anywhere. */
+html[data-idle='true'] #presentation-toolbar,
+html[data-idle='true'] #pres-zoom,
+html[data-idle='true'] #presentation-legend,
+html[data-idle='true'] #toggle-legend,
+html[data-idle='true'] #presentation-glance,
+html[data-idle='true'] #toggle-glance {
+  visibility: hidden;
+}
+
 /* ==== Narrow viewer layout (FR-58) ====
    Every rule after this marker lies inside the one media block below, on the
    query of src/narrowviewer.ts, and applies to the exported viewer only; a

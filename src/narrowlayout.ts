@@ -156,6 +156,7 @@ export function startNarrowApplication(): void {
       renderMapItems();
       renderPresentation();
     },
+    classChanged: () => refitOnClassChange(),
   });
 }
 
@@ -182,6 +183,24 @@ export function refitNarrowStages(): void {
     narrowStages.set(view, view.stageSize());
   }
   renderMapItems();
+}
+
+// The class-change refit (FR-58 as amended in v2.1.0): a change of class
+// refits the saved map view in every class — in the application and in the
+// exported viewer alike — so that a portrait tablet no longer leaves the map
+// mid-stage with empty room around it. Within a class, a resize keeps today's
+// behaviour: in the narrow classes the resize handler refits, above them it
+// does nothing.
+let lastRefitClass: string | null = null;
+
+export function refitOnClassChange(): void {
+  const cls = document.documentElement.dataset.layout ?? '';
+  if (cls === lastRefitClass) {
+    return;
+  }
+  lastRefitClass = cls;
+  refitNarrowStages();
+  renderPresentation();
 }
 
 // The header's controls that the narrow layout moves into the Menu overlay

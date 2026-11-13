@@ -35,6 +35,7 @@ import {
 } from './columnpanels';
 import { followDemoLanguage, loadDemo, resetDemo } from './demoload';
 import { appNarrow, narrowApplication, startNarrowApplication, startNarrowViewer } from './narrowlayout';
+import { startQuietChrome } from './quietchrome';
 import { setSegment } from './segmentswitch';
 export { ROW_DRAG_TYPE } from './appstate';
 export { MAX_IMPORT_BYTES } from './listpanel';
@@ -622,6 +623,7 @@ export function main(): void {
   initialiseMapView();
   initialisePresentation();
   initialiseFetch();
+  startQuietChrome();
   wireEvents();
   renderStaticText();
   renderMapItems();
