@@ -55,3 +55,12 @@ export async function showPanel(page: Page, toggle: 'toggle-visibility' | 'toggl
     await page.click(`#${toggle}`);
   }
 }
+
+// Folds the Map segment's legend where it is open (from 768 pixels upward it
+// is open by default, floating over the stage's lower left), so that a step
+// drawing on that part of the stage reaches the map.
+export async function foldLegend(page: Page): Promise<void> {
+  if ((await page.getAttribute('#toggle-map-legend', 'aria-expanded')) === 'true' && (await page.isVisible('#toggle-map-legend'))) {
+    await page.click('#toggle-map-legend');
+  }
+}
