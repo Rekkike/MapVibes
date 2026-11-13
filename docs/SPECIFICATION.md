@@ -157,7 +157,62 @@ The amendments.
 10. The owner's sixth ruling, on a stop during implementation: the amount figures of the Costs view rise to 12 pixels in the medium class and above, and keep their 10 pixels in the compact and short classes and in the viewer's narrow layout. Measured on the demo at 390 by 844: 12-pixel figures would have left 1 of the 14 figures drawn today, a regression between releases. The recorded exception of FR-29 narrows to this one size, in the two narrow blocks, pinned by name; the pass that re-rules the phone's chrome resolves it.
 11. Out of this pass: the phone's bottom bar, the short class's side rail, the viewer's presentation scale and its refit on opening, the idle withdrawal of the chrome, and the documents' type floor. No dependency changes.
 
-Delivered state and measured figures: to be filled at delivery.
+Delivered state and measured figures.
+
+The thesis in its own numbers: the stage's share of the viewport, in per cent, before (v1.15.1, as measured in the consultation and recorded in docs/redesign/probes.md) and after (this build), on the full-test demo, at the 22 probe viewports.
+
+| Viewport | Class | Map before | Map after | Presentation before | Presentation after | Header before | Header after | Map page before | Map page after |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2560 by 1080 | extra wide | 48.4 | 75.2 | 69.3 | 95.9 | 49 | 44 | fitted | fits |
+| 3440 by 1440 | extra wide | 61.8 | 81.4 | 76.6 | 96.9 | 49 | 44 | fitted | fits |
+| 1920 by 1080 | extra wide | 37.5 | 68.3 | 61.7 | 95.9 | 49 | 44 | fitted | fits |
+| 2560 by 1440 | extra wide | 55.5 | 76 | 71.9 | 96.9 | 49 | 44 | fitted | fits |
+| 3840 by 2160 | extra wide | 71.8 | 83.9 | 80.8 | 98 | 49 | 44 | fitted | fits |
+| 1920 by 1200 | extra wide | 40.6 | 68.6 | 62.8 | 96.3 | 49 | 44 | fitted | fits |
+| 2560 by 1600 | extra wide | 57.6 | 76.3 | 72.7 | 97.3 | 49 | 44 | fitted | fits |
+| 1366 by 768 | wide | 27.5 | 91.2 | 42.2 | 94.3 | 117 | 44 | scrolled | fits |
+| 1440 by 900 | wide | 25.1 | 76.1 | 48.3 | 95.1 | 77 | 44 | scrolled | fits |
+| 960 by 1080 | medium | 13.6 | 95.9 | 30.2 | 95.9 | 117 | 44 | overflowed sideways | fits |
+| 1280 by 720 | wide | 22.7 | 90.7 | 37.2 | 93.9 | 117 | 44 | scrolled | fits |
+| 390 by 844 | compact | 68.7 | 68.7 | 74 | 74 | 101 | 101 | fitted | fits |
+| 320 by 568 | compact | 55.8 | 55.8 | 63.6 | 63.6 | 101 | 101 | fitted | fits |
+| 393 by 852 | compact | 68.9 | 68.9 | 74.2 | 74.2 | 101 | 101 | fitted | fits |
+| 430 by 932 | compact | 71.5 | 71.5 | 76.3 | 76.3 | 101 | 101 | fitted | fits |
+| 412 by 915 | compact | 70.9 | 70.9 | 75.8 | 75.8 | 101 | 101 | fitted | fits |
+| 360 by 800 | compact | 66.9 | 66.9 | 72.5 | 72.5 | 101 | 101 | fitted | fits |
+| 844 by 390 | short | 53.4 | 53.4 | 65.4 | 65.4 | 53 | 53 | fitted | fits |
+| 768 by 1024 | medium | 80.1 | 95.7 | 84.6 | 95.7 | 53 | 44 | fitted | fits |
+| 1024 by 768 | medium | 12.1 | 94.3 | 27.1 | 94.3 | 117 | 44 | overflowed sideways | fits |
+| 820 by 1180 | medium | 82.5 | 96.3 | 86.4 | 96.3 | 53 | 44 | fitted | fits |
+| 1180 by 820 | medium | 21.9 | 94.6 | 37.6 | 94.6 | 117 | 44 | overflowed sideways | fits |
+
+At every probe of the medium, wide, and extra wide classes the Map segment's share equals the figure that probes.md promised, and the Presentation segment's lies between 93.9 and 98.0. The three probes that overflowed sideways (960 by 1,080, 1,024 by 768, 1,180 by 820) and the three whose page scrolled (1,366 by 768, 1,440 by 900, 1,280 by 720) fit. The compact and short probes are unchanged, by design: they keep the phone's present chrome until the next pass, which raises them towards the promised 81.7 to 93.4.
+
+What was built. src/shell.ts (new) drives the layout of the medium class and above: the bar's two menus and the tool strip's "more" as one-at-a-time overlays (Escape, a press outside, the focus returned), the folds of the six panels with their defaults by class, and the controls that sit elsewhere than in the narrow classes, each moved with an anchor so that a change of class puts everything back exactly. The layout itself is one media block in src/styles.css on the complement of the narrow query, with two more for 1,200 and 1,920 pixels; every rule is scoped to the application. index.html gained six elements (the offline pill, the Export control and its menu, the "more" control and its panel, the two zoom groups); three strings were added in both languages (Export, More tools, Offline). The stylesheet's glyphs for the icon controls are masks drawn in the text colour; each icon control keeps its name as its text, moved out of its box.
+
+The layout as delivered. The bar: 44 pixels and one row from 768 to 3,840 pixels (it tightens below 960: closer controls, the offline pill as its dot). The tool strip: the five drawing tools and "more" in a column at the stage's upper left; the options of a drawing tool (and of a selected annotation) in a row beside it; behind "more": the background, the open-map fetch with its offline note, the reset of the view, and the marker's symbol and removal. Zoom, the zoom level, and fit at the stage's lower right. The legend: a control at the stage's lower left, folded by default; unfolded, the legend floats above it. The items panel: open and docked at 288 pixels from 1,400; a rail of 44 from 1,200; folded to a floating control below 1,200, a drawer over the map when opened. "In view": docked at 264 pixels from 1,920; floating at the upper right below that, unfolded from 1,400 and folded to its heading below. The Presentation segment: the view switch and the order in a pill at the top centre; the visibility list and "In view" closed until asked for, over the stage; zoom, fit, and reset at the lower right; the three exports in the bar's Export menu. The dialogs keep their shapes and open over the stage.
+
+The schedule's small sizes (amendment 7 and the sixth ruling). The event chips, the legend's marker icons, the viewer's version and badge, and the name badges are 12 pixels; the amount figures are 12 pixels in the medium class and above and 10 in the narrow layouts. The constants: a chip's width per character 6.5 to 7.1 pixels, its longest 160 to 175, the folded and edge chips 28 to 31 with their reserves 30 to 33, an amount figure 6 to 7.2 pixels (read from the size the label is drawn at). The fitting cost, measured on the demo: the two event chips grow from 53 and 66 pixels to 57 and 71, with none clipped or folded at any size; in the Costs view at 1,500 by 950 all 74 figures are still drawn (3 move from beside their bar to inside it), at 1,280 by 720 all 74 (7 move inside), at 1,024 by 768 67 of the 71 drawn before; on a phone the 14 drawn before are drawn still.
+
+The pin edits, itemised.
+
+Functional geometry pins, the one place authorised (amendment 7): tests/unit/costs.test.ts (a chip's width 53 to 57 and its longest 160 to 175; the five-character figure's inside case moved from a fill of six tenths to seven, the old case pinned as the fitting cost and, at 6 pixels a figure, as the narrow layouts' case); tests/browser/edge-events.test.ts (the edge chip 28 to 31 pixels).
+
+Layout pins rewritten to the new placement (ruling d): tests/ui/demo-reset.test.ts (the reset in the Menu, the badge in the bar); tests/ui/export-selection.test.ts, tests/ui/export.test.ts, tests/ui/pdf-export.test.ts, tests/ui/pptx-export.test.ts (the three exports in the bar's Export menu, in their order); tests/ui/narrow-application.test.ts (two tests: above the narrow classes the Menu holds the reset, Open work, Share work, the language, and the theme, and the bar keeps the work controls and the badge); tests/browser/tokens.test.ts (the current segment's underline, where it pinned a fill: ruling b).
+
+Pins that name a query: tests/unit/narrow-stylesheet.test.ts (the viewer's block is on the viewer's query, the application's on the application's); tests/ui/narrow-viewer.test.ts and tests/ui/translation-parity.test.ts (the viewer's tests import the viewer's query). The design pin of the recorded exception, tests/ui/tokens.test.ts, is narrowed to the one remaining size.
+
+Steps, not assertions: tests/browser/chrome.ts (new) reaches the controls that are behind the bar's menus; seventeen browser test files set the language and the theme and press the exports through it (activities, costs, density, documents, economics, edge-events, export, glance, labels, narrow-application, narrow, polish, recipient, sleek-chrome, timeline, tokens, work-phase); tests/browser/documents.test.ts and tests/browser/export.test.ts open the visibility list before switching an item off. The narrow application's tablet profile is a 744-pixel tablet (the 810-pixel one is in the medium class). The exported viewer's four tablet pins (narrow, economics, timeline, sleek-chrome) are unedited (the fifth ruling).
+
+New: tests/browser/layout.test.ts, the design pin suite (42 tests): the 22 probes (class, header, no overflow, no page scroll in the Map segment, the two floors); the closed gap at ten widths from 897 to 1,266 pixels; the bar as one row with its controls in order, its menus, and Export from the Map segment; the strip, the floating controls, and the legend folded and still while the view pans; the panels across the classes; the two named extremes; a portrait tablet in the medium class with 44-pixel targets.
+
+Defects found and fixed on the way, each by a pin or a screenshot: the shell's menus cleared the narrow Menu's state (the narrow application's UI tests); the offline pill showed in the phone's header and wrapped it (the narrow browser suite); the bar overflowed by 14 pixels at 768 under the release workflow's font (the new pin suite); two values of the new block lay outside the token rules (the token suite of v1.17.0, unedited).
+
+The screenshots: all 22 probes in both themes, in the Map segment, the Presentation segment, and the Timeline, taken on the built page and inspected against the mockup, with the interactive states (the menus, "more", the tool's options, the legend, the panels, the export dialog, the card, the costs) at 1,440 by 900. Verdict: the structure matches the mockup at every probe of the medium class and above: the one bar, the strip at the upper left, zoom at the lower right, the docks and the rail at their widths, "In view" floating or docked, the stage taking the rest, nothing centred at 3,440 by 1,440. Honest misses against the mockup's picture, none of them hidden: (1) the legend is folded by default (ruling c); the mockup draws it unfolded. (2) The mockup's strip shows a text tool; the product has none, and none was added. (3) The mockup names the first segment "List"; the product's name, Information, stands (no string was changed for it). (4) The items in the docked list keep their bordered rows and the "Placed" state; the mockup draws flat rows grouped by area with their years. (5) The zoom control carries the zoom level between its buttons; the mockup's does not. (6) The Menu's control keeps its own text hidden behind a glyph; the unsaved state shows as its pill in the bar, not on the Menu's control. (7) The map's saved view is not refitted when the stage grows: on a tall portrait tablet the demo's map sits in the middle of the stage with room above it; Fit view refits it. (8) An open export dialog scrolls to its first focused control, so its heading can start out of sight on a low window. (9) The compact and short probes show the phone's present chrome, as ruled.
+
+Verification: type checking; ESLint on both tiers; Prettier; the unit suite (417 tests); the full UI suite (754 tests in 94 files); the build and the build regression tests (10 tests); the python-pptx round trip; and every browser suite (212 tests in 20 files) under the release workflow's font, in chunked invocations, offline. Translation parity is exact with the three new strings in both languages. No dependency changed.
+
+Notices. (1) Units 2 to 6 share their commits: the bar, the strip, the legend, the panels, and the classes are one stylesheet block and one module, and could not be proven apart. (2) The first commit of unit 1 carries the version number only; its amendment step had stopped on a wrong requirement number, and the amendments follow in the next commit, before any implementation. (3) The new requirement is FR-81. (4) The stage is not refitted when a panel folds or the window is resized in the medium class and above, as before this pass in the desktop layout; "In view" is found again. (5) The branches wip/structure-v1.16.0 and wip/tokens-v1.17.0 still stand on the remote.
 
 ### v1.17.0
 
