@@ -20,6 +20,10 @@
 // (500 pixels) whatever the width or the pointer. The medium, wide, and extra
 // wide classes begin where it ends (FR-81).
 export const NARROW_QUERY = '(max-width: 47.999rem), (max-height: 31.249rem)';
+// The compact class alone: narrower than 48 rem and at least 31.25 rem high.
+// Its phone chrome (v2.1.0) is ruled on its own query, so that the short
+// class keeps its present chrome until its rail is ruled.
+export const COMPACT_QUERY = '(max-width: 47.999rem) and (min-height: 31.25rem)';
 // The exported viewer keeps its own narrow viewport in this version (the
 // owner's ruling: the viewer is not moved onto boundaries it has no new
 // chrome for): narrower than 56 rem (896 pixels, so that phones and tablets

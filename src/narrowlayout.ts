@@ -1,7 +1,7 @@
 // The narrow layout of the application and of the exported viewer: the
 // overlay module's start, the dialogs, and the moved controls.
 import { MapView } from './mapview';
-import { NARROW_QUERY, NarrowDialogs, NarrowViewer, VIEWER_NARROW_QUERY, type NarrowDialogSpec } from './narrowviewer';
+import { COMPACT_QUERY, NARROW_QUERY, NarrowDialogs, NarrowViewer, VIEWER_NARROW_QUERY, type NarrowDialogSpec } from './narrowviewer';
 import { el, state } from './appstate';
 import { layoutShell, startShell } from './shell';
 import { fetchAbort } from './fetchpanel';
@@ -124,6 +124,21 @@ export function startNarrowApplication(): void {
       refit: () => refitNarrowStages(),
     },
   );
+  // In the compact class the tool strip's "more" opens its panel as one more
+  // overlay, on the compact class's own query, above the bottom bar; the
+  // short class keeps its present chrome.
+  new NarrowViewer(window.matchMedia(COMPACT_QUERY), [{ toggle: el<HTMLButtonElement>('map-more'), panel: el('map-more-panel') }], {
+    enabled: () => document.documentElement.dataset.mode !== 'viewer',
+    closeCard: () => {
+      if (cardId !== null) {
+        closeCard();
+      }
+    },
+    render: () => {
+      renderMapItems();
+    },
+    refit: () => undefined,
+  });
   layoutHeader();
   layoutAnnotationControls();
   // The six dialogs as overlays in the narrow layout (FR-71, FR-72 as

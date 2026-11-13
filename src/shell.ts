@@ -61,7 +61,7 @@ export function shellActive(): boolean {
 
 // --- The moved controls ----------------------------------------------------
 
-type Mode = 'narrow' | 'medium' | 'wide' | null;
+type Mode = 'narrow' | 'compact' | 'medium' | 'wide' | null;
 
 interface Move {
   item: HTMLElement;
@@ -83,11 +83,14 @@ function move(id: string | HTMLElement, where: Move['where'], first = false): Mo
 
 function buildMoves(): Move[] {
   const menu = el('app-menu');
+  // The strip's placement, in the medium and wide classes and in the compact
+  // class, where the tool rows become the 56-pixel bottom bar (v2.1.0).
+  const strip = (target: () => HTMLElement) => (mode: Mode) => (mode === 'medium' || mode === 'wide' || mode === 'compact' ? target() : null);
   const desk = (target: () => HTMLElement) => (mode: Mode) => (mode === 'medium' || mode === 'wide' ? target() : null);
   const language = el('select-language').closest('label')!;
   const theme = el('select-theme').closest('label')!;
   const inMenu = (narrow: boolean, shell: boolean) => (mode: Mode) =>
-    (mode === 'narrow' && narrow) || ((mode === 'medium' || mode === 'wide') && shell) ? menu : null;
+    ((mode === 'narrow' || mode === 'compact') && narrow) || ((mode === 'medium' || mode === 'wide') && shell) ? menu : null;
   return [
     // The Menu: in the compact and short classes the whole of the work
     // controls with the demo's badge (FR-71); in the classes above, what the
@@ -99,37 +102,38 @@ function buildMoves(): Move[] {
     move('work-share', inMenu(false, true)),
     move(language, inMenu(true, true)),
     move(theme, inMenu(true, true)),
-    // The bar's Export menu.
+    // The exports: in the bar's Export menu in the medium and wide classes,
+    // in the Menu overlay on the phone, where the bar has no Export (the
+    // mockup's phone frames).
     ...['export-open', 'pdf-open', 'pptx-open'].map((id) =>
-      move(
-        id,
-        desk(() => el('bar-export-menu')),
-      ),
+      move(id, (mode: Mode) => (mode === 'compact' ? menu : mode === 'medium' || mode === 'wide' ? el('bar-export-menu') : null)),
     ),
     // Behind the tool strip's "more".
     ...['map-load', 'fetch-open', 'fetch-offline', 'map-reset', 'marker-selection', 'marker-shape-label', 'marker-remove'].map((id) =>
       move(
         id,
-        desk(() => el('map-more-panel')),
+        strip(() => el('map-more-panel')),
       ),
     ),
     move(
       'map-more',
-      desk(() => el('annotation-tools')),
+      strip(() => el('annotation-tools')),
     ),
     // The zoom and fit controls, floating at the stage's lower right.
     ...['map-zoom-in', 'map-zoom-level', 'map-zoom-out', 'map-fit'].map((id) =>
       move(
         id,
-        desk(() => el('map-zoom')),
+        strip(() => el('map-zoom')),
       ),
     ),
     ...['pres-zoom-in', 'pres-zoom-level', 'pres-zoom-out', 'pres-fit', 'pres-reset'].map((id) =>
       move(
         id,
-        desk(() => el('pres-zoom')),
+        strip(() => el('pres-zoom')),
       ),
     ),
+    // On the phone, the overlay toggles ride in the bottom bar with the tools.
+    move('map-toggles', (mode: Mode) => (mode === 'compact' ? el('annotation-toolbar') : null)),
     // The folds' controls, in the panels they fold.
     move(
       'toggle-items',
@@ -161,7 +165,7 @@ function buildMoves(): Move[] {
 function placeControls(): void {
   moves ??= buildMoves();
   const cls = layoutClass();
-  const mode: Mode = viewerMode() ? null : cls === 'compact' || cls === 'short' ? 'narrow' : cls === 'medium' ? 'medium' : 'wide';
+  const mode: Mode = viewerMode() ? null : cls === 'short' ? 'narrow' : cls === 'compact' ? 'compact' : cls === 'medium' ? 'medium' : 'wide';
   if (mode === placed) {
     return;
   }
