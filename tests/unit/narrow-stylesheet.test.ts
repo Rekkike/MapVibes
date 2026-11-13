@@ -110,8 +110,9 @@ describe('the narrow media blocks (FR-58 as amended)', () => {
   });
 
   test('each query is the query of the script that drives its block', () => {
-    // The viewer keeps its own narrow viewport in v2.0.0; the application's
-    // is that of the compact and short classes (FR-58 as amended).
+    // Since v2.1.0 the viewer has crossed to the five classes: its narrow
+    // layout is on the application's query, the 896-pixel threshold and the
+    // low-landscape clause retired (FR-58 as amended).
     expect(blocks(after).map((block) => block.query)).toEqual([VIEWER_NARROW_QUERY, NARROW_QUERY]);
   });
 

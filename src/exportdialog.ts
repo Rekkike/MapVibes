@@ -192,7 +192,12 @@ export function openExportDialog(): void {
   showDialog('export-panel');
   buildExportSelection();
   renderExport();
-  el('export-go').focus();
+  // The heading stays in sight: the dialog starts scrolled to its top, and
+  // the first focused control does not scroll it (FR-39 as amended in this
+  // pass).
+  const panel = el('export-panel');
+  panel.scrollTop = 0;
+  el('export-go').focus({ preventScroll: true });
 }
 
 export function closeExportDialog(): void {

@@ -349,6 +349,9 @@ export async function openDocumentDialog(kind: DocumentKind): Promise<void> {
   const table = documentTable();
   documentMessage = 'preparing';
   showDialog('document-panel');
+  // The heading stays in sight from the first moment: the dialog opens
+  // scrolled to its top (FR-52 as amended in this pass).
+  el('document-panel').scrollTop = 0;
   renderDocument();
   let prepared: PreparedDocument | null = null;
   try {
@@ -366,7 +369,11 @@ export async function openDocumentDialog(kind: DocumentKind): Promise<void> {
   }
   renderDocument();
   if (prepared) {
-    el('document-go').focus();
+    // The heading stays in sight: the dialog starts scrolled to its top, and
+    // the first focused control does not scroll it (FR-52 as amended in
+    // this pass).
+    el('document-panel').scrollTop = 0;
+    el('document-go').focus({ preventScroll: true });
   }
 }
 
