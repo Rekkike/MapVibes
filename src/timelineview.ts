@@ -914,6 +914,7 @@ export class TimelineView {
     const lines: HTMLElement[] = [];
     for (const t of all) {
       const tick = el('span', 'timeline-tick', format(t));
+      tick.dataset.day = String(t.day);
       tick.style.left = `${pct(t.day).toFixed(3)}%`;
       plot.appendChild(tick);
       const line = el('span', 'timeline-gridline');
