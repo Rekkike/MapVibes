@@ -3376,6 +3376,17 @@ button.timeline-plot-control:hover > .timeline-indicator,
   pointer-events: none;
 }
 
+/* Today's day cell at the month level (FR-80 as noted in v2.2.0): a faint
+   shade of the text colour behind the dashed line. */
+.timeline-today-day {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--fg);
+  opacity: 0.08;
+  pointer-events: none;
+}
+
 .timeline-event-chip.timeline-today-edge {
   padding: 0;
   border-radius: var(--radius-pill);

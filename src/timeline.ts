@@ -7,7 +7,7 @@
 // "No dates", last, with no bar; a value that cannot be read is kept as
 // typed, to be shown on the line.
 
-import { dateOfDay, readDate, type DateReading } from './dates';
+import { dateOfDay, dayNumber, readDate, type DateReading } from './dates';
 import type { PresentationOrder } from './workstate';
 import type { SeriesRole } from './economics';
 
@@ -246,13 +246,92 @@ export function fitWindow(extent: { from: number; to: number } | null): { from: 
   return { from: middle - length / 2 - margin, to: middle + length / 2 + margin };
 }
 
-// The limits of zoom: from two weeks to four times the fitted window.
-export const MIN_WINDOW_DAYS = 14;
+// The calendar-anchored zoom (FR-67 as amended in v2.2.0): a ladder of four
+// anchors -- a calendar month, quarter, half-year, and year -- and then the
+// free multi-year range out to the fitted window. At an anchor the window is
+// the calendar unit that contains the window's centre date, so its edges are
+// calendar boundaries. The limits of zoom are one calendar month and the
+// fitted window.
+export type ZoomLevel = 'month' | 'quarter' | 'half' | 'year';
+export const ZOOM_LEVELS: ZoomLevel[] = ['month', 'quarter', 'half', 'year'];
+// Each anchor's length in months, and its nominal length in days (an
+// average calendar unit), by which spans are compared.
+const LEVEL_MONTHS: Record<ZoomLevel, number> = { month: 1, quarter: 3, half: 6, year: 12 };
+export const LEVEL_DAYS: Record<ZoomLevel, number> = { month: 30.44, quarter: 91.31, half: 182.62, year: 365.25 };
+// The window's length is matched to an anchor within this share.
+const ANCHOR_TOLERANCE = 0.06;
 
+// The calendar unit of a level that contains a day.
+export function anchorWindow(level: ZoomLevel, centre: number): { from: number; to: number } {
+  const { year, month } = dateOfDay(Math.floor(centre));
+  const months = LEVEL_MONTHS[level];
+  const first = Math.floor((month - 1) / months) * months;
+  const from = dayNumber(year, first + 1, 1);
+  const end = first + months;
+  const to = dayNumber(year + Math.floor(end / 12), (end % 12) + 1, 1);
+  return { from, to };
+}
+
+// The anchors of the ladder for a fitted window: those not wider than it
+// (FR-67 as amended: an anchor wider than the fitted window is left out).
+export function ladder(fitted: { from: number; to: number }): ZoomLevel[] {
+  const length = fitted.to - fitted.from;
+  return ZOOM_LEVELS.filter((level) => level === 'month' || LEVEL_DAYS[level] < length * (1 - ANCHOR_TOLERANCE));
+}
+
+// The anchor a window is at, or null where it is between anchors or in the
+// free range: its edges are the edges of the calendar unit at its centre.
+export function anchorOf(window: { from: number; to: number }): ZoomLevel | null {
+  const centre = (window.from + window.to) / 2;
+  for (const level of ZOOM_LEVELS) {
+    const unit = anchorWindow(level, centre);
+    if (Math.abs(unit.from - window.from) < 0.01 && Math.abs(unit.to - window.to) < 0.01) {
+      return level;
+    }
+  }
+  return null;
+}
+
+// Where a window settles (FR-67 as amended): onto the nearest anchor of the
+// ladder, by the logarithm of its length, at its centre date; a window
+// longer than the widest anchor is in the free range and stays as it is.
+export function settleWindow(window: { from: number; to: number }, fitted: { from: number; to: number }): { from: number; to: number } {
+  const levels = ladder(fitted);
+  const length = window.to - window.from;
+  const widest = levels[levels.length - 1];
+  if (length > LEVEL_DAYS[widest] * (1 + ANCHOR_TOLERANCE)) {
+    return window;
+  }
+  const nearest = levels.reduce((best, level) =>
+    Math.abs(Math.log(length / LEVEL_DAYS[level])) < Math.abs(Math.log(length / LEVEL_DAYS[best])) ? level : best,
+  );
+  return anchorWindow(nearest, (window.from + window.to) / 2);
+}
+
+// One step of the zoom buttons (FR-67 as amended): in, to the next anchor
+// narrower than the window, at its centre date; out, to the next anchor
+// wider than it, and from the widest anchor to the fitted window. At the
+// limits a step leaves the window as it is.
+export function stepWindow(window: { from: number; to: number }, fitted: { from: number; to: number }, direction: 'in' | 'out'): { from: number; to: number } {
+  const levels = ladder(fitted);
+  const length = window.to - window.from;
+  const centre = (window.from + window.to) / 2;
+  if (direction === 'in') {
+    const narrower = [...levels].reverse().find((level) => LEVEL_DAYS[level] < length * (1 - ANCHOR_TOLERANCE));
+    return narrower ? anchorWindow(narrower, centre) : window;
+  }
+  const wider = levels.find((level) => LEVEL_DAYS[level] > length * (1 + ANCHOR_TOLERANCE));
+  return wider ? anchorWindow(wider, centre) : { ...fitted };
+}
+
+// The limits of zoom (FR-67 as amended): one calendar month (the month at
+// the window's centre) to the fitted window.
 export function clampWindow(window: { from: number; to: number }, fitted: { from: number; to: number }): { from: number; to: number } {
-  const maxLength = Math.max(MIN_WINDOW_DAYS, (fitted.to - fitted.from) * 4);
-  const length = Math.min(maxLength, Math.max(MIN_WINDOW_DAYS, window.to - window.from));
   const middle = (window.from + window.to) / 2;
+  const month = anchorWindow('month', middle);
+  const minLength = month.to - month.from;
+  const maxLength = Math.max(minLength, fitted.to - fitted.from);
+  const length = Math.min(maxLength, Math.max(minLength, window.to - window.from));
   return { from: middle - length / 2, to: middle + length / 2 };
 }
 
@@ -508,4 +587,81 @@ const EVENT_MAX_PX = 175;
 
 export function eventChipWidth(label: string): number {
   return Math.min(EVENT_MAX_PX, Math.ceil(label.length * EVENT_CHAR_PX) + EVENT_PAD_PX);
+}
+
+// The axis's grade by the window's length (FR-67 as amended in v2.2.0): the
+// grade of the nearest anchor, by the logarithm of the length -- days at
+// the month, months at the quarter and the half-year, years at the year
+// and beyond.
+export type AxisGrade = 'days' | 'months' | 'years';
+
+export function axisGrade(window: DayWindow): AxisGrade {
+  const length = window.to - window.from;
+  if (length < Math.sqrt(LEVEL_DAYS.month * LEVEL_DAYS.quarter)) {
+    return 'days';
+  }
+  return length < Math.sqrt(LEVEL_DAYS.half * LEVEL_DAYS.year) ? 'months' : 'years';
+}
+
+export interface GradedTick {
+  day: number;
+  unit: 'day' | 'month' | 'year';
+  // A day tick on the 1st of a month: it carries the month's name, marking
+  // the boundary.
+  monthStart?: boolean;
+}
+
+// The least room between two labelled ticks, in pixels.
+const GRADED_TICK_PX = 64;
+const MONTH_TICK_PX = 36;
+// The days labelled at the month level where every day has no room (the
+// owner's ruling): the 1st, 8th, 15th, 22nd, and 29th, else the 1st and 15th.
+const WEEKLY_DAYS = [1, 8, 15, 22, 29];
+const FORTNIGHTLY_DAYS = [1, 15];
+
+// The ticks of the axis at the window's grade.
+export function gradedTicks(window: DayWindow, width: number): GradedTick[] {
+  const grade = axisGrade(window);
+  const pxPerDay = width / Math.max(1e-9, window.to - window.from);
+  const first = Math.ceil(window.from);
+  const out: GradedTick[] = [];
+  if (grade === 'days') {
+    const days = pxPerDay >= GRADED_TICK_PX ? null : 7 * pxPerDay >= GRADED_TICK_PX ? WEEKLY_DAYS : FORTNIGHTLY_DAYS;
+    for (let day = first; day <= window.to && out.length <= 500; day++) {
+      const date = dateOfDay(day).day;
+      if (days === null || days.includes(date)) {
+        out.push({ day, unit: 'day', monthStart: date === 1 });
+      }
+    }
+    return out;
+  }
+  if (grade === 'months') {
+    const every = 30.44 * pxPerDay >= MONTH_TICK_PX ? 1 : 2;
+    const start = dateOfDay(Math.floor(window.from));
+    for (let m = start.year * 12 + start.month - 1; out.length <= 500; m++) {
+      const day = dayNumber(Math.floor(m / 12), (m % 12) + 1, 1);
+      if (day > window.to) {
+        break;
+      }
+      if (day >= window.from && (m % 12) % every === 0) {
+        out.push({ day, unit: 'month' });
+      }
+    }
+    return out;
+  }
+  // Years: the existing steps of whole years (1, 2, 5, 10, ... years), never
+  // months or days.
+  const pxPerYear = 365.25 * pxPerDay;
+  const n = [1, 2, 5, 10, 25, 50].find((y) => y * pxPerYear >= MIN_TICK_PX) ?? 50;
+  const startYear = dateOfDay(Math.floor(window.from)).year;
+  for (let y = Math.ceil(startYear / n) * n; out.length <= 500; y += n) {
+    const day = dayNumber(y, 1, 1);
+    if (day > window.to) {
+      break;
+    }
+    if (day >= window.from) {
+      out.push({ day, unit: 'year' });
+    }
+  }
+  return out;
 }

@@ -160,10 +160,14 @@ describe('the costs view (FR-79)', () => {
     byId('pres-zoom-in').click();
     const view = app.captureWorkState().costsView!;
     expect(view.firstLine).toBe(0);
-    // The fitted window: 2020 to 2032 with its margin; zoomed in, within it.
+    // The fitted window: 2020 to 2032 with its margin; one step in lands on
+    // the ladder's widest anchor, the calendar year at its centre (FR-67 as
+    // amended in v2.2.0), within it.
     expect(view.from).toBeGreaterThan(dayNumber(2020, 1, 1));
     expect(view.to).toBeLessThan(dayNumber(2033, 1, 1));
-    expect(byId('pres-zoom-level').textContent).toBe('125%');
+    const year = new Date(view.from * 86_400_000).getUTCFullYear();
+    expect([view.from, view.to]).toEqual([dayNumber(year, 1, 1), dayNumber(year + 1, 1, 1)]);
+    expect(Number(byId('pres-zoom-level').textContent.replace('%', ''))).toBeGreaterThan(100);
     // The timeline's own view is untouched.
     expect(app.captureWorkState().timelineView).toBeNull();
     byId('pres-fit').click();
