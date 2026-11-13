@@ -193,19 +193,23 @@ interface Fold {
   toggle: string;
   panel: string;
   // Open by default where the room allows.
-  roomy: boolean;
+  // Open by default: in every class of this layout, from the docking width,
+  // or never.
+  opens: 'always' | 'dock' | 'never';
 }
 
 // The items panel and the Map segment's "In view" are open by default from
-// the width at which the items panel docks; the legends and the
-// Presentation segment's panels are folded by default at every size.
+// the width at which the items panel docks; the legends are open by default
+// in every class of this layout (the owner's ruling, as the mockup's desktop
+// frames draw them); the Presentation segment's panels are folded by
+// default at every size.
 const FOLDS: Fold[] = [
-  { key: 'Items', toggle: 'toggle-items', panel: 'placement-area', roomy: true },
-  { key: 'MapGlance', toggle: 'toggle-map-glance', panel: 'map-glance', roomy: true },
-  { key: 'MapLegend', toggle: 'toggle-map-legend', panel: 'map-legend', roomy: false },
-  { key: 'Visibility', toggle: 'toggle-visibility', panel: 'visibility-area', roomy: false },
-  { key: 'PresGlance', toggle: 'toggle-glance', panel: 'presentation-glance', roomy: false },
-  { key: 'PresLegend', toggle: 'toggle-legend', panel: 'presentation-legend', roomy: false },
+  { key: 'Items', toggle: 'toggle-items', panel: 'placement-area', opens: 'dock' },
+  { key: 'MapGlance', toggle: 'toggle-map-glance', panel: 'map-glance', opens: 'dock' },
+  { key: 'MapLegend', toggle: 'toggle-map-legend', panel: 'map-legend', opens: 'always' },
+  { key: 'Visibility', toggle: 'toggle-visibility', panel: 'visibility-area', opens: 'never' },
+  { key: 'PresGlance', toggle: 'toggle-glance', panel: 'presentation-glance', opens: 'never' },
+  { key: 'PresLegend', toggle: 'toggle-legend', panel: 'presentation-legend', opens: 'always' },
 ];
 
 const open = new Map<string, boolean>();
@@ -222,7 +226,7 @@ function applyFolds(): void {
     open.clear();
     if (active) {
       for (const fold of FOLDS) {
-        open.set(fold.key, fold.roomy && q().dock.matches);
+        open.set(fold.key, fold.opens === 'always' || (fold.opens === 'dock' && q().dock.matches));
       }
     }
   }
