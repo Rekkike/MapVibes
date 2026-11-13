@@ -50,10 +50,10 @@ afterAll(async () => {
 });
 
 // name, context options, header band [min, max], stage share of the viewport
-// at least, fitted scale band at "Fit view" (map view; null where the view is
-// width-bound on a phone). The bar is 44 px in the wider classes and 48 px in
-// the compact class; in the short class the header is the side rail, the full
-// viewport high.
+// at least, whether the fitted scale is pinned (map view; null where the view
+// is width-bound on a phone). The bar is 44 px in the wider classes and 48 px
+// in the compact class; in the short class the header is the side rail, the
+// full viewport high.
 const PROFILES: Array<[string, object, [number, number], number, [number, number] | null]> = [
   ['desktop 1500x950', { viewport: { width: 1500, height: 950 } }, [44, 44], 0.94, [0.36, 0.4]],
   ['desktop 1280x800', { viewport: { width: 1280, height: 800 } }, [44, 44], 0.94, [0.29, 0.32]],
@@ -140,12 +140,17 @@ describe.each(PROFILES)('the quiet chrome on %s (v1.9.0)', (name, options, heade
     if (scaleBand) {
       await page.click('#pres-fit');
       await page.waitForTimeout(1200);
-      const scale = await page.evaluate(() => {
+      // The fitted scale is derived from the stage and the background's own
+      // size, so the pin holds whatever the chrome: fitted means the whole
+      // background in the stage.
+      const fitted = await page.evaluate(() => {
+        const stage = (document.querySelector('#presentation-stage') as HTMLElement).getBoundingClientRect();
+        const img = document.querySelector('#presentation-image') as HTMLImageElement;
         const m = /matrix\(([^)]+)\)/.exec(getComputedStyle(document.querySelector('#presentation-content')!).transform);
-        return m ? Number(m[1].split(',')[0]) : null;
+        return { scale: m ? Number(m[1].split(',')[0]) : null, expected: Math.min(stage.width / img.naturalWidth, stage.height / img.naturalHeight) };
       });
-      expect(scale, `${name} fitted scale`).toBeGreaterThanOrEqual(scaleBand[0]);
-      expect(scale, `${name} fitted scale`).toBeLessThanOrEqual(scaleBand[1]);
+      expect(fitted.scale, `${name} fitted scale`).toBeGreaterThanOrEqual(fitted.expected - 0.01);
+      expect(fitted.scale, `${name} fitted scale`).toBeLessThanOrEqual(fitted.expected + 0.01);
       // The annotation labels scale with the map (FR-47): at the fitted view
       // they read at the printed fraction of the background times the scale.
       const labelPx = await page.evaluate(() => {

@@ -471,7 +471,7 @@ interface LegendLine {
   entries: Array<{ x: number; draw: (p: Painter, x: number, baseline: number) => void }>;
 }
 
-export const LEGEND_FONT = 8;
+export const LEGEND_FONT = 9;
 
 export function layoutLegend(
   title: string,
@@ -704,7 +704,7 @@ export function drawFooter(p: Painter, frame: PageFrame): void {
     return;
   }
   p.fillColour(PALETTE.muted);
-  p.text(frame.margin, frame.height - frame.margin + LEGEND_FONT * 0.6, frame.footer, 'regular', LEGEND_FONT - 1);
+  p.text(frame.margin, frame.height - frame.margin + LEGEND_FONT * 0.6, frame.footer, 'regular', LEGEND_FONT);
 }
 
 // --- The table -------------------------------------------------------------
@@ -716,7 +716,7 @@ export interface DocumentTable {
   rows: string[][];
 }
 
-export const TABLE = { font: 8, padding: 4, lineHeight: 10, maxLines: 3, minColumn: 48, maxColumn: 220 };
+export const TABLE = { font: 9, padding: 4, lineHeight: 12.5, maxLines: 3, minColumn: 48, maxColumn: 220 };
 
 export interface TableLayout {
   // Groups of column indices (the number column, 0, leads every group).
