@@ -63,6 +63,10 @@ export const en = {
   placementEmpty: 'No items. Import a spreadsheet in the Information segment.',
   mapLoad: 'Load background',
   mapZoomIn: 'Zoom in',
+  // The schedule views' readout at the quarter and the half-year (FR-67 as
+  // amended).
+  zoomQuarter: 'Q{n} {year}',
+  zoomHalf: 'H{n} {year}',
   mapZoomOut: 'Zoom out',
   mapFit: 'Fit view',
   mapReset: 'Reset',
@@ -660,6 +664,8 @@ export const sv: Strings = {
   placementEmpty: 'Inga poster. Importera ett kalkylark i segmentet Information.',
   mapLoad: 'Läs in bakgrund',
   mapZoomIn: 'Zooma in',
+  zoomQuarter: 'K{n} {year}',
+  zoomHalf: 'H{n} {year}',
   mapZoomOut: 'Zooma ut',
   mapFit: 'Anpassa vy',
   mapReset: 'Återställ',

@@ -71,14 +71,17 @@ describe('the presentation views (FR-66)', () => {
     expect(byId('presentation-timeline').classList.contains('hidden')).toBe(false);
     expect(byId('presentation-empty').classList.contains('hidden')).toBe(true);
     expect(byId<HTMLButtonElement>('pres-fit').disabled).toBe(false);
-    expect(byId('pres-zoom-level').textContent).toBe('100%');
+    // The readout says the window (FR-67 as amended in v2.2.1): the fitted
+    // window's years, another window after a step in, and the fit again.
+    const fitted = byId('pres-zoom-level').textContent;
+    expect(fitted).toMatch(/^\d{4}\u2013\d{4}$/);
     byId('pres-zoom-in').click();
-    expect(byId('pres-zoom-level').textContent).not.toBe('100%');
+    expect(byId('pres-zoom-level').textContent).not.toBe(fitted);
     byId('pres-reset').click();
-    expect(byId('pres-zoom-level').textContent).toBe('100%');
+    expect(byId('pres-zoom-level').textContent).toBe(fitted);
     byId('pres-zoom-out').click();
     byId('pres-fit').click();
-    expect(byId('pres-zoom-level').textContent).toBe('100%');
+    expect(byId('pres-zoom-level').textContent).toBe(fitted);
     expect(app.captureWorkState().presentationMode).toBe('timeline');
     byId('pres-mode-map').click();
     expect(byId('presentation-timeline').classList.contains('hidden')).toBe(true);

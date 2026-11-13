@@ -156,7 +156,9 @@ describe('the costs view (FR-79)', () => {
   test('the fitted window spans the years of the assigned series; zoom and fit act on the view shown', () => {
     byId('pres-mode-costs').click();
     expect(app.captureWorkState().costsView).toBeNull();
-    expect(byId('pres-zoom-level').textContent).toBe('100%');
+    // The readout says the window (FR-67 as amended in v2.2.1): the fitted
+    // window's years.
+    expect(byId('pres-zoom-level').textContent).toMatch(/^\d{4}\u2013\d{4}$/);
     byId('pres-zoom-in').click();
     const view = app.captureWorkState().costsView!;
     expect(view.firstLine).toBe(0);
@@ -167,7 +169,7 @@ describe('the costs view (FR-79)', () => {
     expect(view.to).toBeLessThan(dayNumber(2033, 1, 1));
     const year = new Date(view.from * 86_400_000).getUTCFullYear();
     expect([view.from, view.to]).toEqual([dayNumber(year, 1, 1), dayNumber(year + 1, 1, 1)]);
-    expect(Number(byId('pres-zoom-level').textContent.replace('%', ''))).toBeGreaterThan(100);
+    expect(byId('pres-zoom-level').textContent).toBe(String(year));
     // The timeline's own view is untouched.
     expect(app.captureWorkState().timelineView).toBeNull();
     byId('pres-fit').click();

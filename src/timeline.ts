@@ -609,6 +609,22 @@ export interface GradedTick {
   // A day tick on the 1st of a month: it carries the month's name, marking
   // the boundary.
   monthStart?: boolean;
+  // The first label of the window and every January carry the year beside
+  // the month's name at the day and month grades (FR-67 as amended in
+  // v2.2.1).
+  withYear?: boolean;
+}
+
+// Marks the ticks that carry the year: the first, and every January.
+function markYears(ticks: GradedTick[]): GradedTick[] {
+  ticks.forEach((tick, i) => {
+    const date = dateOfDay(tick.day);
+    const january = date.month === 1 && (tick.unit === 'month' || date.day === 1);
+    if (i === 0 || january) {
+      tick.withYear = true;
+    }
+  });
+  return ticks;
 }
 
 // The least room between two labelled ticks, in pixels.
@@ -633,7 +649,7 @@ export function gradedTicks(window: DayWindow, width: number): GradedTick[] {
         out.push({ day, unit: 'day', monthStart: date === 1 });
       }
     }
-    return out;
+    return markYears(out);
   }
   if (grade === 'months') {
     const every = 30.44 * pxPerDay >= MONTH_TICK_PX ? 1 : 2;
@@ -647,7 +663,7 @@ export function gradedTicks(window: DayWindow, width: number): GradedTick[] {
         out.push({ day, unit: 'month' });
       }
     }
-    return out;
+    return markYears(out);
   }
   // Years: the existing steps of whole years (1, 2, 5, 10, ... years), never
   // months or days.
@@ -664,4 +680,46 @@ export function gradedTicks(window: DayWindow, width: number): GradedTick[] {
     }
   }
   return out;
+}
+
+// The readout of the schedule views (FR-67 as amended in v2.2.1): the
+// visible window in compact calendar form, from the interface language's
+// own calendar names and its two unit codes. At an anchor: the month and
+// year, the quarter or half-year code with the year, or the year; in the
+// free multi-year range, the years of the window's ends; at no anchor and
+// no wider than a year, the window's ends at the axis's grade.
+export function windowLabel(window: DayWindow, locale: string, codes: { quarter: string; half: string }): string {
+  const date = (day: number) => new Date(day * 86_400_000);
+  const fmt = (day: number, options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' }).format(date(day));
+  const fill = (template: string, values: Record<string, string | number>) => template.replace(/\{(\w+)\}/g, (_, k: string) => String(values[k] ?? ''));
+  const first = Math.floor(window.from + 1e-6);
+  const last = Math.ceil(window.to - 1e-6) - 1;
+  const start = dateOfDay(first);
+  const end = dateOfDay(last);
+  const level = anchorOf(window);
+  if (level === 'month') {
+    return fmt(first, { month: 'short', year: 'numeric' });
+  }
+  if (level === 'quarter') {
+    return fill(codes.quarter, { n: Math.floor((start.month - 1) / 3) + 1, year: start.year });
+  }
+  if (level === 'half') {
+    return fill(codes.half, { n: start.month <= 6 ? 1 : 2, year: start.year });
+  }
+  if (level === 'year') {
+    return String(start.year);
+  }
+  const years = start.year === end.year ? String(start.year) : `${start.year}\u2013${end.year}`;
+  if (window.to - window.from > LEVEL_DAYS.year * (1 + ANCHOR_TOLERANCE)) {
+    return years;
+  }
+  const grade = axisGrade(window);
+  if (grade === 'years') {
+    return years;
+  }
+  const sameYear = start.year === end.year;
+  const part = grade === 'days' ? { day: 'numeric', month: 'short' } : { month: 'short' };
+  const a = fmt(first, sameYear ? (part as Intl.DateTimeFormatOptions) : { ...(part as Intl.DateTimeFormatOptions), year: 'numeric' });
+  const b = fmt(last, { ...(part as Intl.DateTimeFormatOptions), year: 'numeric' });
+  return a === b ? b : `${a} \u2013 ${b}`;
 }
