@@ -628,14 +628,25 @@ button:disabled {
   opacity: 0.5;
 }
 
+/* Every text-entry field (FR-29): the value and the caret in the theme's
+   text token, the placeholder in its muted token. A field kind that this
+   rule does not name takes the browser's fixed default (black), which is
+   unreadable on the dark theme's field ground: the defect of v2.2.1's
+   fix-forward, the phone card's wrapping field (a textarea). */
 select,
-input[type='text'] {
+textarea,
+input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [type='button'], [type='submit'], [type='color']) {
   font: inherit;
   color: var(--fg);
   background: var(--panel);
   border: 1px solid var(--control-line);
   border-radius: var(--radius);
   padding: var(--space-4);
+}
+
+::placeholder {
+  color: var(--muted);
+  opacity: 1;
 }
 
 #pdf-panel {
@@ -1583,7 +1594,6 @@ input[type='text'] {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--input-bg);
-  color: var(--fg);
   font: inherit;
 }
 
@@ -1601,7 +1611,6 @@ input[type='text'] {
   border: 1px solid var(--control-line);
   border-radius: var(--radius);
   background: var(--input-bg);
-  color: var(--fg);
   font: inherit;
 }
 
