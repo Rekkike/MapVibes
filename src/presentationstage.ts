@@ -1167,10 +1167,10 @@ export function initialisePresentation(): void {
   });
   // The toolbar acts on the view shown (FR-66); on the timeline, Reset is
   // Fit (FR-67).
-  el('pres-zoom-in').addEventListener('click', () => (timelineMode() ? schedule()?.zoomBy(BUTTON_ZOOM_FACTOR) : presentationView?.zoomBy(BUTTON_ZOOM_FACTOR)));
-  el('pres-zoom-out').addEventListener('click', () =>
-    timelineMode() ? schedule()?.zoomBy(1 / BUTTON_ZOOM_FACTOR) : presentationView?.zoomBy(1 / BUTTON_ZOOM_FACTOR),
-  );
+  // In the schedule views the buttons step the zoom ladder (FR-67 as amended
+  // in v2.2.0).
+  el('pres-zoom-in').addEventListener('click', () => (timelineMode() ? schedule()?.step('in') : presentationView?.zoomBy(BUTTON_ZOOM_FACTOR)));
+  el('pres-zoom-out').addEventListener('click', () => (timelineMode() ? schedule()?.step('out') : presentationView?.zoomBy(1 / BUTTON_ZOOM_FACTOR)));
   el('pres-fit').addEventListener('click', () => (timelineMode() ? schedule()?.fit() : presentationView?.fit()));
   el('pres-reset').addEventListener('click', () => (timelineMode() ? schedule()?.fit() : presentationView?.reset()));
   for (const button of document.querySelectorAll<HTMLButtonElement>('.pres-mode-button')) {

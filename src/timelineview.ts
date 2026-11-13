@@ -17,6 +17,10 @@ import {
   layoutEvents,
   ticks,
   zoomWindow,
+  settleWindow,
+  axisGrade,
+  gradedTicks,
+  stepWindow,
   type ScheduleEvent,
   type CostsAmount,
   type CostsLine,
@@ -160,6 +164,10 @@ export function amountLabelPlace(cellPx: number, share: number, characters: numb
 // The plot's width where the layout gives none (before the first layout).
 const FALLBACK_WIDTH = 800;
 const DRAG_THRESHOLD = 5;
+// The settling's travel (the motion token of the view, 240 milliseconds) and
+// the pause after the wheel's last input that ends a wheel's zoom or pan.
+const SETTLE_MS = 240;
+const SETTLE_PAUSE_MS = 250;
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
@@ -198,6 +206,11 @@ export class TimelineView {
   private drag: { x: number; y: number; window: Window; panning: boolean } | null = null;
   private pinch: { distance: number; window: Window; around: number } | null = null;
   private suppressClick = false;
+  // The settling of the calendar-anchored zoom (FR-67 as amended in
+  // v2.2.0): a pending settle after the wheel's last input, and a travel in
+  // progress.
+  private settleTimer: ReturnType<typeof setTimeout> | null = null;
+  private travel: number | null = null;
   // The lines expanded to full-height lanes (FR-78): transient UI state,
   // never saved; the saved view is the window and the first visible line.
   private readonly expanded = new Set<string>();
@@ -290,13 +303,97 @@ export class TimelineView {
   }
 
   zoomBy(factor: number, around: number = (this.current.from + this.current.to) / 2): void {
+    this.stopTravel();
     this.current = clampWindow(zoomWindow(this.current, factor, around), this.fitted);
     this.chosen = true;
     this.position();
     this.callbacks.onViewChanged();
   }
 
+  // One step of the zoom buttons along the ladder (FR-67 as amended in
+  // v2.2.0): in or out by one anchor, at the window's centre date; the
+  // outermost step is the fitted window.
+  step(direction: 'in' | 'out'): void {
+    this.stopTravel();
+    const next = stepWindow(this.current, this.fitted, direction);
+    if (direction === 'out' && next.from === this.fitted.from && next.to === this.fitted.to) {
+      this.setWindow(null);
+      this.callbacks.onViewChanged();
+      return;
+    }
+    this.current = next;
+    this.chosen = true;
+    this.position();
+    this.callbacks.onViewChanged();
+  }
+
+  // Settles the window onto the nearest anchor of the ladder at its centre
+  // date (FR-67 as amended in v2.2.0), travelling there over the view's
+  // motion time, or at once with the reduced-motion preference; in the free
+  // multi-year range the window stays as it is.
+  settle(): void {
+    this.cancelSettle();
+    const target = settleWindow(this.current, this.fitted);
+    if (Math.abs(target.from - this.current.from) < 0.001 && Math.abs(target.to - this.current.to) < 0.001) {
+      return;
+    }
+    this.chosen = true;
+    const reduced = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced || typeof window.requestAnimationFrame !== 'function') {
+      this.current = target;
+      this.position();
+      this.callbacks.onViewChanged();
+      return;
+    }
+    const start = { ...this.current };
+    const began = performance.now();
+    const frame = (now: number) => {
+      const t = Math.min(1, (now - began) / SETTLE_MS);
+      // The motion token's ease-out curve, approximated.
+      const k = 1 - (1 - t) ** 3;
+      this.current = { from: start.from + (target.from - start.from) * k, to: start.to + (target.to - start.to) * k };
+      this.position();
+      if (t < 1) {
+        this.travel = window.requestAnimationFrame(frame);
+      } else {
+        this.travel = null;
+        this.current = target;
+        this.position();
+        this.callbacks.onViewChanged();
+      }
+    };
+    this.travel = window.requestAnimationFrame(frame);
+  }
+
+  // A settle after the wheel's or the trackpad's last input.
+  private settleSoon(): void {
+    this.cancelSettle();
+    this.settleTimer = setTimeout(() => {
+      this.settleTimer = null;
+      this.settle();
+    }, SETTLE_PAUSE_MS);
+  }
+
+  private cancelSettle(): void {
+    if (this.settleTimer !== null) {
+      clearTimeout(this.settleTimer);
+      this.settleTimer = null;
+    }
+  }
+
+  private stopTravel(): void {
+    this.cancelSettle();
+    if (this.travel !== null) {
+      window.cancelAnimationFrame(this.travel);
+      this.travel = null;
+    }
+  }
+
   private panBy(days: number, from: Window = this.current): void {
+    if (this.travel !== null) {
+      window.cancelAnimationFrame(this.travel);
+      this.travel = null;
+    }
     this.current = { from: from.from + days, to: from.to + days };
     this.chosen = true;
     this.position();
@@ -311,6 +408,9 @@ export class TimelineView {
     const margin = length * EVENT_EDGE_MARGIN;
     const shift = day < this.current.from ? day - margin - this.current.from : day + margin - this.current.to;
     this.panBy(shift);
+    // The tap is the pan's release: it settles onto the calendar unit at the
+    // new centre (FR-67 as amended in v2.2.0).
+    this.settle();
   }
 
   // The index of the first row at least partly visible.
@@ -792,16 +892,23 @@ export class TimelineView {
     const gutter = this.scroller.offsetWidth - this.scroller.clientWidth;
     this.root.style.setProperty('--timeline-gutter', `${Math.max(0, gutter)}px`);
     const locale = this.labels?.locale ?? 'en';
-    const all = ticks(this.current, this.plotWidth());
-    const format = (t: { day: number; unit: string }) => {
+    // The axis graded with the zoom's level (FR-67 as amended in v2.2.0):
+    // day numbers at the month, the 1st of each month carrying its name;
+    // month names at the quarter and the half-year; years beyond.
+    const all = gradedTicks(this.current, this.plotWidth());
+    this.root.dataset.grade = axisGrade(this.current);
+    const format = (t: { day: number; unit: string; monthStart?: boolean }) => {
       const d = new Date(t.day * 86_400_000);
       if (t.unit === 'year') {
         return String(d.getUTCFullYear());
       }
       if (t.unit === 'month') {
-        return new Intl.DateTimeFormat(locale, { month: 'short', year: 'numeric', timeZone: 'UTC' }).format(d);
+        return new Intl.DateTimeFormat(locale, { month: 'short', timeZone: 'UTC' }).format(d);
       }
-      return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(d);
+      if (t.monthStart) {
+        return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(d);
+      }
+      return String(d.getUTCDate());
     };
     const plot = el('div', 'timeline-axis-plot');
     const lines: HTMLElement[] = [];
@@ -837,6 +944,14 @@ export class TimelineView {
       mark.style.left = `${pct(today + 0.5).toFixed(3)}%`;
       mark.dataset.day = String(today);
       mark.title = fill(labels.today, { date: formatDate({ kind: 'date', start: today, end: today, precision: 'day' }) });
+      // At the month level today's day cell is shaded too, so that the mark
+      // reads as its day (FR-80 as noted in v2.2.0).
+      if (axisGrade(this.current) === 'days') {
+        const cell = el('span', 'timeline-today-day');
+        cell.style.left = `${pct(today).toFixed(3)}%`;
+        cell.style.width = `${(pct(today + 1) - pct(today)).toFixed(3)}%`;
+        todayMarks.push(cell);
+      }
       todayMarks.push(mark);
     }
     const stripShown = this.events.length > 0 || todayBeyond !== null;
@@ -1026,11 +1141,13 @@ export class TimelineView {
       e.preventDefault();
       const delta = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
       this.zoomBy(Math.exp(-delta * 0.002), this.dayAt(e.clientX));
+      this.settleSoon();
     } else if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
       // A sideways wheel pans.
       e.preventDefault();
       const delta = e.deltaMode === 1 ? e.deltaX * 16 : e.deltaX;
       this.panBy(delta * this.daysPerPixel());
+      this.settleSoon();
     }
     // The plain wheel scrolls the lines, natively.
   }
@@ -1082,8 +1199,14 @@ export class TimelineView {
 
   private onPointerUp(e: PointerEvent): void {
     this.pointers.delete(e.pointerId);
+    // A pinch's or a pan's release settles the window (FR-67 as amended in
+    // v2.2.0).
+    const released = (this.pinch !== null && this.pointers.size < 2) || (this.pointers.size === 0 && this.drag?.panning === true);
     if (this.pointers.size < 2) {
       this.pinch = null;
+    }
+    if (released) {
+      this.settle();
     }
     if (this.pointers.size === 0) {
       this.drag = null;

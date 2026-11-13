@@ -1,15 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import {
-  areaRanks,
-  buildTimeline,
-  clampWindow,
-  fitWindow,
-  layoutLanes,
-  MIN_WINDOW_DAYS,
-  orderEntries,
-  zoomWindow,
-  type TimelineItem,
-} from '../../src/timeline';
+import { areaRanks, buildTimeline, clampWindow, fitWindow, layoutLanes, orderEntries, zoomWindow, type TimelineItem } from '../../src/timeline';
 import { ticks } from '../../src/timelineview';
 import { dayNumber } from '../../src/dates';
 
@@ -52,14 +42,15 @@ describe('the timeline model (FR-67)', () => {
     expect(fitWindow(null)).toEqual({ from: 0, to: 365 });
   });
 
-  test('the fitted window holds the full span with a margin; zoom stays between two weeks and four times the fit', () => {
+  test('the fitted window holds the full span with a margin; zoom stays between one calendar month and the fit (FR-67 as amended in v2.2.0)', () => {
     const fitted = fitWindow({ from: 100, to: 199 });
     expect(fitted.from).toBeLessThan(100);
     expect(fitted.to).toBeGreaterThan(200);
+    // Day 150 lies in May 1970, a month of 31 days.
     const narrow = clampWindow(zoomWindow(fitted, 1000, 150), fitted);
-    expect(narrow.to - narrow.from).toBeCloseTo(MIN_WINDOW_DAYS);
+    expect(narrow.to - narrow.from).toBeCloseTo(31);
     const wide = clampWindow(zoomWindow(fitted, 0.01, 150), fitted);
-    expect(wide.to - wide.from).toBeCloseTo((fitted.to - fitted.from) * 4);
+    expect(wide.to - wide.from).toBeCloseTo(fitted.to - fitted.from);
     // Zooming keeps the day under the pointer where it is.
     const z = zoomWindow({ from: 0, to: 100 }, 2, 20);
     expect(z).toEqual({ from: 10, to: 60 });
