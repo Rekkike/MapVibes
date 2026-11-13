@@ -4168,7 +4168,9 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     bottom: 3.5rem;
     left: var(--space-12);
     display: none;
-    max-width: min(calc(100% - 6rem), 60rem);
+    /* Clear of "In view" at the upper right and of the zoom group at the
+       lower right: the stage's floating chrome never overlaps. */
+    max-width: min(calc(100% - 18rem), 60rem);
     max-height: calc(100% - 8rem);
     overflow: auto;
     font-size: var(--text-13);
@@ -4269,7 +4271,9 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     top: var(--space-12);
     right: var(--space-12);
     width: 14.5rem;
-    max-height: calc(100% - 5.5rem);
+    /* Its end stays above the zoom group (139 pixels in the Map segment,
+       177 in the Presentation segment, with their margins). */
+    max-height: calc(100% - 11rem);
     padding: var(--space-8) var(--space-12);
   }
 
@@ -4293,6 +4297,33 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     padding-right: var(--space-32);
     font-size: var(--text-13);
     line-height: 1.75rem;
+  }
+
+  html:not([data-mode='viewer']) #presentation-glance {
+    max-height: calc(100% - 13.5rem);
+  }
+
+  /* The Map segment's legend stays below the tool strip (at most 22.5 rem
+     from the stage's top with a coarse pointer and the items control above
+     it); a longer legend scrolls inside itself. */
+  html:not([data-mode='viewer']) #map-legend {
+    max-height: calc(100% - 27rem);
+  }
+
+  /* Below 960 pixels the view switch (up to 400 pixels wide, in Swedish)
+     and "In view" would meet at the top of the Presentation stage: "In view"
+     starts below the switch. */
+  @media (max-width: 59.999rem) {
+    html:not([data-mode='viewer']) #presentation-glance {
+      top: 3.5rem;
+      max-height: calc(100% - 16rem);
+    }
+  }
+
+  @media (max-width: 59.999rem) and (pointer: coarse) {
+    html:not([data-mode='viewer']) #segment-presentation #presentation-glance {
+      max-height: calc(100% - 18.25rem);
+    }
   }
 
   /* The dialogs keep their shapes and open over the stage. */
@@ -4387,6 +4418,26 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     html:not([data-mode='viewer']) #annotation-inspector {
       left: 4.5rem;
     }
+
+    /* The 44-pixel controls make the folded items control and the zoom
+       groups taller: the strip starts lower, and "In view" ends higher (the
+       zoom groups are 163 and 209 pixels here). */
+    html:not([data-mode='viewer'])[data-fold-items='closed'] :is(#annotation-toolbar, #map-more-panel) {
+      top: 4.5rem;
+    }
+
+    html:not([data-mode='viewer'])[data-fold-items='closed'] #annotation-inspector {
+      top: 7.75rem;
+    }
+
+    html:not([data-mode='viewer']) .glance-panel {
+      max-height: calc(100% - 12.5rem);
+    }
+
+    html:not([data-mode='viewer']) #presentation-glance {
+      max-height: calc(100% - 15.5rem);
+    }
+
   }
 }
 
@@ -4430,6 +4481,12 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
 /* The extra wide class: from 1,920 pixels the Map segment's "In view" docks
    while it is open. */
 @media (min-width: 120rem) and (min-height: 31.25rem) {
+  /* With "In view" docked beside the stage, the Map segment's legend has
+     the stage's width. */
+  html:not([data-mode='viewer'])[data-fold-map-glance='open'] #map-legend {
+    max-width: min(calc(100% - 6rem), 60rem);
+  }
+
   html:not([data-mode='viewer']) #map-glance[data-fold='open'] {
     position: relative;
     grid-area: 1 / 3;

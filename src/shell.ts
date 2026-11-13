@@ -198,17 +198,18 @@ interface Fold {
   opens: 'always' | 'dock' | 'never';
 }
 
-// The items panel and the Map segment's "In view" are open by default from
-// the width at which the items panel docks; the legends are open by default
-// in every class of this layout (the owner's ruling, as the mockup's desktop
-// frames draw them); the Presentation segment's panels are folded by
-// default at every size.
+// The stage's floating chrome is visible by default where there is room and
+// folds on request (the owner's principle): the legends and both "In view"
+// panels are open by default in every class of this layout. The items panel
+// is open by default from the width at which it docks; the Presentation
+// segment's visibility list, a drawer rather than floating chrome, is
+// folded by default.
 const FOLDS: Fold[] = [
   { key: 'Items', toggle: 'toggle-items', panel: 'placement-area', opens: 'dock' },
-  { key: 'MapGlance', toggle: 'toggle-map-glance', panel: 'map-glance', opens: 'dock' },
+  { key: 'MapGlance', toggle: 'toggle-map-glance', panel: 'map-glance', opens: 'always' },
   { key: 'MapLegend', toggle: 'toggle-map-legend', panel: 'map-legend', opens: 'always' },
   { key: 'Visibility', toggle: 'toggle-visibility', panel: 'visibility-area', opens: 'never' },
-  { key: 'PresGlance', toggle: 'toggle-glance', panel: 'presentation-glance', opens: 'never' },
+  { key: 'PresGlance', toggle: 'toggle-glance', panel: 'presentation-glance', opens: 'always' },
   { key: 'PresLegend', toggle: 'toggle-legend', panel: 'presentation-legend', opens: 'always' },
 ];
 

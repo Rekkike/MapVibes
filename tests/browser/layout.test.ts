@@ -266,7 +266,7 @@ describe('the tool strip, the floating controls, and the legend (FR-6, FR-81)', 
     await page.context().close();
   }, 60_000);
 
-  test('in the Presentation segment the view switch floats at the top centre and the side panels are closed until asked for', async () => {
+  test('in the Presentation segment the view switch floats at the top centre, "In view" is open, and the visibility list is closed until asked for', async () => {
     const page = await openDemo(1440, 900);
     await page.click('#tab-presentation');
     await page.waitForTimeout(300);
@@ -275,7 +275,9 @@ describe('the tool strip, the floating controls, and the legend (FR-6, FR-81)', 
     expect(Math.abs(toolbar.x + toolbar.width / 2 - (stage.x + stage.width / 2))).toBeLessThanOrEqual(2);
     expect(toolbar.y - stage.y).toBeLessThanOrEqual(16);
     expect(await page.isVisible('#visibility-list')).toBe(false);
-    expect(await page.isVisible('#presentation-glance-list')).toBe(false);
+    // The stage's floating chrome is visible by default where there is room
+    // (the owner's principle).
+    expect(await page.isVisible('#presentation-glance-list')).toBe(true);
     await page.click('#toggle-visibility');
     expect(await page.isVisible('#visibility-list')).toBe(true);
     // Open, it lies over the stage: the stage keeps its size.
@@ -315,8 +317,21 @@ describe('the panels across the classes (FR-81)', () => {
     await page.context().close();
   }, 120_000);
 
-  test('"In view": folded to its heading below 1,400 pixels, floating and unfolded from 1,400, docked at 264 from 1,920', async () => {
+  test('"In view": floating and unfolded from 768 pixels, folded to its heading on request, docked at 264 from 1,920', async () => {
+    for (const [width, height] of [
+      [768, 1024],
+      [1024, 768],
+      [1280, 720],
+    ]) {
+      const open = await openDemo(width, height);
+      expect(await open.isVisible('#map-glance-list'), `${width}`).toBe(true);
+      await open.evaluate(() => document.getElementById('tab-presentation')!.click());
+      await open.waitForTimeout(300);
+      expect(await open.isVisible('#presentation-glance-list'), `${width} presentation`).toBe(true);
+      await open.context().close();
+    }
     let page = await openDemo(1280, 720);
+    await page.click('#toggle-map-glance');
     expect(await page.isVisible('#map-glance-list')).toBe(false);
     expect((await box(page, '#map-glance')).height).toBeLessThanOrEqual(48);
     await page.context().close();
@@ -331,7 +346,7 @@ describe('the panels across the classes (FR-81)', () => {
     await page.context().close();
   }, 120_000);
 
-  test('the two named extremes: at 3,440 by 1,440 nothing centres and no chrome stretches; at 1,280 by 720 the list is its rail, "In view" its heading, and the page does not scroll', async () => {
+  test('the two named extremes: at 3,440 by 1,440 nothing centres and no chrome stretches; at 1,280 by 720 the list is its rail, "In view" floats unfolded, and the page does not scroll', async () => {
     let page = await openDemo(3440, 1440);
     const items = await box(page, '#placement-area');
     const glance = await box(page, '#map-glance');
@@ -346,9 +361,71 @@ describe('the panels across the classes (FR-81)', () => {
     const m = await measure(page);
     expect(m.page).toEqual([1280, 720]);
     expect((await box(page, '#placement-area')).width).toBe(44);
-    expect(await page.isVisible('#map-glance-list')).toBe(false);
+    expect(await page.isVisible('#map-glance-list')).toBe(true);
+    // Floating: it takes nothing from the stage.
+    expect((await box(page, '#map-stage')).width).toBe(1236);
     await page.context().close();
   }, 120_000);
+
+  test("the stage's floating chrome, open by default, never overlaps: in both segments and views, both languages, both pointers", async () => {
+    const MAP = ['#map-glance', '#map-legend', '#toggle-map-legend', '#annotation-tools', '#map-zoom', '#placement-area'];
+    const PRESENTATION = ['#presentation-glance', '#presentation-legend', '#toggle-legend', '#presentation-toolbar', '#pres-zoom', '#visibility-area'];
+    const overlaps = (page: Page, ids: string[]) =>
+      page.evaluate((list) => {
+        const shown = list
+          .map((id) => [id, document.querySelector(id)] as const)
+          .filter(([, e]) => e && e.getBoundingClientRect().width > 0 && getComputedStyle(e).display !== 'none');
+        const out: string[] = [];
+        for (let i = 0; i < shown.length; i++) {
+          for (let j = i + 1; j < shown.length; j++) {
+            const a = shown[i][1]!.getBoundingClientRect();
+            const b = shown[j][1]!.getBoundingClientRect();
+            const x = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+            const y = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+            if (x > 0.5 && y > 0.5) {
+              out.push(`${shown[i][0]} over ${shown[j][0]}`);
+            }
+          }
+        }
+        return out;
+      }, ids);
+    const found: string[] = [];
+    for (const coarse of [false, true]) {
+      for (const lang of ['en', 'sv']) {
+        for (const [width, height] of [
+          [768, 1024],
+          [900, 700],
+          [1024, 768],
+          [1200, 600],
+          [1280, 720],
+          [1440, 900],
+        ]) {
+          const context = await browser.newContext({ viewport: { width, height }, hasTouch: coarse, isMobile: coarse });
+          await context.setOffline(true);
+          const page = await context.newPage();
+          await page.goto(`file://${BUILT}`);
+          await page.evaluate((chosen) => {
+            const select = document.getElementById('select-language') as HTMLSelectElement;
+            select.value = chosen;
+            select.dispatchEvent(new Event('change'));
+            document.getElementById('load-demo')!.click();
+          }, lang);
+          await page.waitForFunction(() => document.documentElement.dataset.segment === 'map', undefined, { timeout: 30_000 });
+          await page.waitForTimeout(200);
+          const at = `${coarse ? 'coarse' : 'fine'} ${lang} ${width}x${height}`;
+          found.push(...(await overlaps(page, MAP)).map((o) => `${at} map: ${o}`));
+          await page.evaluate(() => document.getElementById('tab-presentation')!.click());
+          for (const view of ['map', 'timeline', 'costs']) {
+            await page.evaluate((v) => document.getElementById(`pres-mode-${v}`)!.click(), view);
+            await page.waitForTimeout(200);
+            found.push(...(await overlaps(page, PRESENTATION)).map((o) => `${at} presentation ${view}: ${o}`));
+          }
+          await context.close();
+        }
+      }
+    }
+    expect(found).toEqual([]);
+  }, 300_000);
 
   test('a portrait tablet is in the medium class: the bar and the stage, with 44-pixel targets under a coarse pointer', async () => {
     const page = await openDemo(768, 1024, true);
