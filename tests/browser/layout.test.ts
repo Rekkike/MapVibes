@@ -37,7 +37,9 @@ const PROBES: Array<[number, number, Layout, number, number, number]> = [
   [430, 932, 'compact', 88.8, 94.8, 48],
   [412, 915, 'compact', 88.6, 94.8, 48],
   [360, 800, 'compact', 87.0, 94.0, 48],
-  [844, 390, 'short', 53.4, 65.4, 53],
+  // The short class's last figure is the rail's height: the header is the
+  // 56-pixel side rail, the full height of the viewport (v2.1.0).
+  [844, 390, 'short', 93.4, 93.4, 390],
   [768, 1024, 'medium', 95.7, 95.7, 44],
   [1024, 768, 'medium', 94.3, 94.3, 44],
   [820, 1180, 'medium', 96.3, 96.3, 44],
@@ -185,6 +187,41 @@ describe('the phone chrome of the compact class (FR-71 as amended in v2.1.0)', (
       expect(await page.isVisible('#annotation-toolbar')).toBe(false);
       const pstage = await box(page, '#presentation-stage');
       expect(pstage.y + pstage.height).toBeLessThanOrEqual(height);
+      await page.context().close();
+    }
+  }, 120_000);
+});
+
+describe("the short class's side rail (FR-71 as amended in v2.1.0, the owner's ruling)", () => {
+  test('one 56-pixel rail, no top or bottom bar: the segment switch, the tools, zoom and fit, and the menu control ride in it; the stage owns the rest', async () => {
+    for (const [width, height] of [
+      [844, 390],
+      [932, 430],
+    ]) {
+      const page = await openDemo(width, height);
+      const rail = await box(page, '#app-header');
+      expect(rail.width, `${width} rail width`).toBe(56);
+      expect(rail.height, `${width} rail height`).toBe(height);
+      // No top or bottom bar: the header is the rail alone.
+      expect(rail.x).toBe(0);
+      expect(rail.y).toBe(0);
+      // The segment switch, the map tools, and zoom and fit ride in the rail.
+      const nav = await box(page, '#segment-nav');
+      expect(nav.x).toBeGreaterThanOrEqual(rail.x);
+      expect(nav.x + nav.width).toBeLessThanOrEqual(rail.x + rail.width);
+      const tools = await box(page, '#annotation-tools');
+      expect(tools.x + tools.width).toBeLessThanOrEqual(rail.x + rail.width);
+      expect(await page.isVisible('#menu-toggle')).toBe(true);
+      // The former tool rows are gone; the stage takes everything beside the rail.
+      expect(await page.isVisible('#annotation-toolbar')).toBe(false);
+      const stage = await box(page, '#map-stage');
+      expect(stage.x).toBeGreaterThanOrEqual(rail.x + rail.width - 1);
+      const m = await measure(page);
+      expect(m.share, `${width} the Map segment`).toBeGreaterThanOrEqual(93.4 - TOLERANCE);
+      await page.evaluate(() => document.getElementById('tab-presentation')!.click());
+      await page.waitForTimeout(300);
+      const p = await measure(page);
+      expect(p.share, `${width} the Presentation segment`).toBeGreaterThanOrEqual(93.4 - TOLERANCE);
       await page.context().close();
     }
   }, 120_000);

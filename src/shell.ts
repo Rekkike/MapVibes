@@ -73,6 +73,7 @@ interface Move {
 
 let moves: Move[] | null = null;
 let placed: Mode | undefined;
+let placedSegment: string | undefined;
 
 function move(id: string | HTMLElement, where: Move['where'], first = false): Move {
   const item = typeof id === 'string' ? el(id) : id;
@@ -91,6 +92,11 @@ function buildMoves(): Move[] {
   const theme = el('select-theme').closest('label')!;
   const inMenu = (narrow: boolean, shell: boolean) => (mode: Mode) =>
     ((mode === 'narrow' || mode === 'compact') && narrow) || ((mode === 'medium' || mode === 'wide') && shell) ? menu : null;
+  // The short class's rail (v2.1.0, the owner's ruling): the header itself is
+  // the 56-pixel rail, carrying the segment switch and, in the stage segments,
+  // that segment's tools and zoom, one icon deep; what the rail's height
+  // cannot hold goes behind its menu control.
+  const shortSegment = (segment: string) => (mode: Mode) => (mode === 'narrow' && state.segment === segment ? el('app-header') : null);
   return [
     // The Menu: in the compact and short classes the whole of the work
     // controls with the demo's badge (FR-71); in the classes above, what the
@@ -103,11 +109,22 @@ function buildMoves(): Move[] {
     move(language, inMenu(true, true)),
     move(theme, inMenu(true, true)),
     // The exports: in the bar's Export menu in the medium and wide classes,
-    // in the Menu overlay on the phone, where the bar has no Export (the
-    // mockup's phone frames).
+    // in the Menu overlay on the phone and behind the short class's rail
+    // menu control, where the bar has no Export (the mockup's phone frames,
+    // the owner's ruling).
     ...['export-open', 'pdf-open', 'pptx-open'].map((id) =>
-      move(id, (mode: Mode) => (mode === 'compact' ? menu : mode === 'medium' || mode === 'wide' ? el('bar-export-menu') : null)),
+      move(id, (mode: Mode) => (mode === 'compact' || mode === 'narrow' ? menu : mode === 'medium' || mode === 'wide' ? el('bar-export-menu') : null)),
     ),
+    // The short class's rail: the segment's own controls ride in it; the
+    // toggles and the order's control go behind its menu control.
+    move('annotation-tools', shortSegment('map')),
+    move('map-zoom', shortSegment('map')),
+    move('pres-mode', shortSegment('presentation')),
+    move('pres-zoom', shortSegment('presentation')),
+    move('map-toggles', (mode: Mode) => (mode === 'compact' ? el('annotation-toolbar') : mode === 'narrow' ? menu : null)),
+    move('presentation-toggles', (mode: Mode) => (mode === 'narrow' ? menu : null)),
+    move('viewer-toggles', (mode: Mode) => (mode === 'narrow' ? menu : null)),
+    move('pres-order-label', (mode: Mode) => (mode === 'narrow' ? menu : null)),
     // Behind the tool strip's "more".
     ...['map-load', 'fetch-open', 'fetch-offline', 'map-reset', 'marker-selection', 'marker-shape-label', 'marker-remove'].map((id) =>
       move(
@@ -166,10 +183,11 @@ function placeControls(): void {
   moves ??= buildMoves();
   const cls = layoutClass();
   const mode: Mode = viewerMode() ? null : cls === 'short' ? 'narrow' : cls === 'compact' ? 'compact' : cls === 'medium' ? 'medium' : 'wide';
-  if (mode === placed) {
+  if (mode === placed && state.segment === placedSegment) {
     return;
   }
   placed = mode;
+  placedSegment = state.segment;
   // Everything back to its own place first, so that a group moved as a
   // whole and a control moved out of it never meet half way.
   for (const m of moves) {
@@ -253,11 +271,31 @@ function applyFolds(): void {
 // --- The whole ---------------------------------------------------------------
 
 // Lays the chrome out for the class in force: called at the start and at
-// every change of the class or of the mode.
+// every change of the class, of the mode, or of the segment.
 export function layoutShell(): void {
   document.documentElement.dataset.layout = layoutClass();
   placeControls();
   applyFolds();
+  placeShortRail();
+}
+
+// The short class's rail (the owner's ruling): whatever the rail's height
+// cannot hold goes behind its own menu control, in priority order — the zoom
+// group first, then the tool strip — and returns when there is room again.
+function placeShortRail(): void {
+  if (layoutClass() !== 'short' || viewerMode()) {
+    return;
+  }
+  const rail = el('app-header');
+  const menu = el('app-menu');
+  const movable = state.segment === 'map' ? [el('map-zoom'), el('annotation-tools')] : [el('pres-zoom'), el('pres-mode')];
+  for (const item of movable) {
+    if (item.parentElement === rail && rail.scrollHeight > rail.clientHeight + 1) {
+      menu.appendChild(item);
+    } else if (item.parentElement === menu && rail.scrollHeight <= rail.clientHeight + 1) {
+      rail.insertBefore(item, el('menu-toggle'));
+    }
+  }
 }
 
 export function refreshShell(): void {
@@ -317,6 +355,8 @@ export function startShell(hooks: { resized: () => void; narrow: () => void }): 
       onChange();
     });
   }
+  // The short class's rail re-fits its contents on a resize within the class.
+  window.addEventListener('resize', () => placeShortRail());
   for (const fold of FOLDS) {
     el(fold.toggle).addEventListener('click', () => {
       if (!shellActive()) {

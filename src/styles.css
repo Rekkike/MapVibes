@@ -4772,6 +4772,186 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   }
 }
 
+
+/* ==== The short class's side rail (v2.1.0, FR-71 as amended; the owner's
+   ruling) ====
+   The short class only — lower than 31.25 rem, whatever the width or the
+   pointer. One 56-pixel side rail, no top or bottom bar: the header itself
+   is the rail, carrying the segment switch and, in the stage segments, that
+   segment's tools and zoom and fit, one icon deep; the header's contents and
+   whatever the rail's height cannot hold sit behind the rail's own menu
+   control. The stage owns everything else. Every rule is scoped to the
+   application. */
+@media (max-height: 31.249rem) {
+  html:not([data-mode='viewer']) body {
+    display: flex;
+    flex-direction: row;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  /* The header is the rail: 56 pixels wide, the full height, one column. */
+  html:not([data-mode='viewer']) #app-header {
+    flex: none;
+    width: 3.5rem;
+    height: 100dvh;
+    min-height: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: var(--space-2);
+    padding: var(--space-4) 0;
+    border-bottom: 0;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+
+  html:not([data-mode='viewer']) #app-title {
+    display: none;
+  }
+
+  html:not([data-mode='viewer']) #segment-nav {
+    flex: none;
+    flex-direction: column;
+    width: 100%;
+    height: auto;
+    gap: var(--space-2);
+  }
+
+  html:not([data-mode='viewer']) #app-header .segment-tab {
+    width: 100%;
+    height: auto;
+    min-height: 2.75rem;
+    min-width: 0;
+    padding: var(--space-4) 0;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--muted);
+    font-size: var(--text-12);
+    font-weight: 400;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  html:not([data-mode='viewer']) #app-header .segment-tab[aria-selected='true'] {
+    background: var(--accent-soft);
+    box-shadow: inset 2px 0 0 var(--accent);
+    color: var(--fg);
+    font-weight: 650;
+  }
+
+  /* The rail's own menu control stays at the rail's foot. */
+  html:not([data-mode='viewer']) #menu-toggle {
+    order: 99;
+    flex: none;
+    margin-top: auto;
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0;
+  }
+
+  /* The tools and the zoom group ride in the rail, one icon deep. */
+  html:not([data-mode='viewer']) #app-header #annotation-tools,
+  html:not([data-mode='viewer']) #app-header #map-zoom,
+  html:not([data-mode='viewer']) #app-header #pres-zoom {
+    position: static;
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+
+  html:not([data-mode='viewer']) #app-header #annotation-tools {
+    flex-direction: column;
+  }
+
+  html:not([data-mode='viewer']) #app-header .annotation-tool,
+  html:not([data-mode='viewer']) #app-header #map-zoom .icon-button,
+  html:not([data-mode='viewer']) #app-header #pres-zoom .icon-button {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    height: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0;
+  }
+
+  html:not([data-mode='viewer']) #app-header #pres-mode {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  html:not([data-mode='viewer']) #app-header .pres-mode-button {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    height: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    font-size: var(--text-12);
+    border-radius: var(--radius-sm);
+  }
+
+  /* The stage segments are full-bleed beside the rail. */
+  html:not([data-mode='viewer']) #app-main {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  html:not([data-mode='viewer']) #segment-map,
+  html:not([data-mode='viewer']) #segment-presentation {
+    flex: 1 1 auto;
+    min-height: 0;
+    gap: 0;
+  }
+
+  html:not([data-mode='viewer']) #map-area,
+  html:not([data-mode='viewer']) #presentation-area {
+    position: relative;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+  }
+
+  html:not([data-mode='viewer']) #map-toolbar,
+  html:not([data-mode='viewer']) #annotation-toolbar,
+  html:not([data-mode='viewer']) #presentation-toolbar {
+    display: none;
+  }
+
+  html:not([data-mode='viewer']) #map-stage,
+  html:not([data-mode='viewer']) #presentation-stage {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  /* The overlays and sheets open over the stage, clear of the rail. */
+  html:not([data-mode='viewer']) :is(#app-menu, #placement-area, #map-glance, #map-legend, #visibility-area, #presentation-glance, #presentation-legend, #annotation-inspector, #fetch-panel, #pdf-panel, #map-more-panel, #details-panel) {
+    left: calc(3.5rem + var(--space-8));
+  }
+}
+
 /* ==== Narrow viewer layout (FR-58) ====
    Every rule after this marker lies inside the one media block below, on the
    query of src/narrowviewer.ts, and applies to the exported viewer only; a
