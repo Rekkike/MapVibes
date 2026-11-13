@@ -6,14 +6,17 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { chromium, devices, type Browser, type Page } from 'playwright';
 import { pressExport, setSelect } from './chrome';
 
-// The quiet presentation chrome (v1.9.0, FR-37/FR-38 as amended), pinned in
-// a real layout, headless Chromium, offline, with the full-test demo exported
-// from the desktop: the header's height band and the stage's share of the
-// viewport at desktop, tablet, and phone sizes, in both views and both
-// themes, the fitted map's scale and the annotation labels' size at the
+// The presentation chrome, pinned in a real layout, headless Chromium,
+// offline, with the full-test demo exported from the desktop: the bar's
+// height and the stage's share of the viewport at desktop, tablet, and
+// phone sizes, in both views and both themes, the fitted map's scale at the
 // fitted view, and the used-only legend (FR-75) computed once in the viewer.
-// The bands are measured on the built v1.9.0 pass, so that no future pass
-// silently gives the room back. Run after the build (npm run build).
+// Since this pass the viewer has crossed to the five classes (FR-38 as
+// amended): the bar is 44 pixels (48 in the compact class; in the short class
+// the header is the 56-pixel side rail, so its height is the viewport's),
+// and the stage's share holds the promise — 94 to 98 per cent on desktops,
+// 91.5 to 94.8 on phones, and a portrait tablet lands better than v1.17.0's
+// 89 per cent. Run after the build (npm run build).
 const BUILT = join(process.cwd(), 'dist', 'build', 'index.html');
 
 let browser: Browser;
@@ -47,14 +50,16 @@ afterAll(async () => {
 });
 
 // name, context options, header band [min, max], stage share of the viewport
-// at least, fitted scale band at "Fit view" (map view; null where the view is
-// width-bound on a phone).
+// at least, whether the fitted scale is pinned (map view; null where the view
+// is width-bound on a phone). The bar is 44 px in the wider classes and 48 px
+// in the compact class; in the short class the header is the side rail, the
+// full viewport high.
 const PROFILES: Array<[string, object, [number, number], number, [number, number] | null]> = [
-  ['desktop 1500x950', { viewport: { width: 1500, height: 950 } }, [30, 34], 0.64, [0.36, 0.4]],
-  ['desktop 1280x800', { viewport: { width: 1280, height: 800 } }, [30, 34], 0.58, [0.29, 0.32]],
-  ['tablet portrait 834x1112', { ...devices['iPad (gen 7)'], viewport: { width: 834, height: 1112 } }, [27, 31], 0.89, null],
-  ['phone portrait 390x844', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, [66, 76], 0.78, null],
-  ['phone landscape 844x390', { viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, [27, 31], 0.77, null],
+  ['desktop 1500x950', { viewport: { width: 1500, height: 950 } }, [44, 44], 0.94, [0.36, 0.4]],
+  ['desktop 1280x800', { viewport: { width: 1280, height: 800 } }, [44, 44], 0.94, [0.29, 0.32]],
+  ['tablet portrait 834x1112', { ...devices['iPad (gen 7)'], viewport: { width: 834, height: 1112 } }, [44, 44], 0.94, null],
+  ['phone portrait 390x844', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, [48, 48], 0.915, null],
+  ['phone landscape 844x390', { viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, [390, 390], 0.915, null],
 ];
 
 async function openViewer(options: object): Promise<{ page: Page; errors: string[] }> {
@@ -93,10 +98,16 @@ describe.each(PROFILES)('the quiet chrome on %s (v1.9.0)', (name, options, heade
         const share = (stage.width * stage.height) / (v.width * v.height);
         expect(share, `${name} ${theme} ${view} stage share`).toBeGreaterThanOrEqual(minShare);
         if (view === 'map' && v.width >= 900) {
-          // The "In view" column stays persistent on a wide viewport, narrowed.
+          // "In view" floats on the stage below 1,920 pixels (the stage keeps
+          // its full width); from 1,920 it docks beside the stage at 264.
           const glance = await box(page, '#presentation-glance');
           expect(await page.$eval('#presentation-glance', (e) => getComputedStyle(e).visibility)).toBe('visible');
-          expect(glance.width).toBeLessThanOrEqual(210);
+          if (v.width >= 1920) {
+            expect(glance.width).toBe(264);
+          } else {
+            expect(glance.width).toBe(232);
+            expect(stage.width).toBe(v.width);
+          }
         }
         if (view === 'timeline') {
           await page.click('#pres-mode-map');
@@ -129,12 +140,17 @@ describe.each(PROFILES)('the quiet chrome on %s (v1.9.0)', (name, options, heade
     if (scaleBand) {
       await page.click('#pres-fit');
       await page.waitForTimeout(1200);
-      const scale = await page.evaluate(() => {
+      // The fitted scale is derived from the stage and the background's own
+      // size, so the pin holds whatever the chrome: fitted means the whole
+      // background in the stage.
+      const fitted = await page.evaluate(() => {
+        const stage = (document.querySelector('#presentation-stage') as HTMLElement).getBoundingClientRect();
+        const img = document.querySelector('#presentation-image') as HTMLImageElement;
         const m = /matrix\(([^)]+)\)/.exec(getComputedStyle(document.querySelector('#presentation-content')!).transform);
-        return m ? Number(m[1].split(',')[0]) : null;
+        return { scale: m ? Number(m[1].split(',')[0]) : null, expected: Math.min(stage.width / img.naturalWidth, stage.height / img.naturalHeight) };
       });
-      expect(scale, `${name} fitted scale`).toBeGreaterThanOrEqual(scaleBand[0]);
-      expect(scale, `${name} fitted scale`).toBeLessThanOrEqual(scaleBand[1]);
+      expect(fitted.scale, `${name} fitted scale`).toBeGreaterThanOrEqual(fitted.expected - 0.01);
+      expect(fitted.scale, `${name} fitted scale`).toBeLessThanOrEqual(fitted.expected + 0.01);
       // The annotation labels scale with the map (FR-47): at the fitted view
       // they read at the printed fraction of the background times the scale.
       const labelPx = await page.evaluate(() => {
@@ -149,5 +165,30 @@ describe.each(PROFILES)('the quiet chrome on %s (v1.9.0)', (name, options, heade
     }
     expect(errors).toEqual([]);
     await page.context().close();
+  }, 90_000);
+});
+
+describe("the viewer's presentation scale step above 1,920 pixels (the owner's ruling)", () => {
+  test("at an extra-wide size the viewer's type is one token above its wide-size value, and the markers step with it", async () => {
+    const wide = await openViewer({ viewport: { width: 1500, height: 950 } });
+    const xwide = await openViewer({ viewport: { width: 2560, height: 1440 } });
+    const read = (page: Page) =>
+      page.evaluate(() => ({
+        // The view switch's type, one token up from 13 to 14 pixels.
+        button: parseFloat(getComputedStyle(document.getElementById('pres-mode-map')!).fontSize),
+        // The marker's size band, drawn from --text-13, steps with it.
+        marker: parseFloat(getComputedStyle(document.querySelector('#presentation-marker-layer .marker')!).fontSize),
+        bar: (document.getElementById('app-header') as HTMLElement).getBoundingClientRect().height,
+      }));
+    const atWide = await read(wide.page);
+    const atXwide = await read(xwide.page);
+    expect(atWide.bar).toBe(44);
+    expect(atXwide.bar).toBe(44);
+    expect(atWide.button).toBe(13);
+    expect(atXwide.button).toBe(14);
+    expect(atXwide.marker).toBe(atWide.marker + 1);
+    expect(atWide.marker).toBe(13);
+    await wide.page.context().close();
+    await xwide.page.context().close();
   }, 90_000);
 });

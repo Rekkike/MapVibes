@@ -1,7 +1,7 @@
 // The narrow layout of the application and of the exported viewer: the
 // overlay module's start, the dialogs, and the moved controls.
 import { MapView } from './mapview';
-import { NARROW_QUERY, NarrowDialogs, NarrowViewer, VIEWER_NARROW_QUERY, type NarrowDialogSpec } from './narrowviewer';
+import { COMPACT_QUERY, NARROW_QUERY, NarrowDialogs, NarrowViewer, VIEWER_NARROW_QUERY, type NarrowDialogSpec } from './narrowviewer';
 import { el, state } from './appstate';
 import { layoutShell, startShell } from './shell';
 import { fetchAbort } from './fetchpanel';
@@ -124,6 +124,21 @@ export function startNarrowApplication(): void {
       refit: () => refitNarrowStages(),
     },
   );
+  // In the compact class the tool strip's "more" opens its panel as one more
+  // overlay, on the compact class's own query, above the bottom bar; the
+  // short class keeps its present chrome.
+  new NarrowViewer(window.matchMedia(COMPACT_QUERY), [{ toggle: el<HTMLButtonElement>('map-more'), panel: el('map-more-panel') }], {
+    enabled: () => document.documentElement.dataset.mode !== 'viewer',
+    closeCard: () => {
+      if (cardId !== null) {
+        closeCard();
+      }
+    },
+    render: () => {
+      renderMapItems();
+    },
+    refit: () => undefined,
+  });
   layoutHeader();
   layoutAnnotationControls();
   // The six dialogs as overlays in the narrow layout (FR-71, FR-72 as
@@ -141,6 +156,7 @@ export function startNarrowApplication(): void {
       renderMapItems();
       renderPresentation();
     },
+    classChanged: () => refitOnClassChange(),
   });
 }
 
@@ -167,6 +183,24 @@ export function refitNarrowStages(): void {
     narrowStages.set(view, view.stageSize());
   }
   renderMapItems();
+}
+
+// The class-change refit (FR-58 as amended in v2.1.0): a change of class
+// refits the saved map view in every class — in the application and in the
+// exported viewer alike — so that a portrait tablet no longer leaves the map
+// mid-stage with empty room around it. Within a class, a resize keeps today's
+// behaviour: in the narrow classes the resize handler refits, above them it
+// does nothing.
+let lastRefitClass: string | null = null;
+
+export function refitOnClassChange(): void {
+  const cls = document.documentElement.dataset.layout ?? '';
+  if (cls === lastRefitClass) {
+    return;
+  }
+  lastRefitClass = cls;
+  refitNarrowStages();
+  renderPresentation();
 }
 
 // The header's controls that the narrow layout moves into the Menu overlay

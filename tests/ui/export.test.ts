@@ -199,3 +199,17 @@ describe('export without a single-file page', () => {
     expect(byId('export-status').textContent).toContain('only in the built application');
   });
 });
+
+describe('the export dialog heading stays in sight (FR-39 as amended in this pass)', () => {
+  test('opening the export dialog scrolls it to its top, so its heading is not scrolled out by the first focused control', async () => {
+    await mountApp({ singleFile: true });
+    await placeExampleMarkers([[0, 60, 100]]);
+    byId('export-open').click();
+    await flush();
+    expect(byId('export-panel').classList.contains('hidden')).toBe(false);
+    expect(document.activeElement).toBe(byId('export-go'));
+    expect(byId('export-panel').scrollTop).toBe(0);
+    // The heading is the dialog's first element, above the focused control.
+    expect(byId('export-panel').firstElementChild!.contains(byId('export-heading'))).toBe(true);
+  });
+});

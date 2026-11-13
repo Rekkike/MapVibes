@@ -229,7 +229,9 @@ describe('the header collapsed into a menu (FR-71 as amended)', () => {
 
   test('the work controls, the settings, and the demo badge move into the Menu overlay, which behaves as the others', async () => {
     await mountNarrow();
-    expect(menuItems()).toEqual(['demo-badge', 'demo-reset', 'work-controls', 'select-language', 'select-theme']);
+    // In the compact class the three exports ride in the Menu too: the
+    // phone's bar has no Export (the mockup's phone frames; v2.1.0).
+    expect(menuItems()).toEqual(['demo-badge', 'demo-reset', 'work-controls', 'select-language', 'select-theme', 'export-open', 'pdf-open', 'pptx-open']);
     expect(byId('menu-toggle').textContent).toBe('Menu');
     expectClosed('app-menu', 'menu-toggle');
     byId('menu-toggle').focus();

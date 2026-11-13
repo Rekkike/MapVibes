@@ -6,6 +6,7 @@ import { drawingTools, setDrawingTool } from './annotationpanel';
 import { mapView, renderMapItems, stopPlacing } from './mapstage';
 import { presentationView } from './presentationstage';
 import { appNarrow, narrowApplication, refitNarrowStages } from './narrowlayout';
+import { layoutShell } from './shell';
 
 export function setSegment(segment: Segment): void {
   // Drawing happens in the Map segment only (FR-47).
@@ -33,4 +34,6 @@ export function setSegment(segment: Segment): void {
   // Panels depend on the stage size, which is known only while it is shown.
   renderMapItems();
   renderDetailsPanel();
+  // The short class's rail carries the shown segment's controls (v2.1.0).
+  layoutShell();
 }

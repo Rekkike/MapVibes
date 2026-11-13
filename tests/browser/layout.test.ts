@@ -4,14 +4,15 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { chromium, type Browser, type Page } from 'playwright';
 
-// The design pin suite of the layout (FR-29 and FR-81, v2.0.0): the built
-// page, offline, on the full-test demo, at the 22 probe viewports of
-// docs/redesign/probes.md. The floors of the medium, wide, and extra wide
-// probes are the figures that the direction of record promised (probes.md,
-// section 4), less a tenth of a point for rounding. The compact and short
-// probes keep the phone's present chrome in this version, so their floors
-// are the shares measured on it, as disclosed in the changelog; the pass
-// that gives the phone its new chrome raises them. Run after the build.
+// The design pin suite of the layout (FR-29 and FR-81, v2.0.0; the compact
+// rows raised in v2.1.0): the built page, offline, on the full-test demo, at
+// the 22 probe viewports of docs/redesign/probes.md. The floors of the
+// medium, wide, and extra wide probes are the figures that the direction of
+// record promised (probes.md, section 4), less a tenth of a point for
+// rounding. The compact probes hold the promised figures of probes.md's
+// compact rows under the new phone chrome (one 48-pixel header row and one
+// 56-pixel bottom bar in the Map segment); the short probes keep the present
+// chrome until the owner rules the rail's contents. Run after the build.
 const BUILT = join(process.cwd(), 'dist', 'build', 'index.html');
 
 type Layout = 'compact' | 'short' | 'medium' | 'wide' | 'xwide';
@@ -30,13 +31,15 @@ const PROBES: Array<[number, number, Layout, number, number, number]> = [
   [1440, 900, 'wide', 76.1, 95.1, 44],
   [960, 1080, 'medium', 95.9, 95.9, 44],
   [1280, 720, 'wide', 90.7, 93.9, 44],
-  [390, 844, 'compact', 68.7, 74.0, 101],
-  [320, 568, 'compact', 55.8, 63.6, 101],
-  [393, 852, 'compact', 68.9, 74.2, 101],
-  [430, 932, 'compact', 71.5, 76.3, 101],
-  [412, 915, 'compact', 70.9, 75.8, 101],
-  [360, 800, 'compact', 66.9, 72.5, 101],
-  [844, 390, 'short', 53.4, 65.4, 53],
+  [390, 844, 'compact', 87.7, 94.3, 48],
+  [320, 568, 'compact', 81.7, 91.5, 48],
+  [393, 852, 'compact', 87.8, 94.4, 48],
+  [430, 932, 'compact', 88.8, 94.8, 48],
+  [412, 915, 'compact', 88.6, 94.8, 48],
+  [360, 800, 'compact', 87.0, 94.0, 48],
+  // The short class's last figure is the rail's height: the header is the
+  // 56-pixel side rail, the full height of the viewport (v2.1.0).
+  [844, 390, 'short', 93.4, 93.4, 390],
   [768, 1024, 'medium', 95.7, 95.7, 44],
   [1024, 768, 'medium', 94.3, 94.3, 44],
   [820, 1180, 'medium', 96.3, 96.3, 44],
@@ -147,6 +150,81 @@ describe('the gap between 897 and 1,266 pixels is closed (FR-58 as amended)', ()
     },
     60_000,
   );
+});
+
+describe('the phone chrome of the compact class (FR-71 as amended in v2.1.0)', () => {
+  test('the header is one 48-pixel row with the segments in the bar, and the Map segment has one 56-pixel bottom bar with the strip, the toggles, and "more"', async () => {
+    for (const [width, height] of [
+      [390, 844],
+      [320, 568],
+    ]) {
+      const page = await openDemo(width, height);
+      const header = await box(page, '#app-header');
+      expect(header.height, `${width} header`).toBe(48);
+      // The segments share the bar's row; the brand is not on it.
+      const nav = await box(page, '#segment-nav');
+      expect(nav.y).toBeGreaterThanOrEqual(header.y);
+      expect(nav.y + nav.height).toBeLessThanOrEqual(header.y + header.height);
+      expect(await page.isVisible('#app-title')).toBe(false);
+      // The bottom bar: 56 pixels, below the stage, holding the tools, the
+      // overlay toggles, and "more".
+      const bar = await box(page, '#annotation-toolbar');
+      expect(bar.height, `${width} bar`).toBe(56);
+      const stage = await box(page, '#map-stage');
+      expect(bar.y).toBeGreaterThanOrEqual(stage.y + stage.height - 1);
+      expect(await page.isVisible('#annotation-tools')).toBe(true);
+      expect(await page.isVisible('#map-toggles')).toBe(true);
+      expect(await page.isVisible('#map-more')).toBe(true);
+      // The zoom group floats on the stage above the bar, not in it.
+      const zoom = await box(page, '#map-zoom');
+      expect(zoom.y + zoom.height).toBeLessThanOrEqual(bar.y);
+      // The Presentation segment has no bottom bar: the bar alone is the
+      // header's 48 pixels.
+      await page.evaluate(() => document.getElementById('tab-presentation')!.click());
+      await page.waitForTimeout(300);
+      const presentation = await measure(page);
+      expect(presentation.header).toBe(48);
+      expect(await page.isVisible('#annotation-toolbar')).toBe(false);
+      const pstage = await box(page, '#presentation-stage');
+      expect(pstage.y + pstage.height).toBeLessThanOrEqual(height);
+      await page.context().close();
+    }
+  }, 120_000);
+});
+
+describe("the short class's side rail (FR-71 as amended in v2.1.0, the owner's ruling)", () => {
+  test('one 56-pixel rail, no top or bottom bar: the segment switch, the tools, zoom and fit, and the menu control ride in it; the stage owns the rest', async () => {
+    for (const [width, height] of [
+      [844, 390],
+      [932, 430],
+    ]) {
+      const page = await openDemo(width, height);
+      const rail = await box(page, '#app-header');
+      expect(rail.width, `${width} rail width`).toBe(56);
+      expect(rail.height, `${width} rail height`).toBe(height);
+      // No top or bottom bar: the header is the rail alone.
+      expect(rail.x).toBe(0);
+      expect(rail.y).toBe(0);
+      // The segment switch, the map tools, and zoom and fit ride in the rail.
+      const nav = await box(page, '#segment-nav');
+      expect(nav.x).toBeGreaterThanOrEqual(rail.x);
+      expect(nav.x + nav.width).toBeLessThanOrEqual(rail.x + rail.width);
+      const tools = await box(page, '#annotation-tools');
+      expect(tools.x + tools.width).toBeLessThanOrEqual(rail.x + rail.width);
+      expect(await page.isVisible('#menu-toggle')).toBe(true);
+      // The former tool rows are gone; the stage takes everything beside the rail.
+      expect(await page.isVisible('#annotation-toolbar')).toBe(false);
+      const stage = await box(page, '#map-stage');
+      expect(stage.x).toBeGreaterThanOrEqual(rail.x + rail.width - 1);
+      const m = await measure(page);
+      expect(m.share, `${width} the Map segment`).toBeGreaterThanOrEqual(93.4 - TOLERANCE);
+      await page.evaluate(() => document.getElementById('tab-presentation')!.click());
+      await page.waitForTimeout(300);
+      const p = await measure(page);
+      expect(p.share, `${width} the Presentation segment`).toBeGreaterThanOrEqual(93.4 - TOLERANCE);
+      await page.context().close();
+    }
+  }, 120_000);
 });
 
 describe('the bar (FR-81)', () => {

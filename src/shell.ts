@@ -39,6 +39,7 @@ function q(): Queries {
 }
 let popovers: NarrowViewer | null = null;
 let onChange: () => void = () => undefined;
+let onClassChange: () => void = () => undefined;
 
 function viewerMode(): boolean {
   return document.documentElement.dataset.mode === 'viewer';
@@ -53,15 +54,15 @@ export function layoutClass(): LayoutClass {
   return queries.xwide.matches ? 'xwide' : queries.wide.matches ? 'wide' : 'medium';
 }
 
-// Whether the layout of FR-81 is in force: the application (not the viewer)
-// in the medium class or above.
+// Whether the layout of FR-81 is in force: the medium class or above, in the
+// application and in the exported viewer alike (v2.1.0).
 export function shellActive(): boolean {
-  return !q().narrow.matches && !viewerMode();
+  return !q().narrow.matches;
 }
 
 // --- The moved controls ----------------------------------------------------
 
-type Mode = 'narrow' | 'medium' | 'wide' | null;
+type Mode = 'narrow' | 'compact' | 'medium' | 'wide' | null;
 
 interface Move {
   item: HTMLElement;
@@ -73,6 +74,7 @@ interface Move {
 
 let moves: Move[] | null = null;
 let placed: Mode | undefined;
+let placedSegment: string | undefined;
 
 function move(id: string | HTMLElement, where: Move['where'], first = false): Move {
   const item = typeof id === 'string' ? el(id) : id;
@@ -83,11 +85,22 @@ function move(id: string | HTMLElement, where: Move['where'], first = false): Mo
 
 function buildMoves(): Move[] {
   const menu = el('app-menu');
+  // The strip's placement, in the medium and wide classes and in the compact
+  // class, where the tool rows become the 56-pixel bottom bar (v2.1.0).
+  const strip = (target: () => HTMLElement) => (mode: Mode) => (mode === 'medium' || mode === 'wide' || mode === 'compact' ? target() : null);
   const desk = (target: () => HTMLElement) => (mode: Mode) => (mode === 'medium' || mode === 'wide' ? target() : null);
   const language = el('select-language').closest('label')!;
   const theme = el('select-theme').closest('label')!;
   const inMenu = (narrow: boolean, shell: boolean) => (mode: Mode) =>
-    (mode === 'narrow' && narrow) || ((mode === 'medium' || mode === 'wide') && shell) ? menu : null;
+    ((mode === 'narrow' || mode === 'compact') && narrow) || ((mode === 'medium' || mode === 'wide') && shell) ? menu : null;
+  // The viewer keeps its language and theme selects in its bar at every
+  // class (FR-20); in the viewer nothing moves into a Menu overlay.
+  const staysInBar = (mode: Mode) => (viewerMode() && (mode === 'narrow' || mode === 'compact') ? null : inMenu(true, true)(mode));
+  // The short class's rail (v2.1.0, the owner's ruling): the header itself is
+  // the 56-pixel rail, carrying the segment switch and, in the stage segments,
+  // that segment's tools and zoom, one icon deep; what the rail's height
+  // cannot hold goes behind its menu control.
+  const shortSegment = (segment: string) => (mode: Mode) => (mode === 'narrow' && state.segment === segment ? el('app-header') : null);
   return [
     // The Menu: in the compact and short classes the whole of the work
     // controls with the demo's badge (FR-71); in the classes above, what the
@@ -97,39 +110,52 @@ function buildMoves(): Move[] {
     move('work-controls', inMenu(true, false)),
     move('work-open', inMenu(false, true)),
     move('work-share', inMenu(false, true)),
-    move(language, inMenu(true, true)),
-    move(theme, inMenu(true, true)),
-    // The bar's Export menu.
+    move(language, staysInBar),
+    move(theme, staysInBar),
+    // The exports: in the bar's Export menu in the medium and wide classes,
+    // in the Menu overlay on the phone and behind the short class's rail
+    // menu control, where the bar has no Export (the mockup's phone frames,
+    // the owner's ruling).
     ...['export-open', 'pdf-open', 'pptx-open'].map((id) =>
-      move(
-        id,
-        desk(() => el('bar-export-menu')),
-      ),
+      move(id, (mode: Mode) => (mode === 'compact' || mode === 'narrow' ? menu : mode === 'medium' || mode === 'wide' ? el('bar-export-menu') : null)),
     ),
+    // The short class's rail: the segment's own controls ride in it; the
+    // toggles and the order's control go behind its menu control.
+    move('annotation-tools', shortSegment('map')),
+    move('map-zoom', shortSegment('map')),
+    move('pres-mode', shortSegment('presentation')),
+    move('pres-zoom', shortSegment('presentation')),
+    move('map-toggles', (mode: Mode) => (mode === 'compact' ? el('annotation-toolbar') : mode === 'narrow' ? menu : null)),
+    move('presentation-toggles', (mode: Mode) => (mode === 'narrow' && !viewerMode() ? menu : null)),
+    // In the viewer's short class the toggles ride in the rail itself.
+    move('viewer-toggles', (mode: Mode) => (mode === 'narrow' ? (viewerMode() ? el('app-header') : menu) : null)),
+    move('pres-order-label', (mode: Mode) => (mode === 'narrow' ? menu : null)),
     // Behind the tool strip's "more".
     ...['map-load', 'fetch-open', 'fetch-offline', 'map-reset', 'marker-selection', 'marker-shape-label', 'marker-remove'].map((id) =>
       move(
         id,
-        desk(() => el('map-more-panel')),
+        strip(() => el('map-more-panel')),
       ),
     ),
     move(
       'map-more',
-      desk(() => el('annotation-tools')),
+      strip(() => el('annotation-tools')),
     ),
     // The zoom and fit controls, floating at the stage's lower right.
     ...['map-zoom-in', 'map-zoom-level', 'map-zoom-out', 'map-fit'].map((id) =>
       move(
         id,
-        desk(() => el('map-zoom')),
+        strip(() => el('map-zoom')),
       ),
     ),
     ...['pres-zoom-in', 'pres-zoom-level', 'pres-zoom-out', 'pres-fit', 'pres-reset'].map((id) =>
       move(
         id,
-        desk(() => el('pres-zoom')),
+        strip(() => el('pres-zoom')),
       ),
     ),
+    // On the phone, the overlay toggles ride in the bottom bar with the tools.
+    move('map-toggles', (mode: Mode) => (mode === 'compact' ? el('annotation-toolbar') : null)),
     // The folds' controls, in the panels they fold.
     move(
       'toggle-items',
@@ -161,11 +187,12 @@ function buildMoves(): Move[] {
 function placeControls(): void {
   moves ??= buildMoves();
   const cls = layoutClass();
-  const mode: Mode = viewerMode() ? null : cls === 'compact' || cls === 'short' ? 'narrow' : cls === 'medium' ? 'medium' : 'wide';
-  if (mode === placed) {
+  const mode: Mode = cls === 'short' ? 'narrow' : cls === 'compact' ? 'compact' : cls === 'medium' ? 'medium' : 'wide';
+  if (mode === placed && state.segment === placedSegment) {
     return;
   }
   placed = mode;
+  placedSegment = state.segment;
   // Everything back to its own place first, so that a group moved as a
   // whole and a control moved out of it never meet half way.
   for (const m of moves) {
@@ -249,11 +276,32 @@ function applyFolds(): void {
 // --- The whole ---------------------------------------------------------------
 
 // Lays the chrome out for the class in force: called at the start and at
-// every change of the class or of the mode.
+// every change of the class, of the mode, or of the segment.
 export function layoutShell(): void {
   document.documentElement.dataset.layout = layoutClass();
   placeControls();
   applyFolds();
+  placeShortRail();
+}
+
+// The short class's rail (the owner's ruling): whatever the rail's height
+// cannot hold goes behind its own menu control, in priority order — the zoom
+// group first, then the tool strip — and returns when there is room again.
+function placeShortRail(): void {
+  // In the viewer the rail scrolls instead of hiding its overflow.
+  if (layoutClass() !== 'short' || viewerMode()) {
+    return;
+  }
+  const rail = el('app-header');
+  const menu = el('app-menu');
+  const movable = state.segment === 'map' ? [el('map-zoom'), el('annotation-tools')] : [el('pres-zoom'), el('pres-mode')];
+  for (const item of movable) {
+    if (item.parentElement === rail && rail.scrollHeight > rail.clientHeight + 1) {
+      menu.appendChild(item);
+    } else if (item.parentElement === menu && rail.scrollHeight <= rail.clientHeight + 1) {
+      rail.insertBefore(item, el('menu-toggle'));
+    }
+  }
 }
 
 export function refreshShell(): void {
@@ -280,8 +328,9 @@ function complement(list: MediaQueryList): MediaQueryList {
 // started, so that at a change of the class their state is cleared before
 // this module writes its own. The hook runs after a fold changes the stage's
 // size.
-export function startShell(hooks: { resized: () => void; narrow: () => void }): void {
+export function startShell(hooks: { resized: () => void; narrow: () => void; classChanged?: () => void }): void {
   onChange = hooks.resized;
+  onClassChange = hooks.classChanged ?? (() => undefined);
   const queries = q();
   // The bar's two menus and the tool strip's "more": one open at a time,
   // with the overlays' behaviour (Escape, a press outside, the focus).
@@ -302,17 +351,30 @@ export function startShell(hooks: { resized: () => void; narrow: () => void }): 
         layoutShell();
         if (!shellActive()) {
           hooks.narrow();
+        } else {
+          // The narrow query changing is a change of class (FR-58 as amended
+          // in v2.1.0): the saved map view is refitted in every class.
+          onClassChange();
         }
       },
       refit: () => undefined,
     },
   );
-  for (const list of [queries.short, queries.wide, queries.dock, queries.xwide]) {
+  for (const list of [queries.short, queries.wide, queries.xwide]) {
     list.addEventListener('change', () => {
       layoutShell();
       onChange();
+      // A change of class refits the saved map view (FR-58 as amended in
+      // v2.1.0); the docking width is within a class and does not.
+      onClassChange();
     });
   }
+  queries.dock.addEventListener('change', () => {
+    layoutShell();
+    onChange();
+  });
+  // The short class's rail re-fits its contents on a resize within the class.
+  window.addEventListener('resize', () => placeShortRail());
   for (const fold of FOLDS) {
     el(fold.toggle).addEventListener('click', () => {
       if (!shellActive()) {

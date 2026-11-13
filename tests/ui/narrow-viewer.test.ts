@@ -156,17 +156,24 @@ describe('the narrow viewer layout (FR-58)', { timeout: 15_000 }, () => {
     expectOpen(legend(), toggleLegend());
   });
 
-  test('above the threshold nothing of the narrow layout applies, also after leaving it', async () => {
+  test('above the threshold the viewer runs the class layout, not the narrow one, also after leaving the narrow classes', async () => {
+    // Since this pass the viewer has crossed to the five classes (FR-38 as
+    // amended): above them the folds apply as in the application, so the
+    // panels carry data-fold and the toggles their expanded state; the narrow
+    // overlay machinery applies in the compact and short classes only.
     const query = await mountViewer(false);
     for (const panel of [glance(), legend()]) {
       expect(panel.dataset.state).toBeUndefined();
       expect(panel.inert).toBe(false);
       expect(panel.hasAttribute('tabindex')).toBe(false);
     }
-    expect(toggleGlance().hasAttribute('aria-expanded')).toBe(false);
-    // The toggles do nothing there.
+    // Open by default in the wider classes (the owner's principle).
+    expect(toggleGlance().getAttribute('aria-expanded')).toBe('true');
+    expect(glance().dataset.fold).toBe('open');
     toggleGlance().click();
-    expect(glance().dataset.state).toBeUndefined();
+    expect(glance().dataset.fold).toBe('closed');
+    toggleGlance().click();
+    expect(glance().dataset.fold).toBe('open');
     // The card is placed beside its marker, not docked.
     const m = presentationMarkers()[0];
     pointer('pointerdown', m, STAGE.left + parseFloat(m.style.left), STAGE.top + parseFloat(m.style.top));
@@ -185,16 +192,23 @@ describe('the narrow viewer layout (FR-58)', { timeout: 15_000 }, () => {
 
   test('in the application above the threshold, the narrow layout leaves nothing on the panels (FR-58 as amended in v1.8.0)', async () => {
     // The application has a narrow layout of its own since v1.8.0 (FR-71,
-    // FR-72); above the threshold it does nothing.
+    // FR-72); above the threshold the overlay machinery leaves no state on
+    // the panels — the folds of the class layout carry the controls' state.
     await mountApp();
     await flush();
     for (const id of ['placement-area', 'map-glance', 'map-legend', 'visibility-area', 'presentation-glance', 'presentation-legend']) {
       expect(byId(id).dataset.state, id).toBeUndefined();
       expect(byId(id).inert, id).toBe(false);
     }
-    for (const id of ['toggle-items', 'toggle-map-glance', 'toggle-map-legend', 'toggle-visibility', 'toggle-glance', 'toggle-legend']) {
-      expect(byId(id).hasAttribute('aria-expanded'), id).toBe(false);
-    }
+    // The fold controls of the class layout carry their expanded state; the
+    // legends and "In view" are open by default, the items panel and the
+    // visibility list folded.
+    expect(byId('toggle-items').getAttribute('aria-expanded')).toBe('false');
+    expect(byId('toggle-visibility').getAttribute('aria-expanded')).toBe('false');
+    expect(byId('toggle-map-glance').getAttribute('aria-expanded')).toBe('true');
+    expect(byId('toggle-map-legend').getAttribute('aria-expanded')).toBe('true');
+    expect(byId('toggle-glance').getAttribute('aria-expanded')).toBe('true');
+    expect(byId('toggle-legend').getAttribute('aria-expanded')).toBe('true');
   });
 
   // The stage takes a new size, as after a rotation, before the event.

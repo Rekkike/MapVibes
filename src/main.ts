@@ -1,5 +1,4 @@
 import './polyfills';
-import { refreshShell } from './shell';
 import { selfPage } from './selfsource';
 import type { ValueFilter } from './dataset';
 import { addStatus } from './vocab';
@@ -19,7 +18,7 @@ import { adoptPositions, captureExport, closeComparison, renderExport, selectAll
 import { renderActivityDialog } from './activitydialog';
 import { openDetails } from './detailspanel';
 import { initialiseMapView, renderMapItems, renderPlacing } from './mapstage';
-import { closeEconomics, initialisePresentation, renderInformationTotals, renderLegends, setViewerView } from './presentationstage';
+import { closeEconomics, initialisePresentation, renderInformationTotals, renderLegends, renderPresentation, setViewerView } from './presentationstage';
 import { addManualColumn, addManualRow, deleteSelected, handleFile, renderList, selectAllVisible, setListView, startEmptyList } from './listpanel';
 import {
   addEvent,
@@ -34,7 +33,9 @@ import {
   VALUE_VOCABULARIES,
 } from './columnpanels';
 import { followDemoLanguage, loadDemo, resetDemo } from './demoload';
-import { appNarrow, narrowApplication, startNarrowApplication, startNarrowViewer } from './narrowlayout';
+import { appNarrow, narrowApplication, refitOnClassChange, startNarrowApplication, startNarrowViewer } from './narrowlayout';
+import { startQuietChrome } from './quietchrome';
+import { layoutShell, refreshShell, startShell } from './shell';
 import { setSegment } from './segmentswitch';
 export { ROW_DRAG_TYPE } from './appstate';
 export { MAX_IMPORT_BYTES } from './listpanel';
@@ -584,7 +585,9 @@ async function startViewer(text: string): Promise<void> {
   el<HTMLSelectElement>('select-theme').value = data.theme;
   applyTheme(data.theme);
   renderStaticText();
-  setViewerView({ viewport: { ...data.workState.viewport }, ...(data.stage ? { stage: { ...data.stage } } : {}) });
+  // The refit on open (FR-38 as amended in this pass): a presentation opens
+  // fitted to the stage it opens on, not at the viewport the file carries.
+  setViewerView(null);
   await applyWorkState(data.workState);
   state.numbers = new Map(state.ingested.map((row, i) => [row, data.numbers[i]]));
   const labels = data.labels;
@@ -601,6 +604,14 @@ async function startViewer(text: string): Promise<void> {
   appNarrow?.refresh();
   refreshShell();
   startNarrowViewer();
+  // The viewer runs the same class layout as the application (this pass): the
+  // shell places the floating controls and the folds in every class.
+  startShell({
+    narrow: () => undefined,
+    resized: () => renderPresentation(),
+    classChanged: () => refitOnClassChange(),
+  });
+  layoutShell();
 }
 
 function renderViewerBadge(): void {
@@ -622,6 +633,7 @@ export function main(): void {
   initialiseMapView();
   initialisePresentation();
   initialiseFetch();
+  startQuietChrome();
   wireEvents();
   renderStaticText();
   renderMapItems();

@@ -4503,11 +4503,967 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
   }
 }
 
+/* ==== The compact class's phone chrome (v2.1.0, FR-71 as amended) ====
+   The compact class only — narrower than 48 rem and at least 31.25 rem
+   high; the short class keeps its present chrome until its rail is ruled.
+   The header is one 48-pixel row with the segments in the bar, as the
+   mockup's phone frames draw it, and the Map segment's two tool rows become
+   one 56-pixel bottom bar with the tool strip's contents (the drawing
+   tools, the overlay toggles, and "more"); the zoom group and the dialogs
+   float on or over the stage. Every rule is scoped to the application. */
+@media (max-width: 47.999rem) and (min-height: 31.25rem) {
+  /* -- The header: one 48-pixel row, the segments in the bar. -- */
+  html:not([data-mode='viewer']) #app-header {
+    flex-wrap: nowrap;
+    height: 3rem;
+    min-height: 3rem;
+    padding: 0 var(--space-4) 0 var(--space-12);
+    gap: var(--space-8);
+  }
+
+  /* The phone's bar carries no brand, as the mockup's phone frames draw it. */
+  html:not([data-mode='viewer']) #app-title {
+    display: none;
+  }
+
+  html:not([data-mode='viewer']) #segment-nav {
+    order: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 100%;
+    gap: 0;
+  }
+
+  html:not([data-mode='viewer']) #app-header .segment-tab {
+    flex: 1 1 0;
+    height: 100%;
+    min-width: 0;
+    padding: 0 var(--space-4);
+    border: 0;
+    border-radius: 0;
+    background: none;
+    color: var(--muted);
+    font-size: var(--text-14);
+    font-weight: 400;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  html:not([data-mode='viewer']) #app-header .segment-tab[aria-selected='true'] {
+    background: none;
+    box-shadow: inset 0 -2px 0 var(--accent);
+    color: var(--fg);
+    font-weight: 650;
+  }
+
+  html:not([data-mode='viewer']) #menu-toggle {
+    order: 1;
+    flex: none;
+    height: 100%;
+    min-height: 0;
+    padding: 0 var(--space-8);
+  }
+
+  /* -- The stage is full-bleed under the bar: no page padding around it. -- */
+  html:not([data-mode='viewer'])[data-segment='map'] #app-main,
+  html:not([data-mode='viewer'])[data-segment='presentation'] #app-main {
+    padding: 0;
+  }
+
+  html:not([data-mode='viewer'])[data-segment='map'] #segment-map,
+  html:not([data-mode='viewer'])[data-segment='presentation'] #segment-presentation {
+    gap: 0;
+  }
+
+  html:not([data-mode='viewer']) #map-area,
+  html:not([data-mode='viewer']) #presentation-area {
+    position: relative;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+  }
+
+  /* -- The Map segment: the stage first, the 56-pixel bar at the bottom. -- */
+  html:not([data-mode='viewer']) #map-stage {
+    order: -2;
+  }
+
+  html:not([data-mode='viewer']) #place-banner:not(.hidden) {
+    order: -1;
+    margin: var(--space-4) var(--space-4) 0;
+  }
+
+  /* The former map toolbar row is empty once the shell has moved its
+     controls; the annotation toolbar is the bottom bar. */
+  html:not([data-mode='viewer']) #map-toolbar {
+    display: none;
+  }
+
+  html:not([data-mode='viewer']) #annotation-toolbar {
+    order: 1;
+    flex: none;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: var(--space-4);
+    height: 3.5rem;
+    min-height: 3.5rem;
+    margin: 0;
+    padding: 0 var(--space-4);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+    background: var(--panel);
+    font-size: var(--text-13);
+    box-shadow: none;
+  }
+
+  html:not([data-mode='viewer']) #annotation-toolbar > * {
+    flex: none;
+  }
+
+  html:not([data-mode='viewer']) #annotation-heading {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  html:not([data-mode='viewer']) #annotation-tools {
+    position: static;
+    display: flex;
+    flex: none;
+    flex-direction: row;
+    gap: var(--space-2);
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+
+  html:not([data-mode='viewer']) #annotation-tools .annotation-tool {
+    min-width: 2.75rem;
+    height: 2.75rem;
+    padding: 0 var(--space-4);
+  }
+
+  html:not([data-mode='viewer']) #map-toggles {
+    order: 2;
+  }
+
+  /* The zoom group floats at the stage's lower right, above the bar. */
+  html:not([data-mode='viewer']) #map-zoom {
+    position: absolute;
+    right: var(--space-8);
+    bottom: calc(3.5rem + var(--space-8));
+    z-index: var(--layer-card);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0;
+    padding: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--panel);
+    box-shadow: var(--card-shadow);
+  }
+
+  html:not([data-mode='viewer']) #map-zoom .icon-button {
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+  }
+
+  /* The overlays and sheets open above the bar. */
+  html:not([data-mode='viewer'])[data-segment='map'] :is(#app-menu, #placement-area, #map-glance, #map-legend, #annotation-inspector, #fetch-panel, #pdf-panel) {
+    bottom: calc(3.5rem + var(--space-8));
+  }
+
+  html:not([data-mode='viewer'])[data-segment='map'] #details-panel {
+    bottom: calc(3.5rem + var(--space-8));
+  }
+
+  /* -- The Presentation segment: no tool row, the chrome floats on the
+     stage, so that the bar alone takes height (the mockup's phone frames). -- */
+  html:not([data-mode='viewer']) #presentation-toolbar {
+    position: absolute;
+    top: var(--space-8);
+    left: 50%;
+    z-index: var(--layer-card);
+    order: 0;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: var(--space-4);
+    margin: 0;
+    padding: var(--space-2) var(--space-4);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    max-width: calc(100% - var(--space-16));
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    background: var(--panel);
+    box-shadow: var(--card-shadow);
+    white-space: nowrap;
+  }
+
+  html:not([data-mode='viewer']) #presentation-toolbar .pres-mode-button {
+    border-radius: var(--radius-pill);
+  }
+
+  html:not([data-mode='viewer']) #pres-zoom {
+    position: absolute;
+    right: var(--space-8);
+    bottom: var(--space-8);
+    z-index: var(--layer-card);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0;
+    padding: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--panel);
+    box-shadow: var(--card-shadow);
+  }
+
+  html:not([data-mode='viewer']) #pres-zoom .icon-button {
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+  }
+}
+
+/* The "more" panel as an overlay above the bottom bar, in the compact class
+   only (v2.1.0). */
+@media (max-width: 47.999rem) and (min-height: 31.25rem) {
+  html:not([data-mode='viewer']) #map-more-panel {
+    position: fixed;
+    z-index: var(--layer-sheet);
+    left: var(--space-8);
+    right: var(--space-8);
+    bottom: calc(3.5rem + var(--space-8));
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-8);
+    max-height: 60dvh;
+    margin: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: var(--space-16);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--panel);
+    box-shadow: var(--card-shadow);
+  }
+
+  html:not([data-mode='viewer']) #map-more-panel:not([data-state='open']) {
+    display: none;
+  }
+}
+
+
+/* ==== The short class's side rail (v2.1.0, FR-71 as amended; the owner's
+   ruling) ====
+   The short class only — lower than 31.25 rem, whatever the width or the
+   pointer. One 56-pixel side rail, no top or bottom bar: the header itself
+   is the rail, carrying the segment switch and, in the stage segments, that
+   segment's tools and zoom and fit, one icon deep; the header's contents and
+   whatever the rail's height cannot hold sit behind the rail's own menu
+   control. The stage owns everything else. Every rule is scoped to the
+   application. */
+@media (max-height: 31.249rem) {
+  html:not([data-mode='viewer']) body {
+    display: flex;
+    flex-direction: row;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  /* The header is the rail: 56 pixels wide, the full height, one column. */
+  html:not([data-mode='viewer']) #app-header {
+    flex: none;
+    width: 3.5rem;
+    height: 100dvh;
+    min-height: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: var(--space-2);
+    padding: var(--space-4) 0;
+    border-bottom: 0;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+
+  html:not([data-mode='viewer']) #app-title {
+    display: none;
+  }
+
+  html:not([data-mode='viewer']) #segment-nav {
+    flex: none;
+    flex-direction: column;
+    width: 100%;
+    height: auto;
+    gap: var(--space-2);
+  }
+
+  html:not([data-mode='viewer']) #app-header .segment-tab {
+    width: 100%;
+    height: auto;
+    min-height: 2.75rem;
+    min-width: 0;
+    padding: var(--space-4) 0;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--muted);
+    font-size: var(--text-12);
+    font-weight: 400;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  html:not([data-mode='viewer']) #app-header .segment-tab[aria-selected='true'] {
+    background: var(--accent-soft);
+    box-shadow: inset 2px 0 0 var(--accent);
+    color: var(--fg);
+    font-weight: 650;
+  }
+
+  /* The rail's own menu control stays at the rail's foot. */
+  html:not([data-mode='viewer']) #menu-toggle {
+    order: 99;
+    flex: none;
+    margin-top: auto;
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0;
+  }
+
+  /* The tools and the zoom group ride in the rail, one icon deep. */
+  html:not([data-mode='viewer']) #app-header #annotation-tools,
+  html:not([data-mode='viewer']) #app-header #map-zoom,
+  html:not([data-mode='viewer']) #app-header #pres-zoom {
+    position: static;
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+
+  html:not([data-mode='viewer']) #app-header #annotation-tools {
+    flex-direction: column;
+  }
+
+  html:not([data-mode='viewer']) #app-header .annotation-tool,
+  html:not([data-mode='viewer']) #app-header #map-zoom .icon-button,
+  html:not([data-mode='viewer']) #app-header #pres-zoom .icon-button {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    height: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0;
+  }
+
+  html:not([data-mode='viewer']) #app-header #pres-mode {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  html:not([data-mode='viewer']) #app-header .pres-mode-button {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    height: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    font-size: var(--text-12);
+    border-radius: var(--radius-sm);
+  }
+
+  /* The stage segments are full-bleed beside the rail. */
+  html:not([data-mode='viewer']) #app-main {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  html:not([data-mode='viewer']) #segment-map,
+  html:not([data-mode='viewer']) #segment-presentation {
+    flex: 1 1 auto;
+    min-height: 0;
+    gap: 0;
+  }
+
+  html:not([data-mode='viewer']) #map-area,
+  html:not([data-mode='viewer']) #presentation-area {
+    position: relative;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+  }
+
+  html:not([data-mode='viewer']) #map-toolbar,
+  html:not([data-mode='viewer']) #annotation-toolbar,
+  html:not([data-mode='viewer']) #presentation-toolbar {
+    display: none;
+  }
+
+  html:not([data-mode='viewer']) #map-stage,
+  html:not([data-mode='viewer']) #presentation-stage {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  /* The overlays and sheets open over the stage, clear of the rail. */
+  html:not([data-mode='viewer']) :is(#app-menu, #placement-area, #map-glance, #map-legend, #visibility-area, #presentation-glance, #presentation-legend, #annotation-inspector, #fetch-panel, #pdf-panel, #map-more-panel, #details-panel) {
+    left: calc(3.5rem + var(--space-8));
+  }
+}
+
+
+/* ==== The quiet chrome's idle withdrawal (v2.1.0, FR-37 and FR-38 as
+   amended; the owner's ruling) ====
+   On the Presentation segment's stage and in the exported viewer, the
+   floating chrome withdraws after four seconds of stillness and returns on
+   any interaction. There is no fade: the state toggles instantly, on the
+   same timer, with or without the reduced-motion preference — no transition
+   is declared for it anywhere. */
+html[data-idle='true'] #presentation-toolbar,
+html[data-idle='true'] #pres-zoom,
+html[data-idle='true'] #presentation-legend,
+html[data-idle='true'] #toggle-legend,
+html[data-idle='true'] #presentation-glance,
+html[data-idle='true'] #toggle-glance {
+  visibility: hidden;
+}
+
+
+/* ==== The exported viewer's new chrome in the medium, wide, and extra wide
+   classes (v2.1.0, FR-38 as amended: the viewer has crossed to the five
+   classes) ====
+   The same layout as the application's Presentation segment (FR-81): one bar
+   of 44 pixels holding the viewer's own contents, and the controls floating
+   on the stage — the view switch at the top centre, zoom and fit at the
+   lower right, the legend at the lower left, "In view" at the upper right
+   and docked from 1,920 pixels. Every rule is scoped to the viewer. */
+@media (min-width: 48rem) and (min-height: 31.25rem) {
+  html[data-mode='viewer'] body {
+    display: grid;
+    grid-template-rows: 2.75rem minmax(0, 1fr);
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* The bar: one row of 44 pixels, never wrapping, with the name and version,
+     the export's badge, and the language and theme selects. */
+  html[data-mode='viewer'] #app-header {
+    position: relative;
+    z-index: var(--layer-sheet);
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: var(--space-12);
+    height: 2.75rem;
+    min-width: 0;
+    padding: 0 var(--space-12);
+    white-space: nowrap;
+  }
+
+  html[data-mode='viewer'] #app-title {
+    flex: none;
+  }
+
+  html[data-mode='viewer'] #app-version {
+    font-size: var(--text-12);
+  }
+
+  html[data-mode='viewer'] #viewer-badge {
+    flex: 0 100 auto;
+    min-width: 0;
+    overflow: hidden;
+    padding: 0;
+    border: 0;
+    font-size: var(--text-13);
+    color: var(--muted);
+    text-overflow: ellipsis;
+  }
+
+  html[data-mode='viewer'] #app-header .controls {
+    display: flex;
+    gap: var(--space-8);
+    margin-left: auto;
+  }
+
+  html[data-mode='viewer'] #app-header .controls label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    font-size: var(--text-13);
+  }
+
+  html[data-mode='viewer'] #app-header select {
+    font-size: var(--text-13);
+  }
+
+  html[data-mode='viewer'] #app-main {
+    min-height: 0;
+    padding: 0;
+  }
+
+  html[data-mode='viewer'] #segment-presentation {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+    height: 100%;
+  }
+
+  html[data-mode='viewer'] #presentation-area {
+    position: relative;
+    display: block;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    overflow: hidden;
+  }
+
+  html[data-mode='viewer'] #presentation-heading {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* The stage takes everything under the bar. */
+  html[data-mode='viewer'] #presentation-area > .stage {
+    position: absolute;
+    inset: 0;
+    border-radius: 0;
+  }
+
+  /* -- What floats on the stage. -- */
+  html[data-mode='viewer'] :is(#presentation-toolbar, #pres-zoom, #presentation-legend, #toggle-legend, .glance-panel) {
+    position: absolute;
+    z-index: var(--layer-card);
+    margin: 0;
+    box-shadow: var(--card-shadow);
+  }
+
+  html[data-mode='viewer'] :is(#presentation-toggles, #viewer-toggles) {
+    display: contents;
+  }
+
+  /* The view switch, a pill at the stage's top centre. */
+  html[data-mode='viewer'] #presentation-toolbar {
+    top: var(--space-12);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: var(--space-8);
+    padding: var(--space-2) var(--space-8) var(--space-2) var(--space-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    background: var(--panel);
+    white-space: nowrap;
+  }
+
+  html[data-mode='viewer'] #presentation-toolbar .pres-mode-button {
+    border-radius: var(--radius-pill);
+  }
+
+  /* Zoom and fit, at the stage's lower right. */
+  html[data-mode='viewer'] #pres-zoom {
+    right: var(--space-12);
+    bottom: var(--space-12);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--panel);
+  }
+
+  html[data-mode='viewer'] #pres-zoom .icon-button {
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border-color: transparent;
+    border-radius: var(--radius-sm);
+    font-size: var(--text-16);
+  }
+
+  html[data-mode='viewer'] #pres-zoom-level {
+    min-width: 0;
+    color: var(--muted);
+    font-size: var(--text-12);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The legend (FR-6 as amended): at the stage's lower left, folded to its
+     control until asked for. */
+  html[data-mode='viewer'] #toggle-legend {
+    bottom: var(--space-12);
+    left: var(--space-12);
+    display: inline-flex;
+    align-items: center;
+    height: 2.25rem;
+    padding: 0 var(--space-12);
+    border-color: var(--border);
+    background: var(--panel);
+    color: var(--fg);
+    font-size: var(--text-13);
+    font-weight: 600;
+  }
+
+  html[data-mode='viewer'] #toggle-legend[aria-expanded='true'] {
+    border-color: var(--accent);
+    box-shadow:
+      inset 0 0 0 1px var(--accent),
+      var(--card-shadow);
+  }
+
+  html[data-mode='viewer'] #presentation-legend {
+    bottom: 3.5rem;
+    left: var(--space-12);
+    display: none;
+    max-width: min(calc(100% - 18rem), 60rem);
+    max-height: calc(100% - 8rem);
+    overflow: auto;
+    padding: var(--space-8) var(--space-12);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--panel);
+    font-size: var(--text-13);
+  }
+
+  html[data-mode='viewer'] #presentation-legend[data-fold='open'] {
+    display: flex;
+  }
+
+  /* "In view": floating at the stage's upper right, folded to its heading or
+     unfolded. */
+  html[data-mode='viewer'] .glance-panel {
+    top: var(--space-12);
+    right: var(--space-12);
+    width: 14.5rem;
+    max-height: calc(100% - 11rem);
+    padding: var(--space-8) var(--space-12);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--panel);
+  }
+
+  html[data-mode='viewer'] .glance-panel > .viewer-toggle {
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+  }
+
+  html[data-mode='viewer'] .glance-panel[data-fold='closed'] {
+    overflow: hidden;
+  }
+
+  html[data-mode='viewer'] .glance-panel[data-fold='closed'] > :not(.glance-heading, .viewer-toggle) {
+    display: none;
+  }
+
+  html[data-mode='viewer'] .glance-panel .glance-heading {
+    margin: 0;
+    padding-right: var(--space-32);
+    font-size: var(--text-13);
+    line-height: 1.75rem;
+  }
+
+}
+
+/* The viewer's presentation scale step above 1,920 pixels (v2.1.0, the
+   owner's ruling): every text size in the presentation steps to the next
+   larger token of the six-size scale — the markers step with them, their
+   size being drawn from --text-13 — so that every size stays on the scale
+   at every class. 28 has no larger token and stays. */
+@media (min-width: 120rem) {
+  html[data-mode='viewer'] {
+    --text-12: 0.8125rem;
+    --text-13: 0.875rem;
+    --text-14: 1rem;
+    --text-16: 1.25rem;
+    --text-20: 1.75rem;
+  }
+
+  /* From 1,920 pixels "In view" docks beside the stage, at 264 pixels. */
+  html[data-mode='viewer'] #segment-presentation {
+    grid-template-columns: minmax(0, 1fr) 16.5rem;
+  }
+
+  html[data-mode='viewer'] .glance-panel {
+    position: relative;
+    grid-area: 1 / 2;
+    top: auto;
+    right: auto;
+    width: auto;
+    max-height: none;
+    padding: var(--space-12);
+    border: 0;
+    border-left: 1px solid var(--border);
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
+
+/* ==== The exported viewer's chrome in the compact and short classes (v2.1.0,
+   the viewer crossed to the five classes) ====
+   In the compact class the bar is one 48-pixel row (the export's badge and
+   the language and theme selects, no brand), the stage full-bleed under it,
+   and the view switch and zoom floating on the stage as in the wider
+   classes; the overlays open from the floating toggle pill. In the short
+   class the header is the 56-pixel side rail, carrying the view switch, zoom
+   and fit, and the toggles, one icon deep, as in the application (the
+   owner's ruling). Every rule is scoped to the viewer. */
+@media (max-width: 47.999rem) and (min-height: 31.25rem) {
+  html[data-mode='viewer'] body {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  html[data-mode='viewer'] body #app-header {
+    flex-wrap: nowrap;
+    height: 3rem;
+    min-height: 3rem;
+    padding: 0 var(--space-4) 0 var(--space-12);
+    gap: var(--space-8);
+  }
+
+  html[data-mode='viewer'] body #app-title {
+    display: none;
+  }
+
+  html[data-mode='viewer'] body #viewer-badge {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    padding: 0;
+    border: 0;
+    font-size: var(--text-12);
+    color: var(--muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  html[data-mode='viewer'] body #app-header .controls {
+    gap: var(--space-4);
+  }
+
+  html[data-mode='viewer'] body #app-header .controls label {
+    gap: var(--space-2);
+    font-size: var(--text-12);
+  }
+
+  html[data-mode='viewer'] body #app-header select {
+    font-size: var(--text-12);
+  }
+
+  html[data-mode='viewer'] body #app-main {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  html[data-mode='viewer'] body #segment-presentation {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  html[data-mode='viewer'] body #presentation-area {
+    position: relative;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  html[data-mode='viewer'] body #presentation-stage {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  /* The view switch and the toggles float as one pill at the stage's top
+     centre; zoom floats at its lower right. */
+  html[data-mode='viewer'] body #presentation-toolbar {
+    position: absolute;
+    top: var(--space-8);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: var(--layer-card);
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: var(--space-4);
+    max-width: calc(100% - var(--space-16));
+    margin: 0;
+    padding: var(--space-2) var(--space-4);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    background: var(--panel);
+    box-shadow: var(--card-shadow);
+    white-space: nowrap;
+  }
+
+  html[data-mode='viewer'] body #pres-zoom {
+    position: absolute;
+    right: var(--space-8);
+    bottom: var(--space-8);
+    z-index: var(--layer-card);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0;
+    padding: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--panel);
+    box-shadow: var(--card-shadow);
+  }
+}
+
+@media (max-height: 31.249rem) {
+  html[data-mode='viewer'] body {
+    display: flex;
+    flex-direction: row;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  /* The header is the side rail (the owner's ruling for the short class). */
+  html[data-mode='viewer'] body #app-header {
+    flex: none;
+    width: 3.5rem;
+    height: 100dvh;
+    min-height: 0;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-4) 0;
+    border-bottom: 0;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+
+  html[data-mode='viewer'] body #app-title,
+  html[data-mode='viewer'] body #viewer-badge {
+    display: none;
+  }
+
+  html[data-mode='viewer'] body #app-main {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+  }
+
+  html[data-mode='viewer'] body #presentation-toolbar {
+    display: none;
+  }
+
+  html[data-mode='viewer'] body #app-header :is(#pres-mode, #pres-zoom, #viewer-toggles) {
+    position: static;
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+
+  html[data-mode='viewer'] body #app-header .pres-mode-button,
+  html[data-mode='viewer'] body #app-header #pres-zoom .icon-button,
+  html[data-mode='viewer'] body #app-header .viewer-toggle {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    height: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0;
+    font-size: var(--text-12);
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    border-radius: var(--radius-sm);
+  }
+
+  html[data-mode='viewer'] body #app-header .controls {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  html[data-mode='viewer'] body #app-header .controls label {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    font-size: var(--text-12);
+  }
+
+  html[data-mode='viewer'] body :is(#presentation-glance, #presentation-legend) {
+    left: calc(3.5rem + var(--space-8));
+  }
+}
+
 /* ==== Narrow viewer layout (FR-58) ====
    Every rule after this marker lies inside the one media block below, on the
    query of src/narrowviewer.ts, and applies to the exported viewer only; a
    test holds both. Above the threshold nothing here applies. */
-@media (max-width: 56rem), (orientation: landscape) and (max-height: 30rem) and (pointer: coarse) {
+@media (max-width: 47.999rem), (max-height: 31.249rem) {
   /* The viewer fills the viewport height, the stage taking what the header
      and the toolbar leave. */
   html[data-mode='viewer'] body {
@@ -5625,3 +6581,4 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
     }
   }
 }
+
