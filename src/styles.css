@@ -2860,6 +2860,26 @@ html[data-boot='failed'] #boot-notice {
    phone, v2.2.1's fix-forward). */
 #pres-order-label {
   flex: none;
+  /* The order control's symbol (FR-70, ruled in v2.2.2): the typical sorting
+     glyph (up-down arrows, no direction hint -- the order is a key, not a
+     direction; the menu's checked item carries the active order). At the
+     wider classes the glyph stands beside the active order's name; at the
+     compact and short classes the symbol alone is the control's face, the
+     rules below. */
+  --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 15V5M4 8l3-3 3 3M13 5v10M10 12l3 3 3-3'/%3E%3C/svg%3E");
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+#pres-order-label::before {
+  content: '';
+  flex: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  background: currentColor;
+  -webkit-mask: var(--glyph) center / contain no-repeat;
+  mask: var(--glyph) center / contain no-repeat;
 }
 
 #pres-order {
@@ -2867,6 +2887,49 @@ html[data-boot='failed'] #boot-notice {
   height: calc(1lh + 2 * var(--space-4) + 2px);
   padding-block: 0;
   min-width: max-content;
+}
+
+/* At the compact and short classes the sorting symbol replaces the select's
+   visible text (v2.2.2, the owner's ruling): the label is the icon button
+   carrying the glyph, and the select fills it invisibly -- still the native
+   select, its menu opening on tap as today, the active order legible as the
+   menu's checked item. */
+html[data-layout='compact'] #pres-order-label,
+html[data-layout='short'] #pres-order-label {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 2.75rem;
+  min-width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 1px solid var(--control-line);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+}
+
+html[data-layout='compact'] #pres-order-label::before,
+html[data-layout='short'] #pres-order-label::before {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+}
+
+html[data-layout='compact'] #pres-order,
+html[data-layout='short'] #pres-order {
+  position: absolute;
+  /* The select covers the label's border too, so that its box is the full
+     44-pixel target (FR-58's floor). */
+  inset: -1px;
+  width: calc(100% + 2px);
+  height: calc(100% + 2px);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  appearance: none;
+  color: transparent;
 }
 
 /* The timeline (FR-67): a layer over the stage, the map underneath hidden.
@@ -3788,6 +3851,19 @@ html :is(#map-fit, #pres-fit) {
 
 html #pres-reset {
   --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 10a6 6 0 1 0 2-4.5M4 4v3.5h3.5'/%3E%3C/svg%3E");
+}
+
+/* The zoom buttons' glyphs (v2.2.2, the owner's scope guard): defined so that
+   every icon-shaped context draws them -- the viewer's short rail shapes the
+   zoom buttons as icon buttons. The application's text plus/minus buttons
+   carry no mask rule and keep their present form. The shapes are the
+   mockup's own plus and minus. */
+html :is(#map-zoom-in, #pres-zoom-in) {
+  --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round'%3E%3Cpath d='M10 4v12M4 10h12'/%3E%3C/svg%3E");
+}
+
+html :is(#map-zoom-out, #pres-zoom-out) {
+  --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round'%3E%3Cpath d='M4 10h12'/%3E%3C/svg%3E");
 }
 
 html .annotation-tool[data-tool='select'] {
@@ -6191,6 +6267,15 @@ html[data-idle='true'] #toggle-glance {
 
   html:not([data-mode='viewer']) :is(#map-toolbar, #annotation-toolbar, #presentation-toolbar) > * {
     flex: none;
+  }
+
+  /* The glyph anchor for the four overlay toggles in the narrow classes
+     (v2.2.2): they are icon buttons here, riding the toolbars, the pill, and
+     the rail's menu directly, so each is positioned and its absolutely
+     positioned ::before glyph draws inside its own box. At the wider classes
+     the toggles sit in positioned panels and keep their own rules. */
+  html:not([data-mode='viewer']) :is(#toggle-items, #toggle-visibility, #toggle-map-glance, #toggle-glance) {
+    position: relative;
   }
 
   html:not([data-mode='viewer']) #annotation-toolbar label,

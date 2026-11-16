@@ -133,8 +133,14 @@ describe('the text of every field follows the theme (FR-29, fix-forward of v2.2.
       expect(card.seen.map((s) => s.color)).not.toContain('missing');
       expectThemed(card);
       // Elsewhere: a text input with a placeholder in a column panel, and a
-      // select in the Presentation segment.
-      expectThemed(await fields(page, ['#area-new', '#pres-order', '#select-filter-kind']));
+      // select in the Presentation segment. The order select is excepted on
+      // the phone: since v2.2.2's ruling its visible text is replaced by the
+      // sorting symbol at the compact class (asserted in
+      // presentation-sort.test.ts); its value is asserted on the text token
+      // on the desktop below, where the name is shown.
+      expectThemed(await fields(page, ['#area-new', '#select-filter-kind']));
+      const order = await fields(page, ['#pres-order']);
+      expect(order.seen[0].color, 'the ruled symbol replaces the order select text at compact').toBe('rgba(0, 0, 0, 0)');
       await page.context().close();
     }, 120_000);
 
@@ -151,6 +157,8 @@ describe('the text of every field follows the theme (FR-29, fix-forward of v2.2.
         '#details-panel input.cell-input',
         '#details-panel .details-comment-input',
         '#new-column-name',
+        // The order select, where its name is shown beside the glyph (v2.2.2).
+        '#pres-order',
       ]);
       expect(result.seen.map((s) => s.color)).not.toContain('missing');
       expectThemed(result);
