@@ -62,7 +62,14 @@ export function parseOsm(text: string): OsmData {
   const nodes = new Map<string, OsmNode>();
   const ways: OsmWay[] = [];
   let bounds: OsmBounds | null = null;
-  for (const child of Array.from(root.children)) {
+  // childNodes with indexed access, not the live element collection: on large
+  // extracts the collection's indexed access is quadratic in some engines.
+  const top = root.childNodes;
+  for (let i = 0; i < top.length; i++) {
+    if (top[i].nodeType !== 1) {
+      continue;
+    }
+    const child = top[i] as Element;
     if (child.nodeName === 'node') {
       const id = child.getAttribute('id');
       const lat = finite(child.getAttribute('lat'));
@@ -74,7 +81,12 @@ export function parseOsm(text: string): OsmData {
     } else if (child.nodeName === 'way') {
       const refs: string[] = [];
       const tags: Record<string, string> = {};
-      for (const part of Array.from(child.children)) {
+      const parts = child.childNodes;
+      for (let j = 0; j < parts.length; j++) {
+        if (parts[j].nodeType !== 1) {
+          continue;
+        }
+        const part = parts[j] as Element;
         if (part.nodeName === 'nd') {
           const ref = part.getAttribute('ref');
           if (ref !== null) {

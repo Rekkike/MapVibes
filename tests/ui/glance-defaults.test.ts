@@ -19,6 +19,20 @@ vi.mock('../../src/osmrender', () => ({
   renderPlanToDataUrl: (plan: { width: number; height: number }) => `data:image/png;base64,T1NN${plan.width}x${plan.height}`,
 }));
 
+// v2.3.0: the demo's map text is now the parkland extract (demo-map.osm,
+// 6.36 MiB, 154k XML elements). A jsdom DOMParser over it needs more memory
+// than the test runners have (the worker is OOM-killed), so in the jsdom UI
+// tests the demo's map text is substituted with the small synthetic town
+// fixture; the real extract's parse and render is pinned by the unit pin
+// (tests/unit/demo.test.ts) and by every browser suite, which loads the built
+// application natively (the whole demo load measures 1.7 s there).
+vi.mock('../../src/demo', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('../../src/demo')>();
+  const { readFileSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  return { ...mod, DEMO_MAP_TEXT: readFileSync(join(process.cwd(), 'example-data', 'example-map.osm'), 'utf8') };
+});
+
 // The at-a-glance columns of work that made no deliberate choice (FR-46 as
 // amended in v1.3.1): the full current defaults, the area, start, and end
 // columns, in both segments; a deliberate choice is respected.
@@ -118,7 +132,7 @@ describe('the choice of the demo does not outlive the demo (FR-41, FR-46)', () =
       singleFile: true,
       beforeMain: () => {
         stubStageLayout();
-        stubImageDecoding(980, 3000);
+        stubImageDecoding(3000, 2000);
       },
     });
     byId('load-demo').click();

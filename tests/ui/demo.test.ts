@@ -7,13 +7,27 @@ vi.mock('../../src/osmrender', () => ({
   renderPlanToDataUrl: (plan: { width: number; height: number }) => `data:image/png;base64,T1NN${plan.width}x${plan.height}`,
 }));
 
+// v2.3.0: the demo's map text is now the parkland extract (demo-map.osm,
+// 6.36 MiB, 154k XML elements). A jsdom DOMParser over it needs more memory
+// than the test runners have (the worker is OOM-killed), so in the jsdom UI
+// tests the demo's map text is substituted with the small synthetic town
+// fixture; the real extract's parse and render is pinned by the unit pin
+// (tests/unit/demo.test.ts) and by every browser suite, which loads the built
+// application natively (the whole demo load measures 1.7 s there).
+vi.mock('../../src/demo', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('../../src/demo')>();
+  const { readFileSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  return { ...mod, DEMO_MAP_TEXT: readFileSync(join(process.cwd(), 'example-data', 'example-map.osm'), 'utf8') };
+});
+
 type App = Awaited<ReturnType<typeof mountApp>>;
 
 async function mount(): Promise<App> {
   const app = await mountApp({
     beforeMain: () => {
       stubStageLayout();
-      stubImageDecoding(980, 3000);
+      stubImageDecoding(3000, 2000);
     },
   });
   return app;
@@ -70,7 +84,7 @@ describe('full-test demo (FR-41)', () => {
     expect(byId<HTMLInputElement>('symbols-from-status').checked).toBe(true);
     // The background, the markers (one item is left to place), their symbols.
     expect(byId('map-stage').dataset.hasBackground).toBe('true');
-    expect(byId<HTMLImageElement>('map-image').getAttribute('src')).toBe('data:image/png;base64,T1NN980x3000');
+    expect(byId<HTMLImageElement>('map-image').getAttribute('src')).toBe('data:image/png;base64,T1NN3000x2000');
     expect(markers()).toHaveLength(11);
     expect(markers().map((m) => m.dataset.shape)).toEqual([
       'check',

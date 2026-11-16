@@ -10,6 +10,20 @@ vi.mock('../../src/osmrender', () => ({
   renderPlanToDataUrl: (plan: { width: number; height: number }) => `data:image/png;base64,T1NN${plan.width}x${plan.height}`,
 }));
 
+// v2.3.0: the demo's map text is now the parkland extract (demo-map.osm,
+// 6.36 MiB, 154k XML elements). A jsdom DOMParser over it needs more memory
+// than the test runners have (the worker is OOM-killed), so in the jsdom UI
+// tests the demo's map text is substituted with the small synthetic town
+// fixture; the real extract's parse and render is pinned by the unit pin
+// (tests/unit/demo.test.ts) and by every browser suite, which loads the built
+// application natively (the whole demo load measures 1.7 s there).
+vi.mock('../../src/demo', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('../../src/demo')>();
+  const { readFileSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  return { ...mod, DEMO_MAP_TEXT: readFileSync(join(process.cwd(), 'example-data', 'example-map.osm'), 'utf8') };
+});
+
 // Interface-language coherence of the demo (FR-41 as amended in v1.3.1):
 // everything the application provides follows the interface language, the
 // demo's data-carried labels included; everything the user types stays the
@@ -34,7 +48,7 @@ async function mountDemo(lang: Lang): Promise<App> {
     singleFile: true,
     beforeMain: () => {
       stubStageLayout();
-      stubImageDecoding(980, 3000);
+      stubImageDecoding(3000, 2000);
     },
   });
   setLanguage(lang);
@@ -111,6 +125,21 @@ function foreignShown(lang: Lang): string[] {
   return [...new Set(shown().filter((t) => foreign.some((f) => within(t, f))))];
 }
 
+// A press on the free rectangle's centre, computed from the shape's own
+// geometry through the map's current transform (v2.3.0: the parkland
+// background moved the rectangle, so the press point is no longer a
+// hardcoded stage offset).
+function pressRectangle(): void {
+  const rect = document.querySelector('#map-annotations g.annotation-rectangle rect') as SVGRectElement;
+  const cx = Number(rect.getAttribute('x')) + Number(rect.getAttribute('width')) / 2;
+  const cy = Number(rect.getAttribute('y')) + Number(rect.getAttribute('height')) / 2;
+  const m = /translate\(([-\d.]+)px, ([-\d.]+)px\) scale\(([\d.]+)\)/.exec(byId('map-content').style.transform)!;
+  const x = STAGE.left + Number(m[1]) + Number(m[3]) * cx;
+  const y = STAGE.top + Number(m[2]) + Number(m[3]) * cy;
+  pointer('pointerdown', byId('map-stage'), x, y);
+  pointer('pointerup', byId('map-stage'), x, y);
+}
+
 // Every surface: the Information segment with every panel open, the Map
 // segment with the annotation inspector, and the Presentation segment with
 // a card.
@@ -124,8 +153,7 @@ async function visitEverySurface(): Promise<string[]> {
   found.push(...foreignShown(lang));
   byId('tab-map').click();
   document.querySelector<HTMLButtonElement>('#annotation-tools [data-tool="select"]')!.click();
-  pointer('pointerdown', byId('map-stage'), STAGE.left + 328, STAGE.top + 438);
-  pointer('pointerup', byId('map-stage'), STAGE.left + 328, STAGE.top + 438);
+  pressRectangle();
   expect(byId('annotation-inspector').classList.contains('hidden')).toBe(false);
   found.push(...foreignShown(lang));
   byId('tab-presentation').click();
@@ -243,8 +271,7 @@ describe('a change of language while the demo is loaded (FR-41)', () => {
     // An annotation label typed by the user: the free rectangle's.
     byId('tab-map').click();
     document.querySelector<HTMLButtonElement>('#annotation-tools [data-tool="select"]')!.click();
-    pointer('pointerdown', byId('map-stage'), STAGE.left + 328, STAGE.top + 438);
-    pointer('pointerup', byId('map-stage'), STAGE.left + 328, STAGE.top + 438);
+    pressRectangle();
     const label = byId<HTMLInputElement>('annotation-label');
     label.value = 'Min zon';
     label.dispatchEvent(new Event('input'));
