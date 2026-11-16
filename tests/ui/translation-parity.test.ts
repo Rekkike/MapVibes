@@ -21,6 +21,20 @@ import { en, sv } from '../../src/i18n';
 vi.mock('../../src/osmrender', () => ({
   renderPlanToDataUrl: (plan: { width: number; height: number }) => `data:image/png;base64,T1NN${plan.width}x${plan.height}`,
 }));
+
+// v2.3.0: the demo's map text is now the parkland extract (demo-map.osm,
+// 6.36 MiB, 154k XML elements). A jsdom DOMParser over it needs more memory
+// than the test runners have (the worker is OOM-killed), so in the jsdom UI
+// tests the demo's map text is substituted with the small synthetic town
+// fixture; the real extract's parse and render is pinned by the unit pin
+// (tests/unit/demo.test.ts) and by every browser suite, which loads the built
+// application natively (the whole demo load measures 1.7 s there).
+vi.mock('../../src/demo', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('../../src/demo')>();
+  const { readFileSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  return { ...mod, DEMO_MAP_TEXT: readFileSync(join(process.cwd(), 'example-data', 'example-map.osm'), 'utf8') };
+});
 vi.mock('../../src/raster', () => ({
   backgroundJpeg: () =>
     Promise.resolve({ jpeg: new Uint8Array(readFileSync(join(process.cwd(), 'example-data', 'example-background.jpg'))), width: 1200, height: 800 }),
@@ -214,9 +228,18 @@ describe('translation parity: the rendered interface in Swedish (FR-19)', () => 
       document.querySelector<HTMLButtonElement>('#annotation-tools [data-tool="select"]')!.click();
       document.querySelector<HTMLElement>('#marker-layer .marker')!.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }));
       found.push(...leaks(english));
-      // The annotation inspector: the demo's free rectangle, selected.
-      pointer('pointerdown', byId('map-stage'), STAGE.left + 328, STAGE.top + 438);
-      pointer('pointerup', byId('map-stage'), STAGE.left + 328, STAGE.top + 438);
+      // The annotation inspector: the demo's free rectangle, selected by a
+      // press computed from the shape's own geometry through the map's
+      // transform (v2.3.0: the parkland background moved the rectangle, so
+      // the press point is no longer a hardcoded stage offset).
+      const rect = document.querySelector('#map-annotations g.annotation-rectangle rect') as SVGRectElement;
+      const rcx = Number(rect.getAttribute('x')) + Number(rect.getAttribute('width')) / 2;
+      const rcy = Number(rect.getAttribute('y')) + Number(rect.getAttribute('height')) / 2;
+      const tm = /translate\(([-\d.]+)px, ([-\d.]+)px\) scale\(([\d.]+)\)/.exec(byId('map-content').style.transform)!;
+      const px = STAGE.left + Number(tm[1]) + Number(tm[3]) * rcx;
+      const py = STAGE.top + Number(tm[2]) + Number(tm[3]) * rcy;
+      pointer('pointerdown', byId('map-stage'), px, py);
+      pointer('pointerup', byId('map-stage'), px, py);
       expect(byId('annotation-inspector').classList.contains('hidden')).toBe(false);
       found.push(...leaks(english));
       // The Presentation segment, a card, and the three export dialogs.
