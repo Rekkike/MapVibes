@@ -1,4 +1,9 @@
 :root {
+  /* The theme's colour scheme: the native glyphs (a select's up/down
+     arrows, the disclosure triangles, the scrollbars) take the theme's ink
+     instead of the browser's fixed default -- the unthemed arrows reported
+     on the phone in both themes (v2.2.1's fix-forward). */
+  color-scheme: light;
   /* The token system (FR-29 as amended; docs/redesign/mockup.html is the
      direction of record and every colour below is its value). Ground and
      ink: the ground, the surface (panels), the secondary surface, the text
@@ -80,6 +85,7 @@
 }
 
 html[data-theme='dark'] {
+  color-scheme: dark;
   --bg: #101216;
   --panel: #1a1d23;
   --surface-2: #252931;
@@ -2847,11 +2853,20 @@ html[data-boot='failed'] #boot-notice {
 
 /* The order (FR-70): as tall as the toolbar's buttons, so that the select's
    own taller box does not make the toolbar's row taller, whatever the
-   font. */
+   font. Its box is never smaller than its content: the control takes its
+   widest label's width (the languages' label widths differ), and in the
+   sideways-scrolling rows of the compact and short classes the row scrolls
+   instead of shrinking the control (the cramped label reported on the
+   phone, v2.2.1's fix-forward). */
+#pres-order-label {
+  flex: none;
+}
+
 #pres-order {
   box-sizing: border-box;
   height: calc(1lh + 2 * var(--space-4) + 2px);
   padding-block: 0;
+  min-width: max-content;
 }
 
 /* The timeline (FR-67): a layer over the stage, the map underneath hidden.
