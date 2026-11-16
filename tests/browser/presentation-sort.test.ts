@@ -6,33 +6,25 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { chromium, devices, type Browser, type BrowserContextOptions, type Page } from 'playwright';
 import { pressExport, setSelect } from './chrome';
 
-// The Presentation sort control on the phone (FR-70, fix-forward of v2.2.1):
-// two symptoms of one report, both in the compact class's Presentation
-// segment at 390 by 844, in both themes. (1) The order dropdown in the
-// toolbar's sideways-scrolling row was drawn too small for its content --
-// its label cut off, the Swedish and English label widths differing: the
-// stylesheet left the select's box to the browser's intrinsic sizing inside
-// the nowrap row. The rule now gives the control its content's width
-// (#pres-order min-width: max-content, its label flex: none) and the row
-// keeps its own sideways scroll. (2) The control's up/down arrows rendered
-// black against the dark ground: the native glyphs did not follow the theme
-// because the stylesheet never declared color-scheme, so the computed scheme
-// was "normal" in both themes. The theme roots now declare it (light on
-// :root, dark on html[data-theme='dark']).
-//
-// This suite pins both at the rule level, in both languages and both themes,
-// in the application and in the exported viewer: the order control's geometry
-// at compact (its box holds every option's label in both languages, whatever
-// option is chosen, and the row still scrolls sideways), the colour-scheme
-// token on the root and on every select (the arrows' colour, in both themes),
-// and the audit's coverage: every select in the chrome at compact and short
-// holds its content, and the only toolbar controls whose text is clipped are
-// the icon buttons, whose glyph masks take the text token. Run after the
+// The Presentation sort control (FR-70): the v2.2.1 fix-forward gave it its
+// content's width and the theme's colour scheme; v2.2.2's ruling adds the
+// sorting symbol. At the compact and short classes the typical sorting
+// symbol (up-down arrows, no direction hint) replaces the select's visible
+// text -- the select stays the native control, its menu opening as today,
+// the active order legible as the menu's checked item. At the wider classes
+// the active order's name remains beside the glyph. This suite pins the
+// ruled geometry at compact and short in both languages, in the
+// application and in the exported viewer (the label is the 44-pixel symbol
+// button, the glyph draws ink, the select still changes the order, the row
+// keeps its sideways scroll), the name beside the glyph at the wider
+// classes, the colour-scheme token in both themes (phone and desktop, app
+// and viewer), and the audit's coverage at compact and short. Run after the
 // build (npm run build).
 const BUILT = join(process.cwd(), 'dist', 'build', 'index.html');
 
 const PHONE: BrowserContextOptions = { ...devices['iPhone 13'] };
 const DESKTOP: BrowserContextOptions = { viewport: { width: 1500, height: 950 } };
+const WIDE: BrowserContextOptions = { viewport: { width: 1440, height: 900 } };
 const SHORT: BrowserContextOptions = { viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 };
 
 let browser: Browser;
@@ -78,38 +70,58 @@ async function openViewer(options: BrowserContextOptions, lang: 'en' | 'sv', the
 
 interface OrderControl {
   layout: string;
-  minWidth: string;
-  labelFlex: string;
   labelBox: number;
+  labelPos: string;
+  labelDisplay: string;
+  glyphMask: boolean;
+  glyphBg: string;
+  glyphWidth: string;
+  selColor: string;
+  selAppearance: string;
+  selMinWidth: string;
+  selPos: string;
+  orderTextVisible: boolean;
   overflowX: string;
   rowScroll: number;
   rowClient: number;
   pad: number;
-  perOption: Array<{ option: string; text: number; box: number }>;
+  perOption: Array<{ option: string; value: string; text: number; box: number }>;
 }
 
-// The order control's rule and geometry: the computed min-width and the
-// label's flex, the row's overflow, and, for every option chosen, the box's
-// width against the option's label width measured in the select's own font.
+// The order control's ruled state: the label's box and position, the glyph
+// pseudo's mask and ink, the select's own face, the row's overflow, and, at
+// the wider classes, every option's label against the box measured in the
+// select's own font.
 function orderControl(page: Page): Promise<OrderControl> {
   return page.evaluate(() => {
     const sel = document.getElementById('pres-order') as HTMLSelectElement;
     const label = document.getElementById('pres-order-label') as HTMLElement;
+    const orderText = document.getElementById('pres-order-text') as HTMLElement;
     const toolbar = document.getElementById('presentation-toolbar') as HTMLElement;
-    const cs = getComputedStyle(sel);
+    const cs = getComputedStyle(label);
+    const bef = getComputedStyle(label, '::before');
+    const scs = getComputedStyle(sel);
     const canvas = document.createElement('canvas').getContext('2d')!;
-    canvas.font = cs.font;
-    const pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
+    canvas.font = scs.font;
+    const pad = parseFloat(scs.paddingLeft) + parseFloat(scs.paddingRight) + parseFloat(scs.borderLeftWidth) + parseFloat(scs.borderRightWidth);
     const perOption = [...sel.options].map((o) => {
       sel.value = o.value;
       sel.dispatchEvent(new Event('change'));
-      return { option: o.textContent, text: canvas.measureText(o.textContent).width, box: sel.getBoundingClientRect().width };
+      return { option: o.textContent, value: o.value, text: canvas.measureText(o.textContent).width, box: sel.getBoundingClientRect().width };
     });
     return {
       layout: document.documentElement.dataset.layout ?? '',
-      minWidth: cs.minWidth,
-      labelFlex: getComputedStyle(label).flex,
       labelBox: label.getBoundingClientRect().width,
+      labelPos: cs.position,
+      labelDisplay: cs.display,
+      glyphMask: bef.maskImage !== 'none' || bef.webkitMaskImage !== 'none',
+      glyphBg: bef.backgroundColor,
+      glyphWidth: bef.width,
+      selColor: scs.color,
+      selAppearance: scs.appearance,
+      selMinWidth: scs.minWidth,
+      selPos: scs.position,
+      orderTextVisible: orderText.getBoundingClientRect().width > 1,
       overflowX: getComputedStyle(toolbar).overflowX,
       rowScroll: toolbar.scrollWidth,
       rowClient: toolbar.clientWidth,
@@ -119,17 +131,41 @@ function orderControl(page: Page): Promise<OrderControl> {
   });
 }
 
-function expectContentWidth(control: OrderControl): void {
-  expect(control.minWidth, 'the rule: the select is never narrower than its content').toBe('max-content');
-  expect(control.labelFlex, 'the rule: the label does not shrink in the row').toBe('0 0 auto');
-  const boxes = control.perOption.map((p) => p.box);
+// The ruled narrow design: the symbol alone is the control's face, the
+// glyph draws ink, the select still opens and changes the order, the row
+// keeps its sideways scroll.
+async function expectSymbol(page: Page, control: OrderControl, where: string): Promise<void> {
+  expect(control.labelPos, `${where}: the symbol's label is the glyph's anchor`).not.toBe('static');
+  expect(control.labelDisplay, `${where}: the label is the icon button`).toBe('grid');
+  expect(control.labelBox, `${where}: the label is the 2.75rem symbol button`).toBeCloseTo(44, 0);
+  expect(control.glyphMask, `${where}: the sorting glyph's mask is set`).toBe(true);
+  expect(control.glyphWidth, `${where}: the glyph is drawn at 1.125rem`).toBe('18px');
+  expect(control.glyphBg, `${where}: the glyph takes the text token`).not.toBe('rgba(0, 0, 0, 0)');
+  expect(control.selAppearance, `${where}: the select's face is replaced`).toBe('none');
+  expect(control.selColor, `${where}: the select's visible text is replaced by the symbol`).toBe('rgba(0, 0, 0, 0)');
+  expect(control.selMinWidth, `${where}: the box is the symbol's, not the text's`).toBe('0px');
+  expect(control.selPos, `${where}: the select fills the label, still the control`).toBe('absolute');
+  expect(control.orderTextVisible, `${where}: the order's name stays announced, not shown`).toBe(false);
+  expect(control.overflowX, `${where}: the row keeps its sideways scroll`).toBe('auto');
+  expect(control.rowScroll, `${where}: the row scrolls instead of shrinking its controls`).toBeGreaterThan(control.rowClient);
   for (const p of control.perOption) {
-    expect(p.box, `the box holds the label "${p.option}"`).toBeGreaterThanOrEqual(p.text + control.pad - 0.5);
+    await page.selectOption('#pres-order', p.value);
+    expect(await page.$eval('#pres-order', (s) => (s as HTMLSelectElement).value), `${where}: the menu's item "${p.option}" still selects`).toBe(p.value);
   }
-  expect(Math.max(...boxes) - Math.min(...boxes), 'the box does not depend on the chosen label').toBeLessThanOrEqual(0.5);
-  expect(control.labelBox, 'the label wraps the select whole').toBeGreaterThanOrEqual(Math.max(...boxes) - 0.5);
-  expect(control.overflowX, 'the row keeps its sideways scroll').toBe('auto');
-  expect(control.rowScroll, 'the row scrolls instead of shrinking its controls').toBeGreaterThan(control.rowClient);
+}
+
+// The ruled wide design: the active order's name remains beside the glyph.
+function expectNameBesideGlyph(control: OrderControl, where: string): void {
+  expect(control.labelDisplay, `${where}: the label lays out text, glyph, and select`).toBe('flex');
+  expect(control.glyphMask, `${where}: the sorting glyph draws beside the name`).toBe(true);
+  expect(control.glyphBg, `${where}: the glyph takes the text token`).not.toBe('rgba(0, 0, 0, 0)');
+  expect(control.orderTextVisible, `${where}: the "Order" label is shown`).toBe(true);
+  expect(control.selAppearance, `${where}: the native select keeps its arrow`).toBe('auto');
+  expect(control.selColor, `${where}: the select's text is shown`).not.toBe('rgba(0, 0, 0, 0)');
+  expect(control.selMinWidth, `${where}: the select keeps its content's width`).toBe('max-content');
+  for (const p of control.perOption) {
+    expect(p.box, `${where}: the box holds the label "${p.option}"`).toBeGreaterThanOrEqual(p.text + control.pad - 0.5);
+  }
 }
 
 // The colour-scheme token: the root's scheme and every select's, in the
@@ -159,8 +195,9 @@ function schemes(page: Page): Promise<{ html: string; fg: string; selects: strin
 }
 
 // The audit's walk at a class: every visible select in the chrome holds its
-// content, and the only controls whose text is clipped are the icon buttons
-// (a glyph mask over hidden text).
+// content -- except the order select at the narrow classes, where the ruled
+// symbol replaces its text -- and the only controls whose text is clipped
+// are the icon buttons (a glyph mask over hidden text).
 function auditChrome(page: Page): Promise<Array<{ id: string; kind: string; over: boolean; reason: string }>> {
   return page.evaluate(() => {
     const roots = ['#presentation-toolbar', '#pres-zoom', '#app-header', '#annotation-toolbar', '#map-toolbar', '#app-menu', '#map-more-panel'];
@@ -191,7 +228,7 @@ function auditChrome(page: Page): Promise<Array<{ id: string; kind: string; over
           const masked = before.maskImage !== 'none' || before.webkitMaskImage !== 'none';
           reason = cs.overflow === 'hidden' && masked ? 'icon button by design' : 'clipped';
         } else if (over) {
-          reason = 'clipped';
+          reason = e.id === 'pres-order' ? 'the ruled symbol replaces the text at the narrow classes' : 'clipped';
         }
         if (e.tagName === 'SELECT' || over) {
           rows.push({ id: (e as HTMLElement).id || e.className, kind: e.tagName, over, reason });
@@ -202,9 +239,9 @@ function auditChrome(page: Page): Promise<Array<{ id: string; kind: string; over
   });
 }
 
-describe('the Presentation sort control on the phone (FR-70, fix-forward of v2.2.1)', () => {
+describe('the Presentation sort control (FR-70, v2.2.1 content width and colour scheme, v2.2.2 the ruled sorting symbol)', () => {
   test('the exported file is written from the demo', async () => {
-    const page = await openApp(PHONE, 'en', 'light');
+    const page = await openApp(DESKTOP, 'en', 'light');
     await page.evaluate(() => delete (window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker);
     await pressExport(page, 'export-open');
     const [download] = await Promise.all([page.waitForEvent('download'), page.click('#export-go')]);
@@ -214,19 +251,40 @@ describe('the Presentation sort control on the phone (FR-70, fix-forward of v2.2
   }, 90_000);
 
   for (const lang of ['en', 'sv'] as const) {
-    test(`in the application at compact 390x844, ${lang}: the order control has its content's width and the row keeps its sideways scroll`, async () => {
+    test(`in the application at compact 390x844, ${lang}: the order control is the sorting symbol and the row keeps its sideways scroll`, async () => {
       const page = await openApp(PHONE, lang, 'light');
       const control = await orderControl(page);
       expect(control.layout).toBe('compact');
-      expectContentWidth(control);
+      await expectSymbol(page, control, `app compact ${lang}`);
       await page.context().close();
     }, 120_000);
 
-    test(`in the exported viewer at compact 390x844, ${lang}: the order control has its content's width and the row keeps its sideways scroll`, async () => {
+    test(`in the exported viewer at compact 390x844, ${lang}: the order control is the sorting symbol`, async () => {
       const page = await openViewer(PHONE, lang, 'light');
       const control = await orderControl(page);
       expect(control.layout).toBe('compact');
-      expectContentWidth(control);
+      await expectSymbol(page, control, `viewer compact ${lang}`);
+      await page.context().close();
+    }, 120_000);
+
+    test(`in the application at short 844x390, ${lang}: the order control in the rail's menu is the sorting symbol`, async () => {
+      const page = await openApp(SHORT, lang, 'dark');
+      await page.click('#menu-toggle');
+      await page.waitForTimeout(300);
+      const control = await orderControl(page);
+      expect(control.layout).toBe('short');
+      expect(control.labelPos).not.toBe('static');
+      expect(control.glyphMask).toBe(true);
+      expect(control.selAppearance).toBe('none');
+      expect(control.selColor).toBe('rgba(0, 0, 0, 0)');
+      await page.context().close();
+    }, 120_000);
+
+    test(`in the application at wide 1440x900, ${lang}: the active order's name remains beside the glyph`, async () => {
+      const page = await openApp(WIDE, lang, 'light');
+      const control = await orderControl(page);
+      expect(control.layout).toBe('wide');
+      expectNameBesideGlyph(control, `app wide ${lang}`);
       await page.context().close();
     }, 120_000);
   }
@@ -272,17 +330,17 @@ describe('the Presentation sort control on the phone (FR-70, fix-forward of v2.2
           await page.waitForTimeout(300);
         }
         const rows = await auditChrome(page);
+        const layout = await page.evaluate(() => document.documentElement.dataset.layout);
         expect(rows.length, 'the walk sees the chrome').toBeGreaterThan(0);
         for (const row of rows) {
           if (row.kind === 'SELECT') {
+            if (row.id === 'pres-order' && (layout === 'compact' || layout === 'short')) {
+              continue; // the ruled sorting symbol replaces the text at the narrow classes
+            }
             expect(row.over, `the select #${row.id} holds its content`).toBe(false);
           } else {
             expect(row.reason, `the button #${row.id}`).toBe('icon button by design');
           }
-        }
-        const control = await orderControl(page);
-        for (const p of control.perOption) {
-          expect(p.box, `the order box holds "${p.option}"`).toBeGreaterThanOrEqual(p.text + control.pad - 0.5);
         }
         await page.context().close();
       }, 120_000);
@@ -290,9 +348,13 @@ describe('the Presentation sort control on the phone (FR-70, fix-forward of v2.2
       test(`the audit at ${name}, ${lang}, in the exported viewer: every select holds its content`, async () => {
         const page = await openViewer(profile, lang, 'dark');
         const rows = await auditChrome(page);
+        const layout = await page.evaluate(() => document.documentElement.dataset.layout);
         expect(rows.length, 'the walk sees the chrome').toBeGreaterThan(0);
         for (const row of rows) {
           if (row.kind === 'SELECT') {
+            if (row.id === 'pres-order' && (layout === 'compact' || layout === 'short')) {
+              continue; // the ruled sorting symbol replaces the text at the narrow classes
+            }
             expect(row.over, `the select #${row.id} holds its content`).toBe(false);
           } else {
             expect(row.reason, `the button #${row.id}`).toBe('icon button by design');
