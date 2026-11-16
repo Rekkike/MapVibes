@@ -99,8 +99,7 @@ function orderControl(page: Page): Promise<OrderControl> {
     const cs = getComputedStyle(sel);
     const canvas = document.createElement('canvas').getContext('2d')!;
     canvas.font = cs.font;
-    const pad =
-      parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
+    const pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
     const perOption = [...sel.options].map((o) => {
       sel.value = o.value;
       sel.dispatchEvent(new Event('change'));
@@ -147,8 +146,8 @@ function schemes(page: Page): Promise<{ html: string; fg: string; selects: strin
       probe.remove();
       return value;
     };
-    const maskButton = document.querySelector('#pres-fit, #menu-toggle') as HTMLElement | null;
-    const textButton = document.querySelector('#pres-zoom-in, #map-zoom-in') as HTMLElement | null;
+    const maskButton = document.querySelector<HTMLElement>('#pres-fit, #menu-toggle');
+    const textButton = document.querySelector<HTMLElement>('#pres-zoom-in, #map-zoom-in');
     return {
       html: getComputedStyle(document.documentElement).colorScheme,
       fg: resolve('--fg'),
@@ -169,14 +168,22 @@ function auditChrome(page: Page): Promise<Array<{ id: string; kind: string; over
     const rows: Array<{ id: string; kind: string; over: boolean; reason: string }> = [];
     for (const rs of roots) {
       const root = document.querySelector(rs);
-      if (!root || root.getBoundingClientRect().width === 0) continue;
+      if (!root || root.getBoundingClientRect().width === 0) {
+        continue;
+      }
       for (const e of root.querySelectorAll('button, select, input, summary')) {
-        if (seen.has(e)) continue;
+        if (seen.has(e)) {
+          continue;
+        }
         seen.add(e);
         const r = e.getBoundingClientRect();
-        if (r.width === 0 && r.height === 0) continue;
+        if (r.width === 0 && r.height === 0) {
+          continue;
+        }
         const cs = getComputedStyle(e);
-        if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+        if (cs.display === 'none' || cs.visibility === 'hidden') {
+          continue;
+        }
         const over = e.scrollWidth > e.clientWidth + 1;
         let reason = 'content holds';
         if (over && e.tagName === 'BUTTON') {
