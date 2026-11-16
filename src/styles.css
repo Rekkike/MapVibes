@@ -2918,9 +2918,11 @@ html[data-layout='short'] #pres-order-label::before {
 html[data-layout='compact'] #pres-order,
 html[data-layout='short'] #pres-order {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  /* The select covers the label's border too, so that its box is the full
+     44-pixel target (FR-58's floor). */
+  inset: -1px;
+  width: calc(100% + 2px);
+  height: calc(100% + 2px);
   min-width: 0;
   margin: 0;
   padding: 0;
@@ -3784,10 +3786,7 @@ html[data-segment='presentation'] #presentation-glance .glance-entry {
    for assistive technology, the text is not drawn, a glyph is drawn in its
    place. At every class of the application, the compact and short classes
    included (v2.1.0). */
-html:not([data-mode='viewer']) :is(#menu-toggle, #map-more, #toggle-items, #toggle-visibility, #toggle-map-glance, #toggle-glance, #map-fit, #pres-fit, #pres-reset, .annotation-tool[data-tool]) {
-  /* The glyph anchor (v2.2.2): every icon button is positioned, so that its
-     absolutely positioned ::before glyph draws inside the button's box --
-     the four overlay toggles were missing here and shipped blank. */
+html:not([data-mode='viewer']) :is(#menu-toggle, #map-more, #map-fit, #pres-fit, #pres-reset, .annotation-tool[data-tool]) {
   position: relative;
 }
 
@@ -6268,6 +6267,15 @@ html[data-idle='true'] #toggle-glance {
 
   html:not([data-mode='viewer']) :is(#map-toolbar, #annotation-toolbar, #presentation-toolbar) > * {
     flex: none;
+  }
+
+  /* The glyph anchor for the four overlay toggles in the narrow classes
+     (v2.2.2): they are icon buttons here, riding the toolbars, the pill, and
+     the rail's menu directly, so each is positioned and its absolutely
+     positioned ::before glyph draws inside its own box. At the wider classes
+     the toggles sit in positioned panels and keep their own rules. */
+  html:not([data-mode='viewer']) :is(#toggle-items, #toggle-visibility, #toggle-map-glance, #toggle-glance) {
+    position: relative;
   }
 
   html:not([data-mode='viewer']) #annotation-toolbar label,
