@@ -13,7 +13,7 @@ async function demo(lang: 'en' | 'sv'): Promise<void> {
     singleFile: true,
     beforeMain: () => {
       stubStageLayout();
-      stubImageDecoding(3000, 2000);
+      stubImageDecoding(980, 3000);
     },
   });
   const select = byId<HTMLSelectElement>('select-language');

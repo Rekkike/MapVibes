@@ -118,7 +118,7 @@ describe('the choice of the demo does not outlive the demo (FR-41, FR-46)', () =
       singleFile: true,
       beforeMain: () => {
         stubStageLayout();
-        stubImageDecoding(3000, 2000);
+        stubImageDecoding(980, 3000);
       },
     });
     byId('load-demo').click();

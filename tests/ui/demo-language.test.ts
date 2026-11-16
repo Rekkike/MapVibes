@@ -34,7 +34,7 @@ async function mountDemo(lang: Lang): Promise<App> {
     singleFile: true,
     beforeMain: () => {
       stubStageLayout();
-      stubImageDecoding(3000, 2000);
+      stubImageDecoding(980, 3000);
     },
   });
   setLanguage(lang);

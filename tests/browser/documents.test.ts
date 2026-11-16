@@ -94,8 +94,14 @@ describe('document exports in a browser, offline (FR-50, FR-51)', () => {
     expect(s.startsWith('%PDF-1.4')).toBe(true);
     expect(s.endsWith('%%EOF\n')).toBe(true);
     // After Fit view the whole rendered map is in view: it is embedded whole,
-    // captured before the dialog narrowed the stage.
-    expect(s).toMatch(/\/Width 3000 \/Height 2000 \/ColorSpace \/DeviceRGB \/BitsPerComponent 8 \/Filter \/DCTDecode/);
+    // captured before the dialog narrowed the stage. The pin follows the demo
+    // background's own rendered size (v2.3.0: the parkland extract, 980 x 3000;
+    // before, the synthetic town fixture, 3000 x 2000).
+    const bg = await page.evaluate(() => {
+      const img = document.getElementById('presentation-image') as HTMLImageElement;
+      return { width: img.naturalWidth, height: img.naturalHeight };
+    });
+    expect(s).toMatch(new RegExp(`/Width ${bg.width} /Height ${bg.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode`));
     const pages = await pdfPages(bytes);
     // Stage 1, timeline 2, economics 4, table 2 with the columns in 2
     // parts (measured on the demo after the 9 pt floor).

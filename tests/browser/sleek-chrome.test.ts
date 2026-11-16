@@ -153,15 +153,26 @@ describe.each(PROFILES)('the quiet chrome on %s (v1.9.0)', (name, options, heade
       expect(fitted.scale, `${name} fitted scale`).toBeLessThanOrEqual(fitted.expected + 0.01);
       // The annotation labels scale with the map (FR-47): at the fitted view
       // they read at the printed fraction of the background times the scale.
-      const labelPx = await page.evaluate(() => {
-        const label = document.querySelector('#presentation-annotation-labels > *');
-        if (!label) {
+      // (v2.3.0: the pin asserts the fraction rule itself; the absolute
+      // 13-pixel floor held for the old synthetic town sheet of 3000 x 2000,
+      // and the parkland sheet of 980 x 3000 fits smaller at 1280 x 800, where
+      // the fitted label reads 11.8 px; the measured sizes are recorded in the
+      // changelog.)
+      const label = await page.evaluate(() => {
+        const el = document.querySelector('#presentation-annotation-labels > *');
+        if (!el) {
           return null;
         }
         const m = /matrix\(([^)]+)\)/.exec(getComputedStyle(document.querySelector('#presentation-content')!).transform)!;
-        return parseFloat(getComputedStyle(label).fontSize) * Number(m[1].split(',')[0]);
+        const img = document.querySelector('#presentation-image') as HTMLImageElement;
+        return {
+          labelPx: parseFloat(getComputedStyle(el).fontSize) * Number(m[1].split(',')[0]),
+          sheet: Math.max(img.naturalWidth, img.naturalHeight),
+        };
       });
-      expect(labelPx, `${name} label at fit`).toBeGreaterThanOrEqual(13);
+      expect(label, `${name} label at fit`).not.toBeNull();
+      expect(fitted.scale, `${name} fitted scale`).not.toBeNull();
+      expect(label!.labelPx, `${name} label at fit`).toBeCloseTo((label!.sheet / 64) * (fitted.scale as number), 1);
     }
     expect(errors).toEqual([]);
     await page.context().close();

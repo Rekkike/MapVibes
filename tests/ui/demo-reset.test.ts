@@ -22,7 +22,7 @@ describe('reset demo (FR-56)', () => {
     app = await mountApp({
       beforeMain: () => {
         stubStageLayout();
-        stubImageDecoding(3000, 2000);
+        stubImageDecoding(980, 3000);
       },
     });
   });

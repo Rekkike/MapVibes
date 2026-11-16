@@ -13,7 +13,7 @@ async function mount(): Promise<App> {
   const app = await mountApp({
     beforeMain: () => {
       stubStageLayout();
-      stubImageDecoding(3000, 2000);
+      stubImageDecoding(980, 3000);
     },
   });
   return app;
@@ -70,7 +70,7 @@ describe('full-test demo (FR-41)', () => {
     expect(byId<HTMLInputElement>('symbols-from-status').checked).toBe(true);
     // The background, the markers (one item is left to place), their symbols.
     expect(byId('map-stage').dataset.hasBackground).toBe('true');
-    expect(byId<HTMLImageElement>('map-image').getAttribute('src')).toBe('data:image/png;base64,T1NN3000x2000');
+    expect(byId<HTMLImageElement>('map-image').getAttribute('src')).toBe('data:image/png;base64,T1NN980x3000');
     expect(markers()).toHaveLength(11);
     expect(markers().map((m) => m.dataset.shape)).toEqual([
       'check',
