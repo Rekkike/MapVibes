@@ -170,7 +170,7 @@ describe('the demo picker (v2.4.0)', () => {
     // The list shows the build story: 13 rows, the about item first.
     const listInfo = await page.evaluate(() => {
       const rows = [...document.querySelectorAll('#row-table-body tr')];
-      return { count: rows.length, firstName: rows[0]?.querySelector('td[data-header="Name"] input')?.value ?? '' };
+      return { count: rows.length, firstName: (rows[0]?.querySelector('td[data-header="Name"] input') as HTMLInputElement | null)?.value ?? '' };
     });
     expect(listInfo.count).toBe(13);
     expect(listInfo.firstName).toBe('About this example');
