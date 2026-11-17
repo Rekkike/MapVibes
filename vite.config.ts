@@ -38,5 +38,12 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: false,
+    // Since v2.3.0 the demo's parkland extract (demo-map.osm, 6.36 MiB) is
+    // bundled as a raw string in the module graph of every UI test file
+    // (main -> demo.ts), so each file's first test pays a larger module init:
+    // measured 1.5 s at v2.2.2, 3.7 s locally at v2.3.0, and over the default
+    // 5 s on the 4-core CI runner, where it timed out once. The default test
+    // timeout is raised to 20 s; long tests keep their explicit timeouts.
+    testTimeout: 20_000,
   },
 });
