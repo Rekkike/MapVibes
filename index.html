@@ -330,6 +330,14 @@
               <label><input type="radio" name="fetch-mode" id="fetch-mode-place" value="place" checked /> <span id="fetch-mode-place-label">Place name (recommended)</span></label>
               <label><input type="radio" name="fetch-mode" id="fetch-mode-bbox" value="bbox" /> <span id="fetch-mode-bbox-label">Bounding rectangle</span></label>
             </div>
+            <div class="fetch-row" id="fetch-size-row" role="radiogroup" aria-labelledby="fetch-size-legend">
+              <span id="fetch-size-legend">Fetch area size</span>
+              <label><input type="radio" name="fetch-size" id="fetch-size-max" value="1" checked /> <span id="fetch-size-max-label">Maximum (the cap): 0.0025 sq deg, about 5.5 × 5.5 km</span></label>
+              <label><input type="radio" name="fetch-size" id="fetch-size-40" value="0.4" /> <span id="fetch-size-40-label">40% of the maximum: 0.0010 sq deg, about 3.5 × 3.5 km</span></label>
+              <label><input type="radio" name="fetch-size" id="fetch-size-60" value="0.6" /> <span id="fetch-size-60-label">60% of the maximum: 0.0015 sq deg, about 4.3 × 4.3 km</span></label>
+              <label><input type="radio" name="fetch-size" id="fetch-size-85" value="0.85" /> <span id="fetch-size-85-label">85% of the maximum: 0.002125 sq deg, about 5.1 × 5.1 km</span></label>
+            </div>
+            <p id="fetch-size-help" class="notice">The cap is the maximum area fetched at once: 0.0025 square degrees, about 5.5 by 5.5 kilometres at the equator. A preset scales the area to fetch to its share of the cap, about the requested area's centre.</p>
             <div class="fetch-row" id="fetch-place-row">
               <input type="text" id="fetch-place" aria-label="Place name" />
               <button type="button" id="fetch-search">Search</button>

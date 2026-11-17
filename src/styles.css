@@ -1260,6 +1260,11 @@ input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [typ
   font-weight: 600;
 }
 
+/* The fetch area size presets (v2.5.0): shares of the maximum fetch area. */
+#fetch-size-legend {
+  font-weight: 600;
+}
+
 .network-badge {
   padding: 0 var(--space-8);
   border: 1px solid var(--warning);

@@ -17,6 +17,7 @@ import {
   parseBounds,
   parseEdge,
   parsePlaces,
+  presetBounds,
   searchPlace,
   statusError,
 } from '../../src/openmap';
@@ -104,6 +105,24 @@ describe('bounding rectangle fields (FR-31)', () => {
     expect((r.minLon + r.maxLon) / 2).toBeCloseTo(21, 10);
     expect((r.maxLon - r.minLon) / (r.maxLat - r.minLat)).toBeCloseTo(2, 10);
     expect(fetchableBounds(area)).toBe(area);
+  });
+
+  test('a size preset (v2.5.0) scales the area about its centre to its share of the cap, aspect kept', () => {
+    const b = { minLat: 10, maxLat: 11, minLon: 20, maxLon: 22 };
+    for (const fraction of [0.4, 0.6, 0.85]) {
+      const r = presetBounds(b, fraction);
+      const share = fraction * MAX_FETCH_AREA;
+      expect((r.maxLat - r.minLat) * (r.maxLon - r.minLon)).toBeLessThanOrEqual(share * 1.0001);
+      expect((r.maxLat - r.minLat) * (r.maxLon - r.minLon)).toBeGreaterThan(share * 0.99);
+      expect((r.minLat + r.maxLat) / 2).toBeCloseTo(10.5, 10);
+      expect((r.minLon + r.maxLon) / 2).toBeCloseTo(21, 10);
+      expect((r.maxLon - r.minLon) / (r.maxLat - r.minLat)).toBeCloseTo(2, 10);
+      // The result stays inside the hard cap.
+      expect((r.maxLat - r.minLat) * (r.maxLon - r.minLon)).toBeLessThanOrEqual(MAX_FETCH_AREA * 1.0001);
+    }
+    // The maximum share is the cap itself; a small area is unchanged by any preset.
+    expect(presetBounds(b, 1)).toEqual(fetchableBounds(b));
+    expect(presetBounds(area, 0.4)).toBe(area);
   });
 });
 
