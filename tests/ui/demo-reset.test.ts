@@ -16,7 +16,8 @@ vi.mock('../../src/demo', async (importOriginal) => {
   const mod = await importOriginal<typeof import('../../src/demo')>();
   const { readFileSync } = await import('node:fs');
   const { join } = await import('node:path');
-  return { ...mod, DEMO_MAP_TEXT: readFileSync(join(process.cwd(), 'example-data', 'example-map.osm'), 'utf8') };
+  const town = readFileSync(join(process.cwd(), 'example-data', 'example-map.osm'), 'utf8');
+  return { ...mod, DEMO_MAP_TEXT: town, demoMapText: () => town };
 });
 
 // Reset demo (FR-56).
@@ -46,6 +47,7 @@ describe('reset demo (FR-56)', () => {
   test('the action shows beside the demo label only while the demo is loaded', async () => {
     expect(byId('demo-reset').classList.contains('hidden')).toBe(true);
     byId('load-demo').click();
+    byId('demo-go').click();
     await settle();
     expect(byId('demo-reset').classList.contains('hidden')).toBe(false);
     expect(byId('demo-reset').textContent).toBe('Reset demo');
@@ -61,6 +63,7 @@ describe('reset demo (FR-56)', () => {
 
   test('an untouched demo resets without a question', async () => {
     byId('load-demo').click();
+    byId('demo-go').click();
     await settle();
     const confirm = vi.spyOn(window, 'confirm');
     byId('demo-reset').click();
@@ -71,6 +74,7 @@ describe('reset demo (FR-56)', () => {
 
   test('a changed demo asks first; declining keeps the changes, accepting restores the pristine demo', async () => {
     byId('load-demo').click();
+    byId('demo-go').click();
     await settle();
     const pristine = JSON.stringify({ ...app.captureWorkState(), viewport: null });
     // Changes: an edited value, a removed marker's item switched off, a symbol label, the numbering.
@@ -99,6 +103,7 @@ describe('reset demo (FR-56)', () => {
     lang.value = 'sv';
     lang.dispatchEvent(new Event('change'));
     byId('load-demo').click();
+    byId('demo-go').click();
     await settle();
     expect(byId('demo-reset').textContent).toBe('Återställ demo');
   });

@@ -46,7 +46,10 @@ async function openApp(options: BrowserContextOptions, lang = 'en', reduced = fa
   await page.clock.setFixedTime(NOW);
   await page.goto(`file://${BUILT}`);
   await setSelect(page, 'select-language', lang);
-  await page.evaluate(() => document.getElementById('load-demo')!.click());
+  await page.evaluate(() => {
+    document.getElementById('load-demo')!.click();
+    document.getElementById('demo-go')!.click();
+  });
   await page.waitForFunction(() => document.documentElement.dataset.segment === 'map', undefined, { timeout: 30_000 });
   await page.evaluate(() => document.getElementById('tab-presentation')!.click());
   return page;
@@ -433,6 +436,7 @@ describe('the view switch clears the axis (FR-67 as amended in v2.2.1)', () => {
           select.value = l;
           select.dispatchEvent(new Event('change'));
           document.getElementById('load-demo')!.click();
+          document.getElementById('demo-go')!.click();
         }, lang);
         await page.waitForFunction(() => document.documentElement.dataset.segment === 'map', undefined, { timeout: 30_000 });
         await page.evaluate(() => document.getElementById('tab-presentation')!.click());

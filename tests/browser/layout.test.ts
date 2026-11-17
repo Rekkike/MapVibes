@@ -72,6 +72,7 @@ async function openDemo(width: number, height: number, tablet = false): Promise<
     select.value = 'en';
     select.dispatchEvent(new Event('change'));
     document.getElementById('load-demo')!.click();
+    document.getElementById('demo-go')!.click();
   });
   await page.waitForFunction(() => document.documentElement.dataset.segment === 'map', undefined, { timeout: 30_000 });
   await page.waitForTimeout(300);
@@ -499,6 +500,7 @@ describe('the panels across the classes (FR-81)', () => {
             select.value = chosen;
             select.dispatchEvent(new Event('change'));
             document.getElementById('load-demo')!.click();
+            document.getElementById('demo-go')!.click();
           }, lang);
           await page.waitForFunction(() => document.documentElement.dataset.segment === 'map', undefined, { timeout: 30_000 });
           await page.waitForTimeout(200);

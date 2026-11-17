@@ -13,7 +13,7 @@ import { closePdf, mapView, showMapError } from './mapstage';
 import { currentCostsView, currentTimelineView, restoreCostsView, restoreTimelineView } from './presentationstage';
 import { renderList } from './listpanel';
 import { effectiveSeries, setEventMessage, setPresetMessage } from './columnpanels';
-import { demoLoaded, setDemoLoaded } from './demoload';
+import { currentDemoId, demoLoaded, setDemoLoaded } from './demoload';
 import { setSegment } from './segmentswitch';
 
 // The number of changes made, and its value when the demo finished loading,
@@ -161,7 +161,8 @@ export async function writeFile(data: string | Uint8Array, kind: FileKind): Prom
   }
 }
 
-type WorkMessage = 'saved' | 'download-started' | 'save-failed' | 'shared' | 'share-failed' | 'opened' | 'open-failed' | 'compare-opened' | 'demo-loaded';
+type WorkMessage =
+  'saved' | 'download-started' | 'save-failed' | 'shared' | 'share-failed' | 'opened' | 'open-failed' | 'compare-opened' | 'demo-loaded' | 'demo-loaded-plan';
 export let workMessage: WorkMessage | null = null;
 export function setWorkMessage(value: WorkMessage | null): void {
   workMessage = value;
@@ -179,7 +180,14 @@ export function markDirty(): void {
   }
   state.dirty = true;
   changeCount++;
-  if (workMessage === 'saved' || workMessage === 'download-started' || workMessage === 'shared' || workMessage === 'opened' || workMessage === 'demo-loaded') {
+  if (
+    workMessage === 'saved' ||
+    workMessage === 'download-started' ||
+    workMessage === 'shared' ||
+    workMessage === 'opened' ||
+    workMessage === 'demo-loaded' ||
+    workMessage === 'demo-loaded-plan'
+  ) {
     workMessage = null;
   }
   renderWorkStatus();
@@ -204,6 +212,7 @@ export function renderWorkStatus(): void {
     'open-failed': workErrorText,
     'compare-opened': t.compareOpened,
     'demo-loaded': t.demoLoaded,
+    'demo-loaded-plan': t.demoLoadedPlan,
   };
   status.textContent = workMessage ? messages[workMessage] : '';
   status.classList.toggle('error', workMessage === 'save-failed' || workMessage === 'open-failed');
@@ -234,11 +243,14 @@ export function renderWorkStatus(): void {
   el('work-dirty').textContent = t.workUnsaved;
   el('work-dirty').classList.toggle('hidden', !state.dirty);
   document.documentElement.dataset.unsaved = state.dirty ? 'true' : 'false';
-  // The demo's work is labelled as example data while it is loaded.
-  el('demo-badge').textContent = t.demoBadge;
+  // The demo's work is labelled as example data while it is loaded; the
+  // Helsingborg demo (v2.4.0) discloses its real public plan data and the
+  // as-of date on the same honesty surface.
+  el('demo-badge').textContent = currentDemoId() === 'helsingborg' ? t.demoBadgePlan : t.demoBadge;
   el('demo-badge').classList.toggle('hidden', !demoLoaded);
   el('demo-reset').textContent = t.demoReset;
   el('demo-reset').classList.toggle('hidden', !demoLoaded);
+  el('demo-load-again').classList.toggle('hidden', !demoLoaded);
   document.documentElement.dataset.demo = demoLoaded ? 'true' : 'false';
 }
 

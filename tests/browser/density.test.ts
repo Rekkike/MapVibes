@@ -34,6 +34,7 @@ async function demoPage(theme: 'light' | 'dark'): Promise<Page> {
   await setSelect(page, 'select-language', 'en');
   await setSelect(page, 'select-theme', theme);
   await page.click('#load-demo');
+  await page.click('#demo-go');
   await page.waitForFunction(() => document.querySelectorAll('#marker-layer .marker').length === 11);
   return page;
 }

@@ -13,7 +13,8 @@ vi.mock('../../src/demo', async (importOriginal) => {
   const mod = await importOriginal<typeof import('../../src/demo')>();
   const { readFileSync } = await import('node:fs');
   const { join } = await import('node:path');
-  return { ...mod, DEMO_MAP_TEXT: readFileSync(join(process.cwd(), 'example-data', 'example-map.osm'), 'utf8') };
+  const town = readFileSync(join(process.cwd(), 'example-data', 'example-map.osm'), 'utf8');
+  return { ...mod, DEMO_MAP_TEXT: town, demoMapText: () => town };
 });
 
 // The quiet chrome (FR-37 as amended in v2.1.0): on the Presentation
@@ -25,6 +26,7 @@ vi.mock('../../src/demo', async (importOriginal) => {
 async function mountPresentation() {
   const app = await mountApp();
   document.getElementById('load-demo')!.click();
+  document.getElementById('demo-go')!.click();
   await vi.waitFor(() => expect(document.documentElement.dataset.segment).toBe('map'));
   document.getElementById('tab-presentation')!.click();
   await vi.waitFor(() => expect(document.documentElement.dataset.segment).toBe('presentation'));
@@ -64,6 +66,7 @@ describe('the quiet chrome (FR-37 as amended in v2.1.0)', () => {
     try {
       await mountApp();
       document.getElementById('load-demo')!.click();
+      document.getElementById('demo-go')!.click();
       await vi.waitFor(() => expect(document.documentElement.dataset.segment).toBe('map'));
       vi.advanceTimersByTime(IDLE_MS * 3);
       expect(document.documentElement.dataset.idle).toBeUndefined();

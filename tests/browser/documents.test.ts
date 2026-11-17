@@ -50,6 +50,7 @@ async function demo(lang: 'en' | 'sv' = 'en'): Promise<{ page: Page; errors: str
   await page.evaluate(() => delete (window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker);
   await setSelect(page, 'select-language', lang);
   await page.click('#load-demo');
+  await page.click('#demo-go');
   await page.waitForFunction(() => document.querySelectorAll('#marker-layer .marker').length === 11);
   await page.click('#tab-presentation');
   await page.click('#pres-fit');
@@ -253,6 +254,7 @@ describe('document exports in a browser, offline (FR-50, FR-51)', () => {
       select.dispatchEvent(new Event('change'));
     });
     await phone.click('#load-demo');
+    await phone.click('#demo-go');
     await phone.waitForFunction(() => document.querySelectorAll('#marker-layer .marker').length === 11);
     await phone.click('#tab-presentation');
     await phone.click('#pres-fit');

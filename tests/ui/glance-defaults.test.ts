@@ -30,7 +30,8 @@ vi.mock('../../src/demo', async (importOriginal) => {
   const mod = await importOriginal<typeof import('../../src/demo')>();
   const { readFileSync } = await import('node:fs');
   const { join } = await import('node:path');
-  return { ...mod, DEMO_MAP_TEXT: readFileSync(join(process.cwd(), 'example-data', 'example-map.osm'), 'utf8') };
+  const town = readFileSync(join(process.cwd(), 'example-data', 'example-map.osm'), 'utf8');
+  return { ...mod, DEMO_MAP_TEXT: town, demoMapText: () => town };
 });
 
 // The at-a-glance columns of work that made no deliberate choice (FR-46 as
@@ -136,6 +137,7 @@ describe('the choice of the demo does not outlive the demo (FR-41, FR-46)', () =
       },
     });
     byId('load-demo').click();
+    byId('demo-go').click();
     await settle();
     expect(app.captureWorkState().glanceColumns).toEqual(['Programme', 'Status', 'End year']);
     vi.spyOn(window, 'confirm').mockReturnValue(true);

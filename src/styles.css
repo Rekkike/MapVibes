@@ -1675,6 +1675,7 @@ input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [typ
 /* Export dialogs (FR-11, FR-39, FR-52): state what the file will hold
    before it is written. */
 #export-panel,
+#demo-panel,
 #document-panel {
   margin-bottom: var(--space-8);
   padding: var(--space-16);
@@ -1687,18 +1688,22 @@ input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [typ
 
 #export-panel h3,
 #export-panel h4,
+#demo-panel,
 #document-panel h3,
+#demo-panel,
 #document-panel h4 {
   margin: 0 0 var(--space-8);
 }
 
 #export-panel h4,
+#demo-panel,
 #document-panel h4 {
   margin-top: var(--space-16);
   font-size: var(--text-16);
 }
 
 #export-panel ul,
+#demo-panel,
 #document-panel ul {
   margin: 0;
   padding-left: var(--space-16);
@@ -2052,6 +2057,7 @@ input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [typ
 /* The dialogs. */
 #export-panel,
 #compare-panel,
+#demo-panel,
 #document-panel {
   margin-bottom: var(--space-8);
   padding: var(--space-8);
@@ -2062,17 +2068,21 @@ input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [typ
 #export-panel h3,
 #export-panel h4,
 .compare-group h3,
+#demo-panel,
 #document-panel h3,
+#demo-panel,
 #document-panel h4 {
   margin: 0 0 var(--space-4);
 }
 
 #export-panel h4,
+#demo-panel,
 #document-panel h4 {
   margin-top: var(--space-8);
 }
 
 #export-panel p,
+#demo-panel,
 #document-panel p {
   margin: 0 0 var(--space-4);
 }
@@ -2439,6 +2449,37 @@ button.secondary-action {
   display: none;
 }
 
+/* The demo picker's options (v2.4.0): one radio row per bundled demo, the
+   name and its one-line description. */
+#demo-panel .demo-option {
+  display: flex;
+  gap: var(--space-8);
+  align-items: flex-start;
+  padding: var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: var(--space-8);
+  cursor: pointer;
+}
+
+#demo-panel .demo-option:has(input:checked) {
+  border-color: var(--accent);
+}
+
+#demo-panel .demo-option input {
+  margin-top: 3px;
+}
+
+#demo-panel .demo-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+#demo-panel .demo-option-text .hint {
+  color: var(--muted);
+}
+
 /* Export content selection (FR-53): the areas with their items, and the
    columns, in compact scrolling lists. */
 #export-panel #export-selection,
@@ -2776,7 +2817,8 @@ html[data-mode='viewer']:not([data-started]) #export-panel,
 html[data-mode='viewer']:not([data-started]) #export-status,
 html[data-mode='viewer']:not([data-started]) #pdf-open,
 html[data-mode='viewer']:not([data-started]) #pptx-open,
-html[data-mode='viewer']:not([data-started]) #document-panel,
+html[data-mode='viewer']:not([data-started]) #demo-panel,
+#document-panel,
 html[data-mode='viewer']:not([data-started]) #document-status,
 html[data-mode='viewer']:not([data-started]) #segment-information,
 html[data-mode='viewer']:not([data-started]) #segment-map,
@@ -3703,7 +3745,8 @@ html[data-segment='presentation'] #presentation-stage {
 }
 
 /* The export dialogs are operator surfaces (FR-42), not presentation chrome. */
-html[data-segment='presentation'] :is(#export-panel, #document-panel) {
+html[data-segment='presentation'] :is(#export-panel, #demo-panel,
+#document-panel) {
   font-size: var(--text-16);
 }
 
@@ -4152,7 +4195,8 @@ html .annotation-tool[data-tool='line'] {
   }
 
   /* -- What floats on the stage. -- */
-  html:not([data-mode='viewer']) :is(#annotation-toolbar, #annotation-inspector, #map-zoom, #pres-zoom, #presentation-toolbar, #map-legend, #presentation-legend, #toggle-map-legend, #toggle-legend, #fetch-panel, #pdf-panel, #export-panel, #document-panel, #document-status, .glance-panel) {
+  html:not([data-mode='viewer']) :is(#annotation-toolbar, #annotation-inspector, #map-zoom, #pres-zoom, #presentation-toolbar, #map-legend, #presentation-legend, #toggle-map-legend, #toggle-legend, #fetch-panel, #pdf-panel, #export-panel, #demo-panel,
+#document-panel, #document-status, .glance-panel) {
     position: absolute;
     z-index: var(--layer-card);
     margin: 0;
@@ -4451,7 +4495,8 @@ html .annotation-tool[data-tool='line'] {
   }
 
   /* The dialogs keep their shapes and open over the stage. */
-  html:not([data-mode='viewer']) :is(#fetch-panel, #pdf-panel, #export-panel, #document-panel) {
+  html:not([data-mode='viewer']) :is(#fetch-panel, #pdf-panel, #export-panel, #demo-panel,
+#document-panel) {
     z-index: var(--layer-dialog);
     top: var(--space-12);
     left: 50%;
@@ -6688,7 +6733,8 @@ html[data-idle='true'] #toggle-glance {
      comparison, activities -- fill the viewport's height. Each has its
      header pinned at the top (with its Close) and its actions pinned at the
      foot, so that every step keeps a Cancel or Close in view. */
-  html:not([data-mode='viewer']) :is(#fetch-panel, #pdf-panel, #document-panel, #export-panel, #compare-panel, #activity-panel):not(.hidden) {
+  html:not([data-mode='viewer']) :is(#fetch-panel, #pdf-panel, #demo-panel,
+#document-panel, #export-panel, #compare-panel, #activity-panel):not(.hidden) {
     position: fixed;
     z-index: var(--layer-dialog);
     display: flex;
@@ -6701,7 +6747,8 @@ html[data-idle='true'] #toggle-glance {
     box-shadow: var(--card-shadow);
   }
 
-  html:not([data-mode='viewer']) :is(#fetch-panel, #pdf-panel, #document-panel):not(.hidden) {
+  html:not([data-mode='viewer']) :is(#fetch-panel, #pdf-panel, #demo-panel,
+#document-panel):not(.hidden) {
     left: var(--space-8);
     right: var(--space-8);
     bottom: var(--space-8);

@@ -58,6 +58,7 @@ async function openDemo(profile: Profile): Promise<{ page: Page; errors: string[
   await page.keyboard.press('Escape');
   await page.waitForTimeout(250);
   await page.tap('#load-demo');
+  await page.tap('#demo-go');
   await page.waitForFunction(() => document.querySelectorAll('#marker-layer .marker').length === 11);
   await page.waitForTimeout(300);
   return { page, errors };

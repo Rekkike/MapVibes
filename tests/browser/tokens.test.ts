@@ -116,6 +116,7 @@ async function walk(theme: 'light' | 'dark', width: number, height: number, touc
   };
   await check('empty');
   await click('#load-demo');
+  await click('#demo-go');
   await page.waitForFunction(() => document.documentElement.dataset.segment === 'map', undefined, { timeout: 30_000 });
   await check('map');
   await click('#map-marker-layer .marker');
