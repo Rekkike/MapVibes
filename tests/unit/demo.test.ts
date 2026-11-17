@@ -48,14 +48,16 @@ describe('full-test demo fixtures (FR-41)', () => {
   });
 
   test('the background is the parkland extract with its recorded bounds', () => {
-    // v2.3.0: the demo background is the Slottskogen/Änggårdsbergen extract
-    // (example-data/demo-map.osm, 6.36 MiB). Its full parse and render through
-    // the application is pinned by the browser suites, which load the demo in
-    // headless Chromium; a jsdom DOMParser over the extract takes minutes, so
-    // this unit pin reads the recorded facts from the text.
-    expect(DEMO_MAP_TEXT).toMatch(/<bounds minlat="57\.6690" minlon="11\.9310" maxlat="57\.7050" maxlon="11\.9530"\/>/);
-    expect(DEMO_MAP_TEXT.match(/<node /g)).toHaveLength(56632);
-    expect(DEMO_MAP_TEXT.match(/<way /g)).toHaveLength(8011);
+    // v2.3.0, re-cut by the fix-forward: the demo background is the
+    // Slottskogen-only landscape extract (example-data/demo-map.osm, 6.99 MiB,
+    // bounds 57.6788 / 11.9278 / 57.6952 / 11.9662, centred on Villa Belparc).
+    // Its full parse and render through the application is pinned by the
+    // browser suites, which load the demo in headless Chromium; a jsdom
+    // DOMParser over the extract takes minutes, so this unit pin reads the
+    // recorded facts from the text.
+    expect(DEMO_MAP_TEXT).toMatch(/<bounds minlat="57\.6788" minlon="11\.9278" maxlat="57\.6952" maxlon="11\.9662"\/>/);
+    expect(DEMO_MAP_TEXT.match(/<node /g)).toHaveLength(62488);
+    expect(DEMO_MAP_TEXT.match(/<way /g)).toHaveLength(9144);
   });
 
   test('a damaged scenario is refused as a whole', () => {
