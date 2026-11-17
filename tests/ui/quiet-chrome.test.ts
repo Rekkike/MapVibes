@@ -2,6 +2,20 @@ import { describe, expect, test, vi } from 'vitest';
 import { mountApp } from './harness';
 import { IDLE_MS } from '../../src/quietchrome';
 
+// v2.3.0: the demo's map text is now the parkland extract (demo-map.osm,
+// 6.36 MiB, 154k XML elements). A jsdom DOMParser over it needs more memory
+// than the test runners have (the worker is OOM-killed), so in the jsdom UI
+// tests the demo's map text is substituted with the small synthetic town
+// fixture; the real extract's parse and render is pinned by the unit pin
+// (tests/unit/demo.test.ts) and by every browser suite, which loads the built
+// application natively (the whole demo load measures 1.7 s there).
+vi.mock('../../src/demo', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('../../src/demo')>();
+  const { readFileSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  return { ...mod, DEMO_MAP_TEXT: readFileSync(join(process.cwd(), 'example-data', 'example-map.osm'), 'utf8') };
+});
+
 // The quiet chrome (FR-37 as amended in v2.1.0): on the Presentation
 // segment's stage, the floating chrome withdraws after four seconds of
 // stillness — the owner's ruled delay — and returns on any interaction. The

@@ -22,7 +22,7 @@
 import listText from '../example-data/demo.csv?raw';
 import listTextSv from '../example-data/demo-sv.csv?raw';
 import scenarioJson from '../example-data/demo-scenario.json';
-import mapText from '../example-data/example-map.osm?raw';
+import mapText from '../example-data/demo-map.osm?raw';
 import { COLOURS, type RowColour } from './dataset';
 import { parsePresets, type ColumnPreset } from './presets';
 import { isSymbol, type MarkerSymbol } from './symbols';

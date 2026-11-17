@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { DEMO_MAP_TEXT, demoCounterparts, demoScenario, demoWorkbook, parseDemoScenarios } from '../../src/demo';
 import { importColumns, parseWorkbook } from '../../src/ingest';
-import { parseOsm } from '../../src/osm';
 import { readDate } from '../../src/dates';
 import scenarioJson from '../../example-data/demo-scenario.json';
 
@@ -48,9 +47,15 @@ describe('full-test demo fixtures (FR-41)', () => {
     expect(scenario.items.filter((i) => i.comments.length > 0).length).toBeGreaterThanOrEqual(4);
   });
 
-  test('the background is the synthetic town map fixture', () => {
-    const data = parseOsm(DEMO_MAP_TEXT);
-    expect(data.bounds).not.toBeNull();
+  test('the background is the parkland extract with its recorded bounds', () => {
+    // v2.3.0: the demo background is the Slottskogen/Änggårdsbergen extract
+    // (example-data/demo-map.osm, 6.36 MiB). Its full parse and render through
+    // the application is pinned by the browser suites, which load the demo in
+    // headless Chromium; a jsdom DOMParser over the extract takes minutes, so
+    // this unit pin reads the recorded facts from the text.
+    expect(DEMO_MAP_TEXT).toMatch(/<bounds minlat="57\.6690" minlon="11\.9310" maxlat="57\.7050" maxlon="11\.9530"\/>/);
+    expect(DEMO_MAP_TEXT.match(/<node /g)).toHaveLength(56632);
+    expect(DEMO_MAP_TEXT.match(/<way /g)).toHaveLength(8011);
   });
 
   test('a damaged scenario is refused as a whole', () => {

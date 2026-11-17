@@ -389,14 +389,20 @@ async function loadPdfFile(file: File): Promise<void> {
 type OsmOutcome = 'ok' | 'malformed' | 'empty' | 'render' | 'decode';
 
 // Renders OpenStreetMap data as the background. A local file reports its
-// failures in the map area; a fetch reports them in its own panel.
-export async function useOsmText(text: string, fetched?: { bounds: OsmBounds; attribution: string }): Promise<OsmOutcome> {
+// failures in the map area; a fetch reports them in its own panel. The
+// options carry the requested bounds (fetched data has no bounds element) and
+// the attribution, drawn into the rendered image as data.
+export async function useOsmText(
+  text: string,
+  fetched?: { bounds?: OsmBounds; attribution?: string },
+  reportErrors = fetched === undefined,
+): Promise<OsmOutcome> {
   let src: string;
   let projection: MercatorProjection | undefined;
   try {
     const data = parseOsm(text);
     // Fetched data carries no bounds element: the requested area is the extent.
-    if (fetched) {
+    if (fetched?.bounds) {
       data.bounds = fetched.bounds;
     }
     const plan = planRender(data);
@@ -404,7 +410,7 @@ export async function useOsmText(text: string, fetched?: { bounds: OsmBounds; at
     src = renderPlanToDataUrl(plan, fetched?.attribution);
   } catch (e) {
     const outcome: OsmOutcome = e instanceof OsmError ? (e.code === 'empty' ? 'empty' : 'malformed') : 'render';
-    if (!fetched) {
+    if (reportErrors) {
       showMapError(outcome === 'empty' ? 'osm-empty' : outcome === 'malformed' ? 'osm-malformed' : 'osm-render');
     }
     return outcome;

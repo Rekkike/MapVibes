@@ -338,6 +338,14 @@ describe('the tool strip, the floating controls, and the legend (FR-6, FR-81)', 
     // Chrome: outside the panned content, and still after a pan.
     expect(await page.evaluate(() => document.getElementById('map-content')!.contains(document.getElementById('map-legend')))).toBe(false);
     const transform = () => page.$eval('#map-content', (e) => (e as HTMLElement).style.transform);
+    // Zoom in first, so the map is larger than the stage and a drag pans
+    // (v2.3.0: the parkland sheet is 980 x 3000, so at 1440 x 900 the fitted
+    // map is narrower than the stage and a drag at the fitted view is
+    // clamped; before, the synthetic town sheet of 3000 x 2000 filled the
+    // stage's width).
+    await page.click('#map-zoom-in');
+    await page.click('#map-zoom-in');
+    await page.waitForTimeout(300);
     const start = await transform();
     await page.mouse.move(stage.x + stage.width / 2, stage.y + stage.height / 2);
     await page.mouse.down();

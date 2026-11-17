@@ -103,7 +103,10 @@ export async function loadDemo(options: { confirmed?: boolean } = {}): Promise<b
       state.workPhases.set(row, item.workPhase);
     }
   }
-  const outcome = await useOsmText(DEMO_MAP_TEXT);
+  // The demo's parkland background is open map data: it carries the
+  // OpenStreetMap attribution as data, drawn into the rendered image like a
+  // fetched background (FR-31), in the interface language.
+  const outcome = await useOsmText(DEMO_MAP_TEXT, { attribution: t.fetchAttribution }, true);
   const bg = mapView?.background;
   if (outcome === 'ok' && bg) {
     for (const item of scenario.items) {
