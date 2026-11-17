@@ -69,6 +69,7 @@ async function demo(options: object, clearBudget = false): Promise<{ page: Page;
     s.value = 'en';
     s.dispatchEvent(new Event('change'));
     document.querySelector<HTMLButtonElement>('#load-demo')!.click();
+    document.getElementById('demo-go')!.click();
   });
   await page.waitForFunction(() => document.documentElement.dataset.segment === 'map', undefined, { timeout: 30000 });
   if (clearBudget) {

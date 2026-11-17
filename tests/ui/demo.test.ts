@@ -18,7 +18,8 @@ vi.mock('../../src/demo', async (importOriginal) => {
   const mod = await importOriginal<typeof import('../../src/demo')>();
   const { readFileSync } = await import('node:fs');
   const { join } = await import('node:path');
-  return { ...mod, DEMO_MAP_TEXT: readFileSync(join(process.cwd(), 'example-data', 'example-map.osm'), 'utf8') };
+  const town = readFileSync(join(process.cwd(), 'example-data', 'example-map.osm'), 'utf8');
+  return { ...mod, DEMO_MAP_TEXT: town, demoMapText: () => town };
 });
 
 type App = Awaited<ReturnType<typeof mountApp>>;
@@ -35,6 +36,7 @@ async function mount(): Promise<App> {
 
 async function load(): Promise<void> {
   byId('load-demo').click();
+  byId('demo-go').click();
   await flush();
 }
 
@@ -55,9 +57,10 @@ describe('full-test demo (FR-41)', () => {
     app = await mount();
   });
 
-  test('the demo action sits beside the empty list, explained as fictional example data', () => {
+  test('the demo action sits beside the empty list, explained as example data', () => {
     expect(byId('load-demo').textContent).toBe('Load demo');
-    expect(byId('demo-hint').textContent).toContain('fictional example scenario');
+    // v2.4.0: with two demos bundled, the hint is generalized (disclosed).
+    expect(byId('demo-hint').textContent).toBe('Load a demo to try the application with example data.');
     expect(byId('demo-badge').classList.contains('hidden')).toBe(true);
   });
 

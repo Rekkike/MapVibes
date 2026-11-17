@@ -59,6 +59,7 @@ async function openDemo(profile: Profile, theme: 'light' | 'dark' = 'light'): Pr
   await page.keyboard.press('Escape');
   await page.waitForTimeout(250);
   await page.tap('#load-demo');
+  await page.tap('#demo-go');
   await page.waitForFunction(() => document.querySelectorAll('#marker-layer .marker').length === 11);
   await page.waitForTimeout(400);
   await page.tap('#tab-map');

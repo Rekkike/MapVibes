@@ -41,6 +41,7 @@ beforeAll(async () => {
   await page.evaluate(() => delete (window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker);
   await setSelect(page, 'select-language', 'en');
   await page.click('#load-demo');
+  await page.click('#demo-go');
   await page.waitForFunction(() => document.querySelectorAll('#row-table-body tr').length === 12);
   // Two fictional events beyond the items' span, through the events panel.
   await page.click('#tab-information');

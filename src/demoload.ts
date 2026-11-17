@@ -7,7 +7,7 @@ import { strings, type Lang } from './i18n';
 import { restoreComments } from './comments';
 import { placeMarker } from './markers';
 import { activityId } from './workstate';
-import { DEMO_MAP_TEXT, demoCounterparts, demoScenario, demoWorkbook } from './demo';
+import { demoCounterparts, demoMapText, demoScenario, demoWorkbook, type DemoId } from './demo';
 import { newAnnotationId, type Annotation } from './annotations';
 import { el, state } from './appstate';
 import { changeCount, markDirty, setWorkMessage, workMessage } from './workfile';
@@ -26,6 +26,11 @@ import { setSegment } from './segmentswitch';
 export let demoLoaded = false;
 export function setDemoLoaded(value: boolean): void {
   demoLoaded = value;
+}
+// The loaded demo (v2.4.0: one of the two bundled demos), or null.
+let demoId: DemoId | null = null;
+export function currentDemoId(): DemoId | null {
+  return demoId;
 }
 let demoBaseline = -1;
 
@@ -49,14 +54,14 @@ function samePreset(a: ColumnPreset, b: ColumnPreset): boolean {
   return JSON.stringify(clonePreset(a)) === JSON.stringify(clonePreset(b));
 }
 
-export async function loadDemo(options: { confirmed?: boolean } = {}): Promise<boolean> {
+export async function loadDemo(id: DemoId, options: { confirmed?: boolean } = {}): Promise<boolean> {
   const t = strings(state.prefs.lang);
   if (!options.confirmed && state.dirty && !window.confirm(t.demoConfirmReplace)) {
     return false;
   }
   // The demo loads in the interface language (FR-41 as amended).
   const lang = state.prefs.lang;
-  const scenario = demoScenario(lang);
+  const scenario = demoScenario(id, lang);
   // The session's own settings start afresh, so that the demo is pristine.
   state.excluded = new Set();
   state.positions = new Map();
@@ -74,13 +79,13 @@ export async function loadDemo(options: { confirmed?: boolean } = {}): Promise<b
   // The demo's preset of another language, if unchanged, gives way to this
   // language's.
   for (const other of (['en', 'sv'] as const).filter((l) => l !== lang)) {
-    const provided = demoScenario(other).preset;
+    const provided = demoScenario(id, other).preset;
     state.presets = state.presets.filter((p) => !(p.name === provided.name && samePreset(p, provided)));
   }
   state.presets = upsertPreset(state.presets, scenario.preset);
   storePresets(state.presets);
   el('ingest-error').classList.add('hidden');
-  applyImport(parseWorkbook(demoWorkbook(lang)));
+  applyImport(parseWorkbook(demoWorkbook(id, lang)));
   state.symbolsFromStatus = scenario.symbolsFromStatus;
   const idKey = state.roles.identifier;
   const rowOf = (item: string) => (idKey === undefined ? undefined : state.rows.find((r) => r.values[idKey] === item));
@@ -103,10 +108,10 @@ export async function loadDemo(options: { confirmed?: boolean } = {}): Promise<b
       state.workPhases.set(row, item.workPhase);
     }
   }
-  // The demo's parkland background is open map data: it carries the
+  // The demo's map background is open map data: it carries the
   // OpenStreetMap attribution as data, drawn into the rendered image like a
   // fetched background (FR-31), in the interface language.
-  const outcome = await useOsmText(DEMO_MAP_TEXT, { attribution: t.fetchAttribution }, true);
+  const outcome = await useOsmText(demoMapText(id), { attribution: t.fetchAttribution }, true);
   const bg = mapView?.background;
   if (outcome === 'ok' && bg) {
     for (const item of scenario.items) {
@@ -153,10 +158,11 @@ export async function loadDemo(options: { confirmed?: boolean } = {}): Promise<b
   state.events = scenario.events.map((e, i) => ({ id: `e${i + 1}`, date: e.date, label: e.label }));
   demoEventIds = state.events.map((e) => e.id);
   demoLoaded = true;
+  demoId = id;
   demoLang = lang;
   markDirty();
   demoBaseline = changeCount;
-  setWorkMessage('demo-loaded');
+  setWorkMessage(id === 'helsingborg' ? 'demo-loaded-plan' : 'demo-loaded');
   renderList();
   setSegment('map');
   return outcome === 'ok';
@@ -168,10 +174,10 @@ export async function loadDemo(options: { confirmed?: boolean } = {}): Promise<b
 // cells that hold them, and the annotation labels. What the user typed is kept as typed; the list's own headers and
 // texts stay as loaded, and so does the preset, which matches the headers.
 export function followDemoLanguage(to: Lang): void {
-  if (!demoLoaded || demoLang === null || demoLang === to) {
+  if (!demoLoaded || demoId === null || demoLang === null || demoLang === to) {
     return;
   }
-  const c = demoCounterparts(demoLang, to);
+  const c = demoCounterparts(demoId, demoLang, to);
   demoLang = to;
   let changed = false;
   for (const { colour, from, to: next } of c.colourLabels) {
@@ -234,7 +240,7 @@ export function followDemoLanguage(to: Lang): void {
   markDirty();
   if (pristine) {
     demoBaseline = changeCount;
-    if (message === 'demo-loaded') {
+    if (message === 'demo-loaded' || message === 'demo-loaded-plan') {
       setWorkMessage(message);
     }
   }
@@ -244,11 +250,11 @@ export function followDemoLanguage(to: Lang): void {
 // the demo was changed), the session is discarded and the pristine demo is
 // loaded in one step.
 export async function resetDemo(): Promise<boolean> {
-  if (!demoLoaded) {
+  if (!demoLoaded || demoId === null) {
     return false;
   }
   if (changeCount !== demoBaseline && !window.confirm(strings(state.prefs.lang).demoResetConfirm)) {
     return false;
   }
-  return loadDemo({ confirmed: true });
+  return loadDemo(demoId, { confirmed: true });
 }

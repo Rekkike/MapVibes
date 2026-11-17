@@ -101,7 +101,10 @@ async function open(theme: 'light' | 'dark', phone: boolean): Promise<Page> {
       select.dispatchEvent(new Event('change'));
     }
   }, theme);
-  await page.evaluate(() => document.getElementById('load-demo')!.click());
+  await page.evaluate(() => {
+    document.getElementById('load-demo')!.click();
+    document.getElementById('demo-go')!.click();
+  });
   await page.waitForFunction(() => document.documentElement.dataset.segment === 'map', undefined, { timeout: 30_000 });
   return page;
 }

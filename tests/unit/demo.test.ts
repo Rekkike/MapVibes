@@ -1,11 +1,12 @@
 import { describe, expect, test } from 'vitest';
-import { DEMO_MAP_TEXT, demoCounterparts, demoScenario, demoWorkbook, parseDemoScenarios } from '../../src/demo';
+import { DEMO_MAP_TEXT, demoCounterparts, demoMapText, demoScenario, demoWorkbook, parseDemoScenarios } from '../../src/demo';
 import { importColumns, parseWorkbook } from '../../src/ingest';
 import { readDate } from '../../src/dates';
 import scenarioJson from '../../example-data/demo-scenario.json';
+import helsingborgScenarioJson from '../../example-data/helsingborg-scenario.json';
 
-const list = importColumns(parseWorkbook(demoWorkbook()));
-const scenario = demoScenario();
+const list = importColumns(parseWorkbook(demoWorkbook('parkland')));
+const scenario = demoScenario('parkland');
 
 describe('full-test demo fixtures (FR-41)', () => {
   test('the demo list is about a dozen items under the preset headers', () => {
@@ -139,8 +140,8 @@ describe('the demo extension (FR-41 as amended in v1.1.0)', () => {
 });
 
 describe('the demo in both interface languages (FR-41 as amended in v1.3.1)', () => {
-  const sv = demoScenario('sv');
-  const svList = importColumns(parseWorkbook(demoWorkbook('sv')));
+  const sv = demoScenario('parkland', 'sv');
+  const svList = importColumns(parseWorkbook(demoWorkbook('parkland', 'sv')));
 
   test('the Swedish list is the same items under the Swedish preset headers', () => {
     expect(svList.headers).toEqual(sv.preset.headers);
@@ -161,7 +162,7 @@ describe('the demo in both interface languages (FR-41 as amended in v1.3.1)', ()
       expect(row.Område === '' || sv.preset.areas!.includes(row.Område), row.Objekt).toBe(true);
       expect(statuses.has(row.Status), row.Objekt).toBe(true);
     }
-    const c = demoCounterparts('en', 'sv');
+    const c = demoCounterparts('parkland', 'en', 'sv');
     list.rows.forEach((row, i) => {
       expect(c.statuses.find(([from]) => from === row.Status)![1]).toBe(svList.rows[i].Status);
       if (row.Area !== '') {
@@ -174,7 +175,7 @@ describe('the demo in both interface languages (FR-41 as amended in v1.3.1)', ()
   });
 
   test('every provided label has its own Swedish text', () => {
-    const c = demoCounterparts('en', 'sv');
+    const c = demoCounterparts('parkland', 'en', 'sv');
     const labels = [
       ...c.colourLabels.map((l) => [l.from, l.to]),
       ...c.areas,
@@ -195,22 +196,22 @@ describe('the demo in both interface languages (FR-41 as amended in v1.3.1)', ()
   });
 
   test('the counterparts run both ways', () => {
-    const there = demoCounterparts('en', 'sv');
-    const back = demoCounterparts('sv', 'en');
+    const there = demoCounterparts('parkland', 'en', 'sv');
+    const back = demoCounterparts('parkland', 'sv', 'en');
     expect(back.statuses).toEqual(there.statuses.map(([a, b]) => [b, a]));
   });
 
   // FR-41 as amended in v1.11.0, FR-80.
   test('the demo carries two fictional events, a review date and a decision date, in both languages', () => {
-    expect(demoScenario('en').events).toEqual([
+    expect(demoScenario('parkland', 'en').events).toEqual([
       { date: '2031-06', label: 'Review' },
       { date: '2033-03-15', label: 'Decision' },
     ]);
-    expect(demoScenario('sv').events).toEqual([
+    expect(demoScenario('parkland', 'sv').events).toEqual([
       { date: '2031-06', label: 'Granskning' },
       { date: '2033-03-15', label: 'Beslut' },
     ]);
-    expect(demoCounterparts('en', 'sv').eventLabels).toEqual([
+    expect(demoCounterparts('parkland', 'en', 'sv').eventLabels).toEqual([
       ['Review', 'Granskning'],
       ['Decision', 'Beslut'],
     ]);
@@ -232,14 +233,14 @@ describe('the demo in both interface languages (FR-41 as amended in v1.3.1)', ()
       ['en', 'Excavation'],
       ['sv', 'Schaktning'],
     ] as const) {
-      const item = demoScenario(lang).items.find((i) => i.item === 'D-05')!;
+      const item = demoScenario('parkland', lang).items.find((i) => i.item === 'D-05')!;
       expect(item.activities).toHaveLength(8);
       expect(item.workPhase).toBe('a3');
       expect(item.activities![2].label).toBe(label);
     }
     // No other item has one.
     expect(
-      demoScenario()
+      demoScenario('parkland')
         .items.filter((i) => i.workPhase !== undefined)
         .map((i) => i.item),
     ).toEqual(['D-05']);
@@ -250,10 +251,10 @@ describe('the demo in both interface languages (FR-41 as amended in v1.3.1)', ()
       ['en', 'Review'],
       ['sv', 'Granskning'],
     ] as const) {
-      const review = demoScenario(lang).items.find((i) => i.item === 'D-11')!.activities![1];
+      const review = demoScenario('parkland', lang).items.find((i) => i.item === 'D-11')!.activities![1];
       expect(review).toEqual({ label, start: '2031-12-15', end: '2032-06-30', progress: 10, edited: true });
     }
-    const all = demoScenario().items.flatMap((i) => i.activities ?? []);
+    const all = demoScenario('parkland').items.flatMap((i) => i.activities ?? []);
     expect(all.filter((a) => a.edited)).toHaveLength(1);
     expect(all.every((a) => readDate(a.start).kind === 'date' && readDate(a.end).kind === 'date')).toBe(true);
   });
@@ -268,5 +269,102 @@ describe('the demo in both interface languages (FR-41 as amended in v1.3.1)', ()
     expect(() => parseDemoScenarios(damaged((items) => (d05(items).workPhase = 'a9')))).toThrow(/workPhase/);
     expect(() => parseDemoScenarios(damaged((items) => (items.find((i) => !i.activities)!.workPhase = 'a1')))).toThrow(/workPhase/);
     expect(() => parseDemoScenarios(damaged((items) => (d05(items).activities[0].edited = 'yes')))).toThrow(/edited/);
+  });
+});
+
+describe('the Helsingborg demo fixtures (v2.4.0, the rule-7 exception)', () => {
+  const hList = importColumns(parseWorkbook(demoWorkbook('helsingborg', 'sv')));
+  const hListEn = importColumns(parseWorkbook(demoWorkbook('helsingborg', 'en')));
+  const hScenario = demoScenario('helsingborg');
+  const hScenarioSv = demoScenario('helsingborg', 'sv');
+
+  test('the list is thirteen items under the preset headers, in both languages, Swedish-first', () => {
+    expect(hList.rows.length).toBe(13);
+    expect(hList.headers).toEqual(hScenarioSv.preset.headers);
+    expect(hListEn.headers).toEqual(hScenario.preset.headers);
+    expect(hList.rows[0]).toMatchObject({ Objekt: 'H-00' });
+    expect(hListEn.rows[0]).toMatchObject({ Item: 'H-00' });
+    expect(hList.rows.map((r) => r.Objekt)).toEqual(hScenario.items.map((i) => i.item));
+  });
+
+  test('the preset assigns every role, carries the vocabularies, the series, and kr', () => {
+    expect(Object.keys(hScenario.preset.roles).sort()).toEqual(['area', 'end', 'identifier', 'name', 'note', 'program', 'start', 'status']);
+    expect(hScenario.preset.areas).toEqual([
+      'West Harbour (current terminal)',
+      'Southern harbour site (new terminal)',
+      'Gåsebäck (Kemira land)',
+      'Öresund (fairway)',
+      'Planteringen, Söder',
+    ]);
+    expect(hScenario.preset.currencyUnit).toBe('kr');
+    expect(Object.keys(hScenario.preset.series!.budget!.columns)).toHaveLength(9);
+  });
+
+  test('the real figures are carried as data, with the as-of date in the about item', () => {
+    const h10 = hList.rows.find((r) => r.Objekt === 'H-10')!;
+    expect(h10['Budget 2025']).toBe('2600000000');
+    expect(h10['Prognos 2026']).toBe('3400000000');
+    const h00 = hList.rows.find((r) => r.Objekt === 'H-00')!;
+    expect(h00.Anteckning).toContain('2026-11-17');
+    const h05 = hList.rows.find((r) => r.Objekt === 'H-05')!;
+    expect(h05.Kajdjup).toContain('15 m');
+    expect(h05.Kajdjup).toContain('13 m');
+    expect(h05.Fartygsklass).toContain('Post-Panamax');
+    const h09 = hList.rows.find((r) => r.Objekt === 'H-09')!;
+    expect(h09.Anteckning).toContain('8 000 t CO2');
+    const h07 = hList.rows.find((r) => r.Objekt === 'H-07')!;
+    expect(h07.Anteckning).toContain('6 STS-kranar');
+  });
+
+  test('the arrangement: twelve placed on real features, one not placed, all fractions within the extent, three annotations, two events', () => {
+    const placed = hScenario.items.filter((i) => i.position);
+    expect(placed.length).toBe(12);
+    expect(hScenario.items.filter((i) => !i.position).map((i) => i.item)).toEqual(['H-00']);
+    for (const i of placed) {
+      expect(i.position![0]).toBeGreaterThanOrEqual(0);
+      expect(i.position![0]).toBeLessThanOrEqual(1);
+      expect(i.position![1]).toBeGreaterThanOrEqual(0);
+      expect(i.position![1]).toBeLessThanOrEqual(1);
+    }
+    expect(new Set(hScenario.items.map((i) => i.colour)).size).toBe(4);
+    expect(
+      hScenario.items
+        .filter((i) => i.symbol)
+        .map((i) => i.symbol)
+        .sort(),
+    ).toEqual(['bolt', 'diamond', 'square']);
+    expect(hScenario.annotations.length).toBe(3);
+    expect(hScenario.annotations.map((a) => a.link).sort()).toEqual(['H-05', 'H-08', 'H-09']);
+    expect(hScenario.events.map((e) => e.date)).toEqual(['2026-04-21', '2026-09-23']);
+    // The quay-depth and vessel-class columns are data, never computed: they
+    // exist as plain columns and no role is assigned to them.
+    expect(Object.values(hScenario.preset.roles)).not.toContain('Quay depth');
+    expect(Object.values(hScenario.preset.roles)).not.toContain('Vessel class');
+  });
+
+  test('the scenario parses in both languages and the damaged forms are refused', () => {
+    expect(parseDemoScenarios(helsingborgScenarioJson).sv.items.length).toBe(13);
+    const bad = (mutate: (o: any) => void) => {
+      const o = JSON.parse(JSON.stringify(helsingborgScenarioJson));
+      mutate(o);
+      return () => parseDemoScenarios(o);
+    };
+    expect(bad(() => undefined)).not.toThrow();
+    expect(bad((o) => (o.version = 2))).toThrow();
+    expect(bad((o) => (o.items[5].position = [1.2, 0.5]))).toThrow();
+    expect(bad((o) => (o.annotations[1].link = 'H-99'))).toThrow();
+    expect(bad((o) => delete o.preset.en)).toThrow();
+  });
+
+  test('the background is the Helsingborg south extract with its recorded bounds', () => {
+    // v2.4.0 Unit 1: cut per docs/v2.3.0-extract-counsel.md in six tiled
+    // /api/0.6/map calls; kept to the eight FR-31 selectors, metadata
+    // stripped, so it equals an in-app fetch of the same area. The full
+    // parse and render is pinned by the browser suites; this unit pin reads
+    // the recorded facts from the text.
+    const text = demoMapText('helsingborg');
+    expect(text).toMatch(/<bounds minlat="56\.0220" minlon="12\.6780" maxlat="56\.0460" maxlon="12\.7140"\/>/);
+    expect(text.match(/<node /g)).toHaveLength(19488);
+    expect(text.match(/<way /g)).toHaveLength(3066);
   });
 });

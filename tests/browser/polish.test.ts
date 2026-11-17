@@ -48,6 +48,7 @@ async function demo(): Promise<{ page: Page; errors: string[] }> {
   await page.evaluate(() => delete (window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker);
   await setSelect(page, 'select-language', 'en');
   await page.click('#load-demo');
+  await page.click('#demo-go');
   await page.waitForFunction(() => document.querySelectorAll('#marker-layer .marker').length === 11);
   await page.click('#map-fit');
   await page.waitForTimeout(400);

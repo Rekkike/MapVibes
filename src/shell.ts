@@ -109,6 +109,8 @@ function buildMoves(): Move[] {
     // bar does not show.
     move('demo-badge', inMenu(true, false)),
     move('demo-reset', inMenu(true, true)),
+    // v2.4.0: the demo picker's entry in the Menu, beside Reset demo.
+    move('demo-load-again', inMenu(true, true)),
     move('work-controls', inMenu(true, false)),
     move('work-open', inMenu(false, true)),
     move('work-share', inMenu(false, true)),

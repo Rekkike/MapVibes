@@ -31,9 +31,9 @@ function anythingOpen(): boolean {
   if (el('presentation-card').dataset.state === 'open') {
     return true;
   }
-  return [...document.querySelectorAll<HTMLElement>('#fetch-panel, #pdf-panel, #document-panel, #export-panel, #compare-panel, #activity-panel')].some(
-    (d) => !d.classList.contains('hidden'),
-  );
+  return [
+    ...document.querySelectorAll<HTMLElement>('#fetch-panel, #pdf-panel, #document-panel, #export-panel, #compare-panel, #activity-panel, #demo-panel'),
+  ].some((d) => !d.classList.contains('hidden'));
 }
 
 function withdraw(): void {

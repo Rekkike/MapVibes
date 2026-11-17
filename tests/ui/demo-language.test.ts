@@ -21,7 +21,8 @@ vi.mock('../../src/demo', async (importOriginal) => {
   const mod = await importOriginal<typeof import('../../src/demo')>();
   const { readFileSync } = await import('node:fs');
   const { join } = await import('node:path');
-  return { ...mod, DEMO_MAP_TEXT: readFileSync(join(process.cwd(), 'example-data', 'example-map.osm'), 'utf8') };
+  const town = readFileSync(join(process.cwd(), 'example-data', 'example-map.osm'), 'utf8');
+  return { ...mod, DEMO_MAP_TEXT: town, demoMapText: () => town };
 });
 
 // Interface-language coherence of the demo (FR-41 as amended in v1.3.1):
@@ -53,6 +54,7 @@ async function mountDemo(lang: Lang): Promise<App> {
   });
   setLanguage(lang);
   byId('load-demo').click();
+  byId('demo-go').click();
   await settle();
   return app;
 }
@@ -61,8 +63,8 @@ async function mountDemo(lang: Lang): Promise<App> {
 // vocabularies, the colour labels, the annotation labels, the comments, and
 // the preset's name.
 function demoTexts(lang: Lang): Set<string> {
-  const scenario = demoScenario(lang);
-  const list = importColumns(parseWorkbook(demoWorkbook(lang)));
+  const scenario = demoScenario('parkland', lang);
+  const list = importColumns(parseWorkbook(demoWorkbook('parkland', lang)));
   return new Set(
     [
       ...list.headers,
@@ -179,7 +181,7 @@ function options(selector: string): string[] {
 // The provided labels shown where the finding saw English: the legends, the
 // pickers, and the status-symbol assignment.
 function expectProvided(lang: Lang, loadedIn: Lang = lang): void {
-  const scenario = demoScenario(lang);
+  const scenario = demoScenario('parkland', lang);
   const t = strings(lang);
   const colours = ['green', 'blue', 'yellow', 'red'].map((c) => scenario.colourLabels[c as 'green']!);
   const statuses = scenario.preset.statuses!.map((s) => s.name);
@@ -207,7 +209,7 @@ function expectProvided(lang: Lang, loadedIn: Lang = lang): void {
   expect([...document.querySelectorAll<HTMLInputElement>('#colour-label-list input')].map((i) => i.value)).toEqual(colours);
   expect([...document.querySelectorAll<HTMLInputElement>('#symbol-label-list input')].map((i) => i.placeholder)).toEqual(symbols);
   // The preset matches the list's headers, which stay as loaded.
-  expect(options('#preset-select')).toContain(demoScenario(loadedIn).preset.name);
+  expect(options('#preset-select')).toContain(demoScenario('parkland', loadedIn).preset.name);
 }
 
 describe('the demo loads in the interface language (FR-41)', () => {
@@ -215,7 +217,7 @@ describe('the demo loads in the interface language (FR-41)', () => {
     const app = await mountDemo('sv');
     expect(await visitEverySurface()).toEqual([]);
     expectProvided('sv');
-    expect(app.captureWorkState().headers).toEqual(demoScenario('sv').preset.headers);
+    expect(app.captureWorkState().headers).toEqual(demoScenario('parkland', 'sv').preset.headers);
   }, 30_000);
 
   test('in English, none appears in Swedish', async () => {
@@ -233,10 +235,10 @@ describe('a change of language while the demo is loaded (FR-41)', () => {
     // The cells follow their vocabulary values.
     const ws = app.captureWorkState();
     const status = ws.roles.status!;
-    expect(new Set(ws.rows.map((r) => r.values[status]))).toEqual(new Set(demoScenario('en').preset.statuses!.map((s) => s.name)));
-    expect(ws.annotations.map((a) => a.label)).toEqual(demoScenario('en').annotations.map((a) => a.label));
+    expect(new Set(ws.rows.map((r) => r.values[status]))).toEqual(new Set(demoScenario('parkland', 'en').preset.statuses!.map((s) => s.name)));
+    expect(ws.annotations.map((a) => a.label)).toEqual(demoScenario('parkland', 'en').annotations.map((a) => a.label));
     // The headers and the preset that matches them stay as loaded.
-    expect(ws.headers).toEqual(demoScenario('sv').preset.headers);
+    expect(ws.headers).toEqual(demoScenario('parkland', 'sv').preset.headers);
     expect(ws.presets.map((p) => p.name)).toEqual(['Demokolumner']);
     setLanguage('sv');
     expectProvided('sv');
@@ -288,7 +290,7 @@ describe('a change of language while the demo is loaded (FR-41)', () => {
       expect(legendLabels('map-legend', 'status')[0]).toBe('Min egen status');
       expect(options('#marker-shape')[SYMBOLS.indexOf('gear')]).toBe('Mitt kugghjul');
       // The labels not renamed follow the language.
-      const scenario = demoScenario(lang);
+      const scenario = demoScenario('parkland', lang);
       expect(ws.colourLabels.green).toBe(scenario.colourLabels.green);
       expect(ws.statuses.slice(1).map((s) => s.name)).toEqual(scenario.preset.statuses!.slice(1).map((s) => s.name));
       expect(ws.areaValues.slice(1)).toEqual(scenario.preset.areas!.slice(1));

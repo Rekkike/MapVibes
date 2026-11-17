@@ -32,7 +32,8 @@ import {
   setSymbolsFromStatus,
   VALUE_VOCABULARIES,
 } from './columnpanels';
-import { followDemoLanguage, loadDemo, resetDemo } from './demoload';
+import { followDemoLanguage, resetDemo } from './demoload';
+import { applyDemoPickerLabels, wireDemoPicker } from './demopicker';
 import { appNarrow, narrowApplication, refitOnClassChange, startNarrowApplication, startNarrowViewer } from './narrowlayout';
 import { startQuietChrome } from './quietchrome';
 import { layoutShell, refreshShell, startShell } from './shell';
@@ -126,6 +127,7 @@ function renderStaticText(): void {
   el('start-empty').textContent = t.manualStartEmpty;
   el('load-demo').textContent = t.demoLoad;
   el('demo-hint').textContent = t.demoHint;
+  applyDemoPickerLabels();
   el('manual-heading').textContent = t.manualHeading;
   el('add-row').textContent = t.manualAddRow;
   el('add-column').textContent = t.manualAddColumn;
@@ -393,7 +395,7 @@ function wireEvents(): void {
     }
   });
   el('start-empty').addEventListener('click', startEmptyList);
-  el('load-demo').addEventListener('click', () => void loadDemo());
+  wireDemoPicker();
   const presentationInput = el<HTMLInputElement>('presentation-file-input');
   el('open-presentation').addEventListener('click', () => presentationInput.click());
   presentationInput.addEventListener('change', () => {
@@ -551,6 +553,8 @@ const VIEWER_HIDDEN = [
   'export-open',
   'export-panel',
   'export-status',
+  'demo-panel',
+  'demo-load-again',
   'pdf-open',
   'pptx-open',
   'document-panel',

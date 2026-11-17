@@ -1,9 +1,13 @@
-// Full-test demo (FR-41). The demo is example data: generic, fictional
-// fixtures from example-data, bundled into the build only as the demo's data
+// Full-test demo (FR-41). The demo is example data: fixtures from
+// example-data, bundled into the build only as the demo's data
 // and loaded through the application's normal paths (the spreadsheet import,
 // which reads the demo list as CSV text, the saved column preset, the .osm
 // background). Nothing here is used by the
-// application's logic for any other data.
+// application's logic for any other data. v2.4.0: two demos bundle (DemoId):
+// the parkland demo, generic and fictional as before, and the Helsingborg
+// demo, which carries real public plan data under the owner-ruled exception
+// to ENVIRONMENT_DISCIPLINE.md rule 7 (real-plan-based, dated, sourced;
+// docs/v2.4.0-helsingborg-sources.md).
 //
 // The scenario file adds what the list cannot hold: the preset (with the
 // area and status vocabularies), the status-to-symbol toggle, and per item its
@@ -23,6 +27,10 @@ import listText from '../example-data/demo.csv?raw';
 import listTextSv from '../example-data/demo-sv.csv?raw';
 import scenarioJson from '../example-data/demo-scenario.json';
 import mapText from '../example-data/demo-map.osm?raw';
+import helsingborgListSv from '../example-data/helsingborg.csv?raw';
+import helsingborgListEn from '../example-data/helsingborg-en.csv?raw';
+import helsingborgScenarioJson from '../example-data/helsingborg-scenario.json';
+import helsingborgMapText from '../example-data/helsingborg-map.osm?raw';
 import { COLOURS, type RowColour } from './dataset';
 import { parsePresets, type ColumnPreset } from './presets';
 import { isSymbol, type MarkerSymbol } from './symbols';
@@ -34,7 +42,32 @@ import { activityId } from './workstate';
 
 const LANGS: Lang[] = ['en', 'sv'];
 
+// The bundled demos (v2.4.0: exactly two). The parkland demo (FR-41) stays
+// the generic fictional fixture; the Helsingborg demo carries real public
+// plan data under the owner-ruled exception to ENVIRONMENT_DISCIPLINE.md
+// rule 7 (see docs/v2.4.0-helsingborg-sources.md).
+export type DemoId = 'parkland' | 'helsingborg';
+export const DEMO_IDS: DemoId[] = ['parkland', 'helsingborg'];
+
 export const DEMO_MAP_TEXT: string = mapText;
+
+const LISTS: Record<DemoId, Record<Lang, string>> = {
+  parkland: { en: listText, sv: listTextSv },
+  // Swedish-first: the Helsingborg list's primary language is Swedish.
+  helsingborg: { en: helsingborgListEn, sv: helsingborgListSv },
+};
+const SCENARIOS: Record<DemoId, unknown> = {
+  parkland: scenarioJson,
+  helsingborg: helsingborgScenarioJson,
+};
+const MAPS: Record<DemoId, string> = {
+  parkland: mapText,
+  helsingborg: helsingborgMapText,
+};
+
+export function demoMapText(id: DemoId): string {
+  return MAPS[id];
+}
 
 export interface DemoItem {
   // The value of the identifier column.
@@ -324,8 +357,8 @@ export function parseDemoScenarios(raw: unknown): DemoScenarios {
   return { en: inLang('en'), sv: inLang('sv') };
 }
 
-export function demoScenario(lang: Lang = 'en'): DemoScenario {
-  return parseDemoScenarios(scenarioJson)[lang];
+export function demoScenario(id: DemoId, lang: Lang = 'en'): DemoScenario {
+  return parseDemoScenarios(SCENARIOS[id])[lang];
 }
 
 // The provided labels of the demo in one language and their counterparts in
@@ -341,8 +374,8 @@ export interface DemoCounterparts {
   eventLabels: Array<[string, string]>;
 }
 
-export function demoCounterparts(from: Lang, to: Lang): DemoCounterparts {
-  const scenarios = parseDemoScenarios(scenarioJson);
+export function demoCounterparts(id: DemoId, from: Lang, to: Lang): DemoCounterparts {
+  const scenarios = parseDemoScenarios(SCENARIOS[id]);
   const [a, b] = [scenarios[from], scenarios[to]];
   const pairs = (x: string[] = [], y: string[] = []) => x.map((v, i): [string, string] => [v, y[i]]);
   return {
@@ -366,8 +399,8 @@ export function demoCounterparts(from: Lang, to: Lang): DemoCounterparts {
 
 // The demo list in a language as the bytes of a spreadsheet file (CSV text),
 // for the normal import.
-export function demoWorkbook(lang: Lang = 'en'): ArrayBuffer {
+export function demoWorkbook(id: DemoId, lang: Lang = 'en'): ArrayBuffer {
   // With the byte order mark, the spreadsheet reader reads the text as UTF-8
   // (without it, as a single-byte code page).
-  return new TextEncoder().encode(`\uFEFF${lang === 'sv' ? listTextSv : listText}`).buffer;
+  return new TextEncoder().encode(`\uFEFF${LISTS[id][lang]}`).buffer;
 }

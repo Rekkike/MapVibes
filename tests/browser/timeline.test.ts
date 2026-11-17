@@ -172,6 +172,7 @@ describe('the timeline in the application (FR-66, FR-67, FR-70)', () => {
     await page.evaluate(() => delete (window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker);
     await setSelect(page, 'select-language', 'en');
     await page.click('#load-demo');
+    await page.click('#demo-go');
     await page.waitForFunction(() => document.querySelectorAll('#map-stage .marker').length === 11);
     await page.click('#tab-presentation');
     await page.click('#pres-mode-timeline');

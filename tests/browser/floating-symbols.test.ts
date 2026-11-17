@@ -79,7 +79,10 @@ async function openApp(options: BrowserContextOptions, lang: 'en' | 'sv', theme:
   await page.goto(`file://${BUILT}`);
   await setSelect(page, 'select-language', lang);
   await setSelect(page, 'select-theme', theme);
-  await page.evaluate(() => document.getElementById('load-demo')!.click());
+  await page.evaluate(() => {
+    document.getElementById('load-demo')!.click();
+    document.getElementById('demo-go')!.click();
+  });
   await page.waitForFunction(() => document.documentElement.dataset.segment === 'map', undefined, { timeout: 30_000 });
   return page;
 }

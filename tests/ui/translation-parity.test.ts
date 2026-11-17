@@ -33,7 +33,8 @@ vi.mock('../../src/demo', async (importOriginal) => {
   const mod = await importOriginal<typeof import('../../src/demo')>();
   const { readFileSync } = await import('node:fs');
   const { join } = await import('node:path');
-  return { ...mod, DEMO_MAP_TEXT: readFileSync(join(process.cwd(), 'example-data', 'example-map.osm'), 'utf8') };
+  const town = readFileSync(join(process.cwd(), 'example-data', 'example-map.osm'), 'utf8');
+  return { ...mod, DEMO_MAP_TEXT: town, demoMapText: () => town };
 });
 vi.mock('../../src/raster', () => ({
   backgroundJpeg: () =>
@@ -216,6 +217,7 @@ describe('translation parity: the rendered interface in Swedish (FR-19)', () => 
       found.push(...leaks(english));
       // The demo, every panel open.
       byId('load-demo').click();
+      byId('demo-go').click();
       await settle();
       collectData(app);
       byId('tab-information').click();

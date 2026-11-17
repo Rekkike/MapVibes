@@ -41,6 +41,7 @@ beforeAll(async () => {
   await page.evaluate(() => delete (window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker);
   await setSelect(page, 'select-language', 'en');
   await page.click('#load-demo');
+  await page.click('#demo-go');
   await page.waitForFunction(() => document.querySelectorAll('#row-table-body tr').length === 12);
   await page.waitForFunction(() => document.documentElement.dataset.segment === 'map', undefined, { timeout: 30000 });
   await page.click('#tab-presentation');

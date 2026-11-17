@@ -119,6 +119,7 @@ describe('the at-a-glance end column in a browser (FR-46)', () => {
   test('a list imported after the demo shows the full defaults, in both segments', async () => {
     const page = await open();
     await page.click('#load-demo');
+    await page.click('#demo-go');
     await page.waitForFunction(() => document.querySelectorAll('#marker-layer .marker').length === 11);
     page.on('dialog', (d) => d.accept());
     await page.click('#tab-information');

@@ -1,0 +1,661 @@
+{
+  "format": "mapvibes-demo",
+  "version": 3,
+  "preset": {
+    "en": {
+      "name": "Port of Helsingborg",
+      "headers": [
+        "Item",
+        "Name",
+        "Area",
+        "Programme",
+        "Status",
+        "Start year",
+        "End year",
+        "Quay depth",
+        "Vessel class",
+        "Actor",
+        "Note",
+        "Budget 2025",
+        "Budget 2026",
+        "Budget 2027",
+        "Budget 2028",
+        "Budget 2029",
+        "Budget 2030",
+        "Budget 2031",
+        "Budget 2032",
+        "Budget 2033",
+        "Forecast 2025",
+        "Forecast 2026",
+        "Forecast 2027",
+        "Forecast 2028",
+        "Forecast 2029",
+        "Forecast 2030",
+        "Forecast 2031",
+        "Forecast 2032",
+        "Forecast 2033",
+        "Outcome 2025",
+        "Outcome 2026",
+        "Outcome 2027",
+        "Outcome 2028",
+        "Outcome 2029",
+        "Outcome 2030",
+        "Outcome 2031",
+        "Outcome 2032",
+        "Outcome 2033"
+      ],
+      "hidden": [
+        "Budget 2025",
+        "Budget 2026",
+        "Budget 2027",
+        "Budget 2028",
+        "Budget 2029",
+        "Budget 2030",
+        "Budget 2031",
+        "Budget 2032",
+        "Budget 2033",
+        "Forecast 2025",
+        "Forecast 2026",
+        "Forecast 2027",
+        "Forecast 2028",
+        "Forecast 2029",
+        "Forecast 2030",
+        "Forecast 2031",
+        "Forecast 2032",
+        "Forecast 2033",
+        "Outcome 2025",
+        "Outcome 2026",
+        "Outcome 2027",
+        "Outcome 2028",
+        "Outcome 2029",
+        "Outcome 2030",
+        "Outcome 2031",
+        "Outcome 2032",
+        "Outcome 2033"
+      ],
+      "roles": {
+        "identifier": "Item",
+        "name": "Name",
+        "area": "Area",
+        "program": "Programme",
+        "status": "Status",
+        "start": "Start year",
+        "end": "End year",
+        "note": "Note"
+      },
+      "areas": [
+        "West Harbour (current terminal)",
+        "Southern harbour site (new terminal)",
+        "Gåsebäck (Kemira land)",
+        "Öresund (fairway)",
+        "Planteringen, Söder"
+      ],
+      "programs": [
+        "Permits and planning",
+        "Harbour construction",
+        "Electrification",
+        "Operation and transition"
+      ],
+      "statuses": [
+        {
+          "name": "Planned",
+          "symbol": "bulb"
+        },
+        {
+          "name": "Under review",
+          "symbol": "magnifier"
+        },
+        {
+          "name": "In progress",
+          "symbol": "hammer-shovel"
+        },
+        {
+          "name": "Paused",
+          "symbol": "pause"
+        },
+        {
+          "name": "Cancelled",
+          "symbol": "cross"
+        },
+        {
+          "name": "Completed",
+          "symbol": "check"
+        }
+      ],
+      "cardColumns": [
+        "Item",
+        "Area",
+        "Programme",
+        "Status",
+        "Start year",
+        "End year",
+        "Quay depth",
+        "Vessel class",
+        "Actor"
+      ],
+      "series": {
+        "budget": {
+          "name": "Budget",
+          "columns": {
+            "2025": "Budget 2025",
+            "2026": "Budget 2026",
+            "2027": "Budget 2027",
+            "2028": "Budget 2028",
+            "2029": "Budget 2029",
+            "2030": "Budget 2030",
+            "2031": "Budget 2031",
+            "2032": "Budget 2032",
+            "2033": "Budget 2033"
+          },
+          "total": null
+        },
+        "forecast": {
+          "name": "Forecast",
+          "columns": {
+            "2025": "Forecast 2025",
+            "2026": "Forecast 2026",
+            "2027": "Forecast 2027",
+            "2028": "Forecast 2028",
+            "2029": "Forecast 2029",
+            "2030": "Forecast 2030",
+            "2031": "Forecast 2031",
+            "2032": "Forecast 2032",
+            "2033": "Forecast 2033"
+          },
+          "total": null
+        },
+        "outcome": {
+          "name": "Outcome",
+          "columns": {
+            "2025": "Outcome 2025",
+            "2026": "Outcome 2026",
+            "2027": "Outcome 2027",
+            "2028": "Outcome 2028",
+            "2029": "Outcome 2029",
+            "2030": "Outcome 2030",
+            "2031": "Outcome 2031",
+            "2032": "Outcome 2032",
+            "2033": "Outcome 2033"
+          },
+          "total": null
+        }
+      },
+      "currencyUnit": "kr"
+    },
+    "sv": {
+      "name": "Helsingborgs hamn",
+      "headers": [
+        "Objekt",
+        "Namn",
+        "Område",
+        "Program",
+        "Status",
+        "Startår",
+        "Slutår",
+        "Kajdjup",
+        "Fartygsklass",
+        "Aktör",
+        "Anteckning",
+        "Budget 2025",
+        "Budget 2026",
+        "Budget 2027",
+        "Budget 2028",
+        "Budget 2029",
+        "Budget 2030",
+        "Budget 2031",
+        "Budget 2032",
+        "Budget 2033",
+        "Prognos 2025",
+        "Prognos 2026",
+        "Prognos 2027",
+        "Prognos 2028",
+        "Prognos 2029",
+        "Prognos 2030",
+        "Prognos 2031",
+        "Prognos 2032",
+        "Prognos 2033",
+        "Utfall 2025",
+        "Utfall 2026",
+        "Utfall 2027",
+        "Utfall 2028",
+        "Utfall 2029",
+        "Utfall 2030",
+        "Utfall 2031",
+        "Utfall 2032",
+        "Utfall 2033"
+      ],
+      "hidden": [
+        "Budget 2025",
+        "Budget 2026",
+        "Budget 2027",
+        "Budget 2028",
+        "Budget 2029",
+        "Budget 2030",
+        "Budget 2031",
+        "Budget 2032",
+        "Budget 2033",
+        "Prognos 2025",
+        "Prognos 2026",
+        "Prognos 2027",
+        "Prognos 2028",
+        "Prognos 2029",
+        "Prognos 2030",
+        "Prognos 2031",
+        "Prognos 2032",
+        "Prognos 2033",
+        "Utfall 2025",
+        "Utfall 2026",
+        "Utfall 2027",
+        "Utfall 2028",
+        "Utfall 2029",
+        "Utfall 2030",
+        "Utfall 2031",
+        "Utfall 2032",
+        "Utfall 2033"
+      ],
+      "roles": {
+        "identifier": "Objekt",
+        "name": "Namn",
+        "area": "Område",
+        "program": "Program",
+        "status": "Status",
+        "start": "Startår",
+        "end": "Slutår",
+        "note": "Anteckning"
+      },
+      "areas": [
+        "Västhamnen (befintlig terminal)",
+        "Södra hamnläget (ny terminal)",
+        "Gåsebäck (Kemira-mark)",
+        "Öresund (farled)",
+        "Planteringen, Söder"
+      ],
+      "programs": [
+        "Tillstånd och planering",
+        "Hamnbyggnation",
+        "Elektrifiering",
+        "Drift och övergång"
+      ],
+      "statuses": [
+        {
+          "name": "Planerad",
+          "symbol": "bulb"
+        },
+        {
+          "name": "Under granskning",
+          "symbol": "magnifier"
+        },
+        {
+          "name": "Pågående",
+          "symbol": "hammer-shovel"
+        },
+        {
+          "name": "Pausad",
+          "symbol": "pause"
+        },
+        {
+          "name": "Avbruten",
+          "symbol": "cross"
+        },
+        {
+          "name": "Klar",
+          "symbol": "check"
+        }
+      ],
+      "cardColumns": [
+        "Objekt",
+        "Område",
+        "Program",
+        "Status",
+        "Startår",
+        "Slutår",
+        "Kajdjup",
+        "Fartygsklass",
+        "Aktör"
+      ],
+      "series": {
+        "budget": {
+          "name": "Budget",
+          "columns": {
+            "2025": "Budget 2025",
+            "2026": "Budget 2026",
+            "2027": "Budget 2027",
+            "2028": "Budget 2028",
+            "2029": "Budget 2029",
+            "2030": "Budget 2030",
+            "2031": "Budget 2031",
+            "2032": "Budget 2032",
+            "2033": "Budget 2033"
+          },
+          "total": null
+        },
+        "forecast": {
+          "name": "Prognos",
+          "columns": {
+            "2025": "Prognos 2025",
+            "2026": "Prognos 2026",
+            "2027": "Prognos 2027",
+            "2028": "Prognos 2028",
+            "2029": "Prognos 2029",
+            "2030": "Prognos 2030",
+            "2031": "Prognos 2031",
+            "2032": "Prognos 2032",
+            "2033": "Prognos 2033"
+          },
+          "total": null
+        },
+        "outcome": {
+          "name": "Utfall",
+          "columns": {
+            "2025": "Utfall 2025",
+            "2026": "Utfall 2026",
+            "2027": "Utfall 2027",
+            "2028": "Utfall 2028",
+            "2029": "Utfall 2029",
+            "2030": "Utfall 2030",
+            "2031": "Utfall 2031",
+            "2032": "Utfall 2032",
+            "2033": "Utfall 2033"
+          },
+          "total": null
+        }
+      },
+      "currencyUnit": "kr"
+    }
+  },
+  "symbolsFromStatus": true,
+  "colourLabels": {
+    "en": {
+      "green": "On track",
+      "blue": "Under way",
+      "yellow": "Waiting",
+      "red": "Stopped"
+    },
+    "sv": {
+      "green": "Enligt plan",
+      "blue": "Pågående",
+      "yellow": "Väntar",
+      "red": "Stoppad"
+    }
+  },
+  "glanceColumns": {
+    "en": [
+      "Programme",
+      "Status",
+      "End year"
+    ],
+    "sv": [
+      "Program",
+      "Status",
+      "Slutår"
+    ]
+  },
+  "items": [
+    {
+      "item": "H-00",
+      "colour": "blue",
+      "position": null,
+      "symbol": null,
+      "comments": []
+    },
+    {
+      "item": "H-01",
+      "colour": "green",
+      "position": [
+        0.652818,
+        0.666736
+      ],
+      "symbol": null,
+      "comments": [
+        {
+          "date": "2026-04-21T10:00:00.000Z",
+          "text": {
+            "sv": "Inriktningsbeslutet togs tillsammans med förhandsavtalet med Kemira.",
+            "en": "The orientation decision was taken together with the pre-agreement with Kemira."
+          }
+        }
+      ]
+    },
+    {
+      "item": "H-02",
+      "colour": "green",
+      "position": [
+        0.861164,
+        0.895862
+      ],
+      "symbol": null,
+      "comments": []
+    },
+    {
+      "item": "H-03",
+      "colour": "blue",
+      "position": [
+        0.861164,
+        0.562577
+      ],
+      "symbol": null,
+      "comments": [],
+      "activities": [
+        {
+          "label": {
+            "sv": "Projektering",
+            "en": "Engineering"
+          },
+          "start": "2026-05-04",
+          "end": "2027-12-18",
+          "progress": 30
+        }
+      ]
+    },
+    {
+      "item": "H-04",
+      "colour": "yellow",
+      "position": [
+        0.750046,
+        0.979173
+      ],
+      "symbol": null,
+      "comments": []
+    },
+    {
+      "item": "H-05",
+      "colour": "red",
+      "position": [
+        0.819495,
+        0.91669
+      ],
+      "symbol": "diamond",
+      "comments": []
+    },
+    {
+      "item": "H-06",
+      "colour": "yellow",
+      "position": [
+        0.888943,
+        0.966677
+      ],
+      "symbol": null,
+      "comments": []
+    },
+    {
+      "item": "H-07",
+      "colour": "red",
+      "position": [
+        0.847274,
+        0.812547
+      ],
+      "symbol": null,
+      "comments": []
+    },
+    {
+      "item": "H-08",
+      "colour": "blue",
+      "position": [
+        0.944502,
+        0.791718
+      ],
+      "symbol": "square",
+      "comments": []
+    },
+    {
+      "item": "H-09",
+      "colour": "green",
+      "position": [
+        0.402802,
+        0.541744
+      ],
+      "symbol": "bolt",
+      "comments": [],
+      "activities": [
+        {
+          "label": {
+            "sv": "Byggnation av landströmsanläggningen",
+            "en": "Building the shore-power facility"
+          },
+          "start": "2025-09-01",
+          "end": "2026-10-30",
+          "progress": 65
+        }
+      ],
+      "workPhase": "a1"
+    },
+    {
+      "item": "H-10",
+      "colour": "yellow",
+      "position": [
+        0.666707,
+        0.875034
+      ],
+      "symbol": null,
+      "comments": []
+    },
+    {
+      "item": "H-11",
+      "colour": "red",
+      "position": [
+        0.736156,
+        0.708398
+      ],
+      "symbol": null,
+      "comments": []
+    },
+    {
+      "item": "H-12",
+      "colour": "green",
+      "position": [
+        0.902833,
+        0.925022
+      ],
+      "symbol": null,
+      "comments": [
+        {
+          "date": "2026-11-17T09:00:00.000Z",
+          "text": {
+            "sv": "Tidplanen 2033 enligt den svenska sidan; den engelska sidans brödtext anger 'about 2030'.",
+            "en": "The 2033 schedule per the Swedish page; the English page's body says 'about 2030'."
+          }
+        }
+      ]
+    }
+  ],
+  "annotations": [
+    {
+      "kind": "polygon",
+      "points": [
+        [
+          0.925057,
+          0.816713
+        ],
+        [
+          0.994505,
+          0.816713
+        ],
+        [
+          0.994505,
+          0.658403
+        ],
+        [
+          0.925057,
+          0.658403
+        ]
+      ],
+      "colour": "blue",
+      "fillOpacity": 0.3,
+      "outline": "black",
+      "lineStyle": "solid",
+      "label": {
+        "en": "Combi terminal (Interlink)",
+        "sv": "Kombiterminalen (Interlink)"
+      },
+      "link": "H-08"
+    },
+    {
+      "kind": "line",
+      "points": [
+        [
+          0.597259,
+          0.891697
+        ],
+        [
+          0.736156,
+          0.91669
+        ],
+        [
+          0.861164,
+          0.925022
+        ],
+        [
+          0.972282,
+          0.941684
+        ]
+      ],
+      "colour": "red",
+      "fillOpacity": 0,
+      "outline": "black",
+      "lineStyle": "dashed",
+      "label": {
+        "en": "New quay about 650 m at 15 m depth — 6 STS cranes (count read from published vision renders)",
+        "sv": "Ny kaj ca 650 m vid 15 m djup — 6 STS-kranar (antal avläst från publicerade visionsbilder)"
+      },
+      "link": "H-05"
+    },
+    {
+      "kind": "rectangle",
+      "points": [
+        [
+          0.347243,
+          0.591742
+        ],
+        [
+          0.486141,
+          0.479244
+        ]
+      ],
+      "colour": "yellow",
+      "fillOpacity": 0.2,
+      "outline": "white",
+      "lineStyle": "solid",
+      "label": {
+        "en": "West Harbour today: quay 13 m, vessels up to 225 m, 3 large STS cranes",
+        "sv": "Västhamnen idag: kaj 13 m, fartyg upp till 225 m, 3 stora STS-kranar"
+      },
+      "link": "H-09"
+    }
+  ],
+  "events": [
+    {
+      "date": "2026-04-21",
+      "label": {
+        "en": "Municipal council: orientation decision",
+        "sv": "Kommunfullmäktige: inriktningsbeslut"
+      }
+    },
+    {
+      "date": "2026-09-23",
+      "label": {
+        "en": "Consultation opens",
+        "sv": "Samråd inleds"
+      }
+    }
+  ]
+}

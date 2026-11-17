@@ -13,6 +13,7 @@
       <button type="button" id="presentation-close" class="hidden">Close presentation</button>
       <span id="demo-badge" class="hidden"></span>
       <button type="button" id="demo-reset" class="hidden">Reset demo</button>
+      <button type="button" id="demo-load-again" class="hidden">Load a demo…</button>
       <button type="button" id="menu-toggle" aria-controls="app-menu" hidden>Menu</button>
       <nav id="segment-nav" role="tablist" aria-label="Segments">
         <button type="button" class="segment-tab" role="tab" id="tab-information" data-segment="information" aria-controls="segment-information" aria-selected="true">Information</button>
@@ -64,6 +65,29 @@
           <span id="compare-status" aria-live="polite"></span>
         </div>
       </section>
+        <div id="demo-panel" class="hidden" role="dialog" aria-labelledby="demo-heading">
+          <div class="dialog-head">
+            <h3 id="demo-heading">Load a demo</h3>
+          </div>
+          <label class="demo-option" for="demo-choice-parkland">
+            <input type="radio" name="demo-choice" id="demo-choice-parkland" value="parkland" checked />
+            <span class="demo-option-text">
+              <b id="demo-opt-parkland"></b>
+              <span id="demo-opt-parkland-desc" class="hint"></span>
+            </span>
+          </label>
+          <label class="demo-option" for="demo-choice-helsingborg">
+            <input type="radio" name="demo-choice" id="demo-choice-helsingborg" value="helsingborg" />
+            <span class="demo-option-text">
+              <b id="demo-opt-helsingborg"></b>
+              <span id="demo-opt-helsingborg-desc" class="hint"></span>
+            </span>
+          </label>
+          <div class="dialog-foot">
+            <button type="button" id="demo-go">Load</button>
+            <button type="button" id="demo-cancel">Cancel</button>
+          </div>
+        </div>
       <div id="segment-information" class="segment" role="tabpanel" aria-labelledby="tab-information">
       <section id="list-area" aria-labelledby="list-heading">
         <h2 id="list-heading">List</h2>

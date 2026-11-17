@@ -7,6 +7,7 @@ import { layoutShell, startShell } from './shell';
 import { fetchAbort } from './fetchpanel';
 import { closeDocumentDialog } from './documentdialog';
 import { closeComparison, closeExportDialog } from './exportdialog';
+import { closeDemoPicker } from './demopicker';
 import { closeActivityDialog } from './activitydialog';
 import { openDetails } from './detailspanel';
 import { renderAnnotationInspector, selectAnnotation } from './annotationpanel';
@@ -72,6 +73,7 @@ function dialogSpecs(): NarrowDialogSpec[] {
     { id: 'pdf-panel', kind: 'sheet', close: () => void closePdf() },
     { id: 'document-panel', kind: 'sheet', close: closeDocumentDialog },
     { id: 'export-panel', kind: 'page', close: closeExportDialog },
+    { id: 'demo-panel', kind: 'page', close: closeDemoPicker },
     { id: 'compare-panel', kind: 'page', close: closeComparison },
     { id: 'activity-panel', kind: 'page', close: closeActivityDialog },
   ];
