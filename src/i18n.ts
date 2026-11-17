@@ -194,7 +194,7 @@ export const en = {
   demoBadge: 'Demo: fictional example data',
   demoConfirmReplace: 'The current work has unsaved changes. Loading the demo replaces it and the unsaved changes are lost. Continue?',
   demoLoaded: 'Demo loaded: fictional example data.',
-  // v2.4.0: the demo picker (two bundled demos) and the Helsingborg demo's
+  // The demo picker (two bundled demos) and the Helsingborg demo's
   // disclosure strings.
   demoPickerTitle: 'Load a demo',
   demoOptionParkland: 'Parkland (fictional example)',
@@ -806,7 +806,7 @@ export const sv: Strings = {
   demoBadge: 'Demo: fiktiva exempeldata',
   demoConfirmReplace: 'Det aktuella arbetet har osparade ändringar. Om demon läses in ersätts arbetet och de osparade ändringarna går förlorade. Fortsätta?',
   demoLoaded: 'Demon lästes in: fiktiva exempeldata.',
-  // v2.4.0: demo-väljaren (två inbyggda demos) och Helsingborg-demons
+  // Demo-väljaren (två inbyggda demos) och Helsingborg-demons
   // redovisningstexter.
   demoPickerTitle: 'Läs in en demo',
   demoOptionParkland: 'Parkland (fiktivt exempel)',
