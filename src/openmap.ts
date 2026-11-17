@@ -178,19 +178,29 @@ export function areaOf(b: OsmBounds): number {
   return (b.maxLat - b.minLat) * (b.maxLon - b.minLon);
 }
 
-// An area reduced about its centre to the largest area that is fetched at
-// once; an area within the limit is returned unchanged.
-export function fetchableBounds(b: OsmBounds): OsmBounds {
+// An area reduced about its centre to the given area limit; an area within
+// the limit is returned unchanged. The default limit is the fetch cap,
+// MAX_FETCH_AREA; the fetch panel's size presets (v2.5.0) pass a share of it.
+export function fetchableBounds(b: OsmBounds, maxArea: number = MAX_FETCH_AREA): OsmBounds {
   const area = areaOf(b);
-  if (area <= MAX_FETCH_AREA) {
+  if (area <= maxArea) {
     return b;
   }
-  const f = Math.sqrt(MAX_FETCH_AREA / area) * 0.999;
+  const f = Math.sqrt(maxArea / area) * 0.999;
   const cLat = (b.minLat + b.maxLat) / 2;
   const cLon = (b.minLon + b.maxLon) / 2;
   const hLat = ((b.maxLat - b.minLat) * f) / 2;
   const hLon = ((b.maxLon - b.minLon) * f) / 2;
   return { minLat: cLat - hLat, maxLat: cLat + hLat, minLon: cLon - hLon, maxLon: cLon + hLon };
+}
+
+// v2.5.0, the fetch panel's size presets: the bounds a preset fetches — the
+// requested area reduced about its centre to the preset's share of the
+// maximum fetch area when it is larger, unchanged when it is not. The cap
+// itself is enforced separately, as today, by fetchableBounds with its
+// default limit.
+export function presetBounds(b: OsmBounds, fraction: number): OsmBounds {
+  return fetchableBounds(b, fraction * MAX_FETCH_AREA);
 }
 
 export function geocoderUrl(place: string): string {

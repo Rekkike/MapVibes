@@ -110,6 +110,12 @@ function renderStaticText(): void {
   el('fetch-notice').textContent = t.fetchNotice;
   el('fetch-mode-place-label').textContent = t.fetchModePlace;
   el('fetch-mode-bbox-label').textContent = t.fetchModeBbox;
+  el('fetch-size-legend').textContent = t.fetchSizeLegend;
+  el('fetch-size-help').textContent = t.fetchSizeHelp;
+  el('fetch-size-max-label').textContent = t.fetchSizeMax;
+  el('fetch-size-40-label').textContent = t.fetchSize40;
+  el('fetch-size-60-label').textContent = t.fetchSize60;
+  el('fetch-size-85-label').textContent = t.fetchSize85;
   el('fetch-place').setAttribute('aria-label', t.fetchPlace);
   el<HTMLInputElement>('fetch-place').placeholder = t.fetchPlace;
   el('fetch-bbox-legend').textContent = t.fetchBboxLegend;

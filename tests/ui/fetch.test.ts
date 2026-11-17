@@ -382,4 +382,134 @@ describe('open-map fetch (FR-31)', () => {
     expect(byId('fetch-south-label').textContent).toBe('Syd');
     expect(byId('fetch-bbox-example').textContent).toBe('Exempel: syd 10,000, väst 20,000, nord 10,020, öst 20,030.');
   });
+
+  describe('the fetch area size presets (v2.5.0)', () => {
+    const EN_LABELS = {
+      legend: 'Fetch area size',
+      help: "The cap is the maximum area fetched at once: 0.0025 square degrees, about 5.5 by 5.5 kilometres at the equator. A preset scales the area to fetch to its share of the cap, about the requested area's centre.",
+      max: 'Maximum (the cap): 0.0025 sq deg, about 5.5 × 5.5 km',
+      p40: '40% of the maximum: 0.0010 sq deg, about 3.5 × 3.5 km',
+      p60: '60% of the maximum: 0.0015 sq deg, about 4.3 × 4.3 km',
+      p85: '85% of the maximum: 0.002125 sq deg, about 5.1 × 5.1 km',
+    };
+    const SV_LABELS = {
+      legend: 'Storlek på hämtningsområdet',
+      help: 'Gränsen är det största område som hämtas åt gången: 0,0025 kvadratgrader, ungefär 5,5 gånger 5,5 kilometer vid ekvatorn. Ett förval skalar området som hämtas till sin andel av gränsen, kring det begärda områdets mitt.',
+      max: 'Maximum (gränsen): 0,0025 kvadratgrader, ungefär 5,5 × 5,5 km',
+      p40: '40 % av maximum: 0,0010 kvadratgrader, ungefär 3,5 × 3,5 km',
+      p60: '60 % av maximum: 0,0015 kvadratgrader, ungefär 4,3 × 4,3 km',
+      p85: '85 % av maximum: 0,002125 kvadratgrader, ungefär 5,1 × 5,1 km',
+    };
+
+    function labelTexts(): Record<string, string> {
+      return {
+        legend: byId('fetch-size-legend').textContent ?? '',
+        help: byId('fetch-size-help').textContent ?? '',
+        max: byId('fetch-size-max-label').textContent ?? '',
+        p40: byId('fetch-size-40-label').textContent ?? '',
+        p60: byId('fetch-size-60-label').textContent ?? '',
+        p85: byId('fetch-size-85-label').textContent ?? '',
+      };
+    }
+
+    function requestBox(call: { url: string }): number[] {
+      return new URL(call.url).searchParams
+        .get('data')!
+        .match(/\]\(([^)]*)\)/)![1]
+        .split(',')
+        .map(Number);
+    }
+
+    test('each preset is honestly labelled with its area, the maximum named as the cap, in both languages; the maximum is the default', () => {
+      byId('fetch-open').click();
+      expect(byId<HTMLInputElement>('fetch-size-max').checked).toBe(true);
+      expect(labelTexts()).toEqual(EN_LABELS);
+      const select = byId<HTMLSelectElement>('select-language');
+      select.value = 'sv';
+      select.dispatchEvent(new Event('change'));
+      expect(labelTexts()).toEqual(SV_LABELS);
+      expect(byId<HTMLInputElement>('fetch-size-max').checked).toBe(true);
+    });
+
+    test('choosing a preset makes no request', async () => {
+      byId('fetch-open').click();
+      for (const id of ['fetch-size-40', 'fetch-size-60', 'fetch-size-85', 'fetch-size-max']) {
+        byId<HTMLInputElement>(id).click();
+        await flush();
+      }
+      expect(calls).toEqual([]);
+    });
+
+    test('a fetch at a preset sends only the area scaled to the preset share of the cap, and says so; the byte cap is unchanged', async () => {
+      await searchAndChoose('Example Region', 1);
+      byId<HTMLInputElement>('fetch-size-40').click();
+      replies.push({ body: osmText });
+      byId('fetch-go').click();
+      await flush();
+      expect(calls).toHaveLength(2);
+      const data = new URL(calls[1].url);
+      expect(data.hostname).toBe('overpass-api.de');
+      expect(data.searchParams.get('data')).toContain('[maxsize:16777216]');
+      const box = requestBox(calls[1]);
+      const share = 0.4 * 0.0025;
+      const area = (box[2] - box[0]) * (box[3] - box[1]);
+      expect(area).toBeLessThanOrEqual(share * 1.0001);
+      expect(area).toBeGreaterThan(share * 0.99);
+      expect((box[0] + box[2]) / 2).toBeCloseTo(0, 10);
+      expect((box[1] + box[3]) / 2).toBeCloseTo(0, 10);
+      expect(status()).toMatch(
+        /^The area was scaled to 40% of the maximum fetch area, about its centre: South -0\.0[\d]+, West -0\.0[\d]+, North 0\.0[\d]+, East 0\.0[\d]+\. Open map data fetched and rendered\.$/,
+      );
+      expect(byId('map-stage').dataset.hasBackground).toBe('true');
+    });
+
+    test('a preset applies in bounding-rectangle mode too, centred on the rectangle', async () => {
+      rectangleMode(['0', '0', '1', '1']);
+      byId<HTMLInputElement>('fetch-size-85').click();
+      replies.push({ body: osmText });
+      byId('fetch-go').click();
+      await flush();
+      expect(calls).toHaveLength(1);
+      const box = requestBox(calls[0]);
+      const share = 0.85 * 0.0025;
+      const area = (box[2] - box[0]) * (box[3] - box[1]);
+      expect(area).toBeLessThanOrEqual(share * 1.0001);
+      expect(area).toBeGreaterThan(share * 0.99);
+      expect((box[0] + box[2]) / 2).toBeCloseTo(0.5, 10);
+      expect(status()).toMatch(/^The area was scaled to 85% of the maximum fetch area, about its centre: /);
+    });
+
+    test('an area that already fits the preset is fetched whole, without a reduction message', async () => {
+      await searchAndChoose('Example Town');
+      byId<HTMLInputElement>('fetch-size-40').click();
+      replies.push({ body: osmText });
+      byId('fetch-go').click();
+      await flush();
+      expect(new URL(calls[1].url).searchParams.get('data')).toContain('(0,0,0.006,0.009)');
+      expect(status()).toBe('Open map data fetched and rendered.');
+    });
+
+    test('the maximum stays the default and the area cap is enforced as today', async () => {
+      await searchAndChoose('Example Region', 1);
+      expect(byId<HTMLInputElement>('fetch-size-max').checked).toBe(true);
+      replies.push({ body: osmText });
+      byId('fetch-go').click();
+      await flush();
+      const box = requestBox(calls[1]);
+      expect((box[2] - box[0]) * (box[3] - box[1])).toBeLessThanOrEqual(0.0025 * 1.0001);
+      expect(status()).toMatch(/^The area was larger than the limit of about 5\.5 by 5\.5 kilometres and was reduced to its central part: /);
+    });
+
+    test('offline, the presets stay visible and the offline message is unchanged, and no request is attempted', () => {
+      setOnline(false);
+      byId('fetch-open').click();
+      expect(visible('fetch-size-row')).toBe(true);
+      expect(byId('fetch-offline').textContent).toBe(
+        'You are offline. Fetching open map data needs a connection; a local OpenStreetMap (.osm) file can be loaded instead.',
+      );
+      expect(byId<HTMLButtonElement>('fetch-go').disabled).toBe(true);
+      byId<HTMLInputElement>('fetch-size-60').click();
+      expect(calls).toEqual([]);
+    });
+  });
 });

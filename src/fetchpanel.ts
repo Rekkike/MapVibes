@@ -8,6 +8,7 @@ import {
   fetchMapData,
   isOnline,
   parseBounds,
+  presetBounds,
   searchPlace,
   type BoundsField,
   type FetchErrorCode,
@@ -28,6 +29,15 @@ let fetchMessage: { text: string; kind: 'info' | 'error' } | null = null;
 let fetchInvalidField: BoundsField | null = null;
 
 const EDGES: BoundsField[] = ['south', 'west', 'north', 'east'];
+
+// The fetch area size presets (v2.5.0): shares of the maximum fetch area.
+// The maximum (value "1") is the default and stays the cap.
+const SIZE_IDS = ['fetch-size-max', 'fetch-size-40', 'fetch-size-60', 'fetch-size-85'];
+
+function fetchSizeFraction(): number {
+  const checked = document.querySelector<HTMLInputElement>('input[name="fetch-size"]:checked');
+  return checked ? Number(checked.value) : 1;
+}
 
 function edgeName(field: BoundsField): string {
   const t = strings(state.prefs.lang);
@@ -112,7 +122,7 @@ function renderFetchState(): void {
   el('fetch-place-row').classList.toggle('hidden', mode !== 'place');
   el('fetch-results').classList.toggle('hidden', mode !== 'place');
   el('fetch-bbox-row').classList.toggle('hidden', mode !== 'bbox');
-  for (const id of ['fetch-mode-place', 'fetch-mode-bbox', 'fetch-place']) {
+  for (const id of ['fetch-mode-place', 'fetch-mode-bbox', 'fetch-place', ...SIZE_IDS]) {
     el<HTMLInputElement>(id).disabled = busy;
   }
   for (const field of EDGES) {
@@ -199,10 +209,18 @@ async function fetchOpenMap(): Promise<void> {
     }
     return;
   }
-  // A larger area is reduced about its centre; the reduction is stated.
-  const bounds = fetchableBounds(requested);
+  // A larger area is reduced about its centre; the reduction is stated. A
+  // size preset (v2.5.0) first scales the area to its share of the cap; the
+  // cap itself is then enforced as today, and the 16 MiB answer cap in
+  // openmap.ts is untouched.
+  const fraction = fetchSizeFraction();
+  const bounds = fetchableBounds(presetBounds(requested, fraction));
   const reduced = bounds !== requested;
-  const reduction = reduced ? `${t.fetchReduced} ${formatBounds(bounds)}.` : '';
+  const reduction = reduced
+    ? fraction < 1
+      ? `${t.fetchPresetReduced.replace('{percent}', String(Math.round(fraction * 100)))} ${formatBounds(bounds)}.`
+      : `${t.fetchReduced} ${formatBounds(bounds)}.`
+    : '';
   const signal = startFetchRequest(reduced ? `${reduction} ${t.fetchFetching}` : t.fetchFetching);
   showMapError(null);
   try {
