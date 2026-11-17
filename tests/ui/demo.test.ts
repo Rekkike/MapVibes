@@ -57,9 +57,10 @@ describe('full-test demo (FR-41)', () => {
     app = await mount();
   });
 
-  test('the demo action sits beside the empty list, explained as fictional example data', () => {
+  test('the demo action sits beside the empty list, explained as example data', () => {
     expect(byId('load-demo').textContent).toBe('Load demo');
-    expect(byId('demo-hint').textContent).toContain('fictional example scenario');
+    // v2.4.0: with two demos bundled, the hint is generalized (disclosed).
+    expect(byId('demo-hint').textContent).toBe('Load a demo to try the application with example data.');
     expect(byId('demo-badge').classList.contains('hidden')).toBe(true);
   });
 

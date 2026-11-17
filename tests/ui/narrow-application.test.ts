@@ -231,7 +231,8 @@ describe('the header collapsed into a menu (FR-71 as amended)', () => {
     await mountNarrow();
     // In the compact class the three exports ride in the Menu too: the
     // phone's bar has no Export (the mockup's phone frames; v2.1.0).
-    expect(menuItems()).toEqual(['demo-badge', 'demo-reset', 'work-controls', 'select-language', 'select-theme', 'export-open', 'pdf-open', 'pptx-open']);
+    // v2.4.0: the picker's menu entry rides beside the demo's reset.
+    expect(menuItems()).toEqual(['demo-badge', 'demo-reset', 'demo-load-again', 'work-controls', 'select-language', 'select-theme', 'export-open', 'pdf-open', 'pptx-open']);
     expect(byId('menu-toggle').textContent).toBe('Menu');
     expectClosed('app-menu', 'menu-toggle');
     byId('menu-toggle').focus();
@@ -269,6 +270,7 @@ describe('the header collapsed into a menu (FR-71 as amended)', () => {
     // Share work, the language, and the theme.
     expect([...byId('app-menu').children].map((e) => e.id || e.querySelector('select')!.id)).toEqual([
       'demo-reset',
+      'demo-load-again',
       'work-open',
       'work-share',
       'select-language',
@@ -315,10 +317,12 @@ describe('leaving the narrow layout (FR-71)', () => {
     // the bar, in their order; the reset, the language, and the theme are in
     // the Menu of the classes above (FR-71 as amended in v2.0.0), with Open
     // work and Share work.
+    // demo-load-again is hidden until a demo is loaded, so the order walk skips it.
     expect(order()).toEqual(['demo-badge<header', 'work-controls<header', 'demo-reset<menu', 'select-language<menu', 'select-theme<menu']);
     expect(byId('work-controls').parentElement!.classList.contains('controls')).toBe(true);
     expect([...byId('app-menu').children].map((e) => e.id || e.querySelector('select')!.id)).toEqual([
       'demo-reset',
+      'demo-load-again',
       'work-open',
       'work-share',
       'select-language',

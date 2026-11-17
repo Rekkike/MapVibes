@@ -295,9 +295,10 @@ describe.each(PROFILES)('the narrow application on the %s (FR-71 to FR-74)', (na
       // control, and whatever the rail's height cannot hold joins them
       // there (the owner's ruling): the zoom group and the tool strip,
       // in that priority order, depending on the viewport's height.
-      expect(menuItems.slice(0, 12)).toEqual([
+      expect(menuItems.slice(0, 13)).toEqual([
         'demo-badge',
         'demo-reset',
+        'demo-load-again',
         'work-controls',
         'select-language',
         'select-theme',
@@ -309,13 +310,23 @@ describe.each(PROFILES)('the narrow application on the %s (FR-71 to FR-74)', (na
         'viewer-toggles',
         'pres-order-label',
       ]);
-      for (const extra of menuItems.slice(12)) {
+      for (const extra of menuItems.slice(13)) {
         expect(['map-zoom', 'annotation-tools']).toContain(extra);
       }
     } else {
       // v2.1.0: the three exports ride in the Menu overlay in the compact
       // class, where the bar has no Export.
-      expect(menuItems).toEqual(['demo-badge', 'demo-reset', 'work-controls', 'select-language', 'select-theme', 'export-open', 'pdf-open', 'pptx-open']);
+      expect(menuItems).toEqual([
+        'demo-badge',
+        'demo-reset',
+        'demo-load-again',
+        'work-controls',
+        'select-language',
+        'select-theme',
+        'export-open',
+        'pdf-open',
+        'pptx-open',
+      ]);
     }
     // Another overlay closes the menu.
     await tapControl(page, 'toggle-items');

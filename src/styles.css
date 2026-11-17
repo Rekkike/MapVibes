@@ -2467,7 +2467,7 @@ button.secondary-action {
 }
 
 #demo-panel .demo-option input {
-  margin-top: 3px;
+  margin-top: var(--space-4);
 }
 
 #demo-panel .demo-option-text {
@@ -2818,7 +2818,7 @@ html[data-mode='viewer']:not([data-started]) #export-status,
 html[data-mode='viewer']:not([data-started]) #pdf-open,
 html[data-mode='viewer']:not([data-started]) #pptx-open,
 html[data-mode='viewer']:not([data-started]) #demo-panel,
-#document-panel,
+html[data-mode='viewer']:not([data-started]) #document-panel,
 html[data-mode='viewer']:not([data-started]) #document-status,
 html[data-mode='viewer']:not([data-started]) #segment-information,
 html[data-mode='viewer']:not([data-started]) #segment-map,
