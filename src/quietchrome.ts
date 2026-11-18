@@ -17,6 +17,14 @@ export const IDLE_MS = 4000;
 let timer: ReturnType<typeof setTimeout> | null = null;
 let started = false;
 
+// Whether the environment the module runs in is still alive. In the
+// application the document outlives the module; in a test run the jsdom
+// environment is torn down after the last test, and a timer firing then
+// must not read a dead document.
+function environmentAlive(): boolean {
+  return typeof document !== 'undefined';
+}
+
 // Whether the quiet chrome applies right now: the Presentation segment of
 // the application, or the exported viewer, in any class.
 function onPresentationStage(): boolean {
@@ -38,6 +46,9 @@ function anythingOpen(): boolean {
 
 function withdraw(): void {
   timer = null;
+  if (!environmentAlive()) {
+    return;
+  }
   if (!onPresentationStage() || anythingOpen()) {
     wake();
     return;
@@ -48,6 +59,10 @@ function withdraw(): void {
 function wake(): void {
   if (timer !== null) {
     clearTimeout(timer);
+    timer = null;
+  }
+  if (!environmentAlive()) {
+    return;
   }
   delete document.documentElement.dataset.idle;
   timer = setTimeout(withdraw, IDLE_MS);
