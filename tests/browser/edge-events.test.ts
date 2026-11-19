@@ -175,6 +175,15 @@ describe.each([
 
   test('tapping an edge chip pans the window to the nearest event beyond that end, which is then drawn', async () => {
     const { page, errors } = await openViewer(options);
+    // The floating "In view" panel is folded first, as a user would fold it:
+    // where it floats, unfolded, it covers the right end of the strip. Before
+    // the fix-forward of v2.7.0's CI the quiet chrome withdrew it during the
+    // interaction with the timeline, which the quiet chrome did not see; it
+    // now stays while the user works, as ruled.
+    if ((await page.getAttribute('#presentation-glance', 'data-fold')) === 'open') {
+      await page.evaluate(() => document.getElementById('toggle-glance')!.click());
+      await page.waitForTimeout(200);
+    }
     for (const view of ['timeline', 'costs'] as const) {
       const before = await readStrip(page, view);
       await wake(page);
