@@ -162,4 +162,49 @@ describe('the per-item accent and the default vocabulary in a real layout (FR-82
     expect(overlaps(m.accent, m.number)).toBe(false);
     await page.context().close();
   }, 120_000);
+  // The legend's glyphs (FR-75 as amended in v2.6.0, the owner's ruling): in
+  // every legend a swatch's icon lies within the swatch's coloured fill,
+  // inside the 2-pixel ring, so that it reads as a line drawing.
+  for (const [name, options] of SIZES) {
+    for (const theme of ['light', 'dark'] as const) {
+      test(`every legend glyph lies within its swatch's fill, Helsingborg on ${name} (${theme})`, async () => {
+        const page = await open(options, 'sv', theme);
+        await page.evaluate(() => document.getElementById('load-demo')!.click());
+        await page.evaluate(() => {
+          const r = document.getElementById('demo-choice-helsingborg') as HTMLInputElement;
+          r.checked = true;
+          r.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+        await page.evaluate(() => document.getElementById('demo-go')!.click());
+        await page.waitForFunction(() => document.querySelectorAll('#marker-layer .marker').length > 0, undefined, { timeout: 30_000 });
+        await page.evaluate(() => document.getElementById('tab-presentation')!.click());
+        await page.waitForTimeout(800);
+        const phone = (options.viewport?.width ?? 1440) < 768;
+        if (phone) {
+          await page.evaluate(() => document.getElementById('toggle-legend')!.click());
+          await page.waitForTimeout(300);
+        }
+        const outside = await page.evaluate(() =>
+          [...document.querySelectorAll<HTMLElement>('#presentation-legend .legend-swatch, #map-legend .legend-swatch')].flatMap((swatch) => {
+            const glyph = swatch.querySelector(':scope > svg.marker-glyph');
+            const s = swatch.getBoundingClientRect();
+            if (!glyph || s.width === 0) {
+              return [];
+            }
+            const g = glyph.getBoundingClientRect();
+            const ring = 2;
+            const inside = g.left >= s.left + ring - 0.5 && g.right <= s.right - ring + 0.5 && g.top >= s.top + ring - 0.5 && g.bottom <= s.bottom - ring + 0.5;
+            return inside ? [] : [`${swatch.closest('.legend-entry')?.textContent}: glyph ${g.width.toFixed(1)} in swatch ${s.width.toFixed(1)}`];
+          }),
+        );
+        const counted = await page.$$eval(
+          '#presentation-legend .legend-swatch > svg.marker-glyph',
+          (els) => els.filter((e) => e.getBoundingClientRect().width > 0).length,
+        );
+        expect(counted).toBeGreaterThan(0);
+        expect(outside).toEqual([]);
+        await page.context().close();
+      }, 120_000);
+    }
+  }
 });

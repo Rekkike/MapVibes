@@ -9,7 +9,7 @@ import { loadPreferences, type Preferences } from './preferences';
 import type { LegendGroup } from './legend';
 import type { CommentStore } from './comments';
 import type { MarkerIcon, MarkerSymbol } from './symbols';
-import type { MarkerPositions, MarkerShapes } from './markers';
+import type { MarkerPositions, MarkerShape } from './markers';
 import type { Segment } from './segments';
 import type { ActivityImport, PresentationMode, PresentationOrder, StoredEvent, StoredActivity, TimelineWindow } from './workstate';
 import { DEFAULT_CURRENCY_UNIT, type SeriesAssignments } from './economics';
@@ -69,8 +69,12 @@ interface AppState {
   rowIds: Map<RowData, string>;
   segment: Segment;
   positions: MarkerPositions;
-  // Marker shapes (FR-26), per marker; circle where unset.
-  shapes: MarkerShapes;
+  // The marker's symbol chosen by hand (FR-26 as amended): an icon, or 'none'
+  // to show no symbol whatever the status; unset where not chosen.
+  icons: Map<RowData, MarkerIcon | 'none'>;
+  // The marker's button shape chosen by hand (FR-26 as amended); unset where
+  // not chosen (the circle, or an older status's shape).
+  forms: Map<RowData, MarkerShape>;
   // The per-item accent (FR-82): one icon per item, or none where unset.
   accents: Map<RowData, MarkerIcon>;
   selectedMarker: string | null;
@@ -152,7 +156,8 @@ export const state: AppState = {
   rowIds: new Map(),
   segment: 'information',
   positions: new Map(),
-  shapes: new Map(),
+  icons: new Map(),
+  forms: new Map(),
   accents: new Map(),
   selectedMarker: null,
   dirty: false,

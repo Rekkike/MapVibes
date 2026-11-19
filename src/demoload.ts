@@ -5,7 +5,7 @@ import { statusNames } from './vocab';
 import { clonePreset, storePresets, upsertPreset, type ColumnPreset } from './presets';
 import { strings, type Lang } from './i18n';
 import { restoreComments } from './comments';
-import { placeMarker } from './markers';
+import { isShape, placeMarker } from './markers';
 import { activityId } from './workstate';
 import { demoCounterparts, demoMapText, demoScenario, demoWorkbook, type DemoId } from './demo';
 import { newAnnotationId, type Annotation } from './annotations';
@@ -66,7 +66,8 @@ export async function loadDemo(id: DemoId, options: { confirmed?: boolean } = {}
   // The session's own settings start afresh, so that the demo is pristine.
   state.excluded = new Set();
   state.positions = new Map();
-  state.shapes = new Map();
+  state.icons = new Map();
+  state.forms = new Map();
   state.accents = new Map();
   // The demos ride the default vocabulary (FR-45, FR-54 as amended in
   // v2.6.0): a demo starts as a new work does.
@@ -124,8 +125,14 @@ export async function loadDemo(id: DemoId, options: { confirmed?: boolean } = {}
         continue;
       }
       placeMarker(state.positions, row, { x: item.position[0] * bg.width, y: item.position[1] * bg.height });
-      if (item.symbol) {
-        state.shapes.set(row, item.symbol);
+      // A demo item's symbol, read as a work of an older schema reads it
+      // (FR-26 as amended): a shape is the button shape with no symbol, an
+      // icon is the symbol.
+      if (item.symbol && isShape(item.symbol)) {
+        state.forms.set(row, item.symbol);
+        state.icons.set(row, 'none');
+      } else if (item.symbol) {
+        state.icons.set(row, item.symbol);
       }
     }
   }

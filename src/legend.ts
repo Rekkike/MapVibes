@@ -3,7 +3,7 @@
 
 import { COLOURS, type RowColour } from './dataset';
 import { SERIES_ROLES, type SeriesRole } from './economics';
-import { drawSymbol, SYMBOLS, symbolClasses, type MarkerSymbol } from './symbols';
+import { drawSymbol, isIcon, SYMBOLS, symbolClasses, type MarkerSymbol } from './symbols';
 import type { StatusEntry } from './vocab';
 import type { Strings } from './i18n';
 
@@ -142,10 +142,13 @@ export function legendModel(
   // lists a symbol only when it is named and the statuses line does not
   // already show its glyph. An unnamed symbol is never explained (FR-54).
   const statusGlyphs = new Set(statusItems.map((s) => s.symbol));
-  const symbolItems = SYMBOLS.filter((s) => (!used || used.symbols.has(s)) && (symbolLabels[s] ?? '').trim() !== '' && !statusGlyphs.has(s)).map((s) => ({
-    label: symbolLabels[s].trim(),
-    symbol: s,
-  }));
+  // A button shape is never explained (FR-26 as amended): icons only.
+  const symbolItems = SYMBOLS.filter((s) => isIcon(s) && (!used || used.symbols.has(s)) && (symbolLabels[s] ?? '').trim() !== '' && !statusGlyphs.has(s)).map(
+    (s) => ({
+      label: symbolLabels[s].trim(),
+      symbol: s,
+    }),
+  );
   // A symbols section with nothing to explain does not appear.
   if (symbolItems.length > 0) {
     sections.push({ kind: 'shapes', label: t.legendShapes, items: symbolItems });

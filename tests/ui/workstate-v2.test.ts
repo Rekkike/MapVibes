@@ -49,7 +49,8 @@ describe('work-state schema version 2 (FR-13)', () => {
     byId('tab-map').click();
     pointer('pointerdown', markers()[1], STAGE.left + 400, STAGE.top + 300);
     pointer('pointerup', markers()[1], STAGE.left + 400, STAGE.top + 300);
-    const shape = byId<HTMLSelectElement>('marker-shape');
+    // The button shape (FR-26 as amended in v2.6.0).
+    const shape = byId<HTMLSelectElement>('marker-form');
     shape.value = 'triangle';
     shape.dispatchEvent(new Event('change'));
     byId('tab-presentation').click();

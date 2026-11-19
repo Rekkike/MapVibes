@@ -3,7 +3,7 @@
 // and handles selecting, moving (by dragging), and removing (Delete key).
 
 import type { PlacedMarker } from './markers';
-import { drawSymbol, symbolClasses } from './symbols';
+import { drawSymbol, lookClasses } from './symbols';
 import { imageToScreen, screenToImage, type Point, type Viewport } from './viewport';
 
 export interface MarkerLayerHooks {
@@ -57,7 +57,7 @@ export class MarkerLayer {
         this.layer.appendChild(node);
       }
       const screen = imageToScreen(v, marker.position);
-      node.className = `marker marker-${marker.colour} ${symbolClasses(marker.shape)}`;
+      node.className = `marker marker-${marker.colour} ${lookClasses(marker)}`;
       if (this.hooks.isExcluded?.(marker)) {
         node.classList.add('marker-excluded');
       }
@@ -69,11 +69,12 @@ export class MarkerLayer {
       node.dataset.number = marker.label;
       node.dataset.colour = marker.colour;
       node.dataset.shape = marker.shape;
+      node.dataset.form = marker.form;
       const source = this.hooks.symbolSource?.(marker);
       if (source) {
         node.dataset.symbolSource = source;
       }
-      const drawn = `${marker.shape}:${marker.label}:${marker.accent ?? ''}`;
+      const drawn = `${marker.form}:${marker.shape}:${marker.label}:${marker.accent ?? ''}`;
       if (node.dataset.drawn !== drawn) {
         drawSymbol(node, marker.shape, marker.label, marker.accent);
         node.dataset.drawn = drawn;

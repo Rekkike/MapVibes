@@ -32,7 +32,7 @@ import { annotationShown, areaLocale } from './annotationpanel';
 import { itemLabel } from './mapstage';
 import { itemSpan, presentationLegendUse, presentationView, scheduleEvents, timelineItems } from './presentationstage';
 import { labelOf, numbered } from './listpanel';
-import { colourLabels, effectiveSeries, effectiveSymbols, shownProgramGroups, symbolLabels } from './columnpanels';
+import { colourLabels, effectiveSeries, effectiveLooks, shownProgramGroups, symbolLabels } from './columnpanels';
 import { hideDialog, showDialog } from './narrowlayout';
 
 // Document exports (FR-12, FR-50 to FR-52): the visible presentation stage
@@ -95,9 +95,9 @@ export function documentScene(): StageScene | null {
     return null;
   }
   const t = strings(state.prefs.lang);
-  const markers = placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered(), state.accents)
+  const markers = placedMarkers(state.rows, state.positions, effectiveLooks(), numbered(), state.accents)
     .filter((m) => !state.excluded.has(m.row))
-    .map((m) => ({ position: m.position, symbol: m.shape, colour: m.colour, label: m.label, accent: m.accent }));
+    .map((m) => ({ position: m.position, symbol: m.shape, colour: m.colour, label: m.label, accent: m.accent, form: m.form }));
   return sceneFromStage({
     viewport: view.viewport,
     stage: view.stageSize(),
@@ -131,12 +131,11 @@ function documentPhaseShown(): boolean {
 function documentFigure(): TimelineFigure | null {
   const t = strings(state.prefs.lang);
   const { start, end } = state.roles;
-  const symbols = effectiveSymbols();
-  const items: FigureItem[] = timelineItems().map((item) => ({
-    ...item,
-    symbol: symbols.get(rowById(item.id)!) ?? DEFAULT_SHAPE,
-    accent: state.accents.get(rowById(item.id)!) ?? null,
-  }));
+  const looks = effectiveLooks();
+  const items: FigureItem[] = timelineItems().map((item) => {
+    const look = looks.get(rowById(item.id)!) ?? { form: DEFAULT_SHAPE, icon: null };
+    return { ...item, symbol: look.icon ?? look.form, form: look.form, accent: state.accents.get(rowById(item.id)!) ?? null };
+  });
   if (items.length === 0) {
     return null;
   }

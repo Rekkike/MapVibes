@@ -5,7 +5,8 @@
 // and lists the structured fields in a compact grid below. Both are built
 // from one model of the item.
 
-import { drawSymbol, symbolClasses, type MarkerIcon, type MarkerSymbol } from './symbols';
+import { drawSymbol, isIcon, lookClasses, type MarkerIcon, type MarkerSymbol } from './symbols';
+import type { MarkerShape } from './markers';
 import type { RowColour } from './dataset';
 
 export interface DetailField {
@@ -36,6 +37,8 @@ export interface DetailModel {
   colour: RowColour;
   colourName: string;
   symbol: MarkerSymbol;
+  // The button shape (FR-26 as amended).
+  form: MarkerShape;
   symbolName: string;
   // The item's accent (FR-82), or null, and its label ('' when unnamed).
   accent: MarkerIcon | null;
@@ -158,7 +161,10 @@ export function renderDetails(container: HTMLElement, model: DetailModel, labels
   container.replaceChildren();
   container.dataset.rowId = model.rowId;
   const header = el('div', 'details-header');
-  const badge = el('span', `marker-badge marker-${model.colour} ${symbolClasses(model.symbol)} details-badge`);
+  const badge = el(
+    'span',
+    `marker-badge marker-${model.colour} ${lookClasses({ form: model.form, icon: isIcon(model.symbol) ? model.symbol : null })} details-badge`,
+  );
   drawSymbol(badge, model.symbol, model.number, model.accent);
   const title = el('h2', 'details-title', model.name);
   title.id = `${container.id}-title`;

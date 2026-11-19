@@ -13,7 +13,8 @@ import { annotationName, areaLocale, linkedRow } from './annotationpanel';
 import { itemLabel, mapView, renderMapItems } from './mapstage';
 import { economicsFor, openEconomics, shownCardColumns } from './presentationstage';
 import { detailValueInput, fitToContent, labelOf, numberLabel, statusCell } from './listpanel';
-import { accentSelect, colourLabel, effectiveSeries, symbolLabel, symbolOf } from './columnpanels';
+import { accentSelect, colourLabel, effectiveSeries, formOf, symbolLabel, symbolOf } from './columnpanels';
+import { isIcon } from './symbols';
 import { narrowApplication } from './narrowlayout';
 
 // Details panel (FR-7): the complete data of one item, open in the
@@ -85,7 +86,10 @@ export function detailModel(row: RowData, t: Strings): DetailModel {
     colour: row.colour,
     colourName: colourLabel(row.colour),
     symbol,
-    symbolName: symbolLabel(symbol),
+    form: formOf(row),
+    // A button shape is never explained (FR-26 as amended): only an icon's
+    // label names the symbol.
+    symbolName: isIcon(symbol) ? symbolLabel(symbol) : '',
     accent: state.accents.get(row) ?? null,
     accentName: state.accents.has(row) ? symbolLabel(state.accents.get(row)!) : '',
     fields,

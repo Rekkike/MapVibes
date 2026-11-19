@@ -379,8 +379,15 @@ describe('schema version 2 migration (FR-13)', () => {
     expect(JSON.parse(v2Text).schemaVersion).toBe(2);
     const state = parseWorkState(v2Text);
     expect(state.roles).toEqual({ identifier: 'ID', name: 'Note', area: 'Group' });
-    // Stored default circles count as no manual choice; other shapes as manual choices.
-    expect(state.markers.map((m) => m.symbol)).toEqual([null, null, 'diamond', null, null]);
+    // Stored default circles count as no manual choice; other shapes as manual
+    // choices, read since v2.6.0 as the button shape with no symbol (FR-26 as amended).
+    expect(state.markers.map((m) => [m.symbol, m.form ?? null])).toEqual([
+      [null, null],
+      [null, null],
+      ['none', 'diamond'],
+      [null, null],
+      [null, null],
+    ]);
     expect([state.areaValues, state.statuses, state.symbolsFromStatus]).toEqual([[], [], false]);
     expect(state.excluded).toEqual([1]);
     expect(state.presets.map((p) => p.name)).toEqual(['Standard']);
@@ -457,11 +464,12 @@ describe('schema version 3 migration (FR-13)', () => {
     expect(state.manualColumns.map((c) => c.label)).toEqual(['Rank']);
     expect(state.rows.map((r) => r.manual)).toEqual([false, false, false, false, false, true]);
     expect(state.roles).toEqual({ identifier: 'ID', area: 'Group' });
-    // The stored default circles are no manual choice; the square is.
-    expect(state.markers.map((m) => [m.row, m.symbol])).toEqual([
-      [0, null],
-      [2, null],
-      [5, 'square'],
+    // The stored default circles are no manual choice; the square is, read
+    // since v2.6.0 as the button shape with no symbol (FR-26 as amended).
+    expect(state.markers.map((m) => [m.row, m.symbol, m.form ?? null])).toEqual([
+      [0, null, null],
+      [2, null, null],
+      [5, 'none', 'square'],
     ]);
     expect([state.areaValues, state.statuses, state.symbolsFromStatus]).toEqual([[], [], false]);
   });
@@ -1111,6 +1119,38 @@ describe('schema version 12: activity ids, the edited mark, and the work phase (
 
   test('an imported activity is named by its row position in the source table', () => {
     expect([0, 1, 9].map(activityId)).toEqual(['a1', 'a2', 'a10']);
+  });
+});
+
+describe('schema version 13: the button shape apart from the symbol (FR-26 as amended)', () => {
+  test('a marker saved with a shape becomes the button shape with no symbol; an icon stays the symbol', () => {
+    const state = sample();
+    const file = JSON.parse(serialiseWorkState(state, SAVED_AT));
+    file.schemaVersion = 12;
+    file.markers[0].symbol = 'square';
+    file.markers[1].symbol = 'bolt';
+    const read = parseWorkState(JSON.stringify(file));
+    expect([read.markers[0].symbol, read.markers[0].form]).toEqual(['none', 'square']);
+    expect([read.markers[1].symbol, read.markers[1].form]).toEqual(['bolt', undefined]);
+  });
+
+  test('the symbol and the button shape round-trip apart, byte-identically; a shape is refused as a symbol and an icon as a form', () => {
+    const state = sample();
+    state.markers[0] = { ...state.markers[0], symbol: 'bulb', form: 'diamond' };
+    state.markers[1] = { ...state.markers[1], symbol: 'none', form: 'hexagon' };
+    const text = serialiseWorkState(state, SAVED_AT);
+    const file = JSON.parse(text);
+    expect(file.markers.slice(0, 2).map((m: { symbol: string; form?: string }) => [m.symbol, m.form])).toEqual([
+      ['bulb', 'diamond'],
+      ['none', 'hexagon'],
+    ]);
+    expect(serialiseWorkState(parseWorkState(text), SAVED_AT)).toBe(text);
+    const shapeAsSymbol = structuredClone(file);
+    shapeAsSymbol.markers[0].symbol = 'square';
+    expect(expectError(JSON.stringify(shapeAsSymbol), 'invalid').detail).toBe('markers[0].symbol');
+    const iconAsForm = structuredClone(file);
+    iconAsForm.markers[0].form = 'bolt';
+    expect(expectError(JSON.stringify(iconAsForm), 'invalid').detail).toBe('markers[0].form');
   });
 });
 

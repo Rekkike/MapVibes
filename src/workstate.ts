@@ -47,7 +47,7 @@
 
 import { COLOURS, type RowColour, type SortDirection, type ValueFilter } from './dataset';
 import { isRole, ROLES, type Role, type RoleAssignments } from './roles';
-import { DEFAULT_SHAPE, SHAPES } from './markers';
+import { DEFAULT_SHAPE, isShape, SHAPES, type MarkerShape } from './markers';
 import { ICONS, isSymbol, SYMBOLS, type MarkerIcon, type MarkerSymbol } from './symbols';
 import { parseStatuses, parseValueList, type StatusEntry } from './vocab';
 import { isManualKey } from './manual';
@@ -86,8 +86,11 @@ export const WORK_STATE_FORMAT = 'mapvibes-work-state';
 // activity is marked edited and no row has a work phase.
 //
 // Schema version 13 adds to version 12, per row, the item's accent (FR-82):
-// one icon of the symbol library, or absent for none. Files of versions 1 to
-// 12 open with no accents.
+// one icon of the symbol library, or absent for none; and per marker the
+// button shape apart from the symbol (FR-26 as amended): the symbol is an
+// icon, 'none', or null, the form a shape or absent. Files of versions 1 to
+// 12 open with no accents, and a marker's shape chosen by hand becomes its
+// button shape with no symbol.
 export const WORK_STATE_SCHEMA_VERSION = 13;
 export const READABLE_SCHEMA_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
 
@@ -184,8 +187,12 @@ export interface WorkStateMarker {
   // Index into WorkState.rows (ingestion order).
   row: number;
   position: Point;
-  // The symbol chosen manually for this marker, or null (FR-26, FR-34).
-  symbol: MarkerSymbol | null;
+  // The symbol chosen manually for this marker: an icon, 'none' (no symbol,
+  // whatever the status), or null where none was chosen (FR-26 and FR-34 as
+  // amended in v2.6.0).
+  symbol: MarkerIcon | 'none' | null;
+  // Version 13: the button shape chosen manually, or absent (FR-26 as amended).
+  form?: MarkerShape;
 }
 
 // An annotation in the file (FR-47, FR-48): its geometry and style in image
@@ -359,7 +366,7 @@ export function serialiseWorkState(state: WorkState, savedAt: Date): string {
           ...(state.background.projection ? { projection: { ...state.background.projection } } : {}),
         }
       : null,
-    markers: state.markers.map((m) => ({ row: m.row, x: m.position.x, y: m.position.y, symbol: m.symbol })),
+    markers: state.markers.map((m) => ({ row: m.row, x: m.position.x, y: m.position.y, symbol: m.symbol, ...(m.form !== undefined ? { form: m.form } : {}) })),
     presentation: { hidden: [...state.excluded] },
     presets: state.presets.map(clonePreset),
     vocabularies: {
@@ -628,15 +635,31 @@ export function parseWorkState(text: string): WorkState {
       invalid('duplicateMarker', `markers[${i}]`);
     }
     placed.add(row);
-    let symbol: MarkerSymbol | null = null;
-    if (version >= 4) {
-      symbol = o.symbol === null ? null : oneOf(o.symbol, SYMBOLS, `markers[${i}].symbol`);
+    // Version 13 (FR-26 as amended): the symbol (an icon, or 'none') and the
+    // button shape are separate. Before it a marker carried one symbol: a
+    // shape chosen by hand becomes the button shape with no symbol (it showed
+    // no icon and overrode the status's), an icon stays the symbol.
+    let symbol: MarkerIcon | 'none' | null = null;
+    let form: MarkerShape | undefined;
+    const legacy = (value: MarkerSymbol | null) => {
+      if (value !== null && isShape(value)) {
+        symbol = 'none';
+        form = value;
+      } else {
+        symbol = value;
+      }
+    };
+    if (version >= 13) {
+      symbol = o.symbol === null ? null : oneOf(o.symbol, ['none', ...ICONS] as const, `markers[${i}].symbol`);
+      form = o.form === undefined ? undefined : oneOf(o.form, SHAPES, `markers[${i}].form`);
+    } else if (version >= 4) {
+      legacy(o.symbol === null ? null : oneOf(o.symbol, SYMBOLS, `markers[${i}].symbol`));
     } else if (version >= 2) {
       // Versions 2 and 3: shapes only; the default shape counts as no choice.
       const shape = oneOf(o.shape, SHAPES, `markers[${i}].shape`);
-      symbol = shape === DEFAULT_SHAPE ? null : shape;
+      legacy(shape === DEFAULT_SHAPE ? null : shape);
     }
-    return { row, position: { x: num(o.x, `markers[${i}].x`), y: num(o.y, `markers[${i}].y`) }, symbol };
+    return { row, position: { x: num(o.x, `markers[${i}].x`), y: num(o.y, `markers[${i}].y`) }, symbol, ...(form !== undefined ? { form } : {}) };
   });
   if (markers.length > 0 && !background) {
     invalid('markersWithoutBackground', 'markers');

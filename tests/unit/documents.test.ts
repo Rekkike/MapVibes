@@ -6,6 +6,7 @@ import * as pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.mjs';
 import {
   buildPdf,
   drawMarker,
+  markerSize,
   drawFooter,
   layoutLegend,
   layoutTable,
@@ -339,5 +340,21 @@ describe('the accent in the documents (FR-82)', () => {
       ],
     });
     expect(scene.markers.map((m) => m.accent)).toEqual(['bolt', null]);
+  });
+});
+
+describe('an icon inside a button shape in the documents (FR-26 as amended)', () => {
+  test('the shape grows sideways to hold the icon; a tall shape stays tall; without a form the icon sits on the circle', () => {
+    const round = markerSize('bulb', '1');
+    const diamond = markerSize('bulb', '1', 'diamond');
+    const triangle = markerSize('bulb', '1', 'triangle');
+    const hexagon = markerSize('bulb', '1', 'hexagon');
+    expect(round.height).toBe(28);
+    expect([diamond.height, triangle.height, hexagon.height]).toEqual([36, 36, 28]);
+    expect(diamond.width - round.width).toBeCloseTo(24, 5);
+    expect(triangle.width - round.width).toBeCloseTo(40, 5);
+    expect(hexagon.width - round.width).toBeCloseTo(8, 5);
+    // A shape without an icon is unchanged by the form argument.
+    expect(markerSize('diamond', '1', 'diamond')).toEqual(markerSize('diamond', '1'));
   });
 });

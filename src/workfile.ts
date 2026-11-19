@@ -26,7 +26,12 @@ export function captureWorkState(): WorkState {
   const index = new Map(state.ingested.map((row, i) => [row, i]));
   const markers = [...state.positions.entries()]
     .filter(([row]) => index.has(row) && retained.has(row))
-    .map(([row, position]) => ({ row: index.get(row)!, position: { ...position }, symbol: state.shapes.get(row) ?? null }))
+    .map(([row, position]) => ({
+      row: index.get(row)!,
+      position: { ...position },
+      symbol: state.icons.get(row) ?? null,
+      ...(state.forms.has(row) ? { form: state.forms.get(row)! } : {}),
+    }))
     .sort((a, b) => a.row - b.row);
   const bg = mapView?.background ?? null;
   return {
@@ -392,7 +397,8 @@ export async function applyWorkState(ws: WorkState): Promise<boolean> {
   state.positions = new Map(ws.markers.map((m) => [state.ingested[m.row], { ...m.position }]));
   state.excluded = new Set(ws.excluded.map((i) => state.ingested[i]));
   state.presentationSelected = null;
-  state.shapes = new Map(ws.markers.filter((m) => m.symbol !== null).map((m) => [state.ingested[m.row], m.symbol!]));
+  state.icons = new Map(ws.markers.filter((m) => m.symbol !== null).map((m) => [state.ingested[m.row], m.symbol!]));
+  state.forms = new Map(ws.markers.filter((m) => m.form !== undefined).map((m) => [state.ingested[m.row], m.form!]));
   state.accents = new Map(state.ingested.flatMap((row, i) => (ws.rows[i].accent !== undefined ? [[row, ws.rows[i].accent]] : [])));
   state.areaValues = [...ws.areaValues];
   state.programValues = [...ws.programValues];

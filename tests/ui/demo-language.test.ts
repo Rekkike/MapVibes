@@ -3,7 +3,8 @@ import { byId, flush, importExampleWorkbook, mountApp, pointer, presentationMark
 import { demoScenario, demoWorkbook } from '../../src/demo';
 import { importColumns, parseWorkbook } from '../../src/ingest';
 import { shapeName } from '../../src/legend';
-import { SYMBOLS } from '../../src/symbols';
+import { ICONS } from '../../src/symbols';
+import { SHAPES } from '../../src/markers';
 import { strings, type Lang } from '../../src/i18n';
 import { starterColourLabels, starterSymbolLabels } from '../../src/starter';
 
@@ -194,7 +195,11 @@ function expectProvided(lang: Lang, loadedIn: Lang = lang): void {
   const starter = starterSymbolLabels(lang);
   const colours = Object.values(starterColourLabels(lang));
   const statuses = scenario.preset.statuses!.map((s) => s.name);
-  const symbols = SYMBOLS.map((s) => (starter[s] ? `${starter[s]} (${shapeName(t, s)})` : shapeName(t, s)));
+  // Since the second stop of v2.6.0 the symbol pickers offer no symbol and
+  // the eight icons; the button shapes have their own selector, named by
+  // their own words (FR-26 and FR-34 as amended).
+  const symbols = [t.symbolNone, ...ICONS.map((s) => (starter[s] ? `${starter[s]} (${shapeName(t, s)})` : shapeName(t, s)))];
+  const forms = SHAPES.map((s) => shapeName(t, s));
   // The Map segment's palette of symbols: the named symbols whose glyph the
   // statuses line does not show (FR-75 as amended in v2.6.0); the statuses
   // use the light bulb, the magnifying glass, the hammer and shovel, the
@@ -220,10 +225,11 @@ function expectProvided(lang: Lang, loadedIn: Lang = lang): void {
   expect(options('#annotation-colour')).toEqual(colours);
   expect(options('#marker-shape')).toEqual(symbols);
   expect(options('#status-list .status-symbol')).toEqual(symbols);
+  expect(options('#marker-form')).toEqual(forms);
   expect(options('.status-select').slice(1)).toEqual(statuses);
   expect([...document.querySelectorAll<HTMLInputElement>('#status-list .vocab-name')].map((i) => i.value)).toEqual(statuses);
   expect([...document.querySelectorAll<HTMLInputElement>('#colour-label-list input')].map((i) => i.value)).toEqual(colours);
-  expect([...document.querySelectorAll<HTMLInputElement>('#symbol-label-list input')].map((i) => i.value)).toEqual(SYMBOLS.map((s) => starter[s] ?? ''));
+  expect([...document.querySelectorAll<HTMLInputElement>('#symbol-label-list input')].map((i) => i.value)).toEqual(ICONS.map((s) => starter[s] ?? ''));
   expect([...document.querySelectorAll<HTMLInputElement>('#symbol-label-list input')].every((i) => i.placeholder === t.symbolUnnamed)).toBe(true);
   // The preset matches the list's headers, which stay as loaded.
   expect(options('#preset-select')).toContain(demoScenario('parkland', loadedIn).preset.name);
@@ -305,7 +311,7 @@ describe('a change of language while the demo is loaded (FR-41)', () => {
       expect(ws.annotations[1].label).toBe('Min zon');
       expect(legendLabels('map-legend', 'colour')[1]).toBe('Mitt eget blått');
       expect(legendLabels('map-legend', 'status')[0]).toBe('Min egen status');
-      expect(options('#marker-shape')[SYMBOLS.indexOf('gear')]).toBe(`Mitt kugghjul (${shapeName(strings(lang), 'gear')})`);
+      expect(options('#marker-shape')[1 + ICONS.indexOf('gear')]).toBe(`Mitt kugghjul (${shapeName(strings(lang), 'gear')})`);
       // The labels not renamed follow the language.
       const scenario = demoScenario('parkland', lang);
       expect(ws.colourLabels.green).toBe(starterColourLabels(lang).green);

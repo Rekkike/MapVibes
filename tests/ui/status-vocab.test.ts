@@ -83,17 +83,21 @@ describe('status role and vocabulary (FR-33)', () => {
       ['Closed', 'circle'],
       ['open', 'circle'],
     ]);
+    // A status assigns a symbol (an icon), never a button shape (FR-34 as
+    // amended in v2.6.0): the picker offers no symbol and the eight icons.
     const symbol = item('Closed').querySelector<HTMLSelectElement>('.status-symbol')!;
-    symbol.value = 'square';
+    expect([...symbol.options].map((o) => o.value)).toEqual(['circle', 'bulb', 'magnifier', 'gear', 'pause', 'cross', 'check', 'hammer-shovel', 'bolt']);
+    expect(symbol.options[0].textContent).toBe('No symbol');
+    symbol.value = 'gear';
     symbol.dispatchEvent(new Event('change'));
-    expect(item('Closed').querySelector('.legend-swatch')!.classList.contains('marker-shape-square')).toBe(true);
+    expect(item('Closed').querySelector('.legend-swatch')!.classList.contains('marker-icon-gear')).toBe(true);
     choose(1, 'Closed');
     const rename = item('Closed').querySelector<HTMLInputElement>('.vocab-name')!;
     rename.value = 'Done';
     rename.dispatchEvent(new Event('change'));
     expect(statuses()).toEqual([
       ['Open', 'circle'],
-      ['Done', 'square'],
+      ['Done', 'gear'],
       ['open', 'circle'],
     ]);
     expect(statusCells()[1].value).toBe('Done');
@@ -112,11 +116,11 @@ describe('status role and vocabulary (FR-33)', () => {
     setRole(key, 'status');
     addStatus('Open');
     const symbol = item('Open').querySelector<HTMLSelectElement>('.status-symbol')!;
-    symbol.value = 'hexagon';
+    symbol.value = 'magnifier';
     symbol.dispatchEvent(new Event('change'));
     byId<HTMLInputElement>('preset-name').value = 'With statuses';
     byId('preset-save').click();
-    expect(JSON.parse(localStorage.getItem('mapvibes.presets')!)[0].statuses).toEqual([{ name: 'Open', symbol: 'hexagon' }]);
+    expect(JSON.parse(localStorage.getItem('mapvibes.presets')!)[0].statuses).toEqual([{ name: 'Open', symbol: 'magnifier' }]);
     await mountApp({ keepStorage: true });
     await importExampleWorkbook();
     // The preset was saved with a manual column, so it does not match the
@@ -125,7 +129,7 @@ describe('status role and vocabulary (FR-33)', () => {
     select.value = 'With statuses';
     select.dispatchEvent(new Event('change'));
     byId('preset-apply').click();
-    expect(statuses()).toEqual([['Open', 'hexagon']]);
+    expect(statuses()).toEqual([['Open', 'magnifier']]);
   });
 
   test('editing a manual row in the status column chooses from the list as well', () => {

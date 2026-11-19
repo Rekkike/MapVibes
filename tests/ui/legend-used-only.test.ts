@@ -48,7 +48,7 @@ function nameSymbol(symbol: string, name: string): void {
 
 // The Map segment's palette of symbols: the named symbols whose glyph the
 // statuses line (check, pause) does not show (FR-75 as amended in v2.6.0).
-const PALETTE = ['circle', 'diamond', 'bulb', 'magnifier', 'gear', 'hammer-shovel', 'bolt'];
+const PALETTE = ['bulb', 'magnifier', 'gear', 'hammer-shovel', 'bolt'];
 
 async function mountWork(): Promise<typeof import('../../src/main')> {
   const app = await mountApp({ singleFile: true });
@@ -62,17 +62,18 @@ async function mountWork(): Promise<typeof import('../../src/main')> {
   setRole('Note', 'status');
   addStatus('Alpha item', 'check');
   addStatus('Beta item', 'pause');
-  // Since v2.6.0 an unnamed symbol is never explained (FR-54 as amended): the
-  // circle and the diamond are named here, so the used-only filter of the
-  // symbols section is seen at work; the bolt carries the default
-  // vocabulary's name.
-  nameSymbol('circle', 'Default');
-  nameSymbol('diamond', 'Depot');
+  // Since v2.6.0 the button shape is apart from the symbol and never
+  // explained (FR-26 and FR-54 as amended): row 0 is a diamond carrying the
+  // gear, row 1 carries the bolt; both icons carry the default vocabulary's
+  // names, so the used-only filter of the symbols section is seen at work.
   setColour(1, 3); // row 1 red
   setColour(2, 1); // row 2 (no marker) blue
   byId('tab-map').click();
   selectMarker(0, 100, 100);
-  chooseShape('diamond');
+  const form = byId<HTMLSelectElement>('marker-form');
+  form.value = 'diamond';
+  form.dispatchEvent(new Event('change'));
+  chooseShape('gear');
   selectMarker(1, 400, 300);
   chooseShape('bolt');
   byId('tab-presentation').click();
@@ -90,9 +91,11 @@ describe('the used-only legend (FR-75)', () => {
     // timeline-included item counts as used); yellow is carried by none.
     expect(section('presentation-legend', 'colours')).toEqual(['green', 'blue', 'red']);
     expect(section('map-legend', 'colours')).toEqual(['green', 'blue', 'yellow', 'red']);
-    // Symbols: diamond and bolt are chosen per marker; circle is the default
+    // Symbols: the gear and the bolt are chosen per marker; the diamond is a
+    // button shape, never explained. Before v2.6.0: diamond and bolt chosen
+    // per marker, circle the default
     // of the unplaced rows 3 and 4. The other ten symbols are unused.
-    expect(section('presentation-legend', 'shapes')).toEqual(['circle', 'diamond', 'bolt']);
+    expect(section('presentation-legend', 'shapes')).toEqual(['gear', 'bolt']);
     expect(section('map-legend', 'shapes')).toEqual(PALETTE);
     // One of each glyph stands: a named check stays explained by the statuses
     // line alone (FR-75 as amended in v2.6.0).
@@ -110,13 +113,13 @@ describe('the used-only legend (FR-75)', () => {
     // Switch off row 1 (the only red, the only bolt).
     document.querySelectorAll<HTMLInputElement>('.visibility-toggle')[1].click();
     expect(section('presentation-legend', 'colours')).toEqual(['green', 'blue']);
-    expect(section('presentation-legend', 'shapes')).toEqual(['circle', 'diamond']);
+    expect(section('presentation-legend', 'shapes')).toEqual(['gear']);
     expect(section('map-legend', 'colours')).toEqual(['green', 'blue', 'yellow', 'red']);
     expect(section('map-legend', 'shapes')).toEqual(PALETTE);
     // Switch it back on: the entries return.
     document.querySelectorAll<HTMLInputElement>('.visibility-toggle')[1].click();
     expect(section('presentation-legend', 'colours')).toEqual(['green', 'blue', 'red']);
-    expect(section('presentation-legend', 'shapes')).toEqual(['circle', 'diamond', 'bolt']);
+    expect(section('presentation-legend', 'shapes')).toEqual(['gear', 'bolt']);
   });
 
   test('the exported viewer computes the used-only legend once from its embedded items', async () => {
@@ -138,7 +141,7 @@ describe('the used-only legend (FR-75)', () => {
     await flush();
     expect(document.documentElement.dataset.mode).toBe('viewer');
     expect(section('presentation-legend', 'colours')).toEqual(['green', 'blue']);
-    expect(section('presentation-legend', 'shapes')).toEqual(['circle', 'diamond']);
+    expect(section('presentation-legend', 'shapes')).toEqual(['gear']);
     expect(section('presentation-legend', 'statuses')).toEqual(['Alpha item', 'Beta item']);
     // The Map segment's legend keeps the palette, also in the viewer's DOM.
     expect(section('map-legend', 'colours')).toEqual(['green', 'blue', 'yellow', 'red']);

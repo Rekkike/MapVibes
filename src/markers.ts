@@ -5,7 +5,7 @@
 
 import { numberRows, type NumberedRow, type RowColour, type RowData } from './dataset';
 import type { Point } from './viewport';
-import type { MarkerIcon, MarkerSymbol } from './symbols';
+import type { Look, MarkerIcon, MarkerSymbol } from './symbols';
 
 export type MarkerPositions = Map<RowData, Point>;
 
@@ -17,8 +17,8 @@ export const SHAPES: MarkerShape[] = ['circle', 'square', 'diamond', 'triangle',
 
 export const DEFAULT_SHAPE: MarkerShape = 'circle';
 
-// The symbol chosen per marker (a shape or an icon, FR-26).
-export type MarkerShapes = Map<RowData, MarkerSymbol>;
+// Each item's look, the button shape and the icon (FR-26 as amended).
+export type MarkerLooks = Map<RowData, Look>;
 
 export function isShape(value: unknown): value is MarkerShape {
   return typeof value === 'string' && (SHAPES as string[]).includes(value);
@@ -30,6 +30,11 @@ export interface PlacedMarker {
   // The number as shown (FR-17).
   label: string;
   colour: RowColour;
+  // The look (FR-26 as amended in v2.6.0): the button shape and the icon.
+  form: MarkerShape;
+  icon: MarkerIcon | null;
+  // The icon, or the button shape when there is none: the single value the
+  // marker carried before v2.6.0, kept for the markup's data-shape.
   shape: MarkerSymbol;
   // The item's accent (FR-82), or null.
   accent: MarkerIcon | null;
@@ -41,7 +46,7 @@ export interface PlacedMarker {
 export function placedMarkers(
   rows: RowData[],
   positions: MarkerPositions,
-  shapes: MarkerShapes = new Map(),
+  looks: MarkerLooks = new Map(),
   numbered: NumberedRow[] = numberRows(rows),
   accents: Map<RowData, MarkerIcon> = new Map(),
 ): PlacedMarker[] {
@@ -49,12 +54,15 @@ export function placedMarkers(
   for (const { row, number, label } of numbered) {
     const position = positions.get(row);
     if (position) {
+      const look = looks.get(row) ?? { form: DEFAULT_SHAPE, icon: null };
       out.push({
         row,
         number,
         label,
         colour: row.colour,
-        shape: shapes.get(row) ?? DEFAULT_SHAPE,
+        form: look.form,
+        icon: look.icon,
+        shape: look.icon ?? look.form,
         accent: accents.get(row) ?? null,
         position: { ...position },
       });

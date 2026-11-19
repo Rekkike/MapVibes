@@ -177,11 +177,18 @@ describe('details panel in the Map segment (FR-7)', () => {
     shape.value = 'gear';
     shape.dispatchEvent(new Event('change'));
     expect(facts()[2]).toBe('Engineering');
-    // An unnamed symbol is shown on the badge, not explained (FR-54 as amended in v2.6.0).
-    shape.value = 'diamond';
+    // An unnamed symbol is shown on the badge, not explained (FR-54 as
+    // amended in v2.6.0); the button shape is never explained either.
+    shape.value = 'cross';
     shape.dispatchEvent(new Event('change'));
     expect(facts()).toHaveLength(2);
+    expect(panel().querySelector('.details-badge')!.classList.contains('marker-icon-cross')).toBe(true);
+    const form = byId<HTMLSelectElement>('marker-form');
+    form.value = 'diamond';
+    form.dispatchEvent(new Event('change'));
+    expect(facts()).toHaveLength(2);
     expect(panel().querySelector('.details-badge')!.classList.contains('marker-shape-diamond')).toBe(true);
+    expect(panel().querySelector('.details-badge')!.classList.contains('marker-icon-cross')).toBe(true);
   });
 
   test('the panel is hidden in the Presentation segment and returns afterwards', () => {

@@ -37,10 +37,12 @@ describe('editable symbol labels (FR-54)', () => {
     byId('tab-information').click();
   });
 
-  test('the panel offers every symbol: the five starter names, the other eight unnamed and unexplained', () => {
+  // Since the second stop of v2.6.0 the panel names the eight icons only; the
+  // button shapes carry no labels (FR-26 and FR-54 as amended).
+  test('the panel offers the eight icons: the five starter names, the other three unnamed and unexplained', () => {
     expect(byId('symbol-panel-summary').textContent).toBe('Symbol labels');
     const inputs = [...document.querySelectorAll<HTMLInputElement>('#symbol-label-list input')];
-    expect(inputs).toHaveLength(13);
+    expect(inputs.map((i) => i.dataset.symbol)).toEqual(['bulb', 'magnifier', 'gear', 'pause', 'cross', 'check', 'hammer-shovel', 'bolt']);
     expect(Object.fromEntries(inputs.filter((i) => i.value !== '').map((i) => [i.dataset.symbol, i.value]))).toEqual(STARTER);
     expect(input('cross').value).toBe('');
     expect(input('cross').placeholder).toBe('No name');
@@ -81,21 +83,21 @@ describe('editable symbol labels (FR-54)', () => {
   });
 
   test('a cleared label leaves the symbol unexplained, in either language', () => {
-    label('square', 'Depot');
-    expect(legendShape('map-legend', 'square')).toBe('Depot');
-    label('square', '  ');
-    expect(legendShape('map-legend', 'square')).toBeNull();
+    label('cross', 'Depot');
+    expect(legendShape('map-legend', 'cross')).toBe('Depot');
+    label('cross', '  ');
+    expect(legendShape('map-legend', 'cross')).toBeNull();
     const lang = byId<HTMLSelectElement>('select-language');
     lang.value = 'sv';
     lang.dispatchEvent(new Event('change'));
-    expect(legendShape('map-legend', 'square')).toBeNull();
+    expect(legendShape('map-legend', 'cross')).toBeNull();
     expect(legendShape('map-legend', 'bolt')).toBe('OPS kaj');
-    label('square', 'Depå');
-    expect(legendShape('map-legend', 'square')).toBe('Depå');
+    label('cross', 'Depå');
+    expect(legendShape('map-legend', 'cross')).toBe('Depå');
     // A label is data: it does not change with the language.
     lang.value = 'en';
     lang.dispatchEvent(new Event('change'));
-    expect(legendShape('map-legend', 'square')).toBe('Depå');
+    expect(legendShape('map-legend', 'cross')).toBe('Depå');
   });
 
   test('the labels are saved, exported, shown by the viewer, and used in the documents’ legend', async () => {

@@ -8,8 +8,9 @@ import { isPdfFile, openPdf, type PdfDocument } from './pdfbackground';
 import { isOsmFile, MAX_OSM_BYTES, OsmError, parseOsm, planRender, type MercatorProjection, type OsmBounds } from './osm';
 import { renderPlanToDataUrl } from './osmrender';
 import { MarkerLayer } from './markerlayer';
-import { drawSymbol, isIcon, isSymbol, SYMBOLS, symbolClasses, type MarkerSymbol } from './symbols';
-import { placedMarkers, placeMarker, pruneMarkers, removeMarker, type PlacedMarker } from './markers';
+import { drawSymbol, ICONS, isIcon, lookClasses, type MarkerSymbol } from './symbols';
+import { shapeName } from './legend';
+import { DEFAULT_SHAPE, isShape, placedMarkers, placeMarker, pruneMarkers, removeMarker, SHAPES, type MarkerShape, type PlacedMarker } from './markers';
 import { BUTTON_ZOOM_FACTOR, screenToImage, type Point } from './viewport';
 import { AnnotationLayer, DrawingTools } from './annotationlayer';
 import { el, fill, ROW_DRAG_TYPE, rowById, rowId, state } from './appstate';
@@ -31,7 +32,7 @@ import {
 } from './annotationpanel';
 import { applyHighlight, renderGlance, renderLegends, renderPresentation, setHover, syncPresentationBackground } from './presentationstage';
 import { MAX_IMPORT_BYTES, numbered, numberLabel } from './listpanel';
-import { effectiveSymbols, fillAccentOptions, setAccent, symbolChoiceName, symbolOf, symbolSource } from './columnpanels';
+import { effectiveLooks, fillAccentOptions, lookOf, setAccent, symbolChoiceName, symbolSource } from './columnpanels';
 import { closeNarrowOverlay, hideDialog, narrowApplication, showDialog } from './narrowlayout';
 
 export let mapView: MapView | null = null;
@@ -178,9 +179,9 @@ function renderPlacementList(): void {
       li.dataset.selected = 'true';
     }
     const badge = document.createElement('span');
-    const symbol = symbolOf(row);
-    badge.className = `marker-badge marker-${row.colour} ${symbolClasses(symbol)}`;
-    drawSymbol(badge, symbol, String(number), state.accents.get(row) ?? null);
+    const look = lookOf(row);
+    badge.className = `marker-badge marker-${row.colour} ${lookClasses(look)}`;
+    drawSymbol(badge, look.icon ?? look.form, String(number), state.accents.get(row) ?? null);
     const label = document.createElement('span');
     label.className = 'placement-label';
     label.textContent = itemLabel(row, number);
@@ -243,9 +244,11 @@ export function renderMapItems(): void {
       state.excluded.delete(row);
     }
   }
-  for (const row of [...state.shapes.keys()]) {
-    if (!state.rows.includes(row)) {
-      state.shapes.delete(row);
+  for (const map of [state.icons, state.forms]) {
+    for (const row of [...map.keys()]) {
+      if (!state.rows.includes(row)) {
+        map.delete(row);
+      }
     }
   }
   // A footprint whose item is no longer in the data (a new import) becomes a
@@ -255,7 +258,7 @@ export function renderMapItems(): void {
       state.annotationLinks.delete(id);
     }
   }
-  const markers = placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered(), state.accents);
+  const markers = placedMarkers(state.rows, state.positions, effectiveLooks(), numbered(), state.accents);
   markerLayer?.render(markers, state.selectedMarker);
   renderAnnotations();
   renderGlance('map', mapView, state.selectedMarker, (id) => {
@@ -277,20 +280,37 @@ export function renderMapItems(): void {
     renderDetailsPanel();
   }
   el<HTMLButtonElement>('marker-remove').disabled = !selected;
+  // The symbol (FR-26 as amended): no symbol, or one of the eight icons.
   const shapeSelect = el<HTMLSelectElement>('marker-shape');
   shapeSelect.disabled = !selected;
-  if (shapeSelect.options.length !== SYMBOLS.length) {
+  if (shapeSelect.options.length !== ICONS.length + 1) {
     shapeSelect.innerHTML = '';
-    for (const shape of SYMBOLS) {
+    for (const value of ['none', ...ICONS]) {
       const opt = document.createElement('option');
-      opt.value = shape;
+      opt.value = value;
       shapeSelect.appendChild(opt);
     }
   }
   for (const opt of shapeSelect.options) {
-    opt.textContent = symbolChoiceName(opt.value as MarkerSymbol);
+    opt.textContent = opt.value === 'none' ? t.symbolNone : symbolChoiceName(opt.value as MarkerSymbol);
   }
-  shapeSelect.value = selected?.shape ?? 'circle';
+  shapeSelect.value = selected?.icon ?? 'none';
+  // The button shape (Knappform, FR-26 as amended): the five shapes by their
+  // own names, never explained.
+  const formSelect = el<HTMLSelectElement>('marker-form');
+  formSelect.disabled = !selected;
+  if (formSelect.options.length !== SHAPES.length) {
+    formSelect.innerHTML = '';
+    for (const value of SHAPES) {
+      const opt = document.createElement('option');
+      opt.value = value;
+      formSelect.appendChild(opt);
+    }
+  }
+  for (const opt of formSelect.options) {
+    opt.textContent = shapeName(t, opt.value as MarkerShape);
+  }
+  formSelect.value = selected?.form ?? DEFAULT_SHAPE;
   // The selected marker's accent (FR-82): no accent, or one icon.
   const accentSelect = el<HTMLSelectElement>('marker-accent');
   accentSelect.disabled = !selected;
@@ -544,10 +564,21 @@ export function initialiseMapView(): void {
   el('marker-shape').addEventListener('change', (e) => {
     const value = (e.target as HTMLSelectElement).value;
     const row = state.selectedMarker ? rowById(state.selectedMarker) : undefined;
-    if (!row || !isSymbol(value)) {
+    if (!row || (value !== 'none' && !isIcon(value))) {
       return;
     }
-    state.shapes.set(row, value);
+    state.icons.set(row, value);
+    markDirty();
+    renderMapItems();
+    renderDetailsPanel();
+  });
+  el('marker-form').addEventListener('change', (e) => {
+    const value = (e.target as HTMLSelectElement).value;
+    const row = state.selectedMarker ? rowById(state.selectedMarker) : undefined;
+    if (!row || !isShape(value)) {
+      return;
+    }
+    state.forms.set(row, value);
     markDirty();
     renderMapItems();
     renderDetailsPanel();

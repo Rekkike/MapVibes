@@ -135,7 +135,17 @@ function buildMoves(): Move[] {
     move('viewer-toggles', (mode: Mode) => (mode === 'narrow' ? (viewerMode() ? el('app-header') : menu) : null)),
     move('pres-order-label', (mode: Mode) => (mode === 'narrow' ? menu : null)),
     // Behind the tool strip's "more".
-    ...['map-load', 'fetch-open', 'fetch-offline', 'map-reset', 'marker-selection', 'marker-shape-label', 'marker-accent-label', 'marker-remove'].map((id) =>
+    ...[
+      'map-load',
+      'fetch-open',
+      'fetch-offline',
+      'map-reset',
+      'marker-selection',
+      'marker-shape-label',
+      'marker-form-label',
+      'marker-accent-label',
+      'marker-remove',
+    ].map((id) =>
       move(
         id,
         strip(() => el('map-more-panel')),

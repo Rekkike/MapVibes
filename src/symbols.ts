@@ -4,6 +4,19 @@
 
 import { SHAPES, type MarkerShape } from './markers';
 
+// A marker's look (FR-26 as amended in v2.6.0): its button shape and, beside
+// the number, one icon or none, chosen independently.
+export interface Look {
+  form: MarkerShape;
+  icon: MarkerIcon | null;
+}
+
+// The classes of a look: the button shape's outline, and the icon's when it
+// has one.
+export function lookClasses(look: Look): string {
+  return `marker-shape-${look.form}${look.icon ? ` marker-icon marker-icon-${look.icon}` : ''}`;
+}
+
 export type MarkerIcon = 'bulb' | 'magnifier' | 'gear' | 'pause' | 'cross' | 'check' | 'hammer-shovel' | 'bolt';
 
 export type MarkerSymbol = MarkerShape | MarkerIcon;

@@ -14,6 +14,7 @@ import { format } from './i18n';
 import type { LegendSection } from './legend';
 import { fitText, textWidth } from './pdfwriter';
 import type { MarkerIcon, MarkerSymbol } from './symbols';
+import type { MarkerShape } from './markers';
 import {
   dayShare,
   eventChipWidth,
@@ -34,6 +35,8 @@ export interface FigureItem extends TimelineItem {
   symbol?: MarkerSymbol;
   // The item's accent (FR-82), or null.
   accent?: MarkerIcon | null;
+  // The button shape (FR-26 as amended).
+  form?: MarkerShape;
 }
 
 export interface TimelineFigureLabels {
@@ -474,7 +477,7 @@ export function drawTimelinePage(p: Painter, fig: TimelineFigure, layout: Timeli
     // title, in the name column.
     const badge = f.font * 1.35 * f.badgeScale;
     const symbol = (line.item as FigureItem).symbol ?? 'circle';
-    const scale = badge / markerSize(symbol, line.item.label).height;
+    const scale = badge / markerSize(symbol, line.item.label, (line.item as FigureItem).form ?? null).height;
     drawMarker(
       p,
       frame.margin + badge / 2 + 2,
@@ -484,6 +487,7 @@ export function drawTimelinePage(p: Painter, fig: TimelineFigure, layout: Timeli
       line.item.label,
       scale,
       (line.item as FigureItem).accent ?? null,
+      (line.item as FigureItem).form ?? null,
     );
     p.fillColour(PALETTE.fg);
     const nameLeft = frame.margin + badge + 6;
