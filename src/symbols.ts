@@ -71,9 +71,11 @@ export function iconSvg(icon: MarkerIcon): SVGSVGElement {
 // small slot -- a satellite disc at the marker's upper right, outside the
 // marker's outline, so that it neither covers the number nor the symbol and
 // sits the same way on every outline.
-export function accentNode(icon: MarkerIcon): HTMLSpanElement {
+export function accentNode(icon: MarkerIcon, emphasis = false): HTMLSpanElement {
   const slot = document.createElement('span');
-  slot.className = 'marker-accent';
+  // The emphasis marker (FR-83): the accent drawn large on the map, the icon
+  // in red on a yellow filled circle.
+  slot.className = emphasis ? 'marker-accent marker-emphasis' : 'marker-accent';
   slot.dataset.accent = icon;
   slot.setAttribute('aria-hidden', 'true');
   slot.appendChild(iconSvg(icon));
@@ -83,7 +85,7 @@ export function accentNode(icon: MarkerIcon): HTMLSpanElement {
 // Shows a symbol on a marker, badge, or swatch: the icon (if any) followed
 // by the text (the number; empty for a swatch), and the item's accent (FR-82)
 // when it has one.
-export function drawSymbol(node: HTMLElement, symbol: MarkerSymbol, text: string, accent: MarkerIcon | null = null): void {
+export function drawSymbol(node: HTMLElement, symbol: MarkerSymbol, text: string, accent: MarkerIcon | null = null, emphasis = false): void {
   node.replaceChildren();
   if (isIcon(symbol)) {
     node.appendChild(iconSvg(symbol));
@@ -92,6 +94,6 @@ export function drawSymbol(node: HTMLElement, symbol: MarkerSymbol, text: string
     node.appendChild(document.createTextNode(text));
   }
   if (accent !== null) {
-    node.appendChild(accentNode(accent));
+    node.appendChild(accentNode(accent, emphasis));
   }
 }

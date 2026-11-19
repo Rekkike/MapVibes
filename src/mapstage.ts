@@ -32,7 +32,7 @@ import {
 } from './annotationpanel';
 import { applyHighlight, renderGlance, renderLegends, renderPresentation, setHover, syncPresentationBackground } from './presentationstage';
 import { MAX_IMPORT_BYTES, numbered, numberLabel } from './listpanel';
-import { effectiveLooks, fillAccentOptions, lookOf, setAccent, symbolChoiceName, symbolSource } from './columnpanels';
+import { effectiveLooks, fillAccentOptions, lookOf, setAccent, setEmphasis, symbolChoiceName, symbolSource } from './columnpanels';
 import { closeNarrowOverlay, hideDialog, narrowApplication, showDialog } from './narrowlayout';
 
 export let mapView: MapView | null = null;
@@ -258,7 +258,7 @@ export function renderMapItems(): void {
       state.annotationLinks.delete(id);
     }
   }
-  const markers = placedMarkers(state.rows, state.positions, effectiveLooks(), numbered(), state.accents);
+  const markers = placedMarkers(state.rows, state.positions, effectiveLooks(), numbered(), state.accents, state.emphasis);
   markerLayer?.render(markers, state.selectedMarker);
   renderAnnotations();
   renderGlance('map', mapView, state.selectedMarker, (id) => {
@@ -316,6 +316,10 @@ export function renderMapItems(): void {
   accentSelect.disabled = !selected;
   fillAccentOptions(accentSelect);
   accentSelect.value = selected?.accent ?? '';
+  // The emphasis (FR-83): offered only while the selected item has an accent.
+  const emphasisBox = el<HTMLInputElement>('marker-emphasis');
+  emphasisBox.disabled = !selected?.accent;
+  emphasisBox.checked = selected?.emphasis ?? false;
   // The presentation's legend follows the visibility (FR-75): recomputed on
   // every change of the items, including every visibility toggle (FR-27).
   renderLegends();
@@ -590,6 +594,12 @@ export function initialiseMapView(): void {
       return;
     }
     setAccent(row, value === '' ? null : value);
+  });
+  el('marker-emphasis').addEventListener('change', (e) => {
+    const row = state.selectedMarker ? rowById(state.selectedMarker) : undefined;
+    if (row) {
+      setEmphasis(row, (e.target as HTMLInputElement).checked);
+    }
   });
   el('marker-remove').addEventListener('click', () => {
     if (state.selectedMarker) {

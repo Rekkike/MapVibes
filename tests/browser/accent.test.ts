@@ -207,4 +207,96 @@ describe('the per-item accent and the default vocabulary in a real layout (FR-82
       }, 120_000);
     }
   }
+  // The emphasis marker (FR-83, v2.7.0), pinned by DOM and CSS assertions:
+  // the owner's visual spec -- a red lightning on a yellow filled circle,
+  // larger than the ordinary marker -- its fill the marker yellow, its stroke
+  // the emphasis ink at 4.5:1 or more on the yellow (FR-29), covering neither
+  // the number nor the symbol; the Helsingborg demo's OPS quay standing out.
+  for (const [name, options] of SIZES) {
+    for (const theme of ['light', 'dark'] as const) {
+      test(`the emphasis marker: size, fill, stroke, and contrast on ${name} (${theme})`, async () => {
+        const page = await open(options, 'sv', theme);
+        await page.evaluate(() => document.getElementById('load-demo')!.click());
+        await page.evaluate(() => {
+          const r = document.getElementById('demo-choice-helsingborg') as HTMLInputElement;
+          r.checked = true;
+          r.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+        await page.evaluate(() => document.getElementById('demo-go')!.click());
+        await page.waitForFunction(() => document.querySelectorAll('#marker-layer .marker').length > 0, undefined, { timeout: 30_000 });
+        await page.evaluate(() => document.getElementById('tab-map')?.click());
+        // The OPS quay: the item whose marker carries the bolt.
+        await page.evaluate(() => {
+          const marker = [...document.querySelectorAll<HTMLElement>('#marker-layer .marker')].find((m) => m.dataset.shape === 'bolt')!;
+          const r = marker.getBoundingClientRect();
+          for (const type of ['pointerdown', 'pointerup']) {
+            marker.dispatchEvent(
+              new PointerEvent(type, { bubbles: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1, isPrimary: true }),
+            );
+          }
+        });
+        await page.waitForSelector('#details-panel .details-accent select', { state: 'attached' });
+        await page.selectOption('#details-panel .details-accent select', 'bolt');
+        await page.evaluate(() => {
+          const box = document.querySelector<HTMLInputElement>('#details-panel .emphasis-box')!;
+          box.checked = true;
+          box.dispatchEvent(new Event('change'));
+        });
+        await page.waitForTimeout(250);
+        const m = await page.evaluate(() => {
+          const marker = document.querySelector<HTMLElement>('#marker-layer .marker.marker-emphasised')!;
+          const big = marker.querySelector<HTMLElement>('.marker-emphasis')!;
+          const glyph = marker.querySelector(':scope > svg.marker-glyph')!;
+          const text = [...marker.childNodes].find((n) => n.nodeType === Node.TEXT_NODE)!;
+          const range = document.createRange();
+          range.selectNodeContents(text);
+          const box = (r: DOMRect) => ({ left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height });
+          const probe = (v: string) => {
+            const s = document.createElement('span');
+            s.style.color = `var(${v})`;
+            document.body.appendChild(s);
+            const c = getComputedStyle(s).color;
+            s.remove();
+            return c;
+          };
+          const parse = (c: string) => /rgba?\(([^)]+)\)/.exec(c)![1].split(',').map(Number);
+          const lum = (c: number[]) =>
+            [0, 1, 2]
+              .map((i) => c[i] / 255)
+              .reduce((sum, s, i) => sum + [0.2126, 0.7152, 0.0722][i] * (s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4), 0);
+          const bg = getComputedStyle(big).backgroundColor;
+          const stroke = getComputedStyle(big.querySelector('svg')!).stroke;
+          const [a, b] = [lum(parse(stroke)), lum(parse(bg))].sort((x, y) => y - x);
+          return {
+            marker: box(marker.getBoundingClientRect()),
+            big: box(big.getBoundingClientRect()),
+            glyph: box(glyph.getBoundingClientRect()),
+            number: box(range.getBoundingClientRect()),
+            radius: getComputedStyle(big).borderRadius,
+            bg,
+            stroke,
+            yellow: probe('--marker-yellow'),
+            ink: probe('--emphasis-ink'),
+            ratio: (a + 0.05) / (b + 0.05),
+          };
+        });
+        // Larger than the ordinary marker: 44 pixels against its 28.
+        expect(m.big.width).toBeCloseTo(44, 0);
+        expect(m.big.height).toBeCloseTo(44, 0);
+        expect(m.big.height).toBeGreaterThanOrEqual(m.marker.height * 1.5);
+        expect(m.radius).toBe('999px');
+        // Yellow filled, the icon stroked in red, 4.5:1 or more.
+        expect(m.bg).toBe(m.yellow);
+        expect(m.stroke).toBe(m.ink);
+        expect(m.ink).toBe('rgb(143, 16, 16)');
+        expect(m.ratio).toBeGreaterThanOrEqual(4.5);
+        // It stands at the upper right, covering neither the number nor the symbol.
+        expect(m.big.left).toBeGreaterThan(m.marker.left);
+        expect(m.big.top).toBeLessThan(m.marker.top);
+        expect(overlaps(m.big, m.number)).toBe(false);
+        expect(overlaps(m.big, m.glyph)).toBe(false);
+        await page.context().close();
+      }, 120_000);
+    }
+  }
 });

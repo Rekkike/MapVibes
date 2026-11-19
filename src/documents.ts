@@ -29,6 +29,8 @@ export const PALETTE = {
   ring: [0xff, 0xff, 0xff],
   neutral: [0x5f, 0x68, 0x76],
   halo: [0x3a, 0x3f, 0x47],
+  // The emphasis marker's ink (FR-83, FR-29 as noted in v2.7.0).
+  emphasisInk: [0x8f, 0x10, 0x10],
   outlineBlack: [0x00, 0x00, 0x00],
   outlineWhite: [0xff, 0xff, 0xff],
   fg: [0x16, 0x18, 0x1d],
@@ -54,6 +56,8 @@ export interface SceneMarker {
   // The button shape when the symbol is an icon (FR-26 as amended), or null
   // for the circle.
   form?: MarkerShape | null;
+  // The accent emphasised on the map (FR-83).
+  emphasis?: boolean;
 }
 
 export interface SceneAnnotation {
@@ -91,7 +95,15 @@ export interface StageInput {
   stage: { width: number; height: number };
   background: { width: number; height: number } | null;
   // The markers shown in the presentation, in image coordinates.
-  markers: Array<{ position: Point; symbol: MarkerSymbol; colour: RowColour; label: string; accent?: MarkerIcon | null; form?: MarkerShape | null }>;
+  markers: Array<{
+    position: Point;
+    symbol: MarkerSymbol;
+    colour: RowColour;
+    label: string;
+    accent?: MarkerIcon | null;
+    form?: MarkerShape | null;
+    emphasis?: boolean;
+  }>;
   // The annotations shown in the presentation, in image coordinates.
   annotations: Annotation[];
   legendTitle: string;
@@ -148,7 +160,15 @@ export function sceneFromStage(input: StageInput): StageScene {
   }
   const reach = { x: -MARKER_REACH, y: -MARKER_REACH, width: input.stage.width + 2 * MARKER_REACH, height: input.stage.height + 2 * MARKER_REACH };
   const markers = input.markers
-    .map((m) => ({ ...imageToScreen(v, m.position), symbol: m.symbol, colour: m.colour, label: m.label, accent: m.accent ?? null, form: m.form ?? null }))
+    .map((m) => ({
+      ...imageToScreen(v, m.position),
+      symbol: m.symbol,
+      colour: m.colour,
+      label: m.label,
+      accent: m.accent ?? null,
+      form: m.form ?? null,
+      emphasis: m.emphasis ?? false,
+    }))
     .filter((m) => m.x >= reach.x && m.x <= reach.x + reach.width && m.y >= reach.y && m.y <= reach.y + reach.height);
   const annotations = input.annotations
     .map((a) => ({
@@ -363,6 +383,7 @@ export function drawMarker(
   scale: number,
   accent: MarkerIcon | null = null,
   form: MarkerShape | null = null,
+  emphasis = false,
 ): void {
   const outline = outlineOf(symbol, form);
   const size = markerSize(symbol, label, form);
@@ -411,7 +432,9 @@ export function drawMarker(
     p.fillColour(ink);
     p.text(cx, textY, label, 'bold', MARKER.font * scale, 'centre');
   }
-  if (accent !== null) {
+  if (accent !== null && emphasis) {
+    drawEmphasis(p, x + w, y, accent, scale);
+  } else if (accent !== null) {
     drawAccent(p, x + w, y, accent, scale);
   }
   p.restore();
@@ -422,6 +445,42 @@ export function drawMarker(
 // the neutral fill in a white ring of 0.125 em, the icon 0.9 em in the
 // neutral's number colour.
 const ACCENT = { size: 1.3, up: 0.55, out: 0.7, ring: 0.125, glyph: 0.9, stroke: 3, room: 8 };
+
+// The emphasis marker (FR-83), as the stylesheet draws it: a yellow filled
+// circle 44 stage pixels across, its lower left 8 pixels over the marker's
+// upper right corner, in the markers' white ring, the icon 28 pixels in the
+// emphasis ink.
+const EMPHASIS = { size: 44, overlap: 8, ring: 2, glyph: 28, stroke: 2.6 };
+
+export function drawEmphasis(p: Painter, right: number, top: number, icon: MarkerIcon, scale: number): void {
+  const d = EMPHASIS.size * scale;
+  const ring = EMPHASIS.ring * scale;
+  const x = right - EMPHASIS.overlap * scale;
+  const y = top + EMPHASIS.overlap * scale - d;
+  p.opacity(0.85);
+  p.strokeColour(PALETTE.halo);
+  p.lineWidth(1 * scale);
+  p.beginPath();
+  roundedRect(p, x - ring, y - ring, d + 2 * ring, d + 2 * ring, d / 2 + ring);
+  p.stroke();
+  p.opacity(1);
+  p.fillColour(PALETTE.ring);
+  p.beginPath();
+  roundedRect(p, x - ring, y - ring, d + 2 * ring, d + 2 * ring, d / 2 + ring);
+  p.fill();
+  p.fillColour(PALETTE.yellow);
+  p.beginPath();
+  roundedRect(p, x, y, d, d, d / 2);
+  p.fill();
+  const g = (EMPHASIS.glyph * scale) / 24;
+  const offset = (d - EMPHASIS.glyph * scale) / 2;
+  p.strokeColour(PALETTE.emphasisInk);
+  p.lineWidth(EMPHASIS.stroke * g);
+  p.roundLines();
+  p.beginPath();
+  p.svgPath(ICON_PATHS[icon], [g, 0, 0, g, x + offset, y + offset]);
+  p.stroke();
+}
 
 function drawAccent(p: Painter, right: number, top: number, icon: MarkerIcon, scale: number): void {
   const em = MARKER.font * scale;
@@ -680,8 +739,14 @@ export function layoutLegend(
       place(w, (p, x, b) => {
         // Every swatch is the same height, the taller shapes included.
         const symbol = item.colour ? 'circle' : item.symbol!;
-        const scale = swatch / markerSize(symbol, '').height;
-        drawMarker(p, x + swatch / 2, b - font * 0.33, symbol, item.colour ?? null, '', scale);
+        if (item.emphasis && isIcon(symbol)) {
+          // The emphasis form (FR-83): the icon in red on a yellow circle.
+          const scale = swatch / EMPHASIS.size;
+          drawEmphasis(p, x + EMPHASIS.overlap * scale, b - font * 0.33 + swatch / 2 - EMPHASIS.overlap * scale, symbol, scale);
+        } else {
+          const scale = swatch / markerSize(symbol, '').height;
+          drawMarker(p, x + swatch / 2, b - font * 0.33, symbol, item.colour ?? null, '', scale);
+        }
         p.fillColour(PALETTE.fg);
         p.text(x + swatch + gap, b, item.label, 'regular', font);
       });
@@ -745,7 +810,7 @@ export function drawStagePage(p: Painter, scene: StageScene, frame: PageFrame): 
   }
   for (const m of scene.markers) {
     const c = t(m);
-    drawMarker(p, c.x, c.y, m.symbol, m.colour, m.label, scale, m.accent ?? null, m.form ?? null);
+    drawMarker(p, c.x, c.y, m.symbol, m.colour, m.label, scale, m.accent ?? null, m.form ?? null, m.emphasis ?? false);
   }
   for (const a of scene.annotations) {
     drawAnnotationLabel(p, a, t, scale);

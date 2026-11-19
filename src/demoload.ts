@@ -69,6 +69,7 @@ export async function loadDemo(id: DemoId, options: { confirmed?: boolean } = {}
   state.icons = new Map();
   state.forms = new Map();
   state.accents = new Map();
+  state.emphasis = new Set();
   // The demos ride the default vocabulary (FR-45, FR-54 as amended in
   // v2.6.0): a demo starts as a new work does.
   applyStarterVocabulary(state, state.prefs.lang);

@@ -1,6 +1,6 @@
 // Work-state file (FR-13). The complete work state is written to, and read
 // from, a single local JSON file on explicit Save and Open only. The file
-// carries a schema version. Version 13 is written; files of versions 1 to 13
+// carries a schema version. Version 14 is written; files of versions 1 to 14
 // are read and migrated (what each version adds is recorded below); a file
 // with any other version is rejected.
 //
@@ -91,8 +91,12 @@ export const WORK_STATE_FORMAT = 'mapvibes-work-state';
 // icon, 'none', or null, the form a shape or absent. Files of versions 1 to
 // 12 open with no accents, and a marker's shape chosen by hand becomes its
 // button shape with no symbol.
-export const WORK_STATE_SCHEMA_VERSION = 13;
-export const READABLE_SCHEMA_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+//
+// Schema version 14 adds to version 13, per row, the emphasis of the item's
+// accent (FR-83): true, written only where the row has an accent, or absent.
+// Files of versions 1 to 13 open with no emphasis.
+export const WORK_STATE_SCHEMA_VERSION = 14;
+export const READABLE_SCHEMA_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
 
 export type PresentationMode = 'map' | 'timeline' | 'costs';
 export const PRESENTATION_MODES: readonly PresentationMode[] = ['map', 'timeline', 'costs'];
@@ -137,6 +141,8 @@ export interface WorkStateRow {
   workPhase?: string;
   // Version 13 (FR-82): the item's accent, an icon, or absent for none.
   accent?: MarkerIcon;
+  // Version 14 (FR-83): the accent emphasised on the map, or absent.
+  emphasis?: true;
 }
 
 export interface StoredComment {
@@ -357,6 +363,7 @@ export function serialiseWorkState(state: WorkState, savedAt: Date): string {
         : {}),
       ...(r.workPhase !== undefined ? { workPhase: r.workPhase } : {}),
       ...(r.accent !== undefined ? { accent: r.accent } : {}),
+      ...(r.accent !== undefined && r.emphasis ? { emphasis: true } : {}),
     })),
     background: state.background
       ? {
@@ -570,6 +577,14 @@ export function parseWorkState(text: string): WorkState {
     }
     // Version 13 (FR-82): the accent is one of the library's icons.
     const accent = version >= 13 && o.accent !== undefined ? oneOf(o.accent, ICONS, `rows[${i}].accent`) : undefined;
+    // Version 14 (FR-83): the emphasis is true or absent, and only with an accent.
+    let emphasis: true | undefined;
+    if (version >= 14 && o.emphasis !== undefined) {
+      if (o.emphasis !== true || accent === undefined) {
+        invalid('unknownValue', `rows[${i}].emphasis`);
+      }
+      emphasis = true;
+    }
     return {
       values,
       colour: oneOf(o.colour, COLOURS, `rows[${i}].colour`),
@@ -581,6 +596,7 @@ export function parseWorkState(text: string): WorkState {
       ...(activityImport !== undefined ? { activityImport } : {}),
       ...(workPhase !== undefined ? { workPhase } : {}),
       ...(accent !== undefined ? { accent } : {}),
+      ...(emphasis ? { emphasis } : {}),
     };
   });
   const expected = rowNumbers(rows);

@@ -32,7 +32,7 @@ import { annotationShown, areaLocale } from './annotationpanel';
 import { itemLabel } from './mapstage';
 import { itemSpan, presentationLegendUse, presentationView, scheduleEvents, timelineItems } from './presentationstage';
 import { labelOf, numbered } from './listpanel';
-import { colourLabels, effectiveSeries, effectiveLooks, shownProgramGroups, symbolLabels } from './columnpanels';
+import { colourLabels, effectiveLooks, effectiveSeries, emphasisedIcons, shownProgramGroups, symbolLabels } from './columnpanels';
 import { hideDialog, showDialog } from './narrowlayout';
 
 // Document exports (FR-12, FR-50 to FR-52): the visible presentation stage
@@ -95,9 +95,9 @@ export function documentScene(): StageScene | null {
     return null;
   }
   const t = strings(state.prefs.lang);
-  const markers = placedMarkers(state.rows, state.positions, effectiveLooks(), numbered(), state.accents)
+  const markers = placedMarkers(state.rows, state.positions, effectiveLooks(), numbered(), state.accents, state.emphasis)
     .filter((m) => !state.excluded.has(m.row))
-    .map((m) => ({ position: m.position, symbol: m.shape, colour: m.colour, label: m.label, accent: m.accent, form: m.form }));
+    .map((m) => ({ position: m.position, symbol: m.shape, colour: m.colour, label: m.label, accent: m.accent, form: m.form, emphasis: m.emphasis }));
   return sceneFromStage({
     viewport: view.viewport,
     stage: view.stageSize(),
@@ -107,7 +107,18 @@ export function documentScene(): StageScene | null {
     legendTitle: t.legend,
     // The stage page's legend is used-only, as the Presentation segment's is
     // (FR-75 as amended in the documents' chapter).
-    legend: legendModel(t, state.statuses, shownProgramGroups(), colourLabels(), symbolLabels(), presentationLegendUse()),
+    legend: legendModel(
+      t,
+      state.statuses,
+      shownProgramGroups(),
+      colourLabels(),
+      symbolLabels(),
+      presentationLegendUse(),
+      undefined,
+      false,
+      undefined,
+      emphasisedIcons(state.rows.filter((r) => !state.excluded.has(r))),
+    ),
   });
 }
 

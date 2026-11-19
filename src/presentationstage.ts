@@ -39,7 +39,7 @@ import { CARD_ROLES, detailModel } from './detailspanel';
 import { areaLocale, renderAnnotationVisibility, renderPresentationAnnotations, setPresentationAnnotations } from './annotationpanel';
 import { itemLabel, mapView, markerLabel, renderMapItems } from './mapstage';
 import { groupedNumbering, labelOf, numbered, numberLabel, renderList } from './listpanel';
-import { colourLabels, effectiveLooks, effectiveSeries, iconOf, lookOf, shownProgramGroups, symbolLabels, symbolSource } from './columnpanels';
+import { colourLabels, effectiveLooks, effectiveSeries, emphasisedIcons, iconOf, lookOf, shownProgramGroups, symbolLabels, symbolSource } from './columnpanels';
 import { closeNarrowOverlay, narrowViewer } from './narrowlayout';
 
 // What the visible items carry (FR-75): the used-only filter of the
@@ -135,7 +135,7 @@ export function renderLegends(): void {
   // The Map segment's legend keeps the working palette (FR-6 as amended);
   // the presentation's is used-only (FR-75), with the costs view's series
   // key when the costs view is shown (FR-79 as amended).
-  renderLegend(el('map-legend'), t, state.statuses, groups, labels, names);
+  renderLegend(el('map-legend'), t, state.statuses, groups, labels, names, undefined, undefined, false, undefined, emphasisedIcons(state.rows));
   renderLegend(
     el('presentation-legend'),
     t,
@@ -147,6 +147,7 @@ export function renderLegends(): void {
     costsSeriesLegend(),
     workPhaseShown(),
     scheduleToday(),
+    emphasisedIcons(state.rows.filter((r) => !state.excluded.has(r))),
   );
 }
 
@@ -224,7 +225,7 @@ function renderVisibilityList(): void {
   if (state.viewOnly) {
     return;
   }
-  const entries = placedMarkers(state.rows, state.positions, effectiveLooks(), numbered(), state.accents);
+  const entries = placedMarkers(state.rows, state.positions, effectiveLooks(), numbered(), state.accents, state.emphasis);
   for (const entry of entries) {
     const id = rowId(entry.row);
     const shown = !state.excluded.has(entry.row);
@@ -503,7 +504,9 @@ function programGroupItem(
 }
 
 export function renderGlance(prefix: 'map' | 'presentation', view: MapView | null, selectedId: string | null, onSelect: (id: string) => void): void {
-  const candidates = placedMarkers(state.rows, state.positions, effectiveLooks(), numbered(), state.accents).filter((m) => !state.excluded.has(m.row));
+  const candidates = placedMarkers(state.rows, state.positions, effectiveLooks(), numbered(), state.accents, state.emphasis).filter(
+    (m) => !state.excluded.has(m.row),
+  );
   const inView = view?.background ? markersInView(candidates, view.viewport, view.stageSize()) : [];
   // The presentation's "In view" list follows the presentation's order
   // (FR-70); the Map segment's keeps the numbers' order.
@@ -789,7 +792,9 @@ function renderCard(): void {
 
 export function renderPresentation(): void {
   const onTimeline = timelineMode();
-  const shown = placedMarkers(state.rows, state.positions, effectiveLooks(), numbered(), state.accents).filter((m) => !state.excluded.has(m.row));
+  const shown = placedMarkers(state.rows, state.positions, effectiveLooks(), numbered(), state.accents, state.emphasis).filter(
+    (m) => !state.excluded.has(m.row),
+  );
   const selectable = onTimeline ? state.rows.filter((r) => !state.excluded.has(r)) : shown.map((m) => m.row);
   if (state.presentationSelected && !selectable.some((r) => rowId(r) === state.presentationSelected)) {
     state.presentationSelected = null;
@@ -872,6 +877,8 @@ function renderPresentationGlance(): void {
           return { form: look.form, icon: look.icon, shape: look.icon ?? look.form };
         })(),
         accent: state.accents.get(row) ?? null,
+        // The "In view" list keeps the accent's small disc (FR-83).
+        emphasis: false,
         position: { x: 0, y: 0 },
       },
     ];

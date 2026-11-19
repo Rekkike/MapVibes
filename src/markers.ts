@@ -38,6 +38,8 @@ export interface PlacedMarker {
   shape: MarkerSymbol;
   // The item's accent (FR-82), or null.
   accent: MarkerIcon | null;
+  // Whether the accent is emphasised on the map (FR-83).
+  emphasis: boolean;
   position: Point;
 }
 
@@ -49,6 +51,7 @@ export function placedMarkers(
   looks: MarkerLooks = new Map(),
   numbered: NumberedRow[] = numberRows(rows),
   accents: Map<RowData, MarkerIcon> = new Map(),
+  emphasis: Set<RowData> = new Set(),
 ): PlacedMarker[] {
   const out: PlacedMarker[] = [];
   for (const { row, number, label } of numbered) {
@@ -64,6 +67,7 @@ export function placedMarkers(
         icon: look.icon,
         shape: look.icon ?? look.form,
         accent: accents.get(row) ?? null,
+        emphasis: accents.has(row) && emphasis.has(row),
         position: { ...position },
       });
     }

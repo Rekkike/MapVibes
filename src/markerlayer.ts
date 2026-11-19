@@ -74,9 +74,9 @@ export class MarkerLayer {
       if (source) {
         node.dataset.symbolSource = source;
       }
-      const drawn = `${marker.form}:${marker.shape}:${marker.label}:${marker.accent ?? ''}`;
+      const drawn = `${marker.form}:${marker.shape}:${marker.label}:${marker.accent ?? ''}:${marker.emphasis}`;
       if (node.dataset.drawn !== drawn) {
-        drawSymbol(node, marker.shape, marker.label, marker.accent);
+        drawSymbol(node, marker.shape, marker.label, marker.accent, marker.emphasis);
         node.dataset.drawn = drawn;
       }
       if (marker.accent) {
@@ -84,6 +84,7 @@ export class MarkerLayer {
       } else {
         delete node.dataset.accent;
       }
+      node.classList.toggle('marker-emphasised', marker.emphasis);
       node.setAttribute('aria-label', this.hooks.markerLabel(marker));
       node.title = this.hooks.markerLabel(marker);
       node.style.left = `${screen.x}px`;

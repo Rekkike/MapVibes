@@ -163,7 +163,7 @@ describe('the per-item accent (FR-82)', () => {
     expect(scene.markers.map((m) => m.accent ?? null)).toEqual(['bolt', null]);
     const island = readDataIsland(new DOMParser().parseFromString(app.exportPage()!, 'text/html'))!;
     const data = parseExport(island);
-    expect((JSON.parse(island) as { workState: { schemaVersion: number } }).workState.schemaVersion).toBe(13);
+    expect((JSON.parse(island) as { workState: { schemaVersion: number } }).workState.schemaVersion).toBe(14);
     expect(data.workState.rows.filter((r) => r.accent !== undefined).map((r) => r.accent)).toEqual(['bolt']);
     const doc = new DOMParser().parseFromString(app.exportPage()!, 'text/html');
     await mountApp({

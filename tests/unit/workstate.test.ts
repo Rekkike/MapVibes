@@ -173,8 +173,8 @@ describe('work-state file (FR-13)', () => {
   test('the file carries the format name, schema version, and save time', () => {
     const file = fileOf(sample());
     expect(file.format).toBe(WORK_STATE_FORMAT);
-    expect(file.schemaVersion).toBe(13);
-    expect(WORK_STATE_SCHEMA_VERSION).toBe(13);
+    expect(file.schemaVersion).toBe(14);
+    expect(WORK_STATE_SCHEMA_VERSION).toBe(14);
     expect(file.savedAt).toBe('2026-01-02T03:04:05.000Z');
   });
 
@@ -191,7 +191,7 @@ describe('work-state file (FR-13)', () => {
   });
 
   test('an unknown schema version is rejected and named, never loaded silently', () => {
-    for (const version of [14, 0, '13', null]) {
+    for (const version of [15, 0, '14', null]) {
       const file = { ...fileOf(sample()), schemaVersion: version };
       expect(expectError(JSON.stringify(file), 'unknown-version').detail).toBe(String(version));
     }
@@ -316,7 +316,7 @@ describe('schema version 1 migration (FR-13)', () => {
     expect(migrated.manualColumns).toEqual([]);
     expect(migrated.rows.every((r) => !r.manual)).toBe(true);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(13);
+    expect(JSON.parse(text).schemaVersion).toBe(14);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 
@@ -398,7 +398,7 @@ describe('schema version 2 migration (FR-13)', () => {
   test('a migrated version 2 file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v2Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(13);
+    expect(JSON.parse(text).schemaVersion).toBe(14);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 
@@ -477,7 +477,7 @@ describe('schema version 3 migration (FR-13)', () => {
   test('a migrated version 3 file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v3Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(13);
+    expect(JSON.parse(text).schemaVersion).toBe(14);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 });
@@ -566,7 +566,7 @@ describe('schema version 4 migration (FR-13)', () => {
   test('a migrated version 4 file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v4Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(13);
+    expect(JSON.parse(text).schemaVersion).toBe(14);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 });
@@ -633,7 +633,7 @@ describe('schema version 6: programs, colour labels, at-a-glance columns, annota
     const state = parseWorkState(JSON.stringify(file));
     expect([state.programValues, state.colourLabels, state.glanceColumns, state.annotations]).toEqual([[], {}, null, []]);
     expect(state.background!.projection).toBeUndefined();
-    expect(JSON.parse(serialiseWorkState(state, SAVED_AT)).schemaVersion).toBe(13);
+    expect(JSON.parse(serialiseWorkState(state, SAVED_AT)).schemaVersion).toBe(14);
   });
 
   test('version 6 fields in an older file are ignored, as that version never wrote them', () => {
@@ -863,7 +863,7 @@ describe('activities in the work state (FR-77, schema 10)', () => {
     ];
     state.rows[0].activityImport = { file: 'plan.pdf', page: 1, columns: { label: 'Post', start: 'Från', end: 'Till', progress: 'Klart', duration: 'Längd' } };
     const text = serialiseWorkState(state, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(13);
+    expect(JSON.parse(text).schemaVersion).toBe(14);
     const file = JSON.parse(text);
     expect(file.rows[0].activities).toEqual(state.rows[0].activities);
     expect(file.rows[0].activityImport).toEqual(state.rows[0].activityImport);
@@ -908,7 +908,7 @@ describe('schema version 11: the events and the costs view (FR-79, FR-80)', () =
   test('the events and the costs view round-trip, byte-identically; the date is kept as typed', () => {
     const text = serialiseWorkState(sample(), SAVED_AT);
     const file = JSON.parse(text);
-    expect(file.schemaVersion).toBe(13);
+    expect(file.schemaVersion).toBe(14);
     expect(file.events).toEqual([
       { id: 'e1', date: '2025-06', label: 'Review' },
       { id: 'e2', date: 'next spring', label: 'Decision' },
@@ -1000,7 +1000,7 @@ describe('schema version 12: activity ids, the edited mark, and the work phase (
   test('the ids, the edited mark, and the work phase round-trip, byte-identically; the mark is written only when set', () => {
     const text = serialiseWorkState(withActivities(), SAVED_AT);
     const file = JSON.parse(text);
-    expect(file.schemaVersion).toBe(13);
+    expect(file.schemaVersion).toBe(14);
     expect(file.rows[0].activities).toEqual([
       { id: 'a1', label: 'Excavation', start: '2024-01-08', end: '2024-02-16', progress: 100 },
       { id: 'a2', label: 'Review', start: '2024-03-15', end: '2024-03-20', progress: null, edited: true },
@@ -1161,7 +1161,7 @@ describe('schema version 13: the per-item accent (FR-82)', () => {
     state.rows[3] = { ...state.rows[3], accent: 'check' };
     const text = serialiseWorkState(state, SAVED_AT);
     const file = JSON.parse(text);
-    expect(file.schemaVersion).toBe(13);
+    expect(file.schemaVersion).toBe(14);
     expect(file.rows.map((r: { accent?: string }) => r.accent ?? null)).toEqual(['bolt', null, null, 'check', null]);
     expect(serialiseWorkState(parseWorkState(text), SAVED_AT)).toBe(text);
   });
@@ -1178,5 +1178,27 @@ describe('schema version 13: the per-item accent (FR-82)', () => {
     const older = structuredClone(file);
     older.schemaVersion = 12;
     expect(parseWorkState(JSON.stringify(older)).rows.every((r) => r.accent === undefined)).toBe(true);
+  });
+});
+
+describe('schema version 14: the emphasis marker (FR-83)', () => {
+  test('the emphasis round-trips with its accent, byte-identically; without an accent, or not true, it is refused; version 13 opens with none', () => {
+    const state = sample();
+    state.rows[0] = { ...state.rows[0], accent: 'bolt', emphasis: true };
+    state.rows[3] = { ...state.rows[3], accent: 'check' };
+    const text = serialiseWorkState(state, SAVED_AT);
+    const file = JSON.parse(text);
+    expect(file.schemaVersion).toBe(14);
+    expect(file.rows.map((r: { emphasis?: boolean }) => r.emphasis ?? null)).toEqual([true, null, null, null, null]);
+    expect(serialiseWorkState(parseWorkState(text), SAVED_AT)).toBe(text);
+    const orphan = structuredClone(file);
+    orphan.rows[1].emphasis = true;
+    expect(expectError(JSON.stringify(orphan), 'invalid').detail).toBe('rows[1].emphasis');
+    const notTrue = structuredClone(file);
+    notTrue.rows[0].emphasis = 'yes';
+    expect(expectError(JSON.stringify(notTrue), 'invalid').detail).toBe('rows[0].emphasis');
+    const older = structuredClone(file);
+    older.schemaVersion = 13;
+    expect(parseWorkState(JSON.stringify(older)).rows.every((r) => r.emphasis === undefined)).toBe(true);
   });
 });

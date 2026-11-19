@@ -49,6 +49,7 @@ export function captureWorkState(): WorkState {
       ...(state.activities.get(row)?.length ? { activities: state.activities.get(row)!.map((a) => ({ ...a })) } : {}),
       ...(workPhaseOf(row) !== undefined ? { workPhase: workPhaseOf(row) } : {}),
       ...(state.accents.has(row) ? { accent: state.accents.get(row)! } : {}),
+      ...(state.accents.has(row) && state.emphasis.has(row) ? { emphasis: true as const } : {}),
       ...(state.activityImports.has(row)
         ? { activityImport: { ...state.activityImports.get(row)!, columns: { ...state.activityImports.get(row)!.columns } } }
         : {}),
@@ -400,6 +401,7 @@ export async function applyWorkState(ws: WorkState): Promise<boolean> {
   state.icons = new Map(ws.markers.filter((m) => m.symbol !== null).map((m) => [state.ingested[m.row], m.symbol!]));
   state.forms = new Map(ws.markers.filter((m) => m.form !== undefined).map((m) => [state.ingested[m.row], m.form!]));
   state.accents = new Map(state.ingested.flatMap((row, i) => (ws.rows[i].accent !== undefined ? [[row, ws.rows[i].accent]] : [])));
+  state.emphasis = new Set(state.ingested.filter((_, i) => ws.rows[i].emphasis === true));
   state.areaValues = [...ws.areaValues];
   state.programValues = [...ws.programValues];
   state.colourLabels = { ...ws.colourLabels };

@@ -9,7 +9,7 @@
 //
 // Export format version 2 (v1.1.0) is written; versions 1 and 2 are read;
 // any other version is rejected with a clear message. Version 2 embeds a
-// work state of the current schema version (13 since v2.6.0), which carries
+// work state of the current schema version (14 since v2.7.0), which carries
 // the annotations, the colour labels, the program vocabulary, the at-a-glance
 // columns, the activities, the events, and the saved windows, and adds the
 // program groups as numbered in the exported presentation (FR-17, FR-43).

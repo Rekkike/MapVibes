@@ -367,11 +367,49 @@ export function setAccent(row: RowData, icon: MarkerIcon | null): void {
   }
   if (icon === null) {
     state.accents.delete(row);
+    // Removing the accent removes its emphasis (FR-83).
+    state.emphasis.delete(row);
   } else {
     state.accents.set(row, icon);
   }
   markDirty();
   renderList();
+}
+
+// The emphasis marker (FR-83): the item's accent drawn large on the map,
+// offered only while the item has an accent.
+export function setEmphasis(row: RowData, on: boolean): void {
+  const next = on && state.accents.has(row);
+  if (state.emphasis.has(row) === next) {
+    return;
+  }
+  if (next) {
+    state.emphasis.add(row);
+  } else {
+    state.emphasis.delete(row);
+  }
+  markDirty();
+  renderList();
+}
+
+// The icons emphasised on the map among the given items (FR-83), for the
+// legend's emphasis form.
+export function emphasisedIcons(rows: RowData[]): Set<MarkerSymbol> {
+  return new Set(rows.flatMap((row) => (state.emphasis.has(row) && state.accents.has(row) ? [state.accents.get(row)!] : [])));
+}
+
+// The emphasis's checkbox of an item's card.
+export function emphasisToggle(row: RowData, label: string): HTMLLabelElement {
+  const wrap = document.createElement('label');
+  wrap.className = 'emphasis-toggle';
+  const box = document.createElement('input');
+  box.type = 'checkbox';
+  box.className = 'emphasis-box';
+  box.checked = state.emphasis.has(row);
+  box.disabled = !state.accents.has(row);
+  box.addEventListener('change', () => setEmphasis(row, box.checked));
+  wrap.append(box, document.createTextNode(` ${label}`));
+  return wrap;
 }
 
 // The accent picker's options: none, then the eight icons, named as the
