@@ -322,11 +322,19 @@ export function colourLabels(): ColourLabels {
   return { green: colourLabel('green'), blue: colourLabel('blue'), yellow: colourLabel('yellow'), red: colourLabel('red') };
 }
 
-// Editable symbol labels (FR-54): the user's name for a symbol, or its name
-// in the interface language.
+// Editable symbol labels (FR-54 as amended in v2.6.0): the user's name for a
+// symbol, or empty for an unnamed symbol, which is shown and never explained.
 export function symbolLabel(symbol: MarkerSymbol): string {
-  const label = (state.symbolLabels[symbol] ?? '').trim();
-  return label !== '' ? label : shapeName(strings(state.prefs.lang), symbol);
+  return (state.symbolLabels[symbol] ?? '').trim();
+}
+
+// A symbol as a picker's option names it: a native option must carry text, so
+// the symbol's own name identifies it, beside the user's label when it has
+// one (FR-54 as amended in v2.6.0).
+export function symbolChoiceName(symbol: MarkerSymbol): string {
+  const own = shapeName(strings(state.prefs.lang), symbol);
+  const label = symbolLabel(symbol);
+  return label === '' || label === own ? own : `${label} (${own})`;
 }
 
 export function symbolLabels(): SymbolLabels {
@@ -368,7 +376,7 @@ export function renderSymbolPanel(): void {
     input.className = 'vocab-name symbol-label-input';
     input.dataset.symbol = symbol;
     input.value = state.symbolLabels[symbol] ?? '';
-    input.placeholder = shapeName(t, symbol);
+    input.placeholder = t.symbolUnnamed;
     input.setAttribute('aria-label', fill(t.symbolLabelFor, { symbol: shapeName(t, symbol) }));
     input.addEventListener('change', () => setSymbolLabel(symbol, input.value));
     li.append(swatch, input);
@@ -510,7 +518,7 @@ function symbolSelect(value: string, label: string, onChange: (symbol: string) =
   for (const symbol of SYMBOLS) {
     const opt = document.createElement('option');
     opt.value = symbol;
-    opt.textContent = symbolLabel(symbol);
+    opt.textContent = symbolChoiceName(symbol);
     select.appendChild(opt);
   }
   select.value = value;

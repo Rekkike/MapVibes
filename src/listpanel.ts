@@ -117,12 +117,10 @@ export function startEmptyList(): void {
 }
 
 function resetList(headers: string[], rows: Record<string, string>[]): void {
-  // A new list discards the demo's provided colour labels along with the demo
-  // (FR-41 as amended), and starts with no at-a-glance choice: a
-  // choice belongs to the list it was made on (FR-46 as amended).
-  if (demoLoaded) {
-    state.colourLabels = {};
-  }
+  // A new list starts with no at-a-glance choice: a choice belongs to the
+  // list it was made on (FR-46 as amended). Since v2.6.0 the demos provide
+  // no colour labels of their own (they ride the default vocabulary), so the
+  // work's labels carry on.
   state.glanceColumns = null;
   // A new list opens the timeline and the costs view at their fitted views
   // (FR-67, FR-79), and discards the demo's provided events with the demo

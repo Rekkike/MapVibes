@@ -33,6 +33,7 @@ import {
   VALUE_VOCABULARIES,
 } from './columnpanels';
 import { followDemoLanguage, resetDemo } from './demoload';
+import { applyStarterVocabulary, followStarterVocabulary } from './starter';
 import { applyDemoPickerLabels, wireDemoPicker } from './demopicker';
 import { appNarrow, narrowApplication, refitOnClassChange, startNarrowApplication, startNarrowViewer } from './narrowlayout';
 import { startQuietChrome } from './quietchrome';
@@ -248,8 +249,14 @@ function renderStaticText(): void {
 }
 
 function setLanguage(lang: Lang): void {
+  const from = state.prefs.lang;
   state.prefs.lang = lang;
   followDemoLanguage(lang);
+  // The default vocabulary's names the user has not edited follow the
+  // language (FR-54 as amended).
+  if (followStarterVocabulary(from, lang) && !state.viewOnly && state.headers.length > 0) {
+    markDirty();
+  }
   // Choices made in the exported viewer are not remembered (FR-20).
   if (!state.viewOnly) {
     savePreferences(state.prefs);
@@ -640,6 +647,11 @@ export function main(): void {
     state.segment = 'presentation';
   }
   initialisePreferences();
+  // A new work starts with the default vocabulary (FR-45 and FR-54 as)
+  // amended); the exported viewer takes the file's own.
+  if (island === null) {
+    applyStarterVocabulary();
+  }
   initialiseMapView();
   initialisePresentation();
   initialiseFetch();

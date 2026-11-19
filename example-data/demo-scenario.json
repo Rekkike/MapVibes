@@ -386,20 +386,6 @@
     }
   },
   "symbolsFromStatus": true,
-  "colourLabels": {
-    "en": {
-      "green": "On track",
-      "blue": "Under way",
-      "yellow": "Needs attention",
-      "red": "Stopped"
-    },
-    "sv": {
-      "green": "Enligt plan",
-      "blue": "På gång",
-      "yellow": "Kräver uppmärksamhet",
-      "red": "Stoppad"
-    }
-  },
   "glanceColumns": {
     "en": [
       "Programme",

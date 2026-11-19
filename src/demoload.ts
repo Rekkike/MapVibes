@@ -14,6 +14,7 @@ import { changeCount, markDirty, setWorkMessage, workMessage } from './workfile'
 import { mapView, useOsmText } from './mapstage';
 import { restoreCostsView, restoreTimelineView } from './presentationstage';
 import { applyImport, renderList } from './listpanel';
+import { applyStarterVocabulary } from './starter';
 import { setEventMessage } from './columnpanels';
 import { setSegment } from './segmentswitch';
 
@@ -66,7 +67,9 @@ export async function loadDemo(id: DemoId, options: { confirmed?: boolean } = {}
   state.excluded = new Set();
   state.positions = new Map();
   state.shapes = new Map();
-  state.symbolLabels = {};
+  // The demos ride the default vocabulary (FR-45, FR-54 as amended in
+  // v2.6.0): a demo starts as a new work does.
+  applyStarterVocabulary();
   state.numbering = 'global';
   state.listView = 'flat';
   state.detailsId = null;
@@ -127,7 +130,7 @@ export async function loadDemo(id: DemoId, options: { confirmed?: boolean } = {}
   }
   // The demo's own colour labels, at-a-glance columns, and annotations
   // (FR-41 as amended) replace any earlier ones.
-  state.colourLabels = { ...scenario.colourLabels };
+  state.colourLabels = { ...state.colourLabels, ...scenario.colourLabels };
   state.glanceColumns = [...scenario.glanceColumns];
   state.annotations = [];
   state.annotationLinks = new Map();

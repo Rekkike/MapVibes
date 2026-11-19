@@ -172,7 +172,11 @@ export function renderDetails(container: HTMLElement, model: DetailModel, labels
   };
   fact(labels.number, model.number, 'details-number');
   fact(labels.colour, model.colourName, 'details-colour');
-  fact(labels.symbol, model.symbolName, 'details-symbol');
+  // An unnamed symbol is shown on the badge, never explained (FR-54 as
+  // amended in v2.6.0).
+  if (model.symbolName !== '') {
+    fact(labels.symbol, model.symbolName, 'details-symbol');
+  }
 
   const fields = el('dl', 'details-fields');
   // A series' columns go into its group, placed where its first column

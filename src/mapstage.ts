@@ -31,7 +31,7 @@ import {
 } from './annotationpanel';
 import { applyHighlight, renderGlance, renderLegends, renderPresentation, setHover, syncPresentationBackground } from './presentationstage';
 import { MAX_IMPORT_BYTES, numbered, numberLabel } from './listpanel';
-import { effectiveSymbols, symbolLabel, symbolOf, symbolSource } from './columnpanels';
+import { effectiveSymbols, symbolChoiceName, symbolOf, symbolSource } from './columnpanels';
 import { closeNarrowOverlay, hideDialog, narrowApplication, showDialog } from './narrowlayout';
 
 export let mapView: MapView | null = null;
@@ -288,7 +288,7 @@ export function renderMapItems(): void {
     }
   }
   for (const opt of shapeSelect.options) {
-    opt.textContent = symbolLabel(opt.value as MarkerSymbol);
+    opt.textContent = symbolChoiceName(opt.value as MarkerSymbol);
   }
   shapeSelect.value = selected?.shape ?? 'circle';
   // The presentation's legend follows the visibility (FR-75): recomputed on
