@@ -101,6 +101,8 @@ export interface LegendItem {
   phase?: true;
   // The today entry (FR-75 as noted).
   today?: true;
+  // An icon emphasised on the map (FR-83): drawn in the emphasis form.
+  emphasis?: true;
 }
 
 export interface LegendSection {
@@ -126,6 +128,9 @@ export function legendModel(
   phase = false,
   // Today's date while a schedule view is shown (FR-75 as noted).
   today?: string,
+  // The icons emphasised on the map among the items the legend speaks for
+  // (FR-83): their entries are drawn in the emphasis form.
+  emphasised: Set<MarkerSymbol> = new Set(),
 ): LegendSection[] {
   const sections: LegendSection[] = [
     {
@@ -147,6 +152,7 @@ export function legendModel(
     (s) => ({
       label: symbolLabels[s].trim(),
       symbol: s,
+      ...(emphasised.has(s) ? { emphasis: true as const } : {}),
     }),
   );
   // A symbols section with nothing to explain does not appear.
@@ -212,6 +218,9 @@ function legendEntry(item: LegendItem): HTMLLIElement {
   if (item.colour) {
     return entry(`marker-${item.colour} marker-shape-circle`, item.label, { colour: item.colour });
   }
+  if (item.emphasis) {
+    return entry(`legend-emphasis-swatch ${symbolClasses(item.symbol!)}`, item.label, { shape: item.symbol!, emphasis: 'true' }, item.symbol);
+  }
   if (item.status !== undefined) {
     return entry(symbolClasses(item.symbol!), item.label, { status: item.status, shape: item.symbol! }, item.symbol);
   }
@@ -229,6 +238,7 @@ export function renderLegend(
   series?: SeriesLegend,
   phase = false,
   today?: string,
+  emphasised: Set<MarkerSymbol> = new Set(),
 ): void {
   container.innerHTML = '';
   const heading = document.createElement('span');
@@ -238,7 +248,7 @@ export function renderLegend(
   container.setAttribute('role', 'group');
   container.setAttribute('aria-labelledby', heading.id);
   container.append(heading);
-  for (const section of legendModel(t, statuses, numberGroups, colourLabels, symbolLabels, used, series, phase, today)) {
+  for (const section of legendModel(t, statuses, numberGroups, colourLabels, symbolLabels, used, series, phase, today, emphasised)) {
     const group = document.createElement('div');
     group.className = 'legend-group';
     group.dataset.kind = section.kind;

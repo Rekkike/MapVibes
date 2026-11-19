@@ -144,6 +144,7 @@ function buildMoves(): Move[] {
       'marker-shape-label',
       'marker-form-label',
       'marker-accent-label',
+      'marker-emphasis-label',
       'marker-remove',
     ].map((id) =>
       move(

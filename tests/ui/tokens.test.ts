@@ -146,6 +146,17 @@ describe('the contrast of every token pair (FR-29 as amended in v1.17.0)', () =>
     }
   });
 
+  // The emphasis marker's ink (FR-83, FR-29 as noted in v2.7.0): a derived
+  // colour, recorded, at 4.5:1 or more on the marker yellow in both themes,
+  // where the marker red is not.
+  test('the emphasis ink is recorded and keeps 4.5:1 on the marker yellow, in both themes', () => {
+    expect([light['--emphasis-ink'], dark['--emphasis-ink']]).toEqual(['#8f1010', '#8f1010']);
+    for (const [name, theme] of THEMES) {
+      expect(contrast(theme['--emphasis-ink'], theme['--marker-yellow']), name).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(theme['--marker-red'], theme['--marker-yellow']), name).toBeLessThan(4.5);
+    }
+  });
+
   test('marker numbers keep their 4.5:1 floor, in both themes', () => {
     for (const [name, theme] of THEMES) {
       for (const colour of ['green', 'blue', 'red']) {

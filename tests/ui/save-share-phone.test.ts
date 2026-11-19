@@ -173,7 +173,7 @@ describe('the share action (FR-13 as noted in v1.15.0)', () => {
     expect(files[0].type).toBe('application/json');
     const text = await blobText(files[0]);
     const parsed = JSON.parse(text);
-    expect(parsed.schemaVersion).toBe(13);
+    expect(parsed.schemaVersion).toBe(14);
     expect(status()).toBe('The work file was handed to the operating system\u2019s share sheet.');
     // Sharing is not saving.
     expect(dirty()).toBe(true);

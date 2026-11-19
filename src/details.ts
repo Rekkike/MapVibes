@@ -115,6 +115,8 @@ export interface DetailHandlers {
     commentForm(): HTMLElement;
     // The accent's picker (FR-82).
     accentControl(): HTMLElement;
+    // The emphasis's checkbox (FR-83).
+    emphasisControl(): HTMLElement;
   };
 }
 
@@ -197,7 +199,9 @@ export function renderDetails(container: HTMLElement, model: DetailModel, labels
     accent = el('dl', 'details-accent');
     const dd = el('dd');
     dd.appendChild(handlers.edit.accentControl());
-    accent.append(el('dt', undefined, labels.accent), dd);
+    const emphasis = el('dd', 'details-emphasis');
+    emphasis.appendChild(handlers.edit.emphasisControl());
+    accent.append(el('dt', undefined, labels.accent), dd, emphasis);
   } else if (model.accent !== null && model.accentName !== '') {
     fact(labels.accent, model.accentName, 'details-accent-name');
   }

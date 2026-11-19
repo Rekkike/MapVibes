@@ -13,7 +13,7 @@ import { annotationName, areaLocale, linkedRow } from './annotationpanel';
 import { itemLabel, mapView, renderMapItems } from './mapstage';
 import { economicsFor, openEconomics, shownCardColumns } from './presentationstage';
 import { detailValueInput, fitToContent, labelOf, numberLabel, statusCell } from './listpanel';
-import { accentSelect, colourLabel, effectiveSeries, formOf, symbolLabel, symbolOf } from './columnpanels';
+import { accentSelect, colourLabel, emphasisToggle, effectiveSeries, formOf, symbolLabel, symbolOf } from './columnpanels';
 import { isIcon } from './symbols';
 import { narrowApplication } from './narrowlayout';
 
@@ -214,6 +214,7 @@ export function renderDetailsPanel(): void {
       },
       commentForm: () => commentForm(row, t, draft),
       accentControl: () => accentSelect(row, `${t.accentSymbol}, ${t.numberColumn} ${model.number}`),
+      emphasisControl: () => emphasisToggle(row, t.emphasisLabel),
     },
   });
   if (target !== panel) {
@@ -243,11 +244,16 @@ function patchDetails(panel: HTMLElement, fresh: HTMLElement): void {
   swap('.details-badge');
   swap('.details-title');
   swap('.details-facts');
-  // The accent's picker keeps its node while focused, taking the fresh value.
-  const accentNow = panel.querySelector<HTMLSelectElement>('.details-accent select');
-  const accentNext = fresh.querySelector<HTMLSelectElement>('.details-accent select');
-  if (accentNow && accentNext && accentNow === document.activeElement) {
-    accentNow.value = accentNext.value;
+  // The accent's picker and the emphasis's checkbox keep their nodes while
+  // one of them has focus, taking the fresh values.
+  const accentNow = panel.querySelector<HTMLElement>('.details-accent');
+  const accentNext = fresh.querySelector<HTMLElement>('.details-accent');
+  if (accentNow && accentNext && accentNow.contains(document.activeElement)) {
+    accentNow.querySelector<HTMLSelectElement>('select')!.value = accentNext.querySelector<HTMLSelectElement>('select')!.value;
+    const box = accentNow.querySelector<HTMLInputElement>('.emphasis-box')!;
+    const nextBox = accentNext.querySelector<HTMLInputElement>('.emphasis-box')!;
+    box.checked = nextBox.checked;
+    box.disabled = nextBox.disabled;
   } else {
     swap('.details-accent');
   }

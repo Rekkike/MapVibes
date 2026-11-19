@@ -77,6 +77,8 @@ interface AppState {
   forms: Map<RowData, MarkerShape>;
   // The per-item accent (FR-82): one icon per item, or none where unset.
   accents: Map<RowData, MarkerIcon>;
+  // The items whose accent is emphasised on the map (FR-83).
+  emphasis: Set<RowData>;
   selectedMarker: string | null;
   // True when the work has changed since it was last saved or opened.
   dirty: boolean;
@@ -159,6 +161,7 @@ export const state: AppState = {
   icons: new Map(),
   forms: new Map(),
   accents: new Map(),
+  emphasis: new Set(),
   selectedMarker: null,
   dirty: false,
   excluded: new Set(),

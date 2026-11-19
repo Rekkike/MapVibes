@@ -358,3 +358,27 @@ describe('an icon inside a button shape in the documents (FR-26 as amended)', ()
     expect(markerSize('diamond', '1', 'diamond')).toEqual(markerSize('diamond', '1'));
   });
 });
+
+describe('the emphasis marker in the documents (FR-83)', () => {
+  test('an emphasised accent draws the large disc in its place: the ring, the yellow, the icon in the emphasis ink', () => {
+    const calls: Array<[string, unknown[]]> = [];
+    const painter = new Proxy(
+      {},
+      {
+        get:
+          (_, name) =>
+          (...args: unknown[]) => {
+            calls.push([String(name), args]);
+            return 0;
+          },
+      },
+    ) as Painter;
+    drawMarker(painter, 50, 50, 'gear', 'green', '1', 1, 'bolt', null, true);
+    const paths = calls.filter(([n]) => n === 'svgPath').map(([, a]) => a[0]);
+    expect(paths).toEqual([ICON_PATHS.gear, ICON_PATHS.bolt]);
+    const colours = calls.filter(([n]) => n === 'fillColour' || n === 'strokeColour').map(([n, a]) => `${n}:${String(a[0])}`);
+    expect(colours).toContain(`fillColour:${String(PALETTE.yellow)}`);
+    expect(colours).toContain(`strokeColour:${String(PALETTE.emphasisInk)}`);
+    expect(PALETTE.emphasisInk).toEqual([0x8f, 0x10, 0x10]);
+  });
+});

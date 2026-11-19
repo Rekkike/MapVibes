@@ -22,6 +22,9 @@
   --accent-soft: #ebe5f8;
   /* Derived for the raised bar (lightness only, each hue kept). */
   --error: #a02020;
+  /* The emphasis marker's ink (FR-83, FR-29 as noted in v2.7.0): a deep red
+     at 4.73:1 on the marker yellow. */
+  --emphasis-ink: #8f1010;
   --warning: #774700;
   --stage-bg: #e9ecf1;
   --input-bg: #ffffff;
@@ -97,6 +100,8 @@ html[data-theme='dark'] {
   --on-accent: #17112b;
   --accent-soft: #2d2649;
   --error: #e49292;
+  /* 5.66:1 on the dark theme's marker yellow. */
+  --emphasis-ink: #8f1010;
   --warning: #f0b45a;
   --stage-bg: #252931;
   --input-bg: #1a1d23;
@@ -1510,6 +1515,37 @@ input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [typ
   width: 0.9em;
   height: 0.9em;
   stroke-width: 3;
+}
+
+/* The legend's entry of an emphasised icon (FR-83): the same yellow and ink. */
+.legend-swatch.legend-emphasis-swatch {
+  --marker-fill: var(--marker-yellow);
+  color: var(--emphasis-ink);
+}
+
+/* The emphasis marker (FR-83): the accent drawn large on the map, the
+   owner's visual spec -- the icon in red (the emphasis ink, 4.5:1 or more
+   on the yellow) on a yellow filled circle, 2.75 rem across, larger than the
+   ordinary marker (1.75 rem high), with the markers' ring and halo. It
+   stands beyond the marker's upper right corner, overlapping it by 0.5 rem,
+   and covers neither the number nor the symbol. */
+.marker-accent.marker-emphasis {
+  top: auto;
+  right: auto;
+  left: calc(100% - var(--space-8));
+  bottom: calc(100% - var(--space-8));
+  width: 2.75rem;
+  height: 2.75rem;
+  background: var(--marker-yellow);
+  color: var(--emphasis-ink);
+  box-shadow: 0 0 0 0.125rem var(--marker-ring);
+  filter: drop-shadow(0 0 1px var(--marker-halo));
+}
+
+.marker-accent.marker-emphasis > .marker-glyph {
+  width: 1.75rem;
+  height: 1.75rem;
+  stroke-width: 2.6;
 }
 
 /* A marker or badge with an accent reserves room on its right, so that the

@@ -78,6 +78,7 @@ function renderStaticText(): void {
   el('marker-shape-text').textContent = t.markerShape;
   el('marker-accent-text').textContent = t.accentSymbol;
   el('marker-form-text').textContent = t.markerForm;
+  el('marker-emphasis-text').textContent = t.emphasisLabel;
   el('work-save').textContent = t.workSave;
   el('work-share').textContent = t.workShare;
   el('area-panel-summary').textContent = t.areaPanel;
