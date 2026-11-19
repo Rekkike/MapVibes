@@ -75,8 +75,12 @@ export function startQuietChrome(): void {
     return;
   }
   started = true;
+  // In the capture phase, so that every interaction counts wherever it lands:
+  // the schedule views stop the pointer and the wheel at their root, and the
+  // card stops the pointer, before a bubbling listener on the window could
+  // see them (the release workflow's run 72 of v2.7.0).
   for (const type of ['pointermove', 'pointerdown', 'touchstart', 'keydown', 'wheel']) {
-    window.addEventListener(type, wake, { passive: true });
+    window.addEventListener(type, wake, { passive: true, capture: true });
   }
   wake();
 }
