@@ -111,7 +111,8 @@ describe('document exports in a browser, offline (FR-50, FR-51)', () => {
     for (let n = 1; n <= 11; n++) {
       expect(stage, String(n)).toContain(String(n));
     }
-    for (const text of ['Jetty footprint', 'Survey zone', 'Planned footpath', 'Legend', 'On track', 'Lightning bolt']) {
+    // Since v2.6.0 the demo rides the default vocabulary (FR-45, FR-54 as amended).
+    for (const text of ['Jetty footprint', 'Survey zone', 'Planned footpath', 'Legend', 'Internal project', 'OPS quay']) {
       expect(pages[0]).toContain(text);
     }
     // The timeline pages: the fitted axis (2-year ticks over 2026..2036), the

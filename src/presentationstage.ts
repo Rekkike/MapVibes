@@ -8,7 +8,7 @@ import { MapView } from './mapview';
 import { MarkerLayer } from './markerlayer';
 import { renderLegend, type LegendUse, type SeriesLegend } from './legend';
 import { renderCard as renderCardContent } from './details';
-import { drawSymbol, symbolClasses } from './symbols';
+import { drawSymbol, lookClasses, type MarkerIcon } from './symbols';
 import { markersInView } from './glance';
 import { DEFAULT_SHAPE, placedMarkers, type PlacedMarker } from './markers';
 import { BUTTON_ZOOM_FACTOR, imageToScreen, type Point, type Viewport } from './viewport';
@@ -39,7 +39,7 @@ import { CARD_ROLES, detailModel } from './detailspanel';
 import { areaLocale, renderAnnotationVisibility, renderPresentationAnnotations, setPresentationAnnotations } from './annotationpanel';
 import { itemLabel, mapView, markerLabel, renderMapItems } from './mapstage';
 import { groupedNumbering, labelOf, numbered, numberLabel, renderList } from './listpanel';
-import { colourLabels, effectiveSeries, effectiveSymbols, shownProgramGroups, symbolLabels, symbolOf, symbolSource } from './columnpanels';
+import { colourLabels, effectiveLooks, effectiveSeries, iconOf, lookOf, shownProgramGroups, symbolLabels, symbolSource } from './columnpanels';
 import { closeNarrowOverlay, narrowViewer } from './narrowlayout';
 
 // What the visible items carry (FR-75): the used-only filter of the
@@ -63,7 +63,10 @@ export function presentationLegendUse(): LegendUse {
   }
   return {
     colours: new Set(shown.map((r) => r.colour)),
-    symbols: new Set(shown.map((r) => symbolOf(r))),
+    // An item's accent counts among the symbols it carries (FR-75 as amended, FR-82).
+    // The icons the items carry and their accents; a button shape is never
+    // explained (FR-26 as amended in v2.6.0).
+    symbols: new Set(shown.flatMap((r) => [iconOf(r), state.accents.get(r) ?? null].filter((s): s is MarkerIcon => s !== null))),
     statuses: new Set(statusKey === undefined ? [] : shown.map((r) => normalise(r.values[statusKey] ?? ''))),
     groups,
   };
@@ -221,7 +224,7 @@ function renderVisibilityList(): void {
   if (state.viewOnly) {
     return;
   }
-  const entries = placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered());
+  const entries = placedMarkers(state.rows, state.positions, effectiveLooks(), numbered(), state.accents);
   for (const entry of entries) {
     const id = rowId(entry.row);
     const shown = !state.excluded.has(entry.row);
@@ -234,8 +237,8 @@ function renderVisibilityList(): void {
     }
     const name = itemLabel(entry.row, entry.label);
     const badge = document.createElement('span');
-    badge.className = `marker-badge marker-${entry.colour} ${symbolClasses(entry.shape)}`;
-    drawSymbol(badge, entry.shape, entry.label);
+    badge.className = `marker-badge marker-${entry.colour} ${lookClasses(entry)}`;
+    drawSymbol(badge, entry.shape, entry.label, entry.accent);
     const text = document.createElement('span');
     text.className = 'placement-label';
     text.textContent = name;
@@ -294,8 +297,8 @@ function glanceEntry(marker: PlacedMarker, selectedId: string | null, onSelect: 
     entry.dataset.selected = 'true';
   }
   const badge = document.createElement('span');
-  badge.className = `marker-badge marker-${marker.colour} ${symbolClasses(marker.shape)}`;
-  drawSymbol(badge, marker.shape, marker.label);
+  badge.className = `marker-badge marker-${marker.colour} ${lookClasses(marker)}`;
+  drawSymbol(badge, marker.shape, marker.label, marker.accent);
   const text = document.createElement('span');
   text.className = 'glance-text';
   const name = document.createElement('span');
@@ -500,7 +503,7 @@ function programGroupItem(
 }
 
 export function renderGlance(prefix: 'map' | 'presentation', view: MapView | null, selectedId: string | null, onSelect: (id: string) => void): void {
-  const candidates = placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered()).filter((m) => !state.excluded.has(m.row));
+  const candidates = placedMarkers(state.rows, state.positions, effectiveLooks(), numbered(), state.accents).filter((m) => !state.excluded.has(m.row));
   const inView = view?.background ? markersInView(candidates, view.viewport, view.stageSize()) : [];
   // The presentation's "In view" list follows the presentation's order
   // (FR-70); the Map segment's keeps the numbers' order.
@@ -786,7 +789,7 @@ function renderCard(): void {
 
 export function renderPresentation(): void {
   const onTimeline = timelineMode();
-  const shown = placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered()).filter((m) => !state.excluded.has(m.row));
+  const shown = placedMarkers(state.rows, state.positions, effectiveLooks(), numbered(), state.accents).filter((m) => !state.excluded.has(m.row));
   const selectable = onTimeline ? state.rows.filter((r) => !state.excluded.has(r)) : shown.map((m) => m.row);
   if (state.presentationSelected && !selectable.some((r) => rowId(r) === state.presentationSelected)) {
     state.presentationSelected = null;
@@ -852,7 +855,7 @@ function renderPresentationGlance(): void {
     return;
   }
   const lines = schedule()?.visibleLines() ?? [];
-  const symbols = effectiveSymbols();
+  const looks = effectiveLooks();
   const entries: PlacedMarker[] = lines.flatMap((line) => {
     const row = rowById(line.item.id);
     if (!row) {
@@ -864,7 +867,11 @@ function renderPresentationGlance(): void {
         number: state.rows.indexOf(row) + 1,
         label: line.item.label,
         colour: row.colour,
-        shape: symbols.get(row) ?? DEFAULT_SHAPE,
+        ...(() => {
+          const look = looks.get(row) ?? { form: DEFAULT_SHAPE, icon: null };
+          return { form: look.form, icon: look.icon, shape: look.icon ?? look.form };
+        })(),
+        accent: state.accents.get(row) ?? null,
         position: { x: 0, y: 0 },
       },
     ];
@@ -988,10 +995,10 @@ function newScheduleView(id: string, kind: 'timeline' | 'costs'): TimelineView {
       },
       badge: (line: TimelineLine) => {
         const row = rowById(line.item.id);
-        const shape = (row && effectiveSymbols().get(row)) ?? DEFAULT_SHAPE;
+        const look = (row && lookOf(row)) || { form: DEFAULT_SHAPE, icon: null };
         const badge = document.createElement('span');
-        badge.className = `marker-badge marker-${line.item.colour} ${symbolClasses(shape)}`;
-        drawSymbol(badge, shape, line.item.label);
+        badge.className = `marker-badge marker-${line.item.colour} ${lookClasses(look)}`;
+        drawSymbol(badge, look.icon ?? look.form, line.item.label, (row && state.accents.get(row)) ?? null);
         return badge;
       },
     },

@@ -187,7 +187,7 @@ describe('the demo extension (FR-41 as amended in v1.1.0)', () => {
       // The demo is in the interface language (FR-41 as amended in v1.3.1).
       const texts = {
         en: {
-          colours: ['On track', 'Under way', 'Needs attention', 'Stopped'],
+          colours: ['Internal project', 'External project', 'Pause', 'Stop'],
           zone: 'Survey zone',
           groups: ['Heritage route', 'Green links'],
           jetty: 'Lake jetty',
@@ -195,7 +195,7 @@ describe('the demo extension (FR-41 as amended in v1.1.0)', () => {
           footprint: 'Jetty footprint',
         },
         sv: {
-          colours: ['Enligt plan', 'På gång', 'Kräver uppmärksamhet', 'Stoppad'],
+          colours: ['Internt projekt', 'Externt projekt', 'Paus', 'Stopp'],
           zone: 'Inventeringszon',
           groups: ['Kulturarvsleden', 'Gröna stråk'],
           jetty: 'Sjöbryggan',
@@ -203,7 +203,8 @@ describe('the demo extension (FR-41 as amended in v1.1.0)', () => {
           footprint: 'Bryggans fotavtryck',
         },
       }[lang];
-      // The user-named colour labels in the legend; the data never colours.
+      // The colour labels in the legend: since v2.6.0 the demo rides the default
+      // vocabulary (FR-45 as amended); the data never colours.
       expect([...byId('map-legend').querySelectorAll('.legend-entry[data-colour]')].map((e) => e.textContent)).toEqual(texts.colours);
       // The annotations: the footprint, the free rectangle, the dashed line.
       const shapes = [...byId('map-annotations').querySelectorAll('g.annotation')];

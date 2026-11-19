@@ -3,8 +3,10 @@ import { byId, flush, importExampleWorkbook, mountApp, pointer, presentationMark
 import { demoScenario, demoWorkbook } from '../../src/demo';
 import { importColumns, parseWorkbook } from '../../src/ingest';
 import { shapeName } from '../../src/legend';
-import { SYMBOLS } from '../../src/symbols';
+import { ICONS } from '../../src/symbols';
+import { SHAPES } from '../../src/markers';
 import { strings, type Lang } from '../../src/i18n';
+import { starterColourLabels, starterSymbolLabels } from '../../src/starter';
 
 vi.mock('../../src/osmrender', () => ({
   renderPlanToDataUrl: (plan: { width: number; height: number }) => `data:image/png;base64,T1NN${plan.width}x${plan.height}`,
@@ -73,6 +75,10 @@ function demoTexts(lang: Lang): Set<string> {
       ...(scenario.preset.programs ?? []),
       ...(scenario.preset.statuses ?? []).map((s) => s.name),
       ...Object.values(scenario.colourLabels),
+      // Since v2.6.0 the demo rides the default vocabulary (FR-45, FR-54 as
+      // amended): its names are texts of the language too.
+      ...Object.values(starterColourLabels(lang)),
+      ...Object.values(starterSymbolLabels(lang)),
       ...scenario.annotations.map((a) => a.label),
       ...scenario.items.flatMap((i) => i.comments.map((c) => c.text)),
       scenario.preset.name,
@@ -183,31 +189,48 @@ function options(selector: string): string[] {
 function expectProvided(lang: Lang, loadedIn: Lang = lang): void {
   const scenario = demoScenario('parkland', lang);
   const t = strings(lang);
-  const colours = ['green', 'blue', 'yellow', 'red'].map((c) => scenario.colourLabels[c as 'green']!);
+  // The demo rides the default vocabulary (FR-45 and FR-54 as amended in
+  // v2.6.0): the colours carry its names, and the pickers name each symbol by
+  // its label beside its own name, an unnamed one by its own name.
+  const starter = starterSymbolLabels(lang);
+  const colours = Object.values(starterColourLabels(lang));
   const statuses = scenario.preset.statuses!.map((s) => s.name);
-  const symbols = SYMBOLS.map((s) => shapeName(t, s));
+  // Since the second stop of v2.6.0 the symbol pickers offer no symbol and
+  // the eight icons; the button shapes have their own selector, named by
+  // their own words (FR-26 and FR-34 as amended).
+  const symbols = [t.symbolNone, ...ICONS.map((s) => (starter[s] ? `${starter[s]} (${shapeName(t, s)})` : shapeName(t, s)))];
+  const forms = SHAPES.map((s) => shapeName(t, s));
+  // The Map segment's palette of symbols: the named symbols whose glyph the
+  // statuses line does not show (FR-75 as amended in v2.6.0); the statuses
+  // use the light bulb, the magnifying glass, the hammer and shovel, the
+  // pause bars, the cross, and the checkmark.
+  const named = [starter.gear!, starter.bolt!];
   // The Map segment's legend keeps the whole working palette (FR-6 as
   // amended in v1.9.0); the presentation's is used-only (FR-75), so every
   // entry it shows is one of the full lists in the same language, and the
   // demo's visible items carry all four colours.
   expect(legendLabels('map-legend', 'colour')).toEqual(colours);
-  expect(legendLabels('map-legend', 'shape')).toEqual(symbols);
+  expect(legendLabels('map-legend', 'shape')).toEqual(named);
   expect(legendLabels('map-legend', 'status')).toEqual(statuses);
   expect(legendLabels('presentation-legend', 'colour')).toEqual(colours);
   for (const kind of ['shape', 'status'] as const) {
     const shown = legendLabels('presentation-legend', kind);
-    expect(shown.length).toBeGreaterThan(0);
+    // The demo's markers show their statuses' glyphs, explained by the
+    // statuses line alone.
+    expect(shown.length).toBeGreaterThan(kind === 'status' ? 0 : -1);
     for (const label of shown) {
-      expect(kind === 'shape' ? symbols : statuses).toContain(label);
+      expect(kind === 'shape' ? named : statuses).toContain(label);
     }
   }
   expect(options('#annotation-colour')).toEqual(colours);
   expect(options('#marker-shape')).toEqual(symbols);
   expect(options('#status-list .status-symbol')).toEqual(symbols);
+  expect(options('#marker-form')).toEqual(forms);
   expect(options('.status-select').slice(1)).toEqual(statuses);
   expect([...document.querySelectorAll<HTMLInputElement>('#status-list .vocab-name')].map((i) => i.value)).toEqual(statuses);
   expect([...document.querySelectorAll<HTMLInputElement>('#colour-label-list input')].map((i) => i.value)).toEqual(colours);
-  expect([...document.querySelectorAll<HTMLInputElement>('#symbol-label-list input')].map((i) => i.placeholder)).toEqual(symbols);
+  expect([...document.querySelectorAll<HTMLInputElement>('#symbol-label-list input')].map((i) => i.value)).toEqual(ICONS.map((s) => starter[s] ?? ''));
+  expect([...document.querySelectorAll<HTMLInputElement>('#symbol-label-list input')].every((i) => i.placeholder === t.symbolUnnamed)).toBe(true);
   // The preset matches the list's headers, which stay as loaded.
   expect(options('#preset-select')).toContain(demoScenario('parkland', loadedIn).preset.name);
 }
@@ -288,14 +311,14 @@ describe('a change of language while the demo is loaded (FR-41)', () => {
       expect(ws.annotations[1].label).toBe('Min zon');
       expect(legendLabels('map-legend', 'colour')[1]).toBe('Mitt eget blått');
       expect(legendLabels('map-legend', 'status')[0]).toBe('Min egen status');
-      expect(options('#marker-shape')[SYMBOLS.indexOf('gear')]).toBe('Mitt kugghjul');
+      expect(options('#marker-shape')[1 + ICONS.indexOf('gear')]).toBe(`Mitt kugghjul (${shapeName(strings(lang), 'gear')})`);
       // The labels not renamed follow the language.
       const scenario = demoScenario('parkland', lang);
-      expect(ws.colourLabels.green).toBe(scenario.colourLabels.green);
+      expect(ws.colourLabels.green).toBe(starterColourLabels(lang).green);
       expect(ws.statuses.slice(1).map((s) => s.name)).toEqual(scenario.preset.statuses!.slice(1).map((s) => s.name));
       expect(ws.areaValues.slice(1)).toEqual(scenario.preset.areas!.slice(1));
       expect(ws.annotations[0].label).toBe(scenario.annotations[0].label);
-      expect(legendLabels('map-legend', 'shape')[0]).toBe(shapeName(strings(lang), 'circle'));
+      expect(legendLabels('map-legend', 'shape')).toEqual(['Mitt kugghjul', starterSymbolLabels(lang).bolt]);
     }
   }, 30_000);
 

@@ -259,7 +259,9 @@ export function parseDemoScenarios(raw: unknown): DemoScenarios {
   if (new Set(items.map((i) => i.item)).size !== items.length) {
     fail('repeated items');
   }
-  const labelsByLang = perLang(o.colourLabels, 'colourLabels');
+  // A demo's own colour labels are optional: since v2.6.0 the bundled demos
+  // carry none and ride the default vocabulary (FR-45 as amended).
+  const labelsByLang = o.colourLabels === undefined ? { en: {}, sv: {} } : perLang(o.colourLabels, 'colourLabels');
   const colourLabels = {} as Record<Lang, Partial<Record<RowColour, string>>>;
   for (const lang of LANGS) {
     const labels = labelsByLang[lang];

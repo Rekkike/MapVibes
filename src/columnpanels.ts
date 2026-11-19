@@ -18,8 +18,8 @@ import { presetConfiguration, presetMatches, removePreset, storePresets, upsertP
 import { assignRole, listColumnOrder, type Role } from './roles';
 import { strings, type Strings } from './i18n';
 import { colourName, shapeName, type ColourLabels, type LegendGroup, type SymbolLabels } from './legend';
-import { drawSymbol, isSymbol, SYMBOLS, symbolClasses, type MarkerSymbol } from './symbols';
-import { DEFAULT_SHAPE } from './markers';
+import { drawSymbol, ICONS, isIcon, isSymbol, SYMBOLS, symbolClasses, type Look, type MarkerIcon, type MarkerSymbol } from './symbols';
+import { DEFAULT_SHAPE, isShape, type MarkerShape } from './markers';
 import type { StoredEvent } from './workstate';
 import { readDate } from './dates';
 import { proposeSeries, SERIES_ROLES, seriesKey, type SeriesAssignments, type SeriesProposal, type SeriesRole } from './economics';
@@ -277,15 +277,18 @@ export function renderPresets(): void {
   el('preset-status').textContent = presetMessage ? messages[presetMessage.kind].replace('{name}', presetMessage.name) : '';
 }
 
-// The symbol shown for an item's marker (FR-26, FR-34): a symbol chosen
-// manually for the marker always wins. Otherwise, only while the user has
-// switched on "assign marker symbols from status", the symbol of the item's
-// status applies; else the default symbol.
+// An item's look (FR-26 and FR-34 as amended in v2.6.0): its button shape
+// and its symbol, independent. The symbol: an icon (or 'none') chosen by hand
+// for the marker always wins; otherwise, only while the user has switched on
+// "assign marker symbols from status", the icon of the item's status; else
+// none. The button shape: the one chosen by hand; otherwise a status saved
+// before v2.6.0 whose symbol is a shape still gives that shape; else the
+// circle. A status never sets the button shape otherwise.
 export function symbolSource(row: RowData): 'manual' | 'status' | 'default' {
-  if (state.shapes.has(row)) {
+  if (state.icons.has(row)) {
     return 'manual';
   }
-  return statusSymbolOf(row) !== null ? 'status' : 'default';
+  return statusIconOf(row) !== null ? 'status' : 'default';
 }
 
 function statusSymbolOf(row: RowData): MarkerSymbol | null {
@@ -297,12 +300,40 @@ function statusSymbolOf(row: RowData): MarkerSymbol | null {
   return symbol !== null && isSymbol(symbol) ? symbol : null;
 }
 
-export function symbolOf(row: RowData): MarkerSymbol {
-  return state.shapes.get(row) ?? statusSymbolOf(row) ?? DEFAULT_SHAPE;
+function statusIconOf(row: RowData): MarkerIcon | null {
+  const symbol = statusSymbolOf(row);
+  return symbol !== null && isIcon(symbol) ? symbol : null;
 }
 
-export function effectiveSymbols(): Map<RowData, MarkerSymbol> {
-  return new Map(state.rows.map((row) => [row, symbolOf(row)]));
+export function iconOf(row: RowData): MarkerIcon | null {
+  const manual = state.icons.get(row);
+  if (manual !== undefined) {
+    return manual === 'none' ? null : manual;
+  }
+  return statusIconOf(row);
+}
+
+export function formOf(row: RowData): MarkerShape {
+  const manual = state.forms.get(row);
+  if (manual !== undefined) {
+    return manual;
+  }
+  const symbol = statusSymbolOf(row);
+  return symbol !== null && isShape(symbol) ? symbol : DEFAULT_SHAPE;
+}
+
+export function lookOf(row: RowData): Look {
+  return { form: formOf(row), icon: iconOf(row) };
+}
+
+// The icon, or the button shape when there is none: the single value of the
+// marker before v2.6.0.
+export function symbolOf(row: RowData): MarkerSymbol {
+  return iconOf(row) ?? formOf(row);
+}
+
+export function effectiveLooks(): Map<RowData, Look> {
+  return new Map(state.rows.map((row) => [row, lookOf(row)]));
 }
 
 export function setSymbolsFromStatus(on: boolean): void {
@@ -322,11 +353,62 @@ export function colourLabels(): ColourLabels {
   return { green: colourLabel('green'), blue: colourLabel('blue'), yellow: colourLabel('yellow'), red: colourLabel('red') };
 }
 
-// Editable symbol labels (FR-54): the user's name for a symbol, or its name
-// in the interface language.
+// Editable symbol labels (FR-54 as amended in v2.6.0): the user's name for a
+// symbol, or empty for an unnamed symbol, which is shown and never explained.
 export function symbolLabel(symbol: MarkerSymbol): string {
-  const label = (state.symbolLabels[symbol] ?? '').trim();
-  return label !== '' ? label : shapeName(strings(state.prefs.lang), symbol);
+  return (state.symbolLabels[symbol] ?? '').trim();
+}
+
+// The per-item accent (FR-82): one icon of the library per item, or none.
+// The application gives it no meaning; its name is the icon's label.
+export function setAccent(row: RowData, icon: MarkerIcon | null): void {
+  if ((state.accents.get(row) ?? null) === icon) {
+    return;
+  }
+  if (icon === null) {
+    state.accents.delete(row);
+  } else {
+    state.accents.set(row, icon);
+  }
+  markDirty();
+  renderList();
+}
+
+// The accent picker's options: none, then the eight icons, named as the
+// symbol pickers name them.
+export function fillAccentOptions(select: HTMLSelectElement): void {
+  const t = strings(state.prefs.lang);
+  if (select.options.length !== ICONS.length + 1) {
+    select.replaceChildren();
+    for (const value of ['', ...ICONS]) {
+      const opt = document.createElement('option');
+      opt.value = value;
+      select.appendChild(opt);
+    }
+  }
+  for (const opt of select.options) {
+    opt.textContent = opt.value === '' ? t.accentNone : symbolChoiceName(opt.value as MarkerIcon);
+  }
+}
+
+// The accent picker of an item's card.
+export function accentSelect(row: RowData, label: string): HTMLSelectElement {
+  const select = document.createElement('select');
+  select.className = 'accent-select';
+  select.setAttribute('aria-label', label);
+  fillAccentOptions(select);
+  select.value = state.accents.get(row) ?? '';
+  select.addEventListener('change', () => setAccent(row, select.value === '' ? null : (select.value as MarkerIcon)));
+  return select;
+}
+
+// A symbol as a picker's option names it: a native option must carry text, so
+// the symbol's own name identifies it, beside the user's label when it has
+// one (FR-54 as amended in v2.6.0).
+export function symbolChoiceName(symbol: MarkerSymbol): string {
+  const own = shapeName(strings(state.prefs.lang), symbol);
+  const label = symbolLabel(symbol);
+  return label === '' || label === own ? own : `${label} (${own})`;
 }
 
 export function symbolLabels(): SymbolLabels {
@@ -355,7 +437,8 @@ export function renderSymbolPanel(): void {
   const focused =
     document.activeElement instanceof HTMLInputElement && list.contains(document.activeElement) ? document.activeElement.dataset.symbol : undefined;
   list.innerHTML = '';
-  for (const symbol of SYMBOLS) {
+  // The eight icons (FR-54 as amended): the button shapes carry no labels.
+  for (const symbol of ICONS) {
     const li = document.createElement('li');
     li.className = 'vocab-item symbol-label-item';
     li.dataset.symbol = symbol;
@@ -368,7 +451,7 @@ export function renderSymbolPanel(): void {
     input.className = 'vocab-name symbol-label-input';
     input.dataset.symbol = symbol;
     input.value = state.symbolLabels[symbol] ?? '';
-    input.placeholder = shapeName(t, symbol);
+    input.placeholder = t.symbolUnnamed;
     input.setAttribute('aria-label', fill(t.symbolLabelFor, { symbol: shapeName(t, symbol) }));
     input.addEventListener('change', () => setSymbolLabel(symbol, input.value));
     li.append(swatch, input);
@@ -507,10 +590,18 @@ function symbolSelect(value: string, label: string, onChange: (symbol: string) =
   const select = document.createElement('select');
   select.className = 'status-symbol';
   select.setAttribute('aria-label', label);
-  for (const symbol of SYMBOLS) {
+  // A status assigns a symbol, never a button shape (FR-34 as amended): no
+  // symbol (stored as the circle, the default shape), then the eight icons; a
+  // shape saved on a status before v2.6.0 stays offered while it is chosen.
+  const t = strings(state.prefs.lang);
+  const values: MarkerSymbol[] = [DEFAULT_SHAPE, ...ICONS];
+  if (isShape(value) && value !== DEFAULT_SHAPE) {
+    values.push(value);
+  }
+  for (const symbol of values) {
     const opt = document.createElement('option');
     opt.value = symbol;
-    opt.textContent = symbolLabel(symbol);
+    opt.textContent = symbol === DEFAULT_SHAPE ? t.symbolNone : symbolChoiceName(symbol);
     select.appendChild(opt);
   }
   select.value = value;

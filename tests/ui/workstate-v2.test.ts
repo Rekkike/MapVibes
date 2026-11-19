@@ -49,7 +49,8 @@ describe('work-state schema version 2 (FR-13)', () => {
     byId('tab-map').click();
     pointer('pointerdown', markers()[1], STAGE.left + 400, STAGE.top + 300);
     pointer('pointerup', markers()[1], STAGE.left + 400, STAGE.top + 300);
-    const shape = byId<HTMLSelectElement>('marker-shape');
+    // The button shape (FR-26 as amended in v2.6.0).
+    const shape = byId<HTMLSelectElement>('marker-form');
     shape.value = 'triangle';
     shape.dispatchEvent(new Event('change'));
     byId('tab-presentation').click();
@@ -90,6 +91,6 @@ describe('work-state schema version 2 (FR-13)', () => {
     expect(markers()[1].classList.contains('marker-blue')).toBe(true);
     expect(document.documentElement.dataset.segment).toBe('map');
     // Saving the migrated work writes the current schema version.
-    expect(JSON.parse(await save()).schemaVersion).toBe(12);
+    expect(JSON.parse(await save()).schemaVersion).toBe(13);
   });
 });

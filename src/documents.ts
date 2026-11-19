@@ -10,7 +10,8 @@ import { labelAnchor } from './annotationlayer';
 import type { RowColour } from './dataset';
 import type { LegendSection } from './legend';
 import { fitText, PdfDocument, textWidth, type PdfFont, type PdfImage, type Rgb, type Transform } from './pdfwriter';
-import { ICON_PATHS, isIcon, type MarkerSymbol } from './symbols';
+import { ICON_PATHS, isIcon, type MarkerIcon, type MarkerSymbol } from './symbols';
+import type { MarkerShape } from './markers';
 import { buildPptx, type PptxImage, type PptxTableSlide } from './pptxwriter';
 import { format } from './i18n';
 import { imageToScreen, type Point, type Viewport } from './viewport';
@@ -48,6 +49,11 @@ export interface SceneMarker {
   symbol: MarkerSymbol;
   colour: RowColour;
   label: string;
+  // The item's accent (FR-82), or null.
+  accent?: MarkerIcon | null;
+  // The button shape when the symbol is an icon (FR-26 as amended), or null
+  // for the circle.
+  form?: MarkerShape | null;
 }
 
 export interface SceneAnnotation {
@@ -85,7 +91,7 @@ export interface StageInput {
   stage: { width: number; height: number };
   background: { width: number; height: number } | null;
   // The markers shown in the presentation, in image coordinates.
-  markers: Array<{ position: Point; symbol: MarkerSymbol; colour: RowColour; label: string }>;
+  markers: Array<{ position: Point; symbol: MarkerSymbol; colour: RowColour; label: string; accent?: MarkerIcon | null; form?: MarkerShape | null }>;
   // The annotations shown in the presentation, in image coordinates.
   annotations: Annotation[];
   legendTitle: string;
@@ -142,7 +148,7 @@ export function sceneFromStage(input: StageInput): StageScene {
   }
   const reach = { x: -MARKER_REACH, y: -MARKER_REACH, width: input.stage.width + 2 * MARKER_REACH, height: input.stage.height + 2 * MARKER_REACH };
   const markers = input.markers
-    .map((m) => ({ ...imageToScreen(v, m.position), symbol: m.symbol, colour: m.colour, label: m.label }))
+    .map((m) => ({ ...imageToScreen(v, m.position), symbol: m.symbol, colour: m.colour, label: m.label, accent: m.accent ?? null, form: m.form ?? null }))
     .filter((m) => m.x >= reach.x && m.x <= reach.x + reach.width && m.y >= reach.y && m.y <= reach.y + reach.height);
   const annotations = input.annotations
     .map((a) => ({
@@ -271,12 +277,24 @@ export class PdfPainter implements Painter {
 // number in bold at 12.8 pixels; an icon 14.72 pixels wide before it.
 const MARKER = { height: 28, tall: 36, ring: 2, font: 12.8, padding: 8, iconPadding: 10.4, glyph: 14.72, gap: 1, glyphStroke: 2.6 };
 
-export function markerSize(symbol: MarkerSymbol, label: string): { width: number; height: number } {
-  const tall = symbol === 'diamond' || symbol === 'triangle';
+// The extra width an icon needs inside a narrowing button shape (FR-26 as
+// amended), from the stylesheet's padding: the diamond 24, the triangle 40,
+// the hexagon 8 pixels beyond the round form's.
+const ICON_IN_FORM: Partial<Record<MarkerShape, number>> = { diamond: 24, triangle: 40, hexagon: 8 };
+
+// The outline a marker is drawn with: its button shape, or the symbol's own
+// outline (an icon on the circle, a shape as itself).
+function outlineOf(symbol: MarkerSymbol, form: MarkerShape | null): MarkerSymbol {
+  return isIcon(symbol) ? (form ?? 'circle') : symbol;
+}
+
+export function markerSize(symbol: MarkerSymbol, label: string, form: MarkerShape | null = null): { width: number; height: number } {
+  const outline = outlineOf(symbol, form);
+  const tall = outline === 'diamond' || outline === 'triangle';
   const height = tall ? MARKER.tall : MARKER.height;
   const text = label === '' ? 0 : textWidth(label, 'bold', MARKER.font);
   const content = isIcon(symbol) ? MARKER.glyph + (label === '' ? 0 : MARKER.gap + text) : text;
-  const padding = isIcon(symbol) ? MARKER.iconPadding : MARKER.padding;
+  const padding = isIcon(symbol) ? MARKER.iconPadding + (ICON_IN_FORM[outline as MarkerShape] ?? 0) : MARKER.padding;
   return { width: Math.max(height, content + padding), height };
 }
 
@@ -335,11 +353,25 @@ function roundedRect(p: Painter, x: number, y: number, w: number, h: number, r: 
 
 // A marker centred on (cx, cy), drawn at the given scale (page units per
 // stage pixel): the halo, the white ring, the fill, the icon, the number.
-export function drawMarker(p: Painter, cx: number, cy: number, symbol: MarkerSymbol, colour: RowColour | null, label: string, scale: number): void {
-  const size = markerSize(symbol, label);
-  const w = size.width * scale;
+export function drawMarker(
+  p: Painter,
+  cx: number,
+  cy: number,
+  symbol: MarkerSymbol,
+  colour: RowColour | null,
+  label: string,
+  scale: number,
+  accent: MarkerIcon | null = null,
+  form: MarkerShape | null = null,
+): void {
+  const outline = outlineOf(symbol, form);
+  const size = markerSize(symbol, label, form);
+  // A marker with an accent reserves room on its right (as the stylesheet's
+  // padding does), its content in place: the disc never covers the number.
+  const room = accent !== null ? ACCENT.room * scale : 0;
+  const w = size.width * scale + room;
   const h = size.height * scale;
-  const x = cx - w / 2;
+  const x = cx - (w - room) / 2;
   const y = cy - h / 2;
   const fill = colour ? COLOUR_RGB[colour] : PALETTE.neutral;
   const ink = colour === 'yellow' ? PALETTE.markerTextOnYellow : colour ? PALETTE.markerText : PALETTE.ring;
@@ -349,17 +381,18 @@ export function drawMarker(p: Painter, cx: number, cy: number, symbol: MarkerSym
   p.opacity(0.85);
   p.strokeColour(PALETTE.halo);
   p.lineWidth(1 * scale);
-  markerOutline(p, symbol, x, y, w, h);
+  markerOutline(p, outline, x, y, w, h);
   p.stroke();
   p.opacity(1);
   p.fillColour(PALETTE.ring);
-  markerOutline(p, symbol, x, y, w, h);
+  markerOutline(p, outline, x, y, w, h);
   p.fill();
   p.fillColour(fill);
-  markerOutline(p, symbol, x + ring, y + ring, w - 2 * ring, h - 2 * ring);
+  markerOutline(p, outline, x + ring, y + ring, w - 2 * ring, h - 2 * ring);
   p.fill();
   // A triangle's number sits lower, in its wider part.
-  const textY = cy + (symbol === 'triangle' ? 4.8 * scale : 0) + 0.35 * MARKER.font * scale;
+  const lower = outline === 'triangle' ? 4.8 * scale : 0;
+  const textY = cy + lower + 0.35 * MARKER.font * scale;
   if (isIcon(symbol)) {
     const g = (MARKER.glyph / 24) * scale;
     const contentWidth = (MARKER.glyph + (label === '' ? 0 : MARKER.gap + textWidth(label, 'bold', MARKER.font))) * scale;
@@ -368,7 +401,7 @@ export function drawMarker(p: Painter, cx: number, cy: number, symbol: MarkerSym
     p.lineWidth(MARKER.glyphStroke * g);
     p.roundLines();
     p.beginPath();
-    p.svgPath(ICON_PATHS[symbol], [g, 0, 0, g, left, cy - (MARKER.glyph * scale) / 2]);
+    p.svgPath(ICON_PATHS[symbol], [g, 0, 0, g, left, cy + lower - (MARKER.glyph * scale) / 2]);
     p.stroke();
     if (label !== '') {
       p.fillColour(ink);
@@ -378,7 +411,40 @@ export function drawMarker(p: Painter, cx: number, cy: number, symbol: MarkerSym
     p.fillColour(ink);
     p.text(cx, textY, label, 'bold', MARKER.font * scale, 'centre');
   }
+  if (accent !== null) {
+    drawAccent(p, x + w, y, accent, scale);
+  }
   p.restore();
+}
+
+// The accent's satellite disc (FR-82), as the stylesheet draws it: 1.3 em
+// across, 0.55 em above and 0.7 em beyond the marker's upper right corner,
+// the neutral fill in a white ring of 0.125 em, the icon 0.9 em in the
+// neutral's number colour.
+const ACCENT = { size: 1.3, up: 0.55, out: 0.7, ring: 0.125, glyph: 0.9, stroke: 3, room: 8 };
+
+function drawAccent(p: Painter, right: number, top: number, icon: MarkerIcon, scale: number): void {
+  const em = MARKER.font * scale;
+  const d = ACCENT.size * em;
+  const ring = ACCENT.ring * em;
+  const x = right + ACCENT.out * em - d;
+  const y = top - ACCENT.up * em;
+  p.fillColour(PALETTE.ring);
+  p.beginPath();
+  roundedRect(p, x - ring, y - ring, d + 2 * ring, d + 2 * ring, d / 2 + ring);
+  p.fill();
+  p.fillColour(PALETTE.neutral);
+  p.beginPath();
+  roundedRect(p, x, y, d, d, d / 2);
+  p.fill();
+  const g = (ACCENT.glyph * em) / 24;
+  const offset = (d - ACCENT.glyph * em) / 2;
+  p.strokeColour(PALETTE.ring);
+  p.lineWidth(ACCENT.stroke * g);
+  p.roundLines();
+  p.beginPath();
+  p.svgPath(ICON_PATHS[icon], [g, 0, 0, g, x + offset, y + offset]);
+  p.stroke();
 }
 
 // Annotation strokes in stage pixels, from the stylesheet: shapes 2, line
@@ -679,7 +745,7 @@ export function drawStagePage(p: Painter, scene: StageScene, frame: PageFrame): 
   }
   for (const m of scene.markers) {
     const c = t(m);
-    drawMarker(p, c.x, c.y, m.symbol, m.colour, m.label, scale);
+    drawMarker(p, c.x, c.y, m.symbol, m.colour, m.label, scale, m.accent ?? null, m.form ?? null);
   }
   for (const a of scene.annotations) {
     drawAnnotationLabel(p, a, t, scale);

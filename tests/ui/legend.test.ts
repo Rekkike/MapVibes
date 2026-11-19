@@ -18,7 +18,8 @@ describe('legend (FR-6)', () => {
   test('the legend explains the four colours in order, each with its colour class', () => {
     const entries = [...document.querySelectorAll<HTMLElement>('#map-legend .legend-entry[data-colour]')];
     expect(entries.map((e) => e.dataset.colour)).toEqual(['green', 'blue', 'yellow', 'red']);
-    expect(entries.map((e) => e.querySelector('.legend-label')!.textContent)).toEqual(['Green', 'Blue', 'Yellow', 'Red']);
+    // A new work's colour names are the default vocabulary's (FR-45 as amended in v2.6.0).
+    expect(entries.map((e) => e.querySelector('.legend-label')!.textContent)).toEqual(['Internal project', 'External project', 'Pause', 'Stop']);
     entries.forEach((e) => {
       expect(e.querySelector('.legend-swatch')!.classList.contains(`marker-${e.dataset.colour}`)).toBe(true);
     });
@@ -31,10 +32,10 @@ describe('legend (FR-6)', () => {
     select.dispatchEvent(new Event('change'));
     expect(byId('map-legend').querySelector('.legend-heading')!.textContent).toBe('Teckenförklaring');
     expect([...document.querySelectorAll('#map-legend .legend-entry[data-colour] .legend-label')].map((e) => e.textContent)).toEqual([
-      'Grön',
-      'Blå',
-      'Gul',
-      'Röd',
+      'Internt projekt',
+      'Externt projekt',
+      'Paus',
+      'Stopp',
     ]);
   });
 

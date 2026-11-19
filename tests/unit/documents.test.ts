@@ -5,6 +5,8 @@ import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import * as pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.mjs';
 import {
   buildPdf,
+  drawMarker,
+  markerSize,
   drawFooter,
   layoutLegend,
   layoutTable,
@@ -17,14 +19,15 @@ import {
   wrapValue,
   type DocumentExtraPage,
   type DocumentTable,
+  type Painter,
   type StageInput,
 } from '../../src/documents';
-import { legendModel, type SeriesLegend } from '../../src/legend';
+import { defaultSymbolLabels, legendModel, type SeriesLegend } from '../../src/legend';
 import { en } from '../../src/i18n';
 import { PdfDocument, textWidth } from '../../src/pdfwriter';
 import type { Annotation } from '../../src/annotations';
 import type { RowColour } from '../../src/dataset';
-import type { MarkerSymbol } from '../../src/symbols';
+import { ICON_PATHS, type MarkerSymbol } from '../../src/symbols';
 
 (globalThis as { pdfjsWorker?: unknown }).pdfjsWorker = pdfjsWorker;
 
@@ -262,9 +265,20 @@ describe('the PDF document (FR-12, FR-50)', () => {
 
 describe("the documents' legend (FR-75 as amended in v1.13.0)", () => {
   test('the used-only filter drops unused sections and entries; the phase and series swatches are drawn', () => {
-    const used = { colours: new Set<RowColour>(['green']), symbols: new Set<MarkerSymbol>(['circle']), statuses: new Set<string>(), groups: new Set<number>() };
+    // The used symbol is a named one: an unnamed symbol is never explained
+    // (FR-54 as amended in v2.6.0).
+    const used = { colours: new Set<RowColour>(['green']), symbols: new Set<MarkerSymbol>(['gear']), statuses: new Set<string>(), groups: new Set<number>() };
     const series: SeriesLegend = { names: { budget: 'Budget', forecast: 'Forecast', outcome: 'Outcome' }, used: new Set(['budget', 'outcome']) };
-    const sections = legendModel(en, [{ name: 'Planned', symbol: 'bulb' }], [{ index: 1, name: 'Program' }], undefined, undefined, used, series, true);
+    const sections = legendModel(
+      en,
+      [{ name: 'Planned', symbol: 'bulb' }],
+      [{ index: 1, name: 'Program' }],
+      undefined,
+      { ...defaultSymbolLabels(), gear: 'Engineering' },
+      used,
+      series,
+      true,
+    );
     expect(sections.map((s) => s.kind)).toEqual(['colours', 'shapes', 'series', 'phase']);
     const layout = layoutLegend(en.legend, sections, 700);
     const doc = new PdfDocument({ title: 't' });
@@ -281,5 +295,66 @@ describe("the documents' legend (FR-75 as amended in v1.13.0)", () => {
     expect(content).not.toContain(hex('Planned'));
     expect(content).not.toContain(hex('Program'));
     doc.toBytes();
+  });
+});
+
+describe('the accent in the documents (FR-82)', () => {
+  // A painter that records the names of the operations it is asked for.
+  function recorder(): { painter: Painter; calls: string[]; paths: string[] } {
+    const calls: string[] = [];
+    const paths: string[] = [];
+    const painter = new Proxy(
+      {},
+      {
+        get:
+          (_, name) =>
+          (...args: unknown[]) => {
+            calls.push(String(name));
+            if (name === 'svgPath') {
+              paths.push(String(args[0]));
+            }
+            return 0;
+          },
+      },
+    ) as Painter;
+    return { painter, calls, paths };
+  }
+
+  test('a marker with an accent draws its satellite disc and the accent icon after the symbol; without one, nothing more', () => {
+    const plain = recorder();
+    drawMarker(plain.painter, 50, 50, 'gear', 'green', '1', 1);
+    expect(plain.paths).toEqual([ICON_PATHS.gear]);
+    const accented = recorder();
+    drawMarker(accented.painter, 50, 50, 'gear', 'green', '1', 1, 'bolt');
+    expect(accented.paths).toEqual([ICON_PATHS.gear, ICON_PATHS.bolt]);
+    // The ring and the neutral disc: two more fills than the plain marker.
+    expect(accented.calls.filter((c) => c === 'fill').length - plain.calls.filter((c) => c === 'fill').length).toBe(2);
+  });
+
+  test('the stage scene carries each marker accent', () => {
+    const scene = sceneFromStage({
+      ...input(),
+      markers: [
+        { position: { x: 600, y: 400 }, symbol: 'circle', colour: 'green', label: '1', accent: 'bolt' },
+        { position: { x: 700, y: 500 }, symbol: 'circle', colour: 'blue', label: '2' },
+      ],
+    });
+    expect(scene.markers.map((m) => m.accent)).toEqual(['bolt', null]);
+  });
+});
+
+describe('an icon inside a button shape in the documents (FR-26 as amended)', () => {
+  test('the shape grows sideways to hold the icon; a tall shape stays tall; without a form the icon sits on the circle', () => {
+    const round = markerSize('bulb', '1');
+    const diamond = markerSize('bulb', '1', 'diamond');
+    const triangle = markerSize('bulb', '1', 'triangle');
+    const hexagon = markerSize('bulb', '1', 'hexagon');
+    expect(round.height).toBe(28);
+    expect([diamond.height, triangle.height, hexagon.height]).toEqual([36, 36, 28]);
+    expect(diamond.width - round.width).toBeCloseTo(24, 5);
+    expect(triangle.width - round.width).toBeCloseTo(40, 5);
+    expect(hexagon.width - round.width).toBeCloseTo(8, 5);
+    // A shape without an icon is unchanged by the form argument.
+    expect(markerSize('diamond', '1', 'diamond')).toEqual(markerSize('diamond', '1'));
   });
 });

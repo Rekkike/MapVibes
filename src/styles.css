@@ -805,7 +805,9 @@ input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [typ
   min-width: 0;
 }
 
-#marker-shape-label {
+#marker-shape-label,
+#marker-form-label,
+#marker-accent-label {
   display: flex;
   align-items: center;
   gap: var(--space-4);
@@ -1398,6 +1400,18 @@ input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [typ
   gap: var(--space-8);
 }
 
+/* The pickers whose options name a symbol by its label beside its own name
+   (FR-54 as amended in v2.6.0) never grow beyond their container: a select
+   is as wide as its longest option, which on a 320-pixel phone overflowed. */
+.status-symbol,
+.accent-select,
+#marker-shape,
+#marker-form,
+#marker-accent {
+  max-width: 100%;
+  min-width: 0;
+}
+
 .vocab-add {
   margin-top: var(--space-8);
 }
@@ -1446,6 +1460,78 @@ input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [typ
 .marker-badge.marker-icon {
   gap: var(--space-2);
   padding: 0 var(--space-4) 0 var(--space-4);
+}
+
+/* An icon inside a narrowing button shape (FR-26 as amended): the shape grows
+   sideways so that the icon and the number sit within its outline. */
+:is(.marker, .marker-badge).marker-icon.marker-shape-diamond {
+  padding: 0 var(--space-16);
+}
+
+:is(.marker, .marker-badge).marker-icon.marker-shape-triangle {
+  padding: var(--space-8) var(--space-24) 0;
+}
+
+:is(.marker, .marker-badge).marker-icon.marker-shape-hexagon {
+  padding: 0 var(--space-8);
+}
+
+/* A legend's or panel's swatch draws its icon within the coloured fill,
+   never over the ring (FR-75 as amended in v2.6.0): at 0.85 em the glyph
+   stays inside the fill of both swatch sizes, and reads as a line drawing. */
+.legend-swatch > .marker-glyph {
+  width: 0.85em;
+  height: 0.85em;
+  stroke-width: 2.4;
+}
+
+/* The per-item accent (FR-82): one icon beside the number, in its own slot --
+   a satellite disc at the upper right of the marker or badge, outside its
+   outline, so that it covers neither the number nor the symbol and sits the
+   same way on every outline. The neutral fill and its number colour keep
+   their pinned 4.5:1 contrast; the white ring sets it off from any fill. */
+.marker-accent {
+  position: absolute;
+  top: -0.55em;
+  right: -0.7em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.3em;
+  height: 1.3em;
+  border-radius: var(--radius-pill);
+  background: var(--marker-neutral);
+  color: var(--marker-on-neutral);
+  box-shadow: 0 0 0 0.125em var(--marker-ring);
+  pointer-events: none;
+}
+
+.marker-accent > .marker-glyph {
+  width: 0.9em;
+  height: 0.9em;
+  stroke-width: 3;
+}
+
+/* A marker or badge with an accent reserves room on its right, so that the
+   disc never covers the number. */
+:is(.marker, .marker-badge):has(> .marker-accent) {
+  padding-right: var(--space-12);
+}
+
+/* In a list the disc reaches beyond the badge: the badge keeps it clear of
+   the text beside it. */
+.marker-badge:has(> .marker-accent) {
+  margin-right: var(--space-8);
+}
+
+/* In the Information list the accent sits in the line, after the number. */
+.marker-accent.list-accent {
+  position: relative;
+  top: 0;
+  right: 0;
+  margin-left: var(--space-4);
+  vertical-align: middle;
+  font-size: var(--text-14);
 }
 
 .legend-swatch.marker-icon {
@@ -4123,7 +4209,7 @@ html .annotation-tool[data-tool='line'] {
     left: 4rem;
   }
 
-  html:not([data-mode='viewer']) #map-more-panel #marker-shape-label {
+  html:not([data-mode='viewer']) #map-more-panel :is(#marker-shape-label, #marker-form-label, #marker-accent-label) {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -6121,7 +6207,9 @@ html[data-idle='true'] #toggle-glance {
     gap: var(--space-4);
   }
 
-  html[data-mode='viewer'] #presentation-legend .legend-swatch {
+  /* The colours' swatches only: an icon's swatch keeps 1 rem, so that its
+     glyph lies within the fill (FR-75 as amended in v2.6.0). */
+  html[data-mode='viewer'] #presentation-legend .legend-entry[data-colour] > .legend-swatch {
     width: 0.8rem;
     height: 0.8rem;
   }
@@ -6135,6 +6223,7 @@ html[data-idle='true'] #toggle-glance {
     width: 1.1rem;
     height: 0.7rem;
   }
+
 
   html[data-mode='viewer'] #presentation-glance {
     padding: var(--space-8);
@@ -6848,7 +6937,9 @@ html[data-idle='true'] #toggle-glance {
     font-size: var(--text-12);
   }
 
-  html:not([data-mode='viewer'])[data-segment='presentation'] #presentation-legend .legend-swatch {
+  /* The colours' swatches only: an icon's swatch keeps 1 rem, so that its
+     glyph lies within the fill (FR-75 as amended in v2.6.0). */
+  html:not([data-mode='viewer'])[data-segment='presentation'] #presentation-legend .legend-entry[data-colour] > .legend-swatch {
     width: 0.8rem;
     height: 0.8rem;
   }
@@ -6857,6 +6948,7 @@ html[data-idle='true'] #toggle-glance {
     width: 1.1rem;
     height: 0.7rem;
   }
+
 
   html:not([data-mode='viewer'])[data-segment='presentation'] #presentation-glance {
     padding: var(--space-8);

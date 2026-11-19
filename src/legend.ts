@@ -3,7 +3,7 @@
 
 import { COLOURS, type RowColour } from './dataset';
 import { SERIES_ROLES, type SeriesRole } from './economics';
-import { drawSymbol, SYMBOLS, symbolClasses, type MarkerSymbol } from './symbols';
+import { drawSymbol, isIcon, SYMBOLS, symbolClasses, type MarkerSymbol } from './symbols';
 import type { StatusEntry } from './vocab';
 import type { Strings } from './i18n';
 
@@ -81,8 +81,10 @@ export interface SeriesLegend {
   used: Set<SeriesRole>;
 }
 
-export function defaultSymbolLabels(t: Strings): SymbolLabels {
-  return Object.fromEntries(SYMBOLS.map((s) => [s, shapeName(t, s)])) as SymbolLabels;
+// No symbol is named unless the work names it (FR-54 as amended in v2.6.0):
+// an unnamed symbol is shown, never explained.
+export function defaultSymbolLabels(): SymbolLabels {
+  return Object.fromEntries(SYMBOLS.map((s) => [s, ''])) as SymbolLabels;
 }
 
 // One section of the legend and its entries, as a model shared by the
@@ -116,7 +118,7 @@ export function legendModel(
   statuses: StatusEntry[] = [],
   numberGroups: LegendGroup[] = [],
   colourLabels: ColourLabels = defaultColourLabels(t),
-  symbolLabels: SymbolLabels = defaultSymbolLabels(t),
+  symbolLabels: SymbolLabels = defaultSymbolLabels(),
   used?: LegendUse,
   series?: SeriesLegend,
   // The timeline is shown and at least one visible item has a work phase
@@ -131,15 +133,26 @@ export function legendModel(
       label: t.legendColours,
       items: COLOURS.filter((c) => !used || used.colours.has(c)).map((c) => ({ label: colourLabels[c], colour: c })),
     },
-    {
-      kind: 'shapes',
-      label: t.legendShapes,
-      items: SYMBOLS.filter((s) => !used || used.symbols.has(s)).map((s) => ({ label: symbolLabels[s], symbol: s })),
-    },
   ];
   const statusItems = statuses
     .filter((s) => !used || used.statuses.has(s.name))
     .map((s) => ({ label: s.name, status: s.name, symbol: s.symbol as MarkerSymbol }));
+  // One of each glyph stands (FR-75 as amended in v2.6.0, the owner's
+  // ruling): the statuses line keeps its glyphs, and the symbols section
+  // lists a symbol only when it is named and the statuses line does not
+  // already show its glyph. An unnamed symbol is never explained (FR-54).
+  const statusGlyphs = new Set(statusItems.map((s) => s.symbol));
+  // A button shape is never explained (FR-26 as amended): icons only.
+  const symbolItems = SYMBOLS.filter((s) => isIcon(s) && (!used || used.symbols.has(s)) && (symbolLabels[s] ?? '').trim() !== '' && !statusGlyphs.has(s)).map(
+    (s) => ({
+      label: symbolLabels[s].trim(),
+      symbol: s,
+    }),
+  );
+  // A symbols section with nothing to explain does not appear.
+  if (symbolItems.length > 0) {
+    sections.push({ kind: 'shapes', label: t.legendShapes, items: symbolItems });
+  }
   if (statusItems.length > 0) {
     sections.push({ kind: 'statuses', label: t.legendStatuses, items: statusItems });
   }
@@ -211,7 +224,7 @@ export function renderLegend(
   statuses: StatusEntry[] = [],
   numberGroups: LegendGroup[] = [],
   colourLabels: ColourLabels = defaultColourLabels(t),
-  symbolLabels: SymbolLabels = defaultSymbolLabels(t),
+  symbolLabels: SymbolLabels = defaultSymbolLabels(),
   used?: LegendUse,
   series?: SeriesLegend,
   phase = false,

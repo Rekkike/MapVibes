@@ -4,7 +4,11 @@ import { readDataIsland } from '../../src/singlefile';
 import { parseExport } from '../../src/exportfile';
 
 // Editable symbol labels (FR-54): managed like the colour labels, carried by
-// the legend, the pickers, the panels, the cards, and the exports.
+// the legend, the pickers, the panels, the cards, and the exports. Since
+// v2.6.0 (FR-54 as amended) a new work starts with the default vocabulary's
+// five names, the other symbols start unnamed, and an unnamed symbol is
+// shown, never explained: the legend and the card leave it out, and a
+// picker names it by its own name as an identifier.
 
 function input(symbol: string): HTMLInputElement {
   return document.querySelector<HTMLInputElement>(`#symbol-label-list input[data-symbol="${symbol}"]`)!;
@@ -15,9 +19,11 @@ function label(symbol: string, value: string): void {
   input(symbol).dispatchEvent(new Event('change'));
 }
 
-function legendShape(id: string, symbol: string): string {
-  return byId(id).querySelector(`.legend-entry[data-shape="${symbol}"]:not([data-status])`)!.textContent ?? '';
+function legendShape(id: string, symbol: string): string | null {
+  return byId(id).querySelector(`.legend-entry[data-shape="${symbol}"]:not([data-status])`)?.textContent ?? null;
 }
+
+const STARTER = { bolt: 'OPS quay', bulb: 'Idea phase', magnifier: 'Pre-study', gear: 'Engineering', 'hammer-shovel': 'Execution' };
 
 describe('editable symbol labels (FR-54)', () => {
   let app: Awaited<ReturnType<typeof mountApp>>;
@@ -31,14 +37,20 @@ describe('editable symbol labels (FR-54)', () => {
     byId('tab-information').click();
   });
 
-  test('the panel offers every symbol, each named by its own name until the user names it', () => {
+  // Since the second stop of v2.6.0 the panel names the eight icons only; the
+  // button shapes carry no labels (FR-26 and FR-54 as amended).
+  test('the panel offers the eight icons: the five starter names, the other three unnamed and unexplained', () => {
     expect(byId('symbol-panel-summary').textContent).toBe('Symbol labels');
     const inputs = [...document.querySelectorAll<HTMLInputElement>('#symbol-label-list input')];
-    expect(inputs).toHaveLength(13);
-    expect(inputs.every((i) => i.value === '')).toBe(true);
-    expect(input('bolt').placeholder).toBe('Lightning bolt');
+    expect(inputs.map((i) => i.dataset.symbol)).toEqual(['bulb', 'magnifier', 'gear', 'pause', 'cross', 'check', 'hammer-shovel', 'bolt']);
+    expect(Object.fromEntries(inputs.filter((i) => i.value !== '').map((i) => [i.dataset.symbol, i.value]))).toEqual(STARTER);
+    expect(input('cross').value).toBe('');
+    expect(input('cross').placeholder).toBe('No name');
     expect(input('bolt').getAttribute('aria-label')).toBe('Label for Lightning bolt');
-    expect(legendShape('map-legend', 'bolt')).toBe('Lightning bolt');
+    expect(legendShape('map-legend', 'bolt')).toBe('OPS quay');
+    // No tautologies: no legend entry explains a symbol by its own name.
+    expect(legendShape('map-legend', 'cross')).toBeNull();
+    expect(legendShape('map-legend', 'circle')).toBeNull();
   });
 
   test("the user's label is carried by the legends, the pickers, and the details panel", () => {
@@ -59,30 +71,33 @@ describe('editable symbol labels (FR-54)', () => {
     byId<HTMLInputElement>('status-new').value = 'Open';
     byId('status-add').click();
     const statusPicker = document.querySelector<HTMLSelectElement>('#status-list .status-symbol')!;
-    expect([...statusPicker.options].find((o) => o.value === 'bolt')!.textContent).toBe('Urgent');
+    expect([...statusPicker.options].find((o) => o.value === 'bolt')!.textContent).toBe('Urgent (Lightning bolt)');
+    expect([...statusPicker.options].find((o) => o.value === 'cross')!.textContent).toBe('Cross');
     // The marker picker and the details panel (the marker already carries bolt).
     byId('tab-map').click();
     pointer('pointerdown', markers()[0], STAGE.left + 100, STAGE.top + 100);
     pointer('pointerup', markers()[0], STAGE.left + 100, STAGE.top + 100);
-    expect([...shape.options].find((o) => o.value === 'bolt')!.textContent).toBe('Urgent');
+    expect([...shape.options].find((o) => o.value === 'bolt')!.textContent).toBe('Urgent (Lightning bolt)');
     expect(shape.value).toBe('bolt');
     expect(byId('details-panel').querySelector('.details-symbol')!.textContent).toBe('Urgent');
   });
 
-  test('a cleared label returns to the symbol’s own name, in either language', () => {
-    label('square', 'Depot');
-    label('square', '  ');
-    expect(legendShape('map-legend', 'square')).toBe('Square');
+  test('a cleared label leaves the symbol unexplained, in either language', () => {
+    label('cross', 'Depot');
+    expect(legendShape('map-legend', 'cross')).toBe('Depot');
+    label('cross', '  ');
+    expect(legendShape('map-legend', 'cross')).toBeNull();
     const lang = byId<HTMLSelectElement>('select-language');
     lang.value = 'sv';
     lang.dispatchEvent(new Event('change'));
-    expect(legendShape('map-legend', 'square')).toBe('Kvadrat');
-    label('square', 'Depå');
-    expect(legendShape('map-legend', 'square')).toBe('Depå');
+    expect(legendShape('map-legend', 'cross')).toBeNull();
+    expect(legendShape('map-legend', 'bolt')).toBe('OPS kaj');
+    label('cross', 'Depå');
+    expect(legendShape('map-legend', 'cross')).toBe('Depå');
     // A label is data: it does not change with the language.
     lang.value = 'en';
     lang.dispatchEvent(new Event('change'));
-    expect(legendShape('map-legend', 'square')).toBe('Depå');
+    expect(legendShape('map-legend', 'cross')).toBe('Depå');
   });
 
   test('the labels are saved, exported, shown by the viewer, and used in the documents’ legend', async () => {
@@ -96,11 +111,11 @@ describe('editable symbol labels (FR-54)', () => {
     shape.dispatchEvent(new Event('change'));
     byId('tab-information').click();
     label('bolt', 'Urgent');
-    expect(app.captureWorkState().symbolLabels).toEqual({ bolt: 'Urgent' });
+    expect(app.captureWorkState().symbolLabels).toEqual({ ...STARTER, bolt: 'Urgent' });
     byId('tab-presentation').click();
     await flush();
     const island = readDataIsland(new DOMParser().parseFromString(app.exportPage()!, 'text/html'))!;
-    expect(parseExport(island).workState.symbolLabels).toEqual({ bolt: 'Urgent' });
+    expect(parseExport(island).workState.symbolLabels).toEqual({ ...STARTER, bolt: 'Urgent' });
     const scene = app.documentScene()!;
     expect(scene.legend.find((s) => s.kind === 'shapes')!.items.find((i) => i.symbol === 'bolt')!.label).toBe('Urgent');
     // The exported viewer.

@@ -30,7 +30,9 @@ describe('the crossed hammer and shovel icon (FR-26)', () => {
     pointer('pointerup', markers()[0], STAGE.left + 100, STAGE.top + 100);
     const shape = byId<HTMLSelectElement>('marker-shape');
     const option = [...shape.options].find((o) => o.value === 'hammer-shovel')!;
-    expect(option.textContent).toBe('Hammer and shovel');
+    // The picker names it by its label beside its own name (FR-54 as amended in
+    // v2.6.0); a new work's label is the default vocabulary's.
+    expect(option.textContent).toBe('Execution (Hammer and shovel)');
     shape.value = 'hammer-shovel';
     shape.dispatchEvent(new Event('change'));
     const marker = markers()[0];
@@ -70,14 +72,14 @@ describe('the crossed hammer and shovel icon (FR-26)', () => {
       theme(mode);
       for (const id of ['map-legend', 'presentation-legend']) {
         const entry = byId(id).querySelector<HTMLElement>('.legend-entry[data-shape="hammer-shovel"]')!;
-        expect(entry.textContent).toBe('Hammer and shovel');
+        expect(entry.textContent).toBe('Execution');
         expect(glyphPath(entry)).toBe(ICON_PATHS['hammer-shovel']);
       }
     }
     const lang = byId<HTMLSelectElement>('select-language');
     lang.value = 'sv';
     lang.dispatchEvent(new Event('change'));
-    expect(byId('map-legend').querySelector('.legend-entry[data-shape="hammer-shovel"]')!.textContent).toBe('Hammare och spade');
+    expect(byId('map-legend').querySelector('.legend-entry[data-shape="hammer-shovel"]')!.textContent).toBe('Genomförande');
   });
 
   test('it is a stroked line drawing in the number colour, so it keeps the pinned contrast bar', () => {

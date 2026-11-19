@@ -145,24 +145,29 @@ describe('the choice of the demo does not outlive the demo (FR-41, FR-46)', () =
     return app;
   }
 
-  test('a list imported after the demo starts with the full defaults and no demo colour labels, and saves a file that opens', async () => {
+  // Since v2.6.0 the demo provides no colour labels of its own: it rides the
+  // default vocabulary, whose names carry on into the next list (FR-45 as
+  // amended).
+  const STARTER = { green: 'Internal project', blue: 'External project', yellow: 'Pause', red: 'Stop' };
+
+  test('a list imported after the demo starts with the full defaults and the default vocabulary, and saves a file that opens', async () => {
     const app = await demoThen(importExampleWorkbook);
     const ws = app.captureWorkState();
     expect(ws.glanceColumns).toBeNull();
-    expect(ws.colourLabels).toEqual({});
+    expect(ws.colourLabels).toEqual(STARTER);
     // Before v1.3.1, the demo's choice stayed: the panels showed neither the
     // start nor the end, and the saved file could not be opened.
     expect(() => parseWorkState(serialiseWorkState(ws, new Date()))).not.toThrow();
     await placeWithRoles();
     await expectBothSegments(['Group', 'Start', 'End']);
-    expect([...byId('map-legend').querySelectorAll('.legend-entry[data-colour]')].map((e) => e.textContent)).toEqual(['Green', 'Blue', 'Yellow', 'Red']);
+    expect([...byId('map-legend').querySelectorAll('.legend-entry[data-colour]')].map((e) => e.textContent)).toEqual(Object.values(STARTER));
   });
 
-  test('an empty list started after the demo has no choice and no demo colour labels', async () => {
+  test('an empty list started after the demo has no choice and the default vocabulary', async () => {
     const app = await demoThen(() => Promise.resolve(byId('start-empty').click()));
     const ws = app.captureWorkState();
     expect(ws.glanceColumns).toBeNull();
-    expect(ws.colourLabels).toEqual({});
+    expect(ws.colourLabels).toEqual(STARTER);
   });
 
   test('a file saved that way before v1.3.1 opens, with the full defaults', async () => {

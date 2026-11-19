@@ -1,9 +1,18 @@
 import { beforeEach, describe, expect, test } from 'vitest';
 import { byId, flush, markers, mountApp, placeExampleMarkers, placementItems, pointer, presentationMarkers, STAGE } from './harness';
 
-function chooseShape(shape: string): void {
+// Since v2.6.0 (FR-26 as amended) a marker's button shape and its symbol are
+// independent: the button shape (Knappform) in #marker-form, the symbol (an
+// icon or none) in #marker-shape.
+function chooseForm(form: string): void {
+  const select = byId<HTMLSelectElement>('marker-form');
+  select.value = form;
+  select.dispatchEvent(new Event('change'));
+}
+
+function chooseShape(symbol: string): void {
   const select = byId<HTMLSelectElement>('marker-shape');
-  select.value = shape;
+  select.value = symbol;
   select.dispatchEvent(new Event('change'));
 }
 
@@ -18,35 +27,45 @@ describe('marker symbol library (FR-26)', () => {
     pointer('pointerup', byId('map-stage'), STAGE.left + 10, STAGE.top + 10);
   });
 
-  test('the shape control offers the library and is available only for a selected marker', () => {
-    const select = byId<HTMLSelectElement>('marker-shape');
-    expect(select.disabled).toBe(true);
-    expect([...select.options].map((o) => [o.value, o.textContent])).toEqual([
+  test('the button shape and the symbol are two controls, available only for a selected marker', () => {
+    const form = byId<HTMLSelectElement>('marker-form');
+    expect(form.disabled).toBe(true);
+    expect(byId('marker-form-text').textContent).toBe('Button shape');
+    // The button shapes by their own names: a choice, never explained.
+    expect([...form.options].map((o) => [o.value, o.textContent])).toEqual([
       ['circle', 'Circle'],
       ['square', 'Square'],
       ['diamond', 'Diamond'],
       ['triangle', 'Triangle'],
       ['hexagon', 'Hexagon'],
-      ['bulb', 'Light bulb'],
-      ['magnifier', 'Magnifying glass'],
-      ['gear', 'Gear'],
+    ]);
+    const select = byId<HTMLSelectElement>('marker-shape');
+    expect(select.disabled).toBe(true);
+    expect([...select.options].map((o) => [o.value, o.textContent])).toEqual([
+      ['none', 'No symbol'],
+      // A named symbol by its label beside its own name, an unnamed one by its
+      // own name (FR-54 as amended in v2.6.0; a new work's starter names).
+      ['bulb', 'Idea phase (Light bulb)'],
+      ['magnifier', 'Pre-study (Magnifying glass)'],
+      ['gear', 'Engineering (Gear)'],
       ['pause', 'Pause'],
       ['cross', 'Cross'],
       ['check', 'Checkmark'],
-      ['hammer-shovel', 'Hammer and shovel'],
-      ['bolt', 'Lightning bolt'],
+      ['hammer-shovel', 'Execution (Hammer and shovel)'],
+      ['bolt', 'OPS quay (Lightning bolt)'],
     ]);
     pointer('pointerdown', markers()[1], STAGE.left + 400, STAGE.top + 300);
     pointer('pointerup', markers()[1], STAGE.left + 400, STAGE.top + 300);
     expect(select.disabled).toBe(false);
-    expect(select.value).toBe('circle');
+    expect(form.disabled).toBe(false);
+    expect([form.value, select.value]).toEqual(['circle', 'none']);
   });
 
   test('each shape renders with its own shape class; the number and colour are kept', () => {
     pointer('pointerdown', markers()[1], STAGE.left + 400, STAGE.top + 300);
     pointer('pointerup', markers()[1], STAGE.left + 400, STAGE.top + 300);
     for (const shape of ['square', 'diamond', 'triangle', 'hexagon', 'circle']) {
-      chooseShape(shape);
+      chooseForm(shape);
       const m = markers()[1];
       expect(m.classList.contains(`marker-shape-${shape}`)).toBe(true);
       expect(m.dataset.shape).toBe(shape);
@@ -59,7 +78,7 @@ describe('marker symbol library (FR-26)', () => {
   test('shape and colour change independently', () => {
     pointer('pointerdown', markers()[0], STAGE.left + 100, STAGE.top + 100);
     pointer('pointerup', markers()[0], STAGE.left + 100, STAGE.top + 100);
-    chooseShape('diamond');
+    chooseForm('diamond');
     byId('tab-information').click();
     document.querySelector<HTMLElement>('#row-table-body .colour-chip')!.click();
     byId('tab-map').click();
@@ -70,7 +89,7 @@ describe('marker symbol library (FR-26)', () => {
   test('the shape is shown wherever the marker is listed or presented', async () => {
     pointer('pointerdown', markers()[0], STAGE.left + 100, STAGE.top + 100);
     pointer('pointerup', markers()[0], STAGE.left + 100, STAGE.top + 100);
-    chooseShape('hexagon');
+    chooseForm('hexagon');
     expect(placementItems()[0].querySelector('.marker-badge')!.classList.contains('marker-shape-hexagon')).toBe(true);
     expect(document.querySelector('#map-glance-list .marker-badge')!.classList.contains('marker-shape-hexagon')).toBe(true);
     byId('tab-presentation').click();
@@ -79,40 +98,58 @@ describe('marker symbol library (FR-26)', () => {
     expect(document.querySelector('#visibility-list .marker-badge')!.classList.contains('marker-shape-hexagon')).toBe(true);
   });
 
-  test('the legend explains the colours and the shapes, in both views and both languages', () => {
+  test('the legend explains the colours and the named symbols, in both views and both languages', () => {
+    // Since v2.6.0 (FR-54 and FR-75 as amended) an unnamed symbol is never
+    // explained: a new work names five symbols, and the Map segment's palette
+    // lists those five; the presentation's legend is used-only (FR-75), and
+    // every item here carries the unnamed default circle, so it has no
+    // symbols section at all.
     for (const id of ['map-legend', 'presentation-legend']) {
       const legend = byId(id);
-      expect([...legend.querySelectorAll('.legend-group')].map((g) => g.querySelector('.legend-group-label')!.textContent)).toEqual(['Colours', 'Symbols']);
+      expect([...legend.querySelectorAll('.legend-group')].map((g) => g.querySelector('.legend-group-label')!.textContent)).toEqual(
+        id === 'map-legend' ? ['Colours', 'Symbols'] : ['Colours'],
+      );
       const shapes = [...legend.querySelectorAll<HTMLElement>('.legend-entry[data-shape]')];
-      // The Map segment's legend keeps the working palette; the presentation's
-      // is used-only (FR-75): both placed markers and the unplaced rows carry
-      // the default circle here, so only it is shown.
-      const all = ['circle', 'square', 'diamond', 'triangle', 'hexagon', 'bulb', 'magnifier', 'gear', 'pause', 'cross', 'check', 'hammer-shovel', 'bolt'];
-      expect(shapes.map((e) => e.dataset.shape)).toEqual(id === 'map-legend' ? all : ['circle']);
-      shapes.slice(0, 5).forEach((e) => expect(e.querySelector('.legend-swatch')!.classList.contains(`marker-shape-${e.dataset.shape}`)).toBe(true));
-      shapes.slice(5).forEach((e) => {
+      expect(shapes.map((e) => e.dataset.shape)).toEqual(id === 'map-legend' ? ['bulb', 'magnifier', 'gear', 'hammer-shovel', 'bolt'] : []);
+      shapes.forEach((e) => {
         expect(e.querySelector('.legend-swatch')!.classList.contains(`marker-icon-${e.dataset.shape}`)).toBe(true);
         expect(e.querySelector('.legend-swatch svg.marker-glyph path')).not.toBeNull();
       });
     }
+    // The button shapes carry no labels and are never explained (FR-26 and
+    // FR-54 as amended): the label panel lists the eight icons only.
+    expect(document.querySelector('#symbol-label-list input[data-symbol="square"]')).toBeNull();
+    expect(document.querySelectorAll('#symbol-label-list input')).toHaveLength(8);
     const select = byId<HTMLSelectElement>('select-language');
     select.value = 'sv';
     select.dispatchEvent(new Event('change'));
+    expect(byId('marker-form-text').textContent).toBe('Knappform');
     expect([...byId('map-legend').querySelectorAll('.legend-entry[data-shape] .legend-label')].map((e) => e.textContent)).toEqual([
-      'Cirkel',
-      'Kvadrat',
-      'Romb',
-      'Triangel',
-      'Sexhörning',
-      'Glödlampa',
-      'Förstoringsglas',
-      'Kugghjul',
-      'Paus',
-      'Kryss',
-      'Bock',
-      'Hammare och spade',
-      'Blixt',
+      'Idéfas',
+      'Förstudie',
+      'Projektering',
+      'Genomförande',
+      'OPS kaj',
     ]);
+  });
+
+  test('an icon sits inside any button shape; each choice keeps the other (FR-26 as amended)', () => {
+    pointer('pointerdown', markers()[1], STAGE.left + 400, STAGE.top + 300);
+    pointer('pointerup', markers()[1], STAGE.left + 400, STAGE.top + 300);
+    chooseForm('diamond');
+    chooseShape('bulb');
+    let m = markers()[1];
+    expect([m.dataset.form, m.dataset.shape]).toEqual(['diamond', 'bulb']);
+    expect(m.classList.contains('marker-shape-diamond') && m.classList.contains('marker-icon-bulb')).toBe(true);
+    expect(m.querySelector('svg.marker-glyph')).not.toBeNull();
+    expect(m.textContent).toBe('2');
+    chooseForm('triangle');
+    m = markers()[1];
+    expect([m.dataset.form, m.dataset.shape]).toEqual(['triangle', 'bulb']);
+    chooseShape('none');
+    m = markers()[1];
+    expect([m.dataset.form, m.dataset.shape]).toEqual(['triangle', 'triangle']);
+    expect(m.querySelector('svg.marker-glyph')).toBeNull();
   });
 
   test('the shape control is not offered on the presentation stage', () => {

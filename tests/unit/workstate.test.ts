@@ -173,8 +173,8 @@ describe('work-state file (FR-13)', () => {
   test('the file carries the format name, schema version, and save time', () => {
     const file = fileOf(sample());
     expect(file.format).toBe(WORK_STATE_FORMAT);
-    expect(file.schemaVersion).toBe(12);
-    expect(WORK_STATE_SCHEMA_VERSION).toBe(12);
+    expect(file.schemaVersion).toBe(13);
+    expect(WORK_STATE_SCHEMA_VERSION).toBe(13);
     expect(file.savedAt).toBe('2026-01-02T03:04:05.000Z');
   });
 
@@ -191,7 +191,7 @@ describe('work-state file (FR-13)', () => {
   });
 
   test('an unknown schema version is rejected and named, never loaded silently', () => {
-    for (const version of [13, 0, '12', null]) {
+    for (const version of [14, 0, '13', null]) {
       const file = { ...fileOf(sample()), schemaVersion: version };
       expect(expectError(JSON.stringify(file), 'unknown-version').detail).toBe(String(version));
     }
@@ -316,7 +316,7 @@ describe('schema version 1 migration (FR-13)', () => {
     expect(migrated.manualColumns).toEqual([]);
     expect(migrated.rows.every((r) => !r.manual)).toBe(true);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(12);
+    expect(JSON.parse(text).schemaVersion).toBe(13);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 
@@ -379,8 +379,15 @@ describe('schema version 2 migration (FR-13)', () => {
     expect(JSON.parse(v2Text).schemaVersion).toBe(2);
     const state = parseWorkState(v2Text);
     expect(state.roles).toEqual({ identifier: 'ID', name: 'Note', area: 'Group' });
-    // Stored default circles count as no manual choice; other shapes as manual choices.
-    expect(state.markers.map((m) => m.symbol)).toEqual([null, null, 'diamond', null, null]);
+    // Stored default circles count as no manual choice; other shapes as manual
+    // choices, read since v2.6.0 as the button shape with no symbol (FR-26 as amended).
+    expect(state.markers.map((m) => [m.symbol, m.form ?? null])).toEqual([
+      [null, null],
+      [null, null],
+      ['none', 'diamond'],
+      [null, null],
+      [null, null],
+    ]);
     expect([state.areaValues, state.statuses, state.symbolsFromStatus]).toEqual([[], [], false]);
     expect(state.excluded).toEqual([1]);
     expect(state.presets.map((p) => p.name)).toEqual(['Standard']);
@@ -391,7 +398,7 @@ describe('schema version 2 migration (FR-13)', () => {
   test('a migrated version 2 file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v2Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(12);
+    expect(JSON.parse(text).schemaVersion).toBe(13);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 
@@ -457,11 +464,12 @@ describe('schema version 3 migration (FR-13)', () => {
     expect(state.manualColumns.map((c) => c.label)).toEqual(['Rank']);
     expect(state.rows.map((r) => r.manual)).toEqual([false, false, false, false, false, true]);
     expect(state.roles).toEqual({ identifier: 'ID', area: 'Group' });
-    // The stored default circles are no manual choice; the square is.
-    expect(state.markers.map((m) => [m.row, m.symbol])).toEqual([
-      [0, null],
-      [2, null],
-      [5, 'square'],
+    // The stored default circles are no manual choice; the square is, read
+    // since v2.6.0 as the button shape with no symbol (FR-26 as amended).
+    expect(state.markers.map((m) => [m.row, m.symbol, m.form ?? null])).toEqual([
+      [0, null, null],
+      [2, null, null],
+      [5, 'none', 'square'],
     ]);
     expect([state.areaValues, state.statuses, state.symbolsFromStatus]).toEqual([[], [], false]);
   });
@@ -469,7 +477,7 @@ describe('schema version 3 migration (FR-13)', () => {
   test('a migrated version 3 file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v3Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(12);
+    expect(JSON.parse(text).schemaVersion).toBe(13);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 });
@@ -558,7 +566,7 @@ describe('schema version 4 migration (FR-13)', () => {
   test('a migrated version 4 file is saved as the current version and reads back identically', () => {
     const migrated = parseWorkState(v4Text);
     const text = serialiseWorkState(migrated, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(12);
+    expect(JSON.parse(text).schemaVersion).toBe(13);
     expect(parseWorkState(text)).toEqual(migrated);
   });
 });
@@ -625,7 +633,7 @@ describe('schema version 6: programs, colour labels, at-a-glance columns, annota
     const state = parseWorkState(JSON.stringify(file));
     expect([state.programValues, state.colourLabels, state.glanceColumns, state.annotations]).toEqual([[], {}, null, []]);
     expect(state.background!.projection).toBeUndefined();
-    expect(JSON.parse(serialiseWorkState(state, SAVED_AT)).schemaVersion).toBe(12);
+    expect(JSON.parse(serialiseWorkState(state, SAVED_AT)).schemaVersion).toBe(13);
   });
 
   test('version 6 fields in an older file are ignored, as that version never wrote them', () => {
@@ -855,7 +863,7 @@ describe('activities in the work state (FR-77, schema 10)', () => {
     ];
     state.rows[0].activityImport = { file: 'plan.pdf', page: 1, columns: { label: 'Post', start: 'Från', end: 'Till', progress: 'Klart', duration: 'Längd' } };
     const text = serialiseWorkState(state, SAVED_AT);
-    expect(JSON.parse(text).schemaVersion).toBe(12);
+    expect(JSON.parse(text).schemaVersion).toBe(13);
     const file = JSON.parse(text);
     expect(file.rows[0].activities).toEqual(state.rows[0].activities);
     expect(file.rows[0].activityImport).toEqual(state.rows[0].activityImport);
@@ -900,7 +908,7 @@ describe('schema version 11: the events and the costs view (FR-79, FR-80)', () =
   test('the events and the costs view round-trip, byte-identically; the date is kept as typed', () => {
     const text = serialiseWorkState(sample(), SAVED_AT);
     const file = JSON.parse(text);
-    expect(file.schemaVersion).toBe(12);
+    expect(file.schemaVersion).toBe(13);
     expect(file.events).toEqual([
       { id: 'e1', date: '2025-06', label: 'Review' },
       { id: 'e2', date: 'next spring', label: 'Decision' },
@@ -992,7 +1000,7 @@ describe('schema version 12: activity ids, the edited mark, and the work phase (
   test('the ids, the edited mark, and the work phase round-trip, byte-identically; the mark is written only when set', () => {
     const text = serialiseWorkState(withActivities(), SAVED_AT);
     const file = JSON.parse(text);
-    expect(file.schemaVersion).toBe(12);
+    expect(file.schemaVersion).toBe(13);
     expect(file.rows[0].activities).toEqual([
       { id: 'a1', label: 'Excavation', start: '2024-01-08', end: '2024-02-16', progress: 100 },
       { id: 'a2', label: 'Review', start: '2024-03-15', end: '2024-03-20', progress: null, edited: true },
@@ -1111,5 +1119,64 @@ describe('schema version 12: activity ids, the edited mark, and the work phase (
 
   test('an imported activity is named by its row position in the source table', () => {
     expect([0, 1, 9].map(activityId)).toEqual(['a1', 'a2', 'a10']);
+  });
+});
+
+describe('schema version 13: the button shape apart from the symbol (FR-26 as amended)', () => {
+  test('a marker saved with a shape becomes the button shape with no symbol; an icon stays the symbol', () => {
+    const state = sample();
+    const file = JSON.parse(serialiseWorkState(state, SAVED_AT));
+    file.schemaVersion = 12;
+    file.markers[0].symbol = 'square';
+    file.markers[1].symbol = 'bolt';
+    const read = parseWorkState(JSON.stringify(file));
+    expect([read.markers[0].symbol, read.markers[0].form]).toEqual(['none', 'square']);
+    expect([read.markers[1].symbol, read.markers[1].form]).toEqual(['bolt', undefined]);
+  });
+
+  test('the symbol and the button shape round-trip apart, byte-identically; a shape is refused as a symbol and an icon as a form', () => {
+    const state = sample();
+    state.markers[0] = { ...state.markers[0], symbol: 'bulb', form: 'diamond' };
+    state.markers[1] = { ...state.markers[1], symbol: 'none', form: 'hexagon' };
+    const text = serialiseWorkState(state, SAVED_AT);
+    const file = JSON.parse(text);
+    expect(file.markers.slice(0, 2).map((m: { symbol: string; form?: string }) => [m.symbol, m.form])).toEqual([
+      ['bulb', 'diamond'],
+      ['none', 'hexagon'],
+    ]);
+    expect(serialiseWorkState(parseWorkState(text), SAVED_AT)).toBe(text);
+    const shapeAsSymbol = structuredClone(file);
+    shapeAsSymbol.markers[0].symbol = 'square';
+    expect(expectError(JSON.stringify(shapeAsSymbol), 'invalid').detail).toBe('markers[0].symbol');
+    const iconAsForm = structuredClone(file);
+    iconAsForm.markers[0].form = 'bolt';
+    expect(expectError(JSON.stringify(iconAsForm), 'invalid').detail).toBe('markers[0].form');
+  });
+});
+
+describe('schema version 13: the per-item accent (FR-82)', () => {
+  test('an accent round-trips per row, byte-identically, and is absent where unset', () => {
+    const state = sample();
+    state.rows[0] = { ...state.rows[0], accent: 'bolt' };
+    state.rows[3] = { ...state.rows[3], accent: 'check' };
+    const text = serialiseWorkState(state, SAVED_AT);
+    const file = JSON.parse(text);
+    expect(file.schemaVersion).toBe(13);
+    expect(file.rows.map((r: { accent?: string }) => r.accent ?? null)).toEqual(['bolt', null, null, 'check', null]);
+    expect(serialiseWorkState(parseWorkState(text), SAVED_AT)).toBe(text);
+  });
+
+  test('an accent that is not one of the icons is refused; a file of version 12 opens with no accents', () => {
+    const state = sample();
+    state.rows[0] = { ...state.rows[0], accent: 'bolt' };
+    const file = JSON.parse(serialiseWorkState(state, SAVED_AT));
+    for (const bad of ['circle', 'lightning', 7, null]) {
+      const copy = structuredClone(file);
+      copy.rows[0].accent = bad;
+      expect(expectError(JSON.stringify(copy), 'invalid').detail).toBe('rows[0].accent');
+    }
+    const older = structuredClone(file);
+    older.schemaVersion = 12;
+    expect(parseWorkState(JSON.stringify(older)).rows.every((r) => r.accent === undefined)).toBe(true);
   });
 });
