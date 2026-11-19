@@ -5,7 +5,7 @@
 // and lists the structured fields in a compact grid below. Both are built
 // from one model of the item.
 
-import { drawSymbol, symbolClasses, type MarkerSymbol } from './symbols';
+import { drawSymbol, symbolClasses, type MarkerIcon, type MarkerSymbol } from './symbols';
 import type { RowColour } from './dataset';
 
 export interface DetailField {
@@ -37,6 +37,9 @@ export interface DetailModel {
   colourName: string;
   symbol: MarkerSymbol;
   symbolName: string;
+  // The item's accent (FR-82), or null, and its label ('' when unnamed).
+  accent: MarkerIcon | null;
+  accentName: string;
   fields: DetailField[];
   comments: DetailComment[];
   // For the card (FR-37): the value of the note column ('' when none), and
@@ -70,6 +73,7 @@ export interface DetailLabels {
   number: string;
   colour: string;
   symbol: string;
+  accent: string;
   comments: string;
   noComments: string;
   close: string;
@@ -106,6 +110,8 @@ export interface DetailHandlers {
     editComment(id: string, text: string): void;
     // The controls that append a comment, below the entries.
     commentForm(): HTMLElement;
+    // The accent's picker (FR-82).
+    accentControl(): HTMLElement;
   };
 }
 
@@ -153,7 +159,7 @@ export function renderDetails(container: HTMLElement, model: DetailModel, labels
   container.dataset.rowId = model.rowId;
   const header = el('div', 'details-header');
   const badge = el('span', `marker-badge marker-${model.colour} ${symbolClasses(model.symbol)} details-badge`);
-  drawSymbol(badge, model.symbol, model.number);
+  drawSymbol(badge, model.symbol, model.number, model.accent);
   const title = el('h2', 'details-title', model.name);
   title.id = `${container.id}-title`;
   container.setAttribute('aria-labelledby', title.id);
@@ -176,6 +182,18 @@ export function renderDetails(container: HTMLElement, model: DetailModel, labels
   // amended in v2.6.0).
   if (model.symbolName !== '') {
     fact(labels.symbol, model.symbolName, 'details-symbol');
+  }
+  // The accent (FR-82): set and unset here where the details are editable;
+  // on a card that is not, named when it has a name (an unnamed accent is
+  // shown on the badge, never explained, FR-54 as amended).
+  let accent: HTMLElement | null = null;
+  if (handlers.edit) {
+    accent = el('dl', 'details-accent');
+    const dd = el('dd');
+    dd.appendChild(handlers.edit.accentControl());
+    accent.append(el('dt', undefined, labels.accent), dd);
+  } else if (model.accent !== null && model.accentName !== '') {
+    fact(labels.accent, model.accentName, 'details-accent-name');
   }
 
   const fields = el('dl', 'details-fields');
@@ -324,7 +342,7 @@ export function renderDetails(container: HTMLElement, model: DetailModel, labels
     commentsSection.appendChild(handlers.edit.commentForm());
   }
 
-  container.append(header, facts, fields);
+  container.append(header, facts, ...(accent ? [accent] : []), fields);
   const footprints = footprintList(model, labels.footprints, 'details-footprints');
   if (footprints) {
     container.appendChild(footprints);

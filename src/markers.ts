@@ -5,7 +5,7 @@
 
 import { numberRows, type NumberedRow, type RowColour, type RowData } from './dataset';
 import type { Point } from './viewport';
-import type { MarkerSymbol } from './symbols';
+import type { MarkerIcon, MarkerSymbol } from './symbols';
 
 export type MarkerPositions = Map<RowData, Point>;
 
@@ -31,6 +31,8 @@ export interface PlacedMarker {
   label: string;
   colour: RowColour;
   shape: MarkerSymbol;
+  // The item's accent (FR-82), or null.
+  accent: MarkerIcon | null;
   position: Point;
 }
 
@@ -41,12 +43,21 @@ export function placedMarkers(
   positions: MarkerPositions,
   shapes: MarkerShapes = new Map(),
   numbered: NumberedRow[] = numberRows(rows),
+  accents: Map<RowData, MarkerIcon> = new Map(),
 ): PlacedMarker[] {
   const out: PlacedMarker[] = [];
   for (const { row, number, label } of numbered) {
     const position = positions.get(row);
     if (position) {
-      out.push({ row, number, label, colour: row.colour, shape: shapes.get(row) ?? DEFAULT_SHAPE, position: { ...position } });
+      out.push({
+        row,
+        number,
+        label,
+        colour: row.colour,
+        shape: shapes.get(row) ?? DEFAULT_SHAPE,
+        accent: accents.get(row) ?? null,
+        position: { ...position },
+      });
     }
   }
   return out;

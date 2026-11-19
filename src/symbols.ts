@@ -54,14 +54,31 @@ export function iconSvg(icon: MarkerIcon): SVGSVGElement {
   return svg;
 }
 
+// The per-item accent (FR-82): one icon drawn beside the number, in its own
+// small slot -- a satellite disc at the marker's upper right, outside the
+// marker's outline, so that it neither covers the number nor the symbol and
+// sits the same way on every outline.
+export function accentNode(icon: MarkerIcon): HTMLSpanElement {
+  const slot = document.createElement('span');
+  slot.className = 'marker-accent';
+  slot.dataset.accent = icon;
+  slot.setAttribute('aria-hidden', 'true');
+  slot.appendChild(iconSvg(icon));
+  return slot;
+}
+
 // Shows a symbol on a marker, badge, or swatch: the icon (if any) followed
-// by the text (the number; empty for a swatch).
-export function drawSymbol(node: HTMLElement, symbol: MarkerSymbol, text: string): void {
+// by the text (the number; empty for a swatch), and the item's accent (FR-82)
+// when it has one.
+export function drawSymbol(node: HTMLElement, symbol: MarkerSymbol, text: string, accent: MarkerIcon | null = null): void {
   node.replaceChildren();
   if (isIcon(symbol)) {
     node.appendChild(iconSvg(symbol));
   }
   if (text !== '') {
     node.appendChild(document.createTextNode(text));
+  }
+  if (accent !== null) {
+    node.appendChild(accentNode(accent));
   }
 }

@@ -8,7 +8,7 @@ import { format } from './i18n';
 import { loadPreferences, type Preferences } from './preferences';
 import type { LegendGroup } from './legend';
 import type { CommentStore } from './comments';
-import type { MarkerSymbol } from './symbols';
+import type { MarkerIcon, MarkerSymbol } from './symbols';
 import type { MarkerPositions, MarkerShapes } from './markers';
 import type { Segment } from './segments';
 import type { ActivityImport, PresentationMode, PresentationOrder, StoredEvent, StoredActivity, TimelineWindow } from './workstate';
@@ -71,6 +71,8 @@ interface AppState {
   positions: MarkerPositions;
   // Marker shapes (FR-26), per marker; circle where unset.
   shapes: MarkerShapes;
+  // The per-item accent (FR-82): one icon per item, or none where unset.
+  accents: Map<RowData, MarkerIcon>;
   selectedMarker: string | null;
   // True when the work has changed since it was last saved or opened.
   dirty: boolean;
@@ -151,6 +153,7 @@ export const state: AppState = {
   segment: 'information',
   positions: new Map(),
   shapes: new Map(),
+  accents: new Map(),
   selectedMarker: null,
   dirty: false,
   excluded: new Set(),

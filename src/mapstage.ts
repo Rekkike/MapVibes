@@ -8,7 +8,7 @@ import { isPdfFile, openPdf, type PdfDocument } from './pdfbackground';
 import { isOsmFile, MAX_OSM_BYTES, OsmError, parseOsm, planRender, type MercatorProjection, type OsmBounds } from './osm';
 import { renderPlanToDataUrl } from './osmrender';
 import { MarkerLayer } from './markerlayer';
-import { drawSymbol, isSymbol, SYMBOLS, symbolClasses, type MarkerSymbol } from './symbols';
+import { drawSymbol, isIcon, isSymbol, SYMBOLS, symbolClasses, type MarkerSymbol } from './symbols';
 import { placedMarkers, placeMarker, pruneMarkers, removeMarker, type PlacedMarker } from './markers';
 import { BUTTON_ZOOM_FACTOR, screenToImage, type Point } from './viewport';
 import { AnnotationLayer, DrawingTools } from './annotationlayer';
@@ -31,7 +31,7 @@ import {
 } from './annotationpanel';
 import { applyHighlight, renderGlance, renderLegends, renderPresentation, setHover, syncPresentationBackground } from './presentationstage';
 import { MAX_IMPORT_BYTES, numbered, numberLabel } from './listpanel';
-import { effectiveSymbols, symbolChoiceName, symbolOf, symbolSource } from './columnpanels';
+import { effectiveSymbols, fillAccentOptions, setAccent, symbolChoiceName, symbolOf, symbolSource } from './columnpanels';
 import { closeNarrowOverlay, hideDialog, narrowApplication, showDialog } from './narrowlayout';
 
 export let mapView: MapView | null = null;
@@ -180,7 +180,7 @@ function renderPlacementList(): void {
     const badge = document.createElement('span');
     const symbol = symbolOf(row);
     badge.className = `marker-badge marker-${row.colour} ${symbolClasses(symbol)}`;
-    drawSymbol(badge, symbol, String(number));
+    drawSymbol(badge, symbol, String(number), state.accents.get(row) ?? null);
     const label = document.createElement('span');
     label.className = 'placement-label';
     label.textContent = itemLabel(row, number);
@@ -255,7 +255,7 @@ export function renderMapItems(): void {
       state.annotationLinks.delete(id);
     }
   }
-  const markers = placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered());
+  const markers = placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered(), state.accents);
   markerLayer?.render(markers, state.selectedMarker);
   renderAnnotations();
   renderGlance('map', mapView, state.selectedMarker, (id) => {
@@ -291,6 +291,11 @@ export function renderMapItems(): void {
     opt.textContent = symbolChoiceName(opt.value as MarkerSymbol);
   }
   shapeSelect.value = selected?.shape ?? 'circle';
+  // The selected marker's accent (FR-82): no accent, or one icon.
+  const accentSelect = el<HTMLSelectElement>('marker-accent');
+  accentSelect.disabled = !selected;
+  fillAccentOptions(accentSelect);
+  accentSelect.value = selected?.accent ?? '';
   // The presentation's legend follows the visibility (FR-75): recomputed on
   // every change of the items, including every visibility toggle (FR-27).
   renderLegends();
@@ -546,6 +551,14 @@ export function initialiseMapView(): void {
     markDirty();
     renderMapItems();
     renderDetailsPanel();
+  });
+  el('marker-accent').addEventListener('change', (e) => {
+    const value = (e.target as HTMLSelectElement).value;
+    const row = state.selectedMarker ? rowById(state.selectedMarker) : undefined;
+    if (!row || (value !== '' && !isIcon(value))) {
+      return;
+    }
+    setAccent(row, value === '' ? null : value);
   });
   el('marker-remove').addEventListener('click', () => {
     if (state.selectedMarker) {

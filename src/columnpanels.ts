@@ -18,7 +18,7 @@ import { presetConfiguration, presetMatches, removePreset, storePresets, upsertP
 import { assignRole, listColumnOrder, type Role } from './roles';
 import { strings, type Strings } from './i18n';
 import { colourName, shapeName, type ColourLabels, type LegendGroup, type SymbolLabels } from './legend';
-import { drawSymbol, isSymbol, SYMBOLS, symbolClasses, type MarkerSymbol } from './symbols';
+import { drawSymbol, ICONS, isSymbol, SYMBOLS, symbolClasses, type MarkerIcon, type MarkerSymbol } from './symbols';
 import { DEFAULT_SHAPE } from './markers';
 import type { StoredEvent } from './workstate';
 import { readDate } from './dates';
@@ -326,6 +326,49 @@ export function colourLabels(): ColourLabels {
 // symbol, or empty for an unnamed symbol, which is shown and never explained.
 export function symbolLabel(symbol: MarkerSymbol): string {
   return (state.symbolLabels[symbol] ?? '').trim();
+}
+
+// The per-item accent (FR-82): one icon of the library per item, or none.
+// The application gives it no meaning; its name is the icon's label.
+export function setAccent(row: RowData, icon: MarkerIcon | null): void {
+  if ((state.accents.get(row) ?? null) === icon) {
+    return;
+  }
+  if (icon === null) {
+    state.accents.delete(row);
+  } else {
+    state.accents.set(row, icon);
+  }
+  markDirty();
+  renderList();
+}
+
+// The accent picker's options: none, then the eight icons, named as the
+// symbol pickers name them.
+export function fillAccentOptions(select: HTMLSelectElement): void {
+  const t = strings(state.prefs.lang);
+  if (select.options.length !== ICONS.length + 1) {
+    select.replaceChildren();
+    for (const value of ['', ...ICONS]) {
+      const opt = document.createElement('option');
+      opt.value = value;
+      select.appendChild(opt);
+    }
+  }
+  for (const opt of select.options) {
+    opt.textContent = opt.value === '' ? t.accentNone : symbolChoiceName(opt.value as MarkerIcon);
+  }
+}
+
+// The accent picker of an item's card.
+export function accentSelect(row: RowData, label: string): HTMLSelectElement {
+  const select = document.createElement('select');
+  select.className = 'accent-select';
+  select.setAttribute('aria-label', label);
+  fillAccentOptions(select);
+  select.value = state.accents.get(row) ?? '';
+  select.addEventListener('change', () => setAccent(row, select.value === '' ? null : (select.value as MarkerIcon)));
+  return select;
 }
 
 // A symbol as a picker's option names it: a native option must carry text, so

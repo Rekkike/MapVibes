@@ -13,7 +13,7 @@ import { annotationName, areaLocale, linkedRow } from './annotationpanel';
 import { itemLabel, mapView, renderMapItems } from './mapstage';
 import { economicsFor, openEconomics, shownCardColumns } from './presentationstage';
 import { detailValueInput, fitToContent, labelOf, numberLabel, statusCell } from './listpanel';
-import { colourLabel, effectiveSeries, symbolLabel, symbolOf } from './columnpanels';
+import { accentSelect, colourLabel, effectiveSeries, symbolLabel, symbolOf } from './columnpanels';
 import { narrowApplication } from './narrowlayout';
 
 // Details panel (FR-7): the complete data of one item, open in the
@@ -50,6 +50,7 @@ function detailLabels(t: Strings): DetailLabels {
   return {
     number: t.detailsNumber,
     colour: t.colour,
+    accent: t.accentSymbol,
     symbol: t.detailsSymbol,
     comments: t.detailsComments,
     noComments: t.detailsNoComments,
@@ -85,6 +86,8 @@ export function detailModel(row: RowData, t: Strings): DetailModel {
     colourName: colourLabel(row.colour),
     symbol,
     symbolName: symbolLabel(symbol),
+    accent: state.accents.get(row) ?? null,
+    accentName: state.accents.has(row) ? symbolLabel(state.accents.get(row)!) : '',
     fields,
     comments: commentsOf(state.comments, row).map((c) => ({
       id: c.id,
@@ -206,6 +209,7 @@ export function renderDetailsPanel(): void {
         panel.querySelector<HTMLElement>(`.details-comment[data-comment-id="${id}"] .details-comment-edit`)?.focus();
       },
       commentForm: () => commentForm(row, t, draft),
+      accentControl: () => accentSelect(row, `${t.accentSymbol}, ${t.numberColumn} ${model.number}`),
     },
   });
   if (target !== panel) {
@@ -235,6 +239,14 @@ function patchDetails(panel: HTMLElement, fresh: HTMLElement): void {
   swap('.details-badge');
   swap('.details-title');
   swap('.details-facts');
+  // The accent's picker keeps its node while focused, taking the fresh value.
+  const accentNow = panel.querySelector<HTMLSelectElement>('.details-accent select');
+  const accentNext = fresh.querySelector<HTMLSelectElement>('.details-accent select');
+  if (accentNow && accentNext && accentNow === document.activeElement) {
+    accentNow.value = accentNext.value;
+  } else {
+    swap('.details-accent');
+  }
   swap('.details-comment-list');
   const nextValues = [...fresh.querySelectorAll<HTMLElement>('.details-fields dd')];
   panel.querySelectorAll<HTMLElement>('.details-fields dd').forEach((dd, i) => {

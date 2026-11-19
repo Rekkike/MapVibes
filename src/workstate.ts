@@ -1,6 +1,6 @@
 // Work-state file (FR-13). The complete work state is written to, and read
 // from, a single local JSON file on explicit Save and Open only. The file
-// carries a schema version. Version 12 is written; files of versions 1 to 12
+// carries a schema version. Version 13 is written; files of versions 1 to 13
 // are read and migrated (what each version adds is recorded below); a file
 // with any other version is rejected.
 //
@@ -48,7 +48,7 @@
 import { COLOURS, type RowColour, type SortDirection, type ValueFilter } from './dataset';
 import { isRole, ROLES, type Role, type RoleAssignments } from './roles';
 import { DEFAULT_SHAPE, SHAPES } from './markers';
-import { isSymbol, SYMBOLS, type MarkerSymbol } from './symbols';
+import { ICONS, isSymbol, SYMBOLS, type MarkerIcon, type MarkerSymbol } from './symbols';
 import { parseStatuses, parseValueList, type StatusEntry } from './vocab';
 import { isManualKey } from './manual';
 import { clonePreset, parsePresets, type ColumnPreset } from './presets';
@@ -84,8 +84,12 @@ export const WORK_STATE_FORMAT = 'mapvibes-work-state';
 // the work phase, a reference to one of its activities by id (FR-78). Files
 // of versions 10 and 11 give their activities ids by their order; no
 // activity is marked edited and no row has a work phase.
-export const WORK_STATE_SCHEMA_VERSION = 12;
-export const READABLE_SCHEMA_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+//
+// Schema version 13 adds to version 12, per row, the item's accent (FR-82):
+// one icon of the symbol library, or absent for none. Files of versions 1 to
+// 12 open with no accents.
+export const WORK_STATE_SCHEMA_VERSION = 13;
+export const READABLE_SCHEMA_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
 
 export type PresentationMode = 'map' | 'timeline' | 'costs';
 export const PRESENTATION_MODES: readonly PresentationMode[] = ['map', 'timeline', 'costs'];
@@ -128,6 +132,8 @@ export interface WorkStateRow {
   // Version 12 (FR-78): the row's work phase, the id of one of its
   // activities, or absent for none.
   workPhase?: string;
+  // Version 13 (FR-82): the item's accent, an icon, or absent for none.
+  accent?: MarkerIcon;
 }
 
 export interface StoredComment {
@@ -343,6 +349,7 @@ export function serialiseWorkState(state: WorkState, savedAt: Date): string {
         ? { activityImport: { file: r.activityImport.file, page: r.activityImport.page, columns: { ...r.activityImport.columns } } }
         : {}),
       ...(r.workPhase !== undefined ? { workPhase: r.workPhase } : {}),
+      ...(r.accent !== undefined ? { accent: r.accent } : {}),
     })),
     background: state.background
       ? {
@@ -554,6 +561,8 @@ export function parseWorkState(text: string): WorkState {
         invalid('noSuchActivity', `rows[${i}].workPhase`);
       }
     }
+    // Version 13 (FR-82): the accent is one of the library's icons.
+    const accent = version >= 13 && o.accent !== undefined ? oneOf(o.accent, ICONS, `rows[${i}].accent`) : undefined;
     return {
       values,
       colour: oneOf(o.colour, COLOURS, `rows[${i}].colour`),
@@ -564,6 +573,7 @@ export function parseWorkState(text: string): WorkState {
       ...(activities !== undefined ? { activities } : {}),
       ...(activityImport !== undefined ? { activityImport } : {}),
       ...(workPhase !== undefined ? { workPhase } : {}),
+      ...(accent !== undefined ? { accent } : {}),
     };
   });
   const expected = rowNumbers(rows);

@@ -5,6 +5,7 @@ import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import * as pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.mjs';
 import {
   buildPdf,
+  drawMarker,
   drawFooter,
   layoutLegend,
   layoutTable,
@@ -17,6 +18,7 @@ import {
   wrapValue,
   type DocumentExtraPage,
   type DocumentTable,
+  type Painter,
   type StageInput,
 } from '../../src/documents';
 import { defaultSymbolLabels, legendModel, type SeriesLegend } from '../../src/legend';
@@ -24,7 +26,7 @@ import { en } from '../../src/i18n';
 import { PdfDocument, textWidth } from '../../src/pdfwriter';
 import type { Annotation } from '../../src/annotations';
 import type { RowColour } from '../../src/dataset';
-import type { MarkerSymbol } from '../../src/symbols';
+import { ICON_PATHS, type MarkerSymbol } from '../../src/symbols';
 
 (globalThis as { pdfjsWorker?: unknown }).pdfjsWorker = pdfjsWorker;
 
@@ -292,5 +294,50 @@ describe("the documents' legend (FR-75 as amended in v1.13.0)", () => {
     expect(content).not.toContain(hex('Planned'));
     expect(content).not.toContain(hex('Program'));
     doc.toBytes();
+  });
+});
+
+describe('the accent in the documents (FR-82)', () => {
+  // A painter that records the names of the operations it is asked for.
+  function recorder(): { painter: Painter; calls: string[]; paths: string[] } {
+    const calls: string[] = [];
+    const paths: string[] = [];
+    const painter = new Proxy(
+      {},
+      {
+        get:
+          (_, name) =>
+          (...args: unknown[]) => {
+            calls.push(String(name));
+            if (name === 'svgPath') {
+              paths.push(String(args[0]));
+            }
+            return 0;
+          },
+      },
+    ) as Painter;
+    return { painter, calls, paths };
+  }
+
+  test('a marker with an accent draws its satellite disc and the accent icon after the symbol; without one, nothing more', () => {
+    const plain = recorder();
+    drawMarker(plain.painter, 50, 50, 'gear', 'green', '1', 1);
+    expect(plain.paths).toEqual([ICON_PATHS.gear]);
+    const accented = recorder();
+    drawMarker(accented.painter, 50, 50, 'gear', 'green', '1', 1, 'bolt');
+    expect(accented.paths).toEqual([ICON_PATHS.gear, ICON_PATHS.bolt]);
+    // The ring and the neutral disc: two more fills than the plain marker.
+    expect(accented.calls.filter((c) => c === 'fill').length - plain.calls.filter((c) => c === 'fill').length).toBe(2);
+  });
+
+  test('the stage scene carries each marker accent', () => {
+    const scene = sceneFromStage({
+      ...input(),
+      markers: [
+        { position: { x: 600, y: 400 }, symbol: 'circle', colour: 'green', label: '1', accent: 'bolt' },
+        { position: { x: 700, y: 500 }, symbol: 'circle', colour: 'blue', label: '2' },
+      ],
+    });
+    expect(scene.markers.map((m) => m.accent)).toEqual(['bolt', null]);
   });
 });

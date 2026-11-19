@@ -37,11 +37,13 @@ import {
   renderSymbolPanel,
   renderVocabPanel,
   setColumnRole,
+  symbolLabel,
   setPresetMessage,
   VALUE_VOCABULARIES,
   vocabularyOfColumn,
   vocabValues,
 } from './columnpanels';
+import { accentNode } from './symbols';
 import { demoLoaded, setDemoAnnotationIds, setDemoEventIds, setDemoLang, setDemoLoaded } from './demoload';
 import { narrowApplication } from './narrowlayout';
 
@@ -533,6 +535,21 @@ export function renderList(): void {
     detailsButton.title = t.detailsShow;
     detailsButton.addEventListener('click', () => openDetails(id, true));
     numTd.appendChild(detailsButton);
+    // The item's accent beside its number (FR-82); named for assistive
+    // technology by its label when it has one.
+    const accent = state.accents.get(row);
+    if (accent) {
+      const glyph = accentNode(accent);
+      glyph.classList.add('list-accent');
+      const name = symbolLabel(accent);
+      if (name !== '') {
+        glyph.removeAttribute('aria-hidden');
+        glyph.setAttribute('role', 'img');
+        glyph.setAttribute('aria-label', name);
+        glyph.title = name;
+      }
+      numTd.appendChild(glyph);
+    }
     tr.append(selectTd, numTd);
     if (state.detailsId === id) {
       tr.dataset.details = 'true';

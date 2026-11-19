@@ -76,6 +76,7 @@ function renderStaticText(): void {
   el('map-empty-hint').textContent = t.mapEmptyHint;
   el('marker-remove').textContent = t.markerRemove;
   el('marker-shape-text').textContent = t.markerShape;
+  el('marker-accent-text').textContent = t.accentSymbol;
   el('work-save').textContent = t.workSave;
   el('work-share').textContent = t.workShare;
   el('area-panel-summary').textContent = t.areaPanel;

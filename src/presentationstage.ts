@@ -63,7 +63,8 @@ export function presentationLegendUse(): LegendUse {
   }
   return {
     colours: new Set(shown.map((r) => r.colour)),
-    symbols: new Set(shown.map((r) => symbolOf(r))),
+    // An item's accent counts among the symbols it carries (FR-75 as amended, FR-82).
+    symbols: new Set([...shown.map((r) => symbolOf(r)), ...shown.flatMap((r) => (state.accents.has(r) ? [state.accents.get(r)!] : []))]),
     statuses: new Set(statusKey === undefined ? [] : shown.map((r) => normalise(r.values[statusKey] ?? ''))),
     groups,
   };
@@ -221,7 +222,7 @@ function renderVisibilityList(): void {
   if (state.viewOnly) {
     return;
   }
-  const entries = placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered());
+  const entries = placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered(), state.accents);
   for (const entry of entries) {
     const id = rowId(entry.row);
     const shown = !state.excluded.has(entry.row);
@@ -235,7 +236,7 @@ function renderVisibilityList(): void {
     const name = itemLabel(entry.row, entry.label);
     const badge = document.createElement('span');
     badge.className = `marker-badge marker-${entry.colour} ${symbolClasses(entry.shape)}`;
-    drawSymbol(badge, entry.shape, entry.label);
+    drawSymbol(badge, entry.shape, entry.label, entry.accent);
     const text = document.createElement('span');
     text.className = 'placement-label';
     text.textContent = name;
@@ -295,7 +296,7 @@ function glanceEntry(marker: PlacedMarker, selectedId: string | null, onSelect: 
   }
   const badge = document.createElement('span');
   badge.className = `marker-badge marker-${marker.colour} ${symbolClasses(marker.shape)}`;
-  drawSymbol(badge, marker.shape, marker.label);
+  drawSymbol(badge, marker.shape, marker.label, marker.accent);
   const text = document.createElement('span');
   text.className = 'glance-text';
   const name = document.createElement('span');
@@ -500,7 +501,7 @@ function programGroupItem(
 }
 
 export function renderGlance(prefix: 'map' | 'presentation', view: MapView | null, selectedId: string | null, onSelect: (id: string) => void): void {
-  const candidates = placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered()).filter((m) => !state.excluded.has(m.row));
+  const candidates = placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered(), state.accents).filter((m) => !state.excluded.has(m.row));
   const inView = view?.background ? markersInView(candidates, view.viewport, view.stageSize()) : [];
   // The presentation's "In view" list follows the presentation's order
   // (FR-70); the Map segment's keeps the numbers' order.
@@ -786,7 +787,7 @@ function renderCard(): void {
 
 export function renderPresentation(): void {
   const onTimeline = timelineMode();
-  const shown = placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered()).filter((m) => !state.excluded.has(m.row));
+  const shown = placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered(), state.accents).filter((m) => !state.excluded.has(m.row));
   const selectable = onTimeline ? state.rows.filter((r) => !state.excluded.has(r)) : shown.map((m) => m.row);
   if (state.presentationSelected && !selectable.some((r) => rowId(r) === state.presentationSelected)) {
     state.presentationSelected = null;
@@ -865,6 +866,7 @@ function renderPresentationGlance(): void {
         label: line.item.label,
         colour: row.colour,
         shape: symbols.get(row) ?? DEFAULT_SHAPE,
+        accent: state.accents.get(row) ?? null,
         position: { x: 0, y: 0 },
       },
     ];
@@ -991,7 +993,7 @@ function newScheduleView(id: string, kind: 'timeline' | 'costs'): TimelineView {
         const shape = (row && effectiveSymbols().get(row)) ?? DEFAULT_SHAPE;
         const badge = document.createElement('span');
         badge.className = `marker-badge marker-${line.item.colour} ${symbolClasses(shape)}`;
-        drawSymbol(badge, shape, line.item.label);
+        drawSymbol(badge, shape, line.item.label, (row && state.accents.get(row)) ?? null);
         return badge;
       },
     },

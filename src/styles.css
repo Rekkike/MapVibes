@@ -805,7 +805,8 @@ input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [typ
   min-width: 0;
 }
 
-#marker-shape-label {
+#marker-shape-label,
+#marker-accent-label {
   display: flex;
   align-items: center;
   gap: var(--space-4);
@@ -1446,6 +1447,49 @@ input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [typ
 .marker-badge.marker-icon {
   gap: var(--space-2);
   padding: 0 var(--space-4) 0 var(--space-4);
+}
+
+/* The per-item accent (FR-82): one icon beside the number, in its own slot --
+   a satellite disc at the upper right of the marker or badge, outside its
+   outline, so that it covers neither the number nor the symbol and sits the
+   same way on every outline. The neutral fill and its number colour keep
+   their pinned 4.5:1 contrast; the white ring sets it off from any fill. */
+.marker-accent {
+  position: absolute;
+  top: -0.55em;
+  right: -0.7em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.3em;
+  height: 1.3em;
+  border-radius: var(--radius-pill);
+  background: var(--marker-neutral);
+  color: var(--marker-on-neutral);
+  box-shadow: 0 0 0 0.125em var(--marker-ring);
+  pointer-events: none;
+}
+
+.marker-accent > .marker-glyph {
+  width: 0.9em;
+  height: 0.9em;
+  stroke-width: 3;
+}
+
+/* A marker or badge with an accent reserves room on its right, so that the
+   disc never covers the number. */
+:is(.marker, .marker-badge):has(> .marker-accent) {
+  padding-right: var(--space-12);
+}
+
+/* In the Information list the accent sits in the line, after the number. */
+.marker-accent.list-accent {
+  position: relative;
+  top: 0;
+  right: 0;
+  margin-left: var(--space-4);
+  vertical-align: middle;
+  font-size: var(--text-14);
 }
 
 .legend-swatch.marker-icon {
@@ -4123,7 +4167,7 @@ html .annotation-tool[data-tool='line'] {
     left: 4rem;
   }
 
-  html:not([data-mode='viewer']) #map-more-panel #marker-shape-label {
+  html:not([data-mode='viewer']) #map-more-panel :is(#marker-shape-label, #marker-accent-label) {
     display: flex;
     align-items: center;
     justify-content: space-between;

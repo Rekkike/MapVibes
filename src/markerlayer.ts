@@ -73,9 +73,15 @@ export class MarkerLayer {
       if (source) {
         node.dataset.symbolSource = source;
       }
-      if (node.dataset.drawn !== `${marker.shape}:${marker.label}`) {
-        drawSymbol(node, marker.shape, marker.label);
-        node.dataset.drawn = `${marker.shape}:${marker.label}`;
+      const drawn = `${marker.shape}:${marker.label}:${marker.accent ?? ''}`;
+      if (node.dataset.drawn !== drawn) {
+        drawSymbol(node, marker.shape, marker.label, marker.accent);
+        node.dataset.drawn = drawn;
+      }
+      if (marker.accent) {
+        node.dataset.accent = marker.accent;
+      } else {
+        delete node.dataset.accent;
       }
       node.setAttribute('aria-label', this.hooks.markerLabel(marker));
       node.title = this.hooks.markerLabel(marker);

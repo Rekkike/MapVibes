@@ -43,6 +43,7 @@ export function captureWorkState(): WorkState {
       comments: commentsOf(state.comments, row).map((c) => ({ date: c.date, text: c.text, ...(c.edited ? { edited: c.edited } : {}) })),
       ...(state.activities.get(row)?.length ? { activities: state.activities.get(row)!.map((a) => ({ ...a })) } : {}),
       ...(workPhaseOf(row) !== undefined ? { workPhase: workPhaseOf(row) } : {}),
+      ...(state.accents.has(row) ? { accent: state.accents.get(row)! } : {}),
       ...(state.activityImports.has(row)
         ? { activityImport: { ...state.activityImports.get(row)!, columns: { ...state.activityImports.get(row)!.columns } } }
         : {}),
@@ -392,6 +393,7 @@ export async function applyWorkState(ws: WorkState): Promise<boolean> {
   state.excluded = new Set(ws.excluded.map((i) => state.ingested[i]));
   state.presentationSelected = null;
   state.shapes = new Map(ws.markers.filter((m) => m.symbol !== null).map((m) => [state.ingested[m.row], m.symbol!]));
+  state.accents = new Map(state.ingested.flatMap((row, i) => (ws.rows[i].accent !== undefined ? [[row, ws.rows[i].accent]] : [])));
   state.areaValues = [...ws.areaValues];
   state.programValues = [...ws.programValues];
   state.colourLabels = { ...ws.colourLabels };

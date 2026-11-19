@@ -95,9 +95,9 @@ export function documentScene(): StageScene | null {
     return null;
   }
   const t = strings(state.prefs.lang);
-  const markers = placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered())
+  const markers = placedMarkers(state.rows, state.positions, effectiveSymbols(), numbered(), state.accents)
     .filter((m) => !state.excluded.has(m.row))
-    .map((m) => ({ position: m.position, symbol: m.shape, colour: m.colour, label: m.label }));
+    .map((m) => ({ position: m.position, symbol: m.shape, colour: m.colour, label: m.label, accent: m.accent }));
   return sceneFromStage({
     viewport: view.viewport,
     stage: view.stageSize(),
@@ -132,7 +132,11 @@ function documentFigure(): TimelineFigure | null {
   const t = strings(state.prefs.lang);
   const { start, end } = state.roles;
   const symbols = effectiveSymbols();
-  const items: FigureItem[] = timelineItems().map((item) => ({ ...item, symbol: symbols.get(rowById(item.id)!) ?? DEFAULT_SHAPE }));
+  const items: FigureItem[] = timelineItems().map((item) => ({
+    ...item,
+    symbol: symbols.get(rowById(item.id)!) ?? DEFAULT_SHAPE,
+    accent: state.accents.get(rowById(item.id)!) ?? null,
+  }));
   if (items.length === 0) {
     return null;
   }
