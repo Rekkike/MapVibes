@@ -1482,6 +1482,12 @@ input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [typ
   padding-right: var(--space-12);
 }
 
+/* In a list the disc reaches beyond the badge: the badge keeps it clear of
+   the text beside it. */
+.marker-badge:has(> .marker-accent) {
+  margin-right: var(--space-8);
+}
+
 /* In the Information list the accent sits in the line, after the number. */
 .marker-accent.list-accent {
   position: relative;
