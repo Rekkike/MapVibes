@@ -7,7 +7,6 @@
 
 import type { RowColour } from './dataset';
 import { strings, type Lang } from './i18n';
-import { state } from './appstate';
 import type { MarkerSymbol } from './symbols';
 
 export function starterColourLabels(lang: Lang): Record<RowColour, string> {
@@ -22,16 +21,22 @@ export function starterSymbolLabels(lang: Lang): Partial<Record<MarkerSymbol, st
   return { bolt: t.vocabBolt, bulb: t.vocabBulb, magnifier: t.vocabMagnifier, gear: t.vocabGear, 'hammer-shovel': t.vocabHammerShovel };
 }
 
-// A new work's vocabulary: the starter names in the current language.
-export function applyStarterVocabulary(): void {
-  state.colourLabels = { ...starterColourLabels(state.prefs.lang) };
-  state.symbolLabels = { ...starterSymbolLabels(state.prefs.lang) };
+// The labels of a work, as the vocabulary functions read and change them.
+export interface WorkLabels {
+  colourLabels: Partial<Record<RowColour, string>>;
+  symbolLabels: Partial<Record<MarkerSymbol, string>>;
+}
+
+// A new work's vocabulary: the starter names in the given language.
+export function applyStarterVocabulary(work: WorkLabels, lang: Lang): void {
+  work.colourLabels = { ...starterColourLabels(lang) };
+  work.symbolLabels = { ...starterSymbolLabels(lang) };
 }
 
 // A change of language: each label that still holds the starter name of the
 // language left takes the starter name of the language chosen; any other
 // label stays as typed. Returns whether anything changed.
-export function followStarterVocabulary(from: Lang, to: Lang): boolean {
+export function followStarterVocabulary(work: WorkLabels, from: Lang, to: Lang): boolean {
   if (from === to) {
     return false;
   }
@@ -39,16 +44,16 @@ export function followStarterVocabulary(from: Lang, to: Lang): boolean {
   const colourFrom = starterColourLabels(from);
   const colourTo = starterColourLabels(to);
   for (const colour of Object.keys(colourFrom) as RowColour[]) {
-    if (state.colourLabels[colour] === colourFrom[colour]) {
-      state.colourLabels[colour] = colourTo[colour];
+    if (work.colourLabels[colour] === colourFrom[colour]) {
+      work.colourLabels[colour] = colourTo[colour];
       changed = true;
     }
   }
   const symbolFrom = starterSymbolLabels(from);
   const symbolTo = starterSymbolLabels(to);
   for (const symbol of Object.keys(symbolFrom) as MarkerSymbol[]) {
-    if (state.symbolLabels[symbol] === symbolFrom[symbol]) {
-      state.symbolLabels[symbol] = symbolTo[symbol]!;
+    if (work.symbolLabels[symbol] === symbolFrom[symbol]) {
+      work.symbolLabels[symbol] = symbolTo[symbol]!;
       changed = true;
     }
   }

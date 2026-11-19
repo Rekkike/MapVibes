@@ -93,7 +93,8 @@ describe('reset demo (FR-56)', () => {
     await settle();
     const after = app.captureWorkState();
     expect(after.rows[0].values.Name).toBe('North gate');
-    expect(after.symbolLabels).toEqual({});
+    // The demo rides the default vocabulary (FR-54 as amended in v2.6.0).
+    expect(after.symbolLabels).toEqual({ bolt: 'OPS quay', bulb: 'Idea phase', magnifier: 'Pre-study', gear: 'Engineering', 'hammer-shovel': 'Execution' });
     expect(JSON.stringify({ ...after, viewport: null })).toBe(pristine);
     expect(byId('segment-map').classList.contains('hidden')).toBe(false);
   });

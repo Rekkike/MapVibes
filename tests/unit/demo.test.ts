@@ -69,9 +69,13 @@ describe('full-test demo fixtures (FR-41)', () => {
     };
     expect(bad(() => undefined)).not.toThrow();
     expect(bad((o) => (o.version = 2))).toThrow();
-    expect(bad((o) => (o.colourLabels.en.purple = 'Odd'))).toThrow();
-    expect(bad((o) => (o.colourLabels.sv.green = ' '))).toThrow();
-    expect(bad((o) => delete o.colourLabels.sv.red)).toThrow();
+    // Since v2.6.0 the demos carry no colour labels of their own (they ride
+    // the default vocabulary, FR-45 as amended); labels that are given are
+    // still checked.
+    expect(bad((o) => (o.colourLabels = { en: { purple: 'Odd' }, sv: { purple: 'Udda' } }))).toThrow();
+    expect(bad((o) => (o.colourLabels = { en: { green: 'Ours' }, sv: { green: ' ' } }))).toThrow();
+    expect(bad((o) => (o.colourLabels = { en: { green: 'Ours', red: 'Theirs' }, sv: { green: 'Våra' } }))).toThrow();
+    expect(bad((o) => (o.colourLabels = { en: { green: 'Ours' }, sv: { green: 'Våra' } }))).not.toThrow();
     expect(bad((o) => (o.glanceColumns.en = ['Nowhere']))).toThrow();
     expect(bad((o) => (o.glanceColumns.sv = ['Programme']))).toThrow();
     expect(bad((o) => delete o.preset.sv)).toThrow();
@@ -117,8 +121,8 @@ describe('the demo extension (FR-41 as amended in v1.1.0)', () => {
     expect(list.rows.filter((r) => r.Programme === '').length).toBeGreaterThanOrEqual(3);
   });
 
-  test('every colour has a user-chosen label, and the panel columns are configured', () => {
-    expect(Object.keys(scenario.colourLabels).sort()).toEqual(['blue', 'green', 'red', 'yellow']);
+  test('the demo rides the default vocabulary (no colour labels of its own), and the panel columns are configured', () => {
+    expect(scenario.colourLabels).toEqual({});
     expect(scenario.glanceColumns).toEqual(['Programme', 'Status', 'End year']);
   });
 
@@ -184,7 +188,9 @@ describe('the demo in both interface languages (FR-41 as amended in v1.3.1)', ()
       ...c.annotationLabels,
       [scenario.preset.name, sv.preset.name],
     ];
-    expect(labels.length).toBe(4 + 5 + 2 + 6 + 3 + 1);
+    // The colour labels are the default vocabulary's since v2.6.0, not the demo's.
+    expect(c.colourLabels).toEqual([]);
+    expect(labels.length).toBe(5 + 2 + 6 + 3 + 1);
     for (const [en, svText] of labels) {
       expect(svText, en).not.toBe(en);
     }

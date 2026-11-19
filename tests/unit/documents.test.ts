@@ -19,7 +19,7 @@ import {
   type DocumentTable,
   type StageInput,
 } from '../../src/documents';
-import { legendModel, type SeriesLegend } from '../../src/legend';
+import { defaultSymbolLabels, legendModel, type SeriesLegend } from '../../src/legend';
 import { en } from '../../src/i18n';
 import { PdfDocument, textWidth } from '../../src/pdfwriter';
 import type { Annotation } from '../../src/annotations';
@@ -262,9 +262,20 @@ describe('the PDF document (FR-12, FR-50)', () => {
 
 describe("the documents' legend (FR-75 as amended in v1.13.0)", () => {
   test('the used-only filter drops unused sections and entries; the phase and series swatches are drawn', () => {
-    const used = { colours: new Set<RowColour>(['green']), symbols: new Set<MarkerSymbol>(['circle']), statuses: new Set<string>(), groups: new Set<number>() };
+    // The used symbol is a named one: an unnamed symbol is never explained
+    // (FR-54 as amended in v2.6.0).
+    const used = { colours: new Set<RowColour>(['green']), symbols: new Set<MarkerSymbol>(['gear']), statuses: new Set<string>(), groups: new Set<number>() };
     const series: SeriesLegend = { names: { budget: 'Budget', forecast: 'Forecast', outcome: 'Outcome' }, used: new Set(['budget', 'outcome']) };
-    const sections = legendModel(en, [{ name: 'Planned', symbol: 'bulb' }], [{ index: 1, name: 'Program' }], undefined, undefined, used, series, true);
+    const sections = legendModel(
+      en,
+      [{ name: 'Planned', symbol: 'bulb' }],
+      [{ index: 1, name: 'Program' }],
+      undefined,
+      { ...defaultSymbolLabels(), gear: 'Engineering' },
+      used,
+      series,
+      true,
+    );
     expect(sections.map((s) => s.kind)).toEqual(['colours', 'shapes', 'series', 'phase']);
     const layout = layoutLegend(en.legend, sections, 700);
     const doc = new PdfDocument({ title: 't' });

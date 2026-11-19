@@ -24,24 +24,27 @@ describe('editable colour labels (FR-45)', () => {
     byId('tab-information').click();
   });
 
-  test('the panel offers the four colours, each named only by its own colour until the user names it', () => {
+  // Since v2.6.0 a new work starts with the default vocabulary's colour names
+  // (FR-45 as amended), ordinary label data; a cleared label shows the
+  // colour's own name, as before.
+  test('the panel offers the four colours, each starting with the name the default vocabulary gives it', () => {
     expect(byId('colour-panel-summary').textContent).toBe('Colour labels');
     expect(byId('colour-panel-hint').textContent).toContain('no meanings of its own and never colours an item from its data');
     const inputs = [...document.querySelectorAll<HTMLInputElement>('#colour-label-list input')];
     expect(inputs.map((i) => [i.dataset.colour, i.value, i.placeholder])).toEqual([
-      ['green', '', 'Green'],
-      ['blue', '', 'Blue'],
-      ['yellow', '', 'Yellow'],
-      ['red', '', 'Red'],
+      ['green', 'Internal project', 'Green'],
+      ['blue', 'External project', 'Blue'],
+      ['yellow', 'Pause', 'Yellow'],
+      ['red', 'Stop', 'Red'],
     ]);
     expect(inputs[0].getAttribute('aria-label')).toBe('Label for Green');
-    expect(legendColours('map-legend')).toEqual(['Green', 'Blue', 'Yellow', 'Red']);
+    expect(legendColours('map-legend')).toEqual(['Internal project', 'External project', 'Pause', 'Stop']);
   });
 
   test("the user's labels appear in both legends, the list's colour chips, the details panel, and the card", async () => {
     label('green', 'Agreed');
     label('red', 'Needs attention');
-    expect(legendColours('map-legend')).toEqual(['Agreed', 'Blue', 'Yellow', 'Needs attention']);
+    expect(legendColours('map-legend')).toEqual(['Agreed', 'External project', 'Pause', 'Needs attention']);
     // The presentation's legend is used-only (FR-75): only green is carried.
     expect(legendColours('presentation-legend')).toEqual(['Agreed']);
     const chip = document.querySelector<HTMLElement>('#row-table-body .colour-chip')!;
@@ -64,7 +67,7 @@ describe('editable colour labels (FR-45)', () => {
     label('yellow', 'Third');
     expect([...document.querySelectorAll<HTMLElement>('#row-table-body .colour-chip')].map((c) => c.className)).toEqual(before);
     label('blue', '   ');
-    expect(legendColours('map-legend')).toEqual(['Green', 'Blue', 'Third', 'Red']);
+    expect(legendColours('map-legend')).toEqual(['Internal project', 'Blue', 'Third', 'Stop']);
     expect(input('blue').value).toBe('');
   });
 
@@ -79,12 +82,13 @@ describe('editable colour labels (FR-45)', () => {
     expect(byId('work-dirty').classList.contains('hidden')).toBe(false);
   });
 
-  test('the colour names follow the language until labelled; labels stay as written', () => {
+  test('the starter names and the colour names follow the language until labelled; labels stay as written', () => {
     label('red', 'Needs attention');
+    label('blue', ' ');
     const lang = byId<HTMLSelectElement>('select-language');
     lang.value = 'sv';
     lang.dispatchEvent(new Event('change'));
-    expect(legendColours('map-legend')).toEqual(['Grön', 'Blå', 'Gul', 'Needs attention']);
+    expect(legendColours('map-legend')).toEqual(['Internt projekt', 'Blå', 'Paus', 'Needs attention']);
     expect(input('green').placeholder).toBe('Grön');
     expect(input('green').getAttribute('aria-label')).toBe('Etikett för Grön');
     expect(byId('colour-panel-summary').textContent).toBe('Färgetiketter');

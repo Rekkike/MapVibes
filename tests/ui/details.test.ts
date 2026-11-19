@@ -49,7 +49,9 @@ describe('details panel (FR-7, FR-16)', () => {
     expect(isOpen()).toBe(true);
     expect(title()).toBe('A-03');
     expect(panel().querySelector('.details-badge')!.textContent).toBe('3');
-    expect(facts()).toEqual(['3', 'Green', 'Circle']);
+    // The colour carries the default vocabulary's name; the default circle is
+    // unnamed and so not explained (FR-45 and FR-54 as amended in v2.6.0).
+    expect(facts()).toEqual(['3', 'Internal project']);
     expect(fields()).toEqual([
       ['ID', 'A-03'],
       ['Start', ''],
@@ -97,7 +99,7 @@ describe('details panel (FR-7, FR-16)', () => {
     rows()[1].querySelector<HTMLElement>('.row-details')!.click();
     expect(facts()[0]).toBe('2');
     rows()[1].querySelector<HTMLElement>('.colour-chip')!.click();
-    expect(facts()[1]).toBe('Blue');
+    expect(facts()[1]).toBe('External project');
     expect(panel().querySelector('.details-badge')!.className).toContain('marker-blue');
     // Removing the first row renumbers the item shown.
     rows()[0].querySelector<HTMLInputElement>('.row-select')!.click();
@@ -133,7 +135,7 @@ describe('details panel (FR-7, FR-16)', () => {
     lang.value = 'sv';
     lang.dispatchEvent(new Event('change'));
     expect(panel().querySelector('.details-subheading')!.textContent).toBe('Kommentarer');
-    expect(facts()[1]).toBe('Grön');
+    expect(facts()[1]).toBe('Internt projekt');
     expect(panel().querySelector('.details-close')!.getAttribute('aria-label')).toBe('Stäng');
   });
 });
@@ -172,9 +174,14 @@ describe('details panel in the Map segment (FR-7)', () => {
   test('the symbol shown follows a change of the marker shape', () => {
     placementItems()[0].click();
     const shape = byId<HTMLSelectElement>('marker-shape');
+    shape.value = 'gear';
+    shape.dispatchEvent(new Event('change'));
+    expect(facts()[2]).toBe('Engineering');
+    // An unnamed symbol is shown on the badge, not explained (FR-54 as amended in v2.6.0).
     shape.value = 'diamond';
     shape.dispatchEvent(new Event('change'));
-    expect(facts()[2]).toBe('Diamond');
+    expect(facts()).toHaveLength(2);
+    expect(panel().querySelector('.details-badge')!.classList.contains('marker-shape-diamond')).toBe(true);
   });
 
   test('the panel is hidden in the Presentation segment and returns afterwards', () => {

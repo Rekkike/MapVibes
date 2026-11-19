@@ -69,7 +69,7 @@ export async function loadDemo(id: DemoId, options: { confirmed?: boolean } = {}
   state.shapes = new Map();
   // The demos ride the default vocabulary (FR-45, FR-54 as amended in
   // v2.6.0): a demo starts as a new work does.
-  applyStarterVocabulary();
+  applyStarterVocabulary(state, state.prefs.lang);
   state.numbering = 'global';
   state.listView = 'flat';
   state.detailsId = null;
@@ -176,9 +176,12 @@ export async function loadDemo(id: DemoId, options: { confirmed?: boolean } = {}
 // language: the colour labels, the area, program, and status values with the
 // cells that hold them, and the annotation labels. What the user typed is kept as typed; the list's own headers and
 // texts stay as loaded, and so does the preset, which matches the headers.
-export function followDemoLanguage(to: Lang): void {
+// The default vocabulary's names that followed the language just before
+// (FR-54 as amended) count with the demo's own: following is not a change of
+// the user's. Returns whether the demo handled the change.
+export function followDemoLanguage(to: Lang, starterFollowed = false): boolean {
   if (!demoLoaded || demoId === null || demoLang === null || demoLang === to) {
-    return;
+    return false;
   }
   const c = demoCounterparts(demoId, demoLang, to);
   demoLang = to;
@@ -233,8 +236,8 @@ export function followDemoLanguage(to: Lang): void {
       changed = true;
     }
   });
-  if (!changed) {
-    return;
+  if (!changed && !starterFollowed) {
+    return true;
   }
   // The demo is as untouched as before: following the language is not a
   // change of the user's.
@@ -247,6 +250,7 @@ export function followDemoLanguage(to: Lang): void {
       setWorkMessage(message);
     }
   }
+  return true;
 }
 
 // Reset demo (FR-56): after the unsaved-changes confirmation (asked only when

@@ -207,7 +207,8 @@ describe('annotations in the work-state file (schema version 6, FR-13)', () => {
     colour.value = 'Late';
     colour.dispatchEvent(new Event('change'));
     const before = app.captureWorkState();
-    expect(before.colourLabels).toEqual({ red: 'Late' });
+    // A new work's other colours carry the default vocabulary's names (FR-45 as amended in v2.6.0).
+    expect(before.colourLabels).toEqual({ green: 'Internal project', blue: 'External project', yellow: 'Pause', red: 'Late' });
     const text = serialiseWorkState(before, new Date());
     const fresh = await mountApp();
     stubImageDecoding(1200, 800);
@@ -237,7 +238,7 @@ describe('annotations in the exported file (export format version 2, FR-40)', ()
       ['rectangle', 0, false, 'Site footprint'],
       ['rectangle', null, false, ''],
     ]);
-    expect(data.workState.colourLabels).toEqual({ green: 'Settled' });
+    expect(data.workState.colourLabels).toEqual({ green: 'Settled', blue: 'External project', yellow: 'Pause', red: 'Stop' });
     expect(data.workState.glanceColumns).toEqual(app.captureWorkState().glanceColumns);
   });
 

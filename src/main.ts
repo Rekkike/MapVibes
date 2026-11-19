@@ -251,10 +251,11 @@ function renderStaticText(): void {
 function setLanguage(lang: Lang): void {
   const from = state.prefs.lang;
   state.prefs.lang = lang;
-  followDemoLanguage(lang);
   // The default vocabulary's names the user has not edited follow the
-  // language (FR-54 as amended).
-  if (followStarterVocabulary(from, lang) && !state.viewOnly && state.headers.length > 0) {
+  // language (FR-54 as amended); within the demo, as its own labels do.
+  const followed = followStarterVocabulary(state, from, lang);
+  const demo = followDemoLanguage(lang, followed);
+  if (followed && !demo && !state.viewOnly && state.headers.length > 0) {
     markDirty();
   }
   // Choices made in the exported viewer are not remembered (FR-20).
@@ -650,7 +651,7 @@ export function main(): void {
   // A new work starts with the default vocabulary (FR-45 and FR-54 as)
   // amended); the exported viewer takes the file's own.
   if (island === null) {
-    applyStarterVocabulary();
+    applyStarterVocabulary(state, state.prefs.lang);
   }
   initialiseMapView();
   initialisePresentation();

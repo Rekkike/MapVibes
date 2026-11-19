@@ -61,7 +61,14 @@ describe('annotation drawing (FR-47)', () => {
       ['Polygon', 'false'],
       ['Line', 'false'],
     ]);
-    expect([...byId<HTMLSelectElement>('annotation-colour').options].map((o) => o.textContent)).toEqual(['Green', 'Blue', 'Yellow', 'Red']);
+    // The colours carry the work's labels: since v2.6.0 a new work starts
+    // with the default vocabulary's names (FR-45 as amended).
+    expect([...byId<HTMLSelectElement>('annotation-colour').options].map((o) => o.textContent)).toEqual([
+      'Internal project',
+      'External project',
+      'Pause',
+      'Stop',
+    ]);
     expect([...byId<HTMLSelectElement>('annotation-outline').options].map((o) => o.textContent)).toEqual(['Black', 'White']);
     expect([...byId<HTMLSelectElement>('annotation-line-style').options].map((o) => o.textContent)).toEqual(['Solid', 'Dotted', 'Dashed']);
     expect(byId('annotation-fill-value').textContent).toBe('30 %');

@@ -124,13 +124,15 @@ describe.each(PROFILES)('the quiet chrome on %s (v1.9.0)', (name, options, heade
     const { page, errors } = await openViewer(options);
     // The used-only legend, computed once from the embedded items: the demo's
     // visible items carry all four colours, nine of the thirteen symbols, and
-    // all six statuses; each entry keeps its meaning.
+    // all six statuses; each entry keeps its meaning. Since v2.6.0 (FR-54 and
+    // FR-75 as amended) the symbols section explains only the named symbols
+    // whose glyph the statuses line does not show: of the nine, the bolt.
     const colours = await page.locator('#presentation-legend .legend-entry[data-colour]').evaluateAll((els) => els.map((e) => e.getAttribute('data-colour')));
     expect(colours).toEqual(['green', 'blue', 'yellow', 'red']);
     const shapes = await page
       .locator('#presentation-legend .legend-entry[data-shape]:not([data-status])')
       .evaluateAll((els) => els.map((e) => e.getAttribute('data-shape')));
-    expect(shapes).toEqual(['square', 'diamond', 'bulb', 'magnifier', 'pause', 'cross', 'check', 'hammer-shovel', 'bolt']);
+    expect(shapes).toEqual(['bolt']);
     const statuses = await page
       .locator('#presentation-legend .legend-entry[data-status]')
       .evaluateAll((els) => els.map((e) => [e.getAttribute('data-status'), e.getAttribute('data-shape')]));

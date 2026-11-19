@@ -119,12 +119,15 @@ describe('PDF export (FR-12, FR-50, FR-52)', () => {
     expect(new TextDecoder('latin1').decode(bytes.slice(0, 8))).toBe('%PDF-1.4');
     const [stage, timeline, table] = await pageTexts(bytes);
     // The stage page: the markers' numbers, the annotation label, the used-only
-    // legend (FR-75 as amended in v1.13.0: only Green and Circle are used here).
+    // legend (FR-75 as amended in v1.13.0: only green and the circle are used
+    // here; since v2.6.0 green carries the default vocabulary's name and the
+    // unnamed circle is not explained, FR-45 and FR-54 as amended).
     // The placed items are the first, third, and fifth.
-    for (const text of ['1', '3', '5', 'Survey area', 'Legend', 'Green', 'Circle']) {
+    for (const text of ['1', '3', '5', 'Survey area', 'Legend', 'Internal project']) {
       expect(stage.split('|')).toContain(text);
     }
-    expect(stage).not.toContain('Lightning bolt');
+    expect(stage).not.toContain('Circle');
+    expect(stage).not.toContain('OPS quay');
     // The timeline page: the title, the notice (no start or end role is
     // assigned in this fixture), and the "No dates" section with every item.
     expect(timeline).toContain('Timeline');

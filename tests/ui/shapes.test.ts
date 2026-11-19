@@ -27,14 +27,16 @@ describe('marker symbol library (FR-26)', () => {
       ['diamond', 'Diamond'],
       ['triangle', 'Triangle'],
       ['hexagon', 'Hexagon'],
-      ['bulb', 'Light bulb'],
-      ['magnifier', 'Magnifying glass'],
-      ['gear', 'Gear'],
+      // A named symbol by its label beside its own name, an unnamed one by its
+      // own name (FR-54 as amended in v2.6.0; a new work's starter names).
+      ['bulb', 'Idea phase (Light bulb)'],
+      ['magnifier', 'Pre-study (Magnifying glass)'],
+      ['gear', 'Engineering (Gear)'],
       ['pause', 'Pause'],
       ['cross', 'Cross'],
       ['check', 'Checkmark'],
-      ['hammer-shovel', 'Hammer and shovel'],
-      ['bolt', 'Lightning bolt'],
+      ['hammer-shovel', 'Execution (Hammer and shovel)'],
+      ['bolt', 'OPS quay (Lightning bolt)'],
     ]);
     pointer('pointerdown', markers()[1], STAGE.left + 400, STAGE.top + 300);
     pointer('pointerup', markers()[1], STAGE.left + 400, STAGE.top + 300);
@@ -79,39 +81,39 @@ describe('marker symbol library (FR-26)', () => {
     expect(document.querySelector('#visibility-list .marker-badge')!.classList.contains('marker-shape-hexagon')).toBe(true);
   });
 
-  test('the legend explains the colours and the shapes, in both views and both languages', () => {
+  test('the legend explains the colours and the named symbols, in both views and both languages', () => {
+    // Since v2.6.0 (FR-54 and FR-75 as amended) an unnamed symbol is never
+    // explained: a new work names five symbols, and the Map segment's palette
+    // lists those five; the presentation's legend is used-only (FR-75), and
+    // every item here carries the unnamed default circle, so it has no
+    // symbols section at all.
     for (const id of ['map-legend', 'presentation-legend']) {
       const legend = byId(id);
-      expect([...legend.querySelectorAll('.legend-group')].map((g) => g.querySelector('.legend-group-label')!.textContent)).toEqual(['Colours', 'Symbols']);
+      expect([...legend.querySelectorAll('.legend-group')].map((g) => g.querySelector('.legend-group-label')!.textContent)).toEqual(
+        id === 'map-legend' ? ['Colours', 'Symbols'] : ['Colours'],
+      );
       const shapes = [...legend.querySelectorAll<HTMLElement>('.legend-entry[data-shape]')];
-      // The Map segment's legend keeps the working palette; the presentation's
-      // is used-only (FR-75): both placed markers and the unplaced rows carry
-      // the default circle here, so only it is shown.
-      const all = ['circle', 'square', 'diamond', 'triangle', 'hexagon', 'bulb', 'magnifier', 'gear', 'pause', 'cross', 'check', 'hammer-shovel', 'bolt'];
-      expect(shapes.map((e) => e.dataset.shape)).toEqual(id === 'map-legend' ? all : ['circle']);
-      shapes.slice(0, 5).forEach((e) => expect(e.querySelector('.legend-swatch')!.classList.contains(`marker-shape-${e.dataset.shape}`)).toBe(true));
-      shapes.slice(5).forEach((e) => {
+      expect(shapes.map((e) => e.dataset.shape)).toEqual(id === 'map-legend' ? ['bulb', 'magnifier', 'gear', 'hammer-shovel', 'bolt'] : []);
+      shapes.forEach((e) => {
         expect(e.querySelector('.legend-swatch')!.classList.contains(`marker-icon-${e.dataset.shape}`)).toBe(true);
         expect(e.querySelector('.legend-swatch svg.marker-glyph path')).not.toBeNull();
       });
     }
+    // A named shape is explained with its outline class.
+    const square = document.querySelector<HTMLInputElement>('#symbol-label-list input[data-symbol="square"]')!;
+    square.value = 'Depot';
+    square.dispatchEvent(new Event('change'));
+    expect(byId('map-legend').querySelector('.legend-entry[data-shape="square"] .legend-swatch')!.classList.contains('marker-shape-square')).toBe(true);
     const select = byId<HTMLSelectElement>('select-language');
     select.value = 'sv';
     select.dispatchEvent(new Event('change'));
     expect([...byId('map-legend').querySelectorAll('.legend-entry[data-shape] .legend-label')].map((e) => e.textContent)).toEqual([
-      'Cirkel',
-      'Kvadrat',
-      'Romb',
-      'Triangel',
-      'Sexhörning',
-      'Glödlampa',
-      'Förstoringsglas',
-      'Kugghjul',
-      'Paus',
-      'Kryss',
-      'Bock',
-      'Hammare och spade',
-      'Blixt',
+      'Depot',
+      'Idéfas',
+      'Förstudie',
+      'Projektering',
+      'Genomförande',
+      'OPS kaj',
     ]);
   });
 

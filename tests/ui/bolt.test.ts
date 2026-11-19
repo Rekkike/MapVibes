@@ -30,7 +30,9 @@ describe('the lightning-bolt icon (FR-26 as amended)', () => {
     pointer('pointerup', markers()[0], STAGE.left + 100, STAGE.top + 100);
     const shape = byId<HTMLSelectElement>('marker-shape');
     const option = [...shape.options].find((o) => o.value === 'bolt')!;
-    expect(option.textContent).toBe('Lightning bolt');
+    // The picker names it by its label beside its own name (FR-54 as amended in
+    // v2.6.0); a new work's label is the default vocabulary's.
+    expect(option.textContent).toBe('OPS quay (Lightning bolt)');
     shape.value = 'bolt';
     shape.dispatchEvent(new Event('change'));
     const marker = markers()[0];
@@ -70,14 +72,14 @@ describe('the lightning-bolt icon (FR-26 as amended)', () => {
       theme(mode);
       for (const id of ['map-legend', 'presentation-legend']) {
         const entry = byId(id).querySelector<HTMLElement>('.legend-entry[data-shape="bolt"]')!;
-        expect(entry.textContent).toBe('Lightning bolt');
+        expect(entry.textContent).toBe('OPS quay');
         expect(glyphPath(entry)).toBe(ICON_PATHS['bolt']);
       }
     }
     const lang = byId<HTMLSelectElement>('select-language');
     lang.value = 'sv';
     lang.dispatchEvent(new Event('change'));
-    expect(byId('map-legend').querySelector('.legend-entry[data-shape="bolt"]')!.textContent).toBe('Blixt');
+    expect(byId('map-legend').querySelector('.legend-entry[data-shape="bolt"]')!.textContent).toBe('OPS kaj');
   });
 
   test('it is a stroked line drawing in the number colour, so it keeps the pinned contrast bar', () => {
