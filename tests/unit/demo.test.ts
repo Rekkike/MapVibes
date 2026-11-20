@@ -371,9 +371,7 @@ describe('the Helsingborg demo fixtures (v2.4.0, the rule-7 exception)', () => {
       const ops = scenario.items.find((i) => i.item === 'H-09')!;
       expect(ops.accent).toBe('bolt');
       expect(ops.emphasis).toBe(true);
-      expect(
-        scenario.items.filter((i) => i.accent !== undefined || i.emphasis !== undefined).map((i) => i.item),
-      ).toEqual(['H-09']);
+      expect(scenario.items.filter((i) => i.accent !== undefined || i.emphasis !== undefined).map((i) => i.item)).toEqual(['H-09']);
     }
     const bad = (mutate: (o: any) => void) => {
       const o = JSON.parse(JSON.stringify(helsingborgScenarioJson));

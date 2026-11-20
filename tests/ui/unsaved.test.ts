@@ -128,7 +128,7 @@ describe('unsaved-changes awareness', () => {
     expect(unloadBlocked()).toBe(false);
   });
 
-  test('no automatic writes: editing and unloading never write a file or store work', async () => {
+  test('no automatic file writes: editing and unloading never write a work file; the device copy is the only automatic write (v2.8.0)', async () => {
     const picker = vi.fn();
     (window as unknown as { showSaveFilePicker: unknown }).showSaveFilePicker = picker;
     const createObjectURL = vi.fn(() => 'blob:x');
@@ -141,8 +141,13 @@ describe('unsaved-changes awareness', () => {
     await flush();
     expect(picker).not.toHaveBeenCalled();
     expect(createObjectURL).not.toHaveBeenCalled();
-    const keys = Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i));
-    expect(keys.every((k) => k === 'mapvibes.preferences')).toBe(true);
+    // The only automatic write is the stored copy on the device (v2.8.0),
+    // in the stored-work format, never a work file.
+    const keys = Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i)).sort();
+    expect(keys).toEqual(['mapvibes.preferences', 'mapvibes.stored-work']);
+    const stored = JSON.parse(localStorage.getItem('mapvibes.stored-work')!);
+    expect(stored.format).toBe('mapvibes-stored-work');
+    expect(stored.state).toContain('"format": "mapvibes-work-state"');
     expect(sessionStorage.length).toBe(0);
   });
 

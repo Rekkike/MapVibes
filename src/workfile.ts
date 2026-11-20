@@ -15,6 +15,7 @@ import { renderList } from './listpanel';
 import { effectiveSeries, setEventMessage, setPresetMessage } from './columnpanels';
 import { currentDemoId, demoLoaded, setDemoLoaded } from './demoload';
 import { setSegment } from './segmentswitch';
+import { scheduleAutosave, writeStoredWork } from './autosave';
 
 // The number of changes made, and its value when the demo finished loading,
 // so that a reset of an untouched demo needs no confirmation (FR-56).
@@ -99,7 +100,7 @@ export function captureWorkState(): WorkState {
   };
 }
 
-function hasWork(): boolean {
+export function hasWork(): boolean {
   return state.ingested.length > 0 || (mapView?.background !== null && mapView?.background !== undefined);
 }
 
@@ -169,7 +170,21 @@ export async function writeFile(data: string | Uint8Array, kind: FileKind): Prom
 }
 
 type WorkMessage =
-  'saved' | 'download-started' | 'save-failed' | 'shared' | 'share-failed' | 'opened' | 'open-failed' | 'compare-opened' | 'demo-loaded' | 'demo-loaded-plan';
+  | 'saved'
+  | 'download-started'
+  | 'save-failed'
+  | 'shared'
+  | 'share-failed'
+  | 'opened'
+  | 'open-failed'
+  | 'compare-opened'
+  | 'demo-loaded'
+  | 'demo-loaded-plan'
+  // v2.8.0, the stored work on the device: a storage refusal (kept visible
+  // until a write succeeds), a restored copy, and a cleared copy.
+  | 'storage-refused'
+  | 'restored'
+  | 'cleared';
 export let workMessage: WorkMessage | null = null;
 export function setWorkMessage(value: WorkMessage | null): void {
   workMessage = value;
@@ -193,11 +208,17 @@ export function markDirty(): void {
     workMessage === 'shared' ||
     workMessage === 'opened' ||
     workMessage === 'demo-loaded' ||
-    workMessage === 'demo-loaded-plan'
+    workMessage === 'demo-loaded-plan' ||
+    // v2.8.0: a restored or cleared stored copy gives way to the next change;
+    // a storage refusal stays visible until a stored write succeeds.
+    workMessage === 'restored' ||
+    workMessage === 'cleared'
   ) {
     workMessage = null;
   }
   renderWorkStatus();
+  // The stored copy on the device follows the change, debounced (v2.8.0).
+  scheduleAutosave();
 }
 
 export function renderWorkStatus(): void {
@@ -220,9 +241,12 @@ export function renderWorkStatus(): void {
     'compare-opened': t.compareOpened,
     'demo-loaded': t.demoLoaded,
     'demo-loaded-plan': t.demoLoadedPlan,
+    'storage-refused': t.storageRefused,
+    restored: t.recoveryRestored,
+    cleared: t.recoveryCleared,
   };
   status.textContent = workMessage ? messages[workMessage] : '';
-  status.classList.toggle('error', workMessage === 'save-failed' || workMessage === 'open-failed');
+  status.classList.toggle('error', workMessage === 'save-failed' || workMessage === 'open-failed' || workMessage === 'storage-refused');
   el<HTMLButtonElement>('work-save').disabled = !hasWork();
   // The share action (FR-13 as noted): offered only where the
   // browser can share files; hidden without the API, disabled with a clear
@@ -467,6 +491,9 @@ export async function applyWorkState(ws: WorkState): Promise<boolean> {
   state.dirty = false;
   workMessage = 'opened';
   renderWorkStatus();
+  // The stored copy on the device tracks the applied work from here
+  // (v2.8.0); in the viewer it writes nothing.
+  writeStoredWork();
   return true;
 }
 

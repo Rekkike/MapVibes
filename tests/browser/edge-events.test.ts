@@ -146,7 +146,7 @@ describe.each([
   test('the floating "In view" panel never covers the events strip or its edge chips (v2.8.0)', async () => {
     const { page, errors } = await openViewer(options);
     for (const view of ['timeline', 'costs'] as const) {
-      const m = await readStrip(page, view);
+      await readStrip(page, view);
       const o = await page.evaluate(() => {
         const glance = document.querySelector<HTMLElement>('#presentation-glance')!;
         const g = glance.getBoundingClientRect();
@@ -185,7 +185,9 @@ describe.each([
         expect(o.overlapsStrip).toBe(false);
         expect(o.coversEdge).toEqual([false, false]);
       }
-      measured.push(`${name}, ${view}: panel ${JSON.stringify(o.glance)} vs strip ${o.strip.left.toFixed(0)}..${o.strip.right.toFixed(0)} x ${o.strip.top.toFixed(0)}..${o.strip.bottom.toFixed(0)}, edges ${o.edges.map((e) => `${e.left.toFixed(0)}..${e.right.toFixed(0)}`).join('; ')}, overlaps ${o.overlapsStrip}/${o.coversEdge.join(',')}`);
+      measured.push(
+        `${name}, ${view}: panel ${JSON.stringify(o.glance)} vs strip ${o.strip.left.toFixed(0)}..${o.strip.right.toFixed(0)} x ${o.strip.top.toFixed(0)}..${o.strip.bottom.toFixed(0)}, edges ${o.edges.map((e) => `${e.left.toFixed(0)}..${e.right.toFixed(0)}`).join('; ')}, overlaps ${o.overlapsStrip}/${o.coversEdge.join(',')}`,
+      );
     }
     expect(errors).toEqual([]);
     await page.context().close();

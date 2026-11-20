@@ -372,6 +372,30 @@ h2 {
   color: var(--muted);
 }
 
+/* The stored work's recovery offer (v2.8.0): a clearly labelled banner at
+   the top of the main area, offered on open and never applied silently. */
+#recovery-offer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4) var(--space-8);
+  margin: 0 0 var(--space-8);
+  padding: var(--space-8) var(--space-12);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--panel);
+  font-size: var(--text-13);
+}
+
+#recovery-offer #recovery-text {
+  flex: 1 1 14rem;
+}
+
+/* The exported viewer never offers or writes a stored copy (FR-38). */
+html[data-mode='viewer'] #recovery-offer {
+  display: none;
+}
+
 #drop-zone {
   border: 2px dashed var(--border);
   border-radius: var(--radius);
@@ -4265,6 +4289,11 @@ html .annotation-tool[data-tool='line'] {
     overflow: auto;
   }
 
+  /* The recovery offer spans the main area under the bar. */
+  html:not([data-mode='viewer']) #recovery-offer {
+    margin: var(--space-8) var(--space-16) 0;
+  }
+
   html:not([data-mode='viewer']) .segment {
     min-height: 0;
   }
@@ -6398,6 +6427,10 @@ html[data-idle='true'] #toggle-glance {
   html:not([data-mode='viewer']) #app-main {
     min-height: 0;
     padding: var(--space-8);
+  }
+
+  html:not([data-mode='viewer']) #recovery-offer {
+    margin: 0 0 var(--space-8);
   }
 
   html:not([data-mode='viewer']) .segment {

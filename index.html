@@ -26,6 +26,7 @@
           <input type="file" id="work-file-input" accept=".json,application/json,.html,.htm,text/html" hidden />
           <button type="button" id="work-save">Save work</button>
           <button type="button" id="work-share">Share work</button>
+          <button type="button" id="work-clear-stored" class="hidden">Clear stored work</button>
           <span id="work-dirty" class="hidden" role="status">Unsaved changes</span>
           <span id="work-status" class="notice" aria-live="polite"></span>
         </div>
@@ -51,6 +52,11 @@
       <div id="app-menu" role="group" aria-labelledby="menu-toggle" hidden></div>
     </header>
     <main id="app-main">
+      <div id="recovery-offer" class="hidden" role="alert">
+        <span id="recovery-text"></span>
+        <button type="button" id="recovery-restore">Restore stored work</button>
+        <button type="button" id="recovery-discard">Discard stored work</button>
+      </div>
       <section id="compare-panel" class="hidden" aria-labelledby="compare-heading">
         <div class="compare-header dialog-head">
           <h2 id="compare-heading">Comparison with an exported file</h2>

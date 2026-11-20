@@ -220,7 +220,7 @@ export function parseDemoScenarios(raw: unknown): DemoScenarios {
       if (!isIcon(it.accent)) {
         fail(`items[${i}].accent`);
       }
-      accent = it.accent;
+      accent = it.accent as MarkerIcon;
     }
     if (it.emphasis !== undefined) {
       if (it.emphasis !== true || accent === undefined) {
