@@ -242,6 +242,8 @@ describe('everything is drawn from the tokens (FR-29 as amended in v1.17.0)', ()
     // and nowhere else.
     const DIMENSIONS: Record<string, number> = {
       'padding-right: var(--timeline-gutter, 0px)': 2,
+      // The schedule views' reserved zone for the floating chrome (v2.8.0).
+      'padding-right: var(--timeline-chrome, 0px)': 2,
       'padding-right: var(--timeline-control-room)': 1,
       'margin-left: calc(var(--timeline-point-size) / -2)': 1,
       'padding-right: calc(min(var(--details-width), 100vw - var(--space-32)) + var(--space-32))': 1,

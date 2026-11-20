@@ -14,7 +14,10 @@ import { pressExport, setSelect } from './chrome';
 // phone: a small "+n"-style chip at each end of the events strip counting
 // the events beyond the shown window, taking no extra height and no room of
 // the in-window chips, and on a tap panning the window to the nearest of
-// those events, so that it is drawn. Run after the build (npm run build).
+// those events, so that it is drawn. v2.8.0: the floating "In view" panel no
+// longer covers the strip's ends -- the schedule views reserve its zone on
+// their right -- pinned at 1500x950, 1440x900, and 390x844. Run after the
+// build (npm run build).
 const BUILT = join(process.cwd(), 'dist', 'build', 'index.html');
 
 let browser: Browser;
@@ -137,8 +140,57 @@ async function readStrip(page: Page, view: 'timeline' | 'costs') {
 
 describe.each([
   ['desktop 1500x950', { viewport: { width: 1500, height: 950 } }, 22],
+  ['desktop 1440x900', { viewport: { width: 1440, height: 900 } }, 22],
   ['phone 390x844', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, 42],
 ] as const)('the edge indicators in the viewer on %s', (name, options, stripH) => {
+  test('the floating "In view" panel never covers the events strip or its edge chips (v2.8.0)', async () => {
+    const { page, errors } = await openViewer(options);
+    for (const view of ['timeline', 'costs'] as const) {
+      const m = await readStrip(page, view);
+      const o = await page.evaluate(() => {
+        const glance = document.querySelector<HTMLElement>('#presentation-glance')!;
+        const g = glance.getBoundingClientRect();
+        const stage = document.querySelector<HTMLElement>('#presentation-stage')!.getBoundingClientRect();
+        const root = document.querySelector<HTMLElement>('#presentation-timeline, #presentation-costs')!;
+        const strip = root.querySelector('.timeline-event-strip')!.getBoundingClientRect();
+        const axis = root.querySelector('.timeline-axis')!.getBoundingClientRect();
+        const edges = [...root.querySelectorAll<HTMLElement>('.timeline-event-edge')].map((c) => c.getBoundingClientRect());
+        const overlap = (a: DOMRect, b: DOMRect) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+        return {
+          fold: glance.dataset.fold,
+          state: glance.dataset.state,
+          glance: { left: g.left, top: g.top, right: g.right, bottom: g.bottom },
+          stage: { left: stage.left, right: stage.right },
+          strip: { left: strip.left, top: strip.top, right: strip.right, bottom: strip.bottom },
+          axis: { top: axis.top, bottom: axis.bottom },
+          edges: edges.map((e) => ({ left: e.left, right: e.right, top: e.top, bottom: e.bottom })),
+          overlapsStrip: overlap(g, strip),
+          overlapsAxis: overlap(g, axis),
+          coversEdge: edges.map((e) => overlap(g, e)),
+        };
+      });
+      const wide = (options as { viewport?: { width: number } }).viewport!.width >= 768;
+      if (wide) {
+        // Unfolded, the panel floats at the stage's upper right; the strip
+        // and its edge chips end left of it, in full view.
+        expect(o.fold).toBe('open');
+        expect(o.overlapsStrip).toBe(false);
+        expect(o.overlapsAxis).toBe(false);
+        expect(o.coversEdge).toEqual([false, false]);
+        expect(o.edges[1].right).toBeLessThanOrEqual(o.glance.left);
+        expect(o.strip.right).toBeLessThanOrEqual(o.glance.left + 0.5);
+      } else {
+        // In the compact class the panel is an overlay, closed by default.
+        expect(o.state).not.toBe('open');
+        expect(o.overlapsStrip).toBe(false);
+        expect(o.coversEdge).toEqual([false, false]);
+      }
+      measured.push(`${name}, ${view}: panel ${JSON.stringify(o.glance)} vs strip ${o.strip.left.toFixed(0)}..${o.strip.right.toFixed(0)} x ${o.strip.top.toFixed(0)}..${o.strip.bottom.toFixed(0)}, edges ${o.edges.map((e) => `${e.left.toFixed(0)}..${e.right.toFixed(0)}`).join('; ')}, overlaps ${o.overlapsStrip}/${o.coversEdge.join(',')}`);
+    }
+    expect(errors).toEqual([]);
+    await page.context().close();
+  }, 60_000);
+
   test('each end of the events strip carries a small chip counting the events beyond the window, in both schedule views', async () => {
     const { page, errors } = await openViewer(options);
     for (const view of ['timeline', 'costs'] as const) {
@@ -175,14 +227,13 @@ describe.each([
 
   test('tapping an edge chip pans the window to the nearest event beyond that end, which is then drawn', async () => {
     const { page, errors } = await openViewer(options);
-    // The floating "In view" panel is folded first, as a user would fold it:
-    // where it floats, unfolded, it covers the right end of the strip. Before
-    // the fix-forward of v2.7.0's CI the quiet chrome withdrew it during the
-    // interaction with the timeline, which the quiet chrome did not see; it
-    // now stays while the user works, as ruled.
-    if ((await page.getAttribute('#presentation-glance', 'data-fold')) === 'open') {
-      await page.evaluate(() => document.getElementById('toggle-glance')!.click());
-      await page.waitForTimeout(200);
+    // The floating "In view" panel stays unfolded at the wide sizes: since
+    // v2.8.0 the schedule views reserve its zone on their right, so it no
+    // longer covers the right end of the strip (the v2.7.0 CI defect had
+    // withdrawn it mid-test; that defect is fixed since, and the overlap
+    // itself is fixed in v2.8.0).
+    if ((options as { viewport?: { width: number } }).viewport!.width >= 768) {
+      expect(await page.getAttribute('#presentation-glance', 'data-fold')).toBe('open');
     }
     for (const view of ['timeline', 'costs'] as const) {
       const before = await readStrip(page, view);

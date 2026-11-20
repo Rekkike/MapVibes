@@ -4598,6 +4598,16 @@ html .annotation-tool[data-tool='line'] {
     max-height: calc(100% - 13.5rem);
   }
 
+  /* The schedule views reserve the floating "In view" panel's zone on their
+     right (v2.8.0): the axis, the events strip, and the plot end left of the
+     panel (the panel is 14.5 rem wide, 12 pixels from the stage's top and
+     right edges), so that the strip's edge indicators stay in full view at
+     every width the panel floats at, folded or unfolded. */
+  html:not([data-mode='viewer']) #presentation-stage:is([data-view='timeline'], [data-view='costs']) .timeline {
+    --timeline-chrome: calc(var(--space-12) + 14.5rem + var(--space-12));
+    padding-right: var(--timeline-chrome, 0px);
+  }
+
   /* The Map segment's legend stays below the tool strip (at most 22.5 rem
      from the stage's top with a coarse pointer and the items control above
      it); a longer legend scrolls inside itself. */
@@ -5543,6 +5553,16 @@ html[data-idle='true'] #toggle-glance {
     line-height: 1.75rem;
   }
 
+  /* The schedule views reserve the floating "In view" panel's zone on their
+     right (v2.8.0), as the application's Presentation segment does: the axis,
+     the events strip, and the plot end left of the panel, so that the strip's
+     edge indicators stay in full view at every width the panel floats at,
+     folded or unfolded. */
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) #presentation-stage:is([data-view='timeline'], [data-view='costs']) .timeline {
+    --timeline-chrome: calc(var(--space-12) + 14.5rem + var(--space-12));
+    padding-right: var(--timeline-chrome, 0px);
+  }
+
 }
 
 /* The viewer's presentation scale step above 1,920 pixels (v2.1.0, the
@@ -5559,9 +5579,14 @@ html[data-idle='true'] #toggle-glance {
     --text-20: 1.75rem;
   }
 
-  /* From 1,920 pixels "In view" docks beside the stage, at 264 pixels. */
+  /* From 1,920 pixels "In view" docks beside the stage, at 264 pixels; the
+     schedule views take the stage's full width again (v2.8.0). */
   html[data-mode='viewer'] #segment-presentation {
     grid-template-columns: minmax(0, 1fr) 16.5rem;
+  }
+
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) #presentation-stage:is([data-view='timeline'], [data-view='costs']) .timeline {
+    --timeline-chrome: 0px;
   }
 
   html[data-mode='viewer'] .glance-panel {
