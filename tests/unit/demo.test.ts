@@ -362,6 +362,32 @@ describe('the Helsingborg demo fixtures (v2.4.0, the rule-7 exception)', () => {
     expect(bad((o) => delete o.preset.en)).toThrow();
   });
 
+  // v2.8.0: the OPS item (H-09, the shore-power item) carries its accent and
+  // the emphasis flag in the fixture's own data, in both languages, so that
+  // every fresh load of the demo draws the emphasis marker untouched.
+  test('the OPS item carries the bolt as its accent, emphasised, in both languages; no other item does', () => {
+    for (const lang of ['en', 'sv'] as const) {
+      const scenario = demoScenario('helsingborg', lang);
+      const ops = scenario.items.find((i) => i.item === 'H-09')!;
+      expect(ops.accent).toBe('bolt');
+      expect(ops.emphasis).toBe(true);
+      expect(
+        scenario.items.filter((i) => i.accent !== undefined || i.emphasis !== undefined).map((i) => i.item),
+      ).toEqual(['H-09']);
+    }
+    const bad = (mutate: (o: any) => void) => {
+      const o = JSON.parse(JSON.stringify(helsingborgScenarioJson));
+      mutate(o);
+      return () => parseDemoScenarios(o);
+    };
+    const h09 = (o: any) => o.items.find((i: any) => i.item === 'H-09');
+    const h10 = (o: any) => o.items.find((i: any) => i.item === 'H-10');
+    expect(bad((o) => (h09(o).accent = 'circle'))).toThrow(/items\[9\]\.accent/);
+    expect(bad((o) => (h09(o).emphasis = false))).toThrow(/items\[9\]\.emphasis/);
+    expect(bad((o) => delete h09(o).accent)).toThrow(/items\[9\]\.emphasis/);
+    expect(bad((o) => (h10(o).emphasis = true))).toThrow(/items\[10\]\.emphasis/);
+  });
+
   test('the background is the Helsingborg south extract with its recorded bounds', () => {
     // v2.4.0 Unit 1: cut per docs/v2.3.0-extract-counsel.md in six tiled
     // /api/0.6/map calls; kept to the eight FR-31 selectors, metadata

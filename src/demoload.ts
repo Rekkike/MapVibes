@@ -101,6 +101,14 @@ export async function loadDemo(id: DemoId, options: { confirmed?: boolean } = {}
       continue;
     }
     row.colour = item.colour;
+    // The item's accent and its emphasis, carried by the fixture's own data
+    // (FR-82, FR-83; v2.8.0: the Helsingborg demo's OPS item).
+    if (item.accent !== undefined) {
+      state.accents.set(row, item.accent);
+    }
+    if (item.emphasis === true) {
+      state.emphasis.add(row);
+    }
     if (item.comments.length > 0) {
       state.comments.set(row, restoreComments(item.comments));
     }
