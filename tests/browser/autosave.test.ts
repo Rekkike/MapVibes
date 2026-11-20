@@ -167,15 +167,14 @@ describe('a quota-exceeded refusal is handled honestly (v2.8.0)', () => {
       await fillStorage(page);
       await page.setInputFiles('#file-input', EXAMPLE);
       await page.waitForFunction(() => document.querySelectorAll('#row-table-body tr').length > 0, undefined, { timeout: 30_000 });
-      await page.waitForFunction(
-        (k) =>
-          localStorage.getItem(k) === null &&
-          (document.getElementById('work-status') as HTMLElement).textContent.includes('refused to store the work on this device'),
-        KEY,
-        { timeout: 20_000 },
-      );
-      expect(await page.locator('#work-status').textContent()).toContain('Saving a work file is unaffected');
-      expect(await page.locator('#work-status.error').count()).toBe(1);
+      await page.waitForFunction((k) => localStorage.getItem(k) === null && !document.getElementById('storage-refused')!.classList.contains('hidden'), KEY, {
+        timeout: 20_000,
+      });
+      expect(await page.locator('#storage-refused').textContent()).toContain('refused to store the work on this device');
+      expect(await page.locator('#storage-refused').textContent()).toContain('Saving a work file is unaffected');
+      expect(await page.locator('#storage-refused:not(.hidden)').count()).toBe(1);
+      // The refusal has its own notice and does not mask the work status.
+      expect((await page.locator('#work-status').textContent()) ?? '').not.toContain('refused to store');
       // The unsaved mark stays: a refusal is not a save and not a loss.
       expect(await page.locator('#work-dirty:not(.hidden)').count()).toBe(1);
       // The explicit save is unaffected: the file downloads as ever (at the

@@ -33,7 +33,7 @@ import {
   VALUE_VOCABULARIES,
 } from './columnpanels';
 import { followDemoLanguage, resetDemo } from './demoload';
-import { clearStoredWork, offerStoredWork, restoreStoredWork, writeStoredWork } from './autosave';
+import { beginAutosaveSession, clearStoredWork, offerStoredWork, restoreStoredWork, writeStoredWork } from './autosave';
 import { applyStarterVocabulary, followStarterVocabulary } from './starter';
 import { applyDemoPickerLabels, wireDemoPicker } from './demopicker';
 import { appNarrow, narrowApplication, refitOnClassChange, startNarrowApplication, startNarrowViewer } from './narrowlayout';
@@ -382,7 +382,7 @@ function guardUnsavedWork(e: BeforeUnloadEvent): void {
 function wireEvents(): void {
   window.addEventListener('beforeunload', guardUnsavedWork);
   // The stored copy on the device is written on pagehide as well, so that
-  // the last change before a close or a crash is kept (v2.8.0).
+  // the last change before a close or a crash is kept.
   window.addEventListener('pagehide', () => writeStoredWork());
   el('work-save').addEventListener('click', () => void saveWork());
   el('work-share').addEventListener('click', () => void shareWork());
@@ -679,11 +679,12 @@ export function main(): void {
   if (island === null) {
     startNarrowApplication();
   }
+  beginAutosaveSession();
   if (island !== null) {
     void startViewer(island);
   } else {
     // The stored work on the device is offered on open, never applied
-    // silently (v2.8.0); the exported viewer never offers it.
+    // silently; the exported viewer never offers it.
     offerStoredWork();
   }
   // The application has started: an exported file's static state and its

@@ -17,7 +17,7 @@ function originalSetItem(): (this: Storage, key: string, value: string) => void 
 }
 
 async function waitStored(): Promise<void> {
-  for (let i = 0; i < 25; i++) {
+  for (let i = 0; i < 80; i++) {
     if (localStorage.getItem(KEY) !== null) {
       return;
     }
@@ -187,10 +187,21 @@ describe('the stored work on the device (v2.8.0)', () => {
       return orig.call(this, key, value);
     });
     await importExampleWorkbook();
-    await waitStored().catch(() => undefined);
-    await new Promise((r) => setTimeout(r, 1200));
-    expect(byId('work-status').textContent).toContain('refused to store the work on this device');
-    expect(byId('work-status').classList.contains('error')).toBe(true);
+    // Let this instance's own debounced write fire before reading the notice.
+    await new Promise((r) => setTimeout(r, 1400));
+    for (let i = 0; i < 30; i++) {
+      if (!byId('storage-refused').classList.contains('hidden')) {
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    // The refusal has its own persistent notice, in the error style, and
+    // does not mask the work status.
+    expect(byId('storage-refused').classList.contains('hidden')).toBe(false);
+    expect(byId('storage-refused').textContent).toContain('refused to store the work on this device');
+    expect(byId('storage-refused').classList.contains('error')).toBe(true);
+    // The refusal does not mask the work status.
+    expect(byId('work-status').textContent ?? '').not.toContain('refused to store');
     // The unsaved mark stays: a refusal is not a save and not a loss.
     expect(byId('work-dirty').classList.contains('hidden')).toBe(false);
     expect(localStorage.getItem(KEY)).toBeNull();
@@ -201,6 +212,8 @@ describe('the stored work on the device (v2.8.0)', () => {
     removeSaveDialog();
     expect(parseWorkState(written.text!).rows.length).toBeGreaterThan(0);
     expect(byId('work-status').textContent).toBe('Work saved.');
+    // The refusal stays visible beside it: the stored write is still refused.
+    expect(byId('storage-refused').classList.contains('hidden')).toBe(false);
   });
 
   test('a refusal is cleared when a stored write succeeds again', async () => {
@@ -212,13 +225,19 @@ describe('the stored work on the device (v2.8.0)', () => {
       return orig.call(this, key, value);
     });
     await importExampleWorkbook();
-    await new Promise((r) => setTimeout(r, 1200));
-    expect(byId('work-status').textContent).toContain('refused to store');
+    await new Promise((r) => setTimeout(r, 1400));
+    for (let i = 0; i < 30; i++) {
+      if (!byId('storage-refused').classList.contains('hidden')) {
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    expect(byId('storage-refused').textContent).toContain('refused to store');
     spy.mockRestore();
     // Another change stores the copy and clears the refusal.
     document.querySelectorAll<HTMLElement>('#row-table-body .colour-chip')[0].click();
     await waitStored();
-    expect(byId('work-status').textContent).not.toContain('refused to store');
+    expect(byId('storage-refused').classList.contains('hidden')).toBe(true);
   });
 
   test('a stored copy that cannot be read is not offered, but can be cleared', async () => {

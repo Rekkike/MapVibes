@@ -392,8 +392,28 @@ h2 {
 }
 
 /* The exported viewer never offers or writes a stored copy (FR-38). */
-html[data-mode='viewer'] #recovery-offer {
+html[data-mode='viewer'] #recovery-offer,
+html[data-mode='viewer'] #storage-refused {
   display: none;
+}
+
+/* The stored work's refusal notice (v2.8.0): a floating pill under the
+   bar, persistent until a stored write succeeds. It takes no layout room
+   -- fixed, so it never overflows the page -- and does not mask the work
+   status in the header. */
+#storage-refused {
+  position: fixed;
+  top: 4.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--layer-dialog);
+  max-width: min(44rem, calc(100vw - 2rem));
+  padding: var(--space-8) var(--space-12);
+  border: 1px solid var(--error);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--card-shadow);
+  pointer-events: none;
 }
 
 #drop-zone {

@@ -599,8 +599,8 @@ export const en = {
   workOpenUnknownVersion: 'The work-state file has schema version {version}, which this version of MapVibes cannot read. Nothing was opened.',
   workOpenInvalid: 'The work-state file is damaged or inconsistent; nothing was opened. Detail:',
   workOpenUnreadable: 'The file could not be read. Nothing was opened.',
-  // The stored work on the device (v2.8.0): the automatic copy in the
-  // browser's local storage, offered on open, never applied silently.
+  // The stored work on the device: the automatic copy in the browser's
+  // local storage, offered on open, never applied silently.
   recoveryOffer: 'Stored work on this device from {date} ({age}). It is the automatic copy kept on this device, not a saved work file.',
   recoveryRestore: 'Restore stored work',
   recoveryDiscard: 'Discard stored work',
@@ -1252,7 +1252,7 @@ export const sv: Strings = {
   workOpenUnknownVersion: 'Arbetstillståndsfilen har schemaversion {version}, som denna version av MapVibes inte kan läsa. Ingenting öppnades.',
   workOpenInvalid: 'Arbetstillståndsfilen är skadad eller inkonsekvent; ingenting öppnades. Detalj:',
   workOpenUnreadable: 'Filen kunde inte läsas. Ingenting öppnades.',
-  // Det sparade arbetet på enheten (v2.8.0): den automatiska kopian i
+  // Det sparade arbetet på enheten: den automatiska kopian i
   // webbläsarens lokala lagring, erbjuden vid öppning, aldrig tillämpad i tysthet.
   recoveryOffer:
     'Sparat arbete på den här enheten från {date} ({age}). Det är den automatiska kopian som sparats på den här enheten, inte en sparad arbetsfil.',

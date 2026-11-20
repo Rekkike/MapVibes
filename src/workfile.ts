@@ -15,7 +15,7 @@ import { renderList } from './listpanel';
 import { effectiveSeries, setEventMessage, setPresetMessage } from './columnpanels';
 import { currentDemoId, demoLoaded, setDemoLoaded } from './demoload';
 import { setSegment } from './segmentswitch';
-import { scheduleAutosave, writeStoredWork } from './autosave';
+import { scheduleAutosave, storageRefused, writeStoredWork } from './autosave';
 
 // The number of changes made, and its value when the demo finished loading,
 // so that a reset of an untouched demo needs no confirmation (FR-56).
@@ -180,9 +180,8 @@ type WorkMessage =
   | 'compare-opened'
   | 'demo-loaded'
   | 'demo-loaded-plan'
-  // v2.8.0, the stored work on the device: a storage refusal (kept visible
-  // until a write succeeds), a restored copy, and a cleared copy.
-  | 'storage-refused'
+  // The stored work on the device: a restored copy, and a cleared copy.
+  // A storage refusal has its own persistent notice (rendered below).
   | 'restored'
   | 'cleared';
 export let workMessage: WorkMessage | null = null;
@@ -241,12 +240,16 @@ export function renderWorkStatus(): void {
     'compare-opened': t.compareOpened,
     'demo-loaded': t.demoLoaded,
     'demo-loaded-plan': t.demoLoadedPlan,
-    'storage-refused': t.storageRefused,
     restored: t.recoveryRestored,
     cleared: t.recoveryCleared,
   };
   status.textContent = workMessage ? messages[workMessage] : '';
-  status.classList.toggle('error', workMessage === 'save-failed' || workMessage === 'open-failed' || workMessage === 'storage-refused');
+  status.classList.toggle('error', workMessage === 'save-failed' || workMessage === 'open-failed');
+  // The stored work's refusal, its own persistent notice (v2.8.0): shown
+  // until a stored write succeeds, never masking the status above.
+  const refusedEl = el('storage-refused');
+  refusedEl.textContent = storageRefused() ? t.storageRefused : '';
+  refusedEl.classList.toggle('hidden', !storageRefused());
   el<HTMLButtonElement>('work-save').disabled = !hasWork();
   // The share action (FR-13 as noted): offered only where the
   // browser can share files; hidden without the API, disabled with a clear

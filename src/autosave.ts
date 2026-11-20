@@ -21,7 +21,7 @@ import { el, state } from './appstate';
 import { formatCommentDate } from './comments';
 import { format, strings } from './i18n';
 import { parseWorkState, serialiseWorkState, type WorkState } from './workstate';
-import { applyWorkState, captureWorkState, hasWork, renderWorkStatus, setWorkMessage, workMessage } from './workfile';
+import { applyWorkState, captureWorkState, hasWork, renderWorkStatus, setWorkMessage } from './workfile';
 
 const STORAGE_KEY = 'mapvibes.stored-work';
 const STORED_WORK_FORMAT = 'mapvibes-stored-work';
@@ -40,6 +40,17 @@ interface StoredWork {
 // writes once; the pagehide write covers the last change before a close.
 const AUTOSAVE_DELAY_MS = 1000;
 let timer: number | null = null;
+// Each application start takes a new session token, so that a debounced
+// write still pending from an earlier instance of the application (a
+// remount in the tests) never fires into the new one.
+const W = window as unknown as { __mapvibesAutosaveSession?: number };
+export function beginAutosaveSession(): void {
+  W.__mapvibesAutosaveSession = (W.__mapvibesAutosaveSession ?? 0) + 1;
+  if (timer !== null) {
+    window.clearTimeout(timer);
+    timer = null;
+  }
+}
 
 function storage(): Storage | null {
   try {
@@ -87,6 +98,15 @@ export function storedWorkReadable(stored: StoredWork): boolean {
   }
 }
 
+// Whether the last stored write was refused by the browser. The refusal has
+// its own persistent notice beside the work status, so that it stays
+// visible without masking the transient messages (an opened file, a saved
+// file).
+let refused = false;
+export function storageRefused(): boolean {
+  return refused;
+}
+
 // Writes the current work as the stored copy now. A refusal -- the storage
 // full or blocked -- is reported honestly and stays visible; it is never
 // treated as data loss at the explicit save, which writes a file and is
@@ -96,27 +116,25 @@ export function writeStoredWork(): void {
     return;
   }
   const s = storage();
-  if (!s) {
-    setWorkMessage('storage-refused');
-    renderWorkStatus();
-    return;
-  }
-  const stored: StoredWork = {
-    format: STORED_WORK_FORMAT,
-    version: 1,
-    savedAt: new Date().toISOString(),
-    state: serialiseWorkState(captureWorkState(), new Date()),
-  };
-  try {
-    s.setItem(STORAGE_KEY, JSON.stringify(stored));
-    if (workMessage === 'storage-refused') {
-      setWorkMessage(null);
-      renderWorkStatus();
+  const stored: StoredWork | null = s
+    ? {
+        format: STORED_WORK_FORMAT,
+        version: 1,
+        savedAt: new Date().toISOString(),
+        state: serialiseWorkState(captureWorkState(), new Date()),
+      }
+    : null;
+  let ok = false;
+  if (s && stored) {
+    try {
+      s.setItem(STORAGE_KEY, JSON.stringify(stored));
+      ok = true;
+    } catch {
+      ok = false;
     }
-  } catch {
-    setWorkMessage('storage-refused');
-    renderWorkStatus();
   }
+  refused = !ok;
+  renderWorkStatus();
 }
 
 // The stored copy after a change, debounced (markDirty calls this).
@@ -127,8 +145,12 @@ export function scheduleAutosave(): void {
   if (timer !== null) {
     window.clearTimeout(timer);
   }
+  const session = W.__mapvibesAutosaveSession ?? 0;
   timer = window.setTimeout(() => {
     timer = null;
+    if ((W.__mapvibesAutosaveSession ?? 0) !== session) {
+      return;
+    }
     writeStoredWork();
   }, AUTOSAVE_DELAY_MS);
 }
