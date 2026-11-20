@@ -300,3 +300,62 @@ describe('the per-item accent and the default vocabulary in a real layout (FR-82
     }
   }
 });
+
+// v2.8.0: the Helsingborg fixture's OPS item (H-09) carries its accent and
+// the emphasis flag in its own data, so every fresh load of the demo draws
+// the emphasis marker -- the red bolt on its yellow circle -- on the map
+// without a hand touching it, and it is the only emphasised marker. Pinned
+// at both sizes, both themes, and in both interface languages.
+async function loadHelsingborg(page: Page): Promise<void> {
+  await page.evaluate(() => document.getElementById('load-demo')!.click());
+  await page.evaluate(() => {
+    const r = document.getElementById('demo-choice-helsingborg') as HTMLInputElement;
+    r.checked = true;
+    r.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await page.evaluate(() => document.getElementById('demo-go')!.click());
+  await page.waitForFunction(() => document.querySelectorAll('#marker-layer .marker').length === 12, undefined, { timeout: 30_000 });
+  await page.waitForTimeout(300);
+}
+
+describe('the Helsingborg demo freshly loaded: the OPS item stands out alone, untouched (v2.8.0)', () => {
+  for (const [name, options] of SIZES) {
+    for (const theme of ['light', 'dark'] as const) {
+      for (const lang of ['en', 'sv'] as const) {
+        test(`on ${name} (${theme}, ${lang})`, async () => {
+          const page = await open(options, lang, theme);
+          const errors: string[] = [];
+          page.on('pageerror', (e) => errors.push(String(e)));
+          await loadHelsingborg(page);
+          const m = await page.evaluate(() => {
+            const emphasised = [...document.querySelectorAll<HTMLElement>('#marker-layer .marker.marker-emphasised')];
+            const marker = emphasised[0];
+            const big = marker.querySelector<HTMLElement>(':scope > .marker-accent.marker-emphasis')!;
+            const b = big.getBoundingClientRect();
+            const legend = document.querySelector<HTMLElement>('#map-legend .legend-entry[data-emphasis="true"]')!;
+            return {
+              count: emphasised.length,
+              accent: marker.dataset.accent,
+              w: b.width,
+              h: b.height,
+              bg: getComputedStyle(big).backgroundColor,
+              yellow: getComputedStyle(document.documentElement).getPropertyValue('--marker-yellow').trim(),
+              legend: legend.textContent,
+              emphasisSwatch: legend.querySelector('.legend-swatch')!.classList.contains('legend-emphasis-swatch'),
+            };
+          });
+          // Exactly one marker emphasised, the bolt accent, the 44-pixel
+          // yellow circle, named by the vocabulary's label in the language.
+          expect(m.count).toBe(1);
+          expect(m.accent).toBe('bolt');
+          expect(m.w).toBeCloseTo(44, 0);
+          expect(m.h).toBeCloseTo(44, 0);
+          expect(m.legend).toBe(lang === 'sv' ? 'OPS kaj' : 'OPS quay');
+          expect(m.emphasisSwatch).toBe(true);
+          expect(errors).toEqual([]);
+          await page.context().close();
+        }, 120_000);
+      }
+    }
+  }
+});

@@ -491,6 +491,8 @@
         0.541744
       ],
       "symbol": "bolt",
+      "accent": "bolt",
+      "emphasis": true,
       "comments": [],
       "activities": [
         {

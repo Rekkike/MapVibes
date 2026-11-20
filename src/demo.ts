@@ -33,7 +33,7 @@ import helsingborgScenarioJson from '../example-data/helsingborg-scenario.json';
 import helsingborgMapText from '../example-data/helsingborg-map.osm?raw';
 import { COLOURS, type RowColour } from './dataset';
 import { parsePresets, type ColumnPreset } from './presets';
-import { isSymbol, type MarkerSymbol } from './symbols';
+import { isIcon, isSymbol, type MarkerIcon, type MarkerSymbol } from './symbols';
 import { isCommentDate } from './comments';
 import { ANNOTATION_KINDS, LINE_STYLES, OUTLINES, type AnnotationKind, type LineStyle, type Outline } from './annotations';
 import type { Lang } from './i18n';
@@ -76,6 +76,12 @@ export interface DemoItem {
   position: [number, number] | null;
   symbol: MarkerSymbol | null;
   comments: Array<{ date: string; text: string }>;
+  // The item's accent (FR-82) and its emphasis (FR-83), read as the work
+  // state reads them (schema 13 and 14): an icon of the library, and true
+  // only where an accent is set (v2.8.0: the Helsingborg demo's OPS item
+  // carries both in its own data).
+  accent?: MarkerIcon;
+  emphasis?: true;
   // The item's fictional activities (FR-41 as amended in v1.10.0, FR-78).
   // One may be corrected by hand (FR-41 as amended in v1.12.0, FR-76).
   activities?: Array<{ label: string; start: string; end: string; progress: number | null; edited?: true }>;
@@ -206,6 +212,22 @@ export function parseDemoScenarios(raw: unknown): DemoScenarios {
     if (it.symbol !== null && !isSymbol(it.symbol)) {
       fail(`items[${i}].symbol`);
     }
+    // The accent is one of the library's icons; the emphasis is true or
+    // absent, and only with an accent (FR-82, FR-83, as in the work state).
+    let accent: MarkerIcon | undefined;
+    let emphasis: true | undefined;
+    if (it.accent !== undefined) {
+      if (!isIcon(it.accent)) {
+        fail(`items[${i}].accent`);
+      }
+      accent = it.accent as MarkerIcon;
+    }
+    if (it.emphasis !== undefined) {
+      if (it.emphasis !== true || accent === undefined) {
+        fail(`items[${i}].emphasis`);
+      }
+      emphasis = true;
+    }
     if (!Array.isArray(it.comments)) {
       fail(`items[${i}].comments`);
     }
@@ -251,6 +273,8 @@ export function parseDemoScenarios(raw: unknown): DemoScenarios {
       colour: it.colour as RowColour,
       position: position === null ? null : ([(position as number[])[0], (position as number[])[1]] as [number, number]),
       symbol: (it.symbol as MarkerSymbol | null) ?? null,
+      ...(accent !== undefined ? { accent } : {}),
+      ...(emphasis ? { emphasis } : {}),
       comments,
       ...(activities ? { activities } : {}),
       ...(it.workPhase !== undefined ? { workPhase: it.workPhase as string } : {}),

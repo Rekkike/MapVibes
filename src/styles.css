@@ -372,6 +372,50 @@ h2 {
   color: var(--muted);
 }
 
+/* The stored work's recovery offer (v2.8.0): a clearly labelled banner at
+   the top of the main area, offered on open and never applied silently. */
+#recovery-offer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4) var(--space-8);
+  margin: 0 0 var(--space-8);
+  padding: var(--space-8) var(--space-12);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--panel);
+  font-size: var(--text-13);
+}
+
+#recovery-offer #recovery-text {
+  flex: 1 1 14rem;
+}
+
+/* The exported viewer never offers or writes a stored copy (FR-38). */
+html[data-mode='viewer'] #recovery-offer,
+html[data-mode='viewer'] #storage-refused {
+  display: none;
+}
+
+/* The stored work's refusal notice (v2.8.0): a floating pill under the
+   bar, persistent until a stored write succeeds. It takes no layout room
+   -- fixed, so it never overflows the page -- and does not mask the work
+   status in the header. */
+#storage-refused {
+  position: fixed;
+  top: 4.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--layer-dialog);
+  max-width: min(44rem, calc(100vw - 2rem));
+  padding: var(--space-8) var(--space-12);
+  border: 1px solid var(--error);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--card-shadow);
+  pointer-events: none;
+}
+
 #drop-zone {
   border: 2px dashed var(--border);
   border-radius: var(--radius);
@@ -4265,6 +4309,11 @@ html .annotation-tool[data-tool='line'] {
     overflow: auto;
   }
 
+  /* The recovery offer spans the main area under the bar. */
+  html:not([data-mode='viewer']) #recovery-offer {
+    margin: var(--space-8) var(--space-16) 0;
+  }
+
   html:not([data-mode='viewer']) .segment {
     min-height: 0;
   }
@@ -4596,6 +4645,16 @@ html .annotation-tool[data-tool='line'] {
 
   html:not([data-mode='viewer']) #presentation-glance {
     max-height: calc(100% - 13.5rem);
+  }
+
+  /* The schedule views reserve the floating "In view" panel's zone on their
+     right (v2.8.0): the axis, the events strip, and the plot end left of the
+     panel (the panel is 14.5 rem wide, 12 pixels from the stage's top and
+     right edges), so that the strip's edge indicators stay in full view at
+     every width the panel floats at, folded or unfolded. */
+  html:not([data-mode='viewer']) #presentation-stage:is([data-view='timeline'], [data-view='costs']) .timeline {
+    --timeline-chrome: calc(var(--space-12) + 14.5rem + var(--space-12));
+    padding-right: var(--timeline-chrome, 0px);
   }
 
   /* The Map segment's legend stays below the tool strip (at most 22.5 rem
@@ -5543,6 +5602,16 @@ html[data-idle='true'] #toggle-glance {
     line-height: 1.75rem;
   }
 
+  /* The schedule views reserve the floating "In view" panel's zone on their
+     right (v2.8.0), as the application's Presentation segment does: the axis,
+     the events strip, and the plot end left of the panel, so that the strip's
+     edge indicators stay in full view at every width the panel floats at,
+     folded or unfolded. */
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) #presentation-stage:is([data-view='timeline'], [data-view='costs']) .timeline {
+    --timeline-chrome: calc(var(--space-12) + 14.5rem + var(--space-12));
+    padding-right: var(--timeline-chrome, 0px);
+  }
+
 }
 
 /* The viewer's presentation scale step above 1,920 pixels (v2.1.0, the
@@ -5559,9 +5628,14 @@ html[data-idle='true'] #toggle-glance {
     --text-20: 1.75rem;
   }
 
-  /* From 1,920 pixels "In view" docks beside the stage, at 264 pixels. */
+  /* From 1,920 pixels "In view" docks beside the stage, at 264 pixels; the
+     schedule views take the stage's full width again (v2.8.0). */
   html[data-mode='viewer'] #segment-presentation {
     grid-template-columns: minmax(0, 1fr) 16.5rem;
+  }
+
+  html[data-mode='viewer']:not([data-layout='compact']):not([data-layout='short']) #presentation-stage:is([data-view='timeline'], [data-view='costs']) .timeline {
+    --timeline-chrome: 0px;
   }
 
   html[data-mode='viewer'] .glance-panel {
@@ -6373,6 +6447,10 @@ html[data-idle='true'] #toggle-glance {
   html:not([data-mode='viewer']) #app-main {
     min-height: 0;
     padding: var(--space-8);
+  }
+
+  html:not([data-mode='viewer']) #recovery-offer {
+    margin: 0 0 var(--space-8);
   }
 
   html:not([data-mode='viewer']) .segment {

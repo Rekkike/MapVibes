@@ -599,6 +599,20 @@ export const en = {
   workOpenUnknownVersion: 'The work-state file has schema version {version}, which this version of MapVibes cannot read. Nothing was opened.',
   workOpenInvalid: 'The work-state file is damaged or inconsistent; nothing was opened. Detail:',
   workOpenUnreadable: 'The file could not be read. Nothing was opened.',
+  // The stored work on the device: the automatic copy in the browser's
+  // local storage, offered on open, never applied silently.
+  recoveryOffer: 'Stored work on this device from {date} ({age}). It is the automatic copy kept on this device, not a saved work file.',
+  recoveryRestore: 'Restore stored work',
+  recoveryDiscard: 'Discard stored work',
+  recoveryRestored: 'The stored work on this device was restored. It is not a saved work file.',
+  recoveryCleared: 'The stored work on this device was cleared.',
+  recoveryClear: 'Clear stored work',
+  storageRefused:
+    'The browser refused to store the work on this device (its storage is full or blocked), so the automatic copy could not be updated. Saving a work file is unaffected.',
+  recoveryAgeNow: 'just now',
+  recoveryAgeMin: '{n} min ago',
+  recoveryAgeHour: '{n} {n:hour|hours} ago',
+  recoveryAgeDay: '{n} {n:day|days} ago',
   problemNotObject: '{field} is not an object',
   problemNotList: '{field} is not a list',
   problemNotText: '{field} is not text',
@@ -1238,6 +1252,21 @@ export const sv: Strings = {
   workOpenUnknownVersion: 'Arbetstillståndsfilen har schemaversion {version}, som denna version av MapVibes inte kan läsa. Ingenting öppnades.',
   workOpenInvalid: 'Arbetstillståndsfilen är skadad eller inkonsekvent; ingenting öppnades. Detalj:',
   workOpenUnreadable: 'Filen kunde inte läsas. Ingenting öppnades.',
+  // Det sparade arbetet på enheten: den automatiska kopian i
+  // webbläsarens lokala lagring, erbjuden vid öppning, aldrig tillämpad i tysthet.
+  recoveryOffer:
+    'Sparat arbete på den här enheten från {date} ({age}). Det är den automatiska kopian som sparats på den här enheten, inte en sparad arbetsfil.',
+  recoveryRestore: 'Återställ sparat arbete',
+  recoveryDiscard: 'Kasta sparat arbete',
+  recoveryRestored: 'Det sparade arbetet på den här enheten har återställts. Det är inte en sparad arbetsfil.',
+  recoveryCleared: 'Det sparade arbetet på den här enheten har rensats.',
+  recoveryClear: 'Rensa sparat arbete',
+  storageRefused:
+    'Webbläsaren vägrade att spara arbetet på den här enheten (dess lagring är full eller blockerad), så den automatiska kopian kunde inte uppdateras. Att spara en arbetsfil påverkas inte.',
+  recoveryAgeNow: 'nyss',
+  recoveryAgeMin: 'för {n} min sedan',
+  recoveryAgeHour: 'för {n} {n:timme|timmar} sedan',
+  recoveryAgeDay: 'för {n} {n:dag|dagar} sedan',
   problemNotObject: '{field} är inte ett objekt',
   problemNotList: '{field} är inte en lista',
   problemNotText: '{field} är inte text',
