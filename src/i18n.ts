@@ -599,21 +599,21 @@ export const en = {
   workOpenUnknownVersion: 'The work-state file has schema version {version}, which this version of MapVibes cannot read. Nothing was opened.',
   workOpenInvalid: 'The work-state file is damaged or inconsistent; nothing was opened. Detail:',
   workOpenUnreadable: 'The file could not be read. Nothing was opened.',
-  // The stored work on the device: the automatic copy in the browser's
-  // local storage, offered on open, never applied silently.
-  recoveryOffer: 'Stored work on this device from {date} ({age}). It is the automatic copy kept on this device, not a saved work file.',
-  recoveryRestore: 'Restore stored work',
-  recoveryDiscard: 'Discard stored work',
-  recoveryRestored: 'The stored work on this device was restored. It is not a saved work file.',
-  recoveryCleared: 'The stored work on this device was cleared.',
-  recoveryClear: 'Clear stored work',
-  storageRefused:
-    'The automatic copy on this device was refused: this work is too large for the device storage. The stored copy was not updated. Saving the work as a file is the protection, and it is unaffected.',
-  storageRefusedDismiss: 'Dismiss',
-  recoveryAgeNow: 'just now',
-  recoveryAgeMin: '{n} min ago',
-  recoveryAgeHour: '{n} {n:hour|hours} ago',
-  recoveryAgeDay: '{n} {n:day|days} ago',
+  // The legacy stored copy of the withdrawn feature (v2.8.1): one final
+  // offer on open, restore or discard, the key removed with the choice.
+  legacyOffer:
+    'A copy of the work was stored on this device from {date} ({age}) by the automatic copy, a feature that has now been withdrawn. It is not a saved work file. Restore it into the work, or discard it; either choice removes the copy, and it is never read again.',
+  legacyRestore: 'Restore the copy into the work',
+  legacyDiscard: 'Discard the copy',
+  legacyOk: 'OK',
+  legacyDamaged:
+    'A copy of the work was stored on this device by the automatic copy, a feature that has now been withdrawn, but the copy cannot be read. It has been cleared, and it is never read again.',
+  legacyRestored: 'The work was restored from the device copy of the withdrawn feature. The copy has been removed. It is not a saved work file.',
+  legacyDiscarded: 'The device copy of the withdrawn feature was discarded.',
+  legacyAgeNow: 'just now',
+  legacyAgeMin: '{n} min ago',
+  legacyAgeHour: '{n} {n:hour|hours} ago',
+  legacyAgeDay: '{n} {n:day|days} ago',
   problemNotObject: '{field} is not an object',
   problemNotList: '{field} is not a list',
   problemNotText: '{field} is not text',
@@ -1253,22 +1253,22 @@ export const sv: Strings = {
   workOpenUnknownVersion: 'Arbetstillståndsfilen har schemaversion {version}, som denna version av MapVibes inte kan läsa. Ingenting öppnades.',
   workOpenInvalid: 'Arbetstillståndsfilen är skadad eller inkonsekvent; ingenting öppnades. Detalj:',
   workOpenUnreadable: 'Filen kunde inte läsas. Ingenting öppnades.',
-  // Det sparade arbetet på enheten: den automatiska kopian i
-  // webbläsarens lokala lagring, erbjuden vid öppning, aldrig tillämpad i tysthet.
-  recoveryOffer:
-    'Sparat arbete på den här enheten från {date} ({age}). Det är den automatiska kopian som sparats på den här enheten, inte en sparad arbetsfil.',
-  recoveryRestore: 'Återställ sparat arbete',
-  recoveryDiscard: 'Kasta sparat arbete',
-  recoveryRestored: 'Det sparade arbetet på den här enheten har återställts. Det är inte en sparad arbetsfil.',
-  recoveryCleared: 'Det sparade arbetet på den här enheten har rensats.',
-  recoveryClear: 'Rensa sparat arbete',
-  storageRefused:
-    'Den automatiska kopian på den här enheten vägrades: arbetet är för stort för enhetens lagring. Den sparade kopian uppdaterades inte. Att spara arbetet som en fil är skyddet, och det påverkas inte.',
-  storageRefusedDismiss: 'Stäng',
-  recoveryAgeNow: 'nyss',
-  recoveryAgeMin: 'för {n} min sedan',
-  recoveryAgeHour: 'för {n} {n:timme|timmar} sedan',
-  recoveryAgeDay: 'för {n} {n:dag|dagar} sedan',
+  // Den äldre sparade kopian av den indragna funktionen (v2.8.1): ett
+  // sista erbjudande vid öppning, återställ eller kasta, nyckeln tas bort
+  // med valet.
+  legacyOffer:
+    'En kopia av arbetet sparades på den här enheten från {date} ({age}) av den automatiska kopian, en funktion som nu har dragits tillbaka. Det är inte en sparad arbetsfil. Återställ den i arbetet, eller kasta den; båda valen tar bort kopian, och den läses aldrig igen.',
+  legacyRestore: 'Återställ kopian i arbetet',
+  legacyDiscard: 'Kasta kopian',
+  legacyOk: 'OK',
+  legacyDamaged:
+    'En kopia av arbetet sparades på den här enheten av den automatiska kopian, en funktion som nu har dragits tillbaka, men kopian kan inte läsas. Den har rensats, och den läses aldrig igen.',
+  legacyRestored: 'Arbetet har återställts från enhetskopian av den indragna funktionen. Kopian har tagits bort. Det är inte en sparad arbetsfil.',
+  legacyDiscarded: 'Enhetskopian av den indragna funktionen har kastats.',
+  legacyAgeNow: 'nyss',
+  legacyAgeMin: 'för {n} min sedan',
+  legacyAgeHour: 'för {n} {n:timme|timmar} sedan',
+  legacyAgeDay: 'för {n} {n:dag|dagar} sedan',
   problemNotObject: '{field} är inte ett objekt',
   problemNotList: '{field} är inte en lista',
   problemNotText: '{field} är inte text',

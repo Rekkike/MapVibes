@@ -12,7 +12,6 @@ import { areaGroups, programLabels } from './grouping';
 import { DEFAULT_CURRENCY_UNIT } from './economics';
 import { currentCounters, el, fill, rowId, state } from './appstate';
 import { markDirty, renderWorkStatus } from './workfile';
-import { resetFileRelationship } from './autosave';
 import { renderComparison } from './exportdialog';
 import { openDetails, renderDetailsPanel } from './detailspanel';
 import { renderAnnotationInspector, renderAnnotationToolbar } from './annotationpanel';
@@ -82,10 +81,6 @@ export async function handleFile(file: File): Promise<void> {
 
 export function applyImport(parse: ParseResult): void {
   const { headers, rows } = importColumns(parse);
-  // A new import is a new work: it has no file relationship until it is
-  // saved or opened from a file (v2.8.1), so the stored copy does not
-  // follow it.
-  resetFileRelationship();
   resetList(headers, rows);
   const preset = findMatchingPreset(state.presets, headers);
   if (preset) {
@@ -106,9 +101,6 @@ export function startEmptyList(): void {
     return;
   }
   el('ingest-error').classList.add('hidden');
-  // An empty hand-started list is a new work without a file relationship
-  // (v2.8.1).
-  resetFileRelationship();
   resetList([], []);
   const starters: Array<[string, Role]> = [
     [t.starterName, 'name'],

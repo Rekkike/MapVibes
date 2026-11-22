@@ -11,7 +11,6 @@ import { demoCounterparts, demoMapText, demoScenario, demoWorkbook, type DemoId 
 import { newAnnotationId, type Annotation } from './annotations';
 import { el, state } from './appstate';
 import { changeCount, markDirty, setWorkMessage, workMessage } from './workfile';
-import { resetFileRelationship } from './autosave';
 import { mapView, useOsmText } from './mapstage';
 import { restoreCostsView, restoreTimelineView } from './presentationstage';
 import { applyImport, renderList } from './listpanel';
@@ -64,9 +63,6 @@ export async function loadDemo(id: DemoId, options: { confirmed?: boolean } = {}
   // The demo loads in the interface language (FR-41 as amended).
   const lang = state.prefs.lang;
   const scenario = demoScenario(id, lang);
-  // The demo is a new work without a file relationship until it is saved or
-  // opened from a file (v2.8.1), so the stored copy does not follow it.
-  resetFileRelationship();
   // The session's own settings start afresh, so that the demo is pristine.
   state.excluded = new Set();
   state.positions = new Map();

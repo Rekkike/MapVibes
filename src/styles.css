@@ -372,12 +372,11 @@ h2 {
   color: var(--muted);
 }
 
-/* The stored work's banners at the top of the main area (v2.8.0, v2.8.1):
-   the recovery offer, offered on open and never applied silently, and the
-   refusal notice, named once and dismissible. Both are in-flow blocks
-   above the content -- never over a stage or any interactive surface. */
-#recovery-offer,
-#storage-refused {
+/* The legacy copy's one final offer at the top of the main area (v2.8.1,
+   the copy of the withdrawn feature): an in-flow block above the content,
+   never over a stage or any interactive surface. With no legacy key
+   present the banner stays hidden -- the interface as v2.7.0 knew it. */
+#legacy-offer {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -390,25 +389,12 @@ h2 {
   font-size: var(--text-13);
 }
 
-#storage-refused {
-  border-color: var(--error);
-  color: var(--error);
-  font-weight: 600;
-}
-
-#recovery-offer #recovery-text,
-#storage-refused #storage-refused-text {
+#legacy-offer #legacy-text {
   flex: 1 1 14rem;
 }
 
-#storage-refused #storage-refused-dismiss {
-  color: var(--fg);
-  font-weight: 400;
-}
-
-/* The exported viewer never offers or writes a stored copy (FR-38). */
-html[data-mode='viewer'] #recovery-offer,
-html[data-mode='viewer'] #storage-refused {
+/* The exported viewer never offers or reads a legacy copy (FR-38). */
+html[data-mode='viewer'] #legacy-offer {
   display: none;
 }
 
@@ -4306,7 +4292,7 @@ html .annotation-tool[data-tool='line'] {
   }
 
   /* The stored work's banners span the main area under the bar. */
-  html:not([data-mode='viewer']) :is(#recovery-offer, #storage-refused) {
+  html:not([data-mode='viewer']) #legacy-offer {
     margin: var(--space-8) var(--space-16) 0;
   }
 
@@ -6445,7 +6431,7 @@ html[data-idle='true'] #toggle-glance {
     padding: var(--space-8);
   }
 
-  html:not([data-mode='viewer']) :is(#recovery-offer, #storage-refused) {
+  html:not([data-mode='viewer']) #legacy-offer {
     margin: 0 0 var(--space-8);
   }
 

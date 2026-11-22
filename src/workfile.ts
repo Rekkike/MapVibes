@@ -15,7 +15,6 @@ import { renderList } from './listpanel';
 import { effectiveSeries, setEventMessage, setPresetMessage } from './columnpanels';
 import { currentDemoId, demoLoaded, setDemoLoaded } from './demoload';
 import { setSegment } from './segmentswitch';
-import { beginFileRelationship, scheduleAutosave } from './autosave';
 
 // The number of changes made, and its value when the demo finished loading,
 // so that a reset of an untouched demo needs no confirmation (FR-56).
@@ -180,10 +179,10 @@ type WorkMessage =
   | 'compare-opened'
   | 'demo-loaded'
   | 'demo-loaded-plan'
-  // The stored work on the device: a restored copy, and a cleared copy.
-  // A storage refusal has its own persistent notice (rendered below).
-  | 'restored'
-  | 'cleared';
+  // The legacy stored copy of the withdrawn feature (v2.8.1): a restored
+  // copy, and a discarded copy, after the one final offer.
+  | 'legacy-restored'
+  | 'legacy-discarded';
 export let workMessage: WorkMessage | null = null;
 export function setWorkMessage(value: WorkMessage | null): void {
   workMessage = value;
@@ -208,16 +207,14 @@ export function markDirty(): void {
     workMessage === 'opened' ||
     workMessage === 'demo-loaded' ||
     workMessage === 'demo-loaded-plan' ||
-    // v2.8.0: a restored or cleared stored copy gives way to the next change;
-    // a storage refusal stays visible until a stored write succeeds.
-    workMessage === 'restored' ||
-    workMessage === 'cleared'
+    // v2.8.1: a restored or discarded legacy copy gives way to the next
+    // change.
+    workMessage === 'legacy-restored' ||
+    workMessage === 'legacy-discarded'
   ) {
     workMessage = null;
   }
   renderWorkStatus();
-  // The stored copy on the device follows the change, debounced (v2.8.0).
-  scheduleAutosave();
 }
 
 export function renderWorkStatus(): void {
@@ -240,8 +237,8 @@ export function renderWorkStatus(): void {
     'compare-opened': t.compareOpened,
     'demo-loaded': t.demoLoaded,
     'demo-loaded-plan': t.demoLoadedPlan,
-    restored: t.recoveryRestored,
-    cleared: t.recoveryCleared,
+    'legacy-restored': t.legacyRestored,
+    'legacy-discarded': t.legacyDiscarded,
   };
   status.textContent = workMessage ? messages[workMessage] : '';
   status.classList.toggle('error', workMessage === 'save-failed' || workMessage === 'open-failed');
@@ -304,12 +301,6 @@ export async function saveWork(): Promise<WriteOutcome> {
     }
   } else if (outcome !== 'cancelled') {
     workMessage = 'save-failed';
-  }
-  // A successful save to a work file (the dialog's own confirmation, or the
-  // download confirmed by the user) begins the work's file relationship:
-  // from here the stored copy on the device follows the work (v2.8.1).
-  if (workMessage === 'saved') {
-    beginFileRelationship();
   }
   renderWorkStatus();
   return outcome;
@@ -527,10 +518,6 @@ export async function openWorkFile(file: File): Promise<boolean> {
   const ok = await applyWorkState(ws);
   if (!ok) {
     reportOpenFailure(strings(state.prefs.lang).workOpenBackgroundFailed);
-    return false;
   }
-  // Opened from a work file: the work has an explicit file relationship, so
-  // the stored copy on the device starts now (v2.8.1).
-  beginFileRelationship();
-  return true;
+  return ok;
 }
