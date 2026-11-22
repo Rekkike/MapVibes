@@ -33,7 +33,7 @@ import {
   VALUE_VOCABULARIES,
 } from './columnpanels';
 import { followDemoLanguage, resetDemo } from './demoload';
-import { beginAutosaveSession, clearStoredWork, offerStoredWork, restoreStoredWork, writeStoredWork } from './autosave';
+import { beginAutosaveSession, clearStoredWork, dismissRefusal, offerStoredWork, restoreStoredWork, writeStoredWork } from './autosave';
 import { applyStarterVocabulary, followStarterVocabulary } from './starter';
 import { applyDemoPickerLabels, wireDemoPicker } from './demopicker';
 import { appNarrow, narrowApplication, refitOnClassChange, startNarrowApplication, startNarrowViewer } from './narrowlayout';
@@ -85,6 +85,7 @@ function renderStaticText(): void {
   el('work-clear-stored').textContent = t.recoveryClear;
   el('recovery-restore').textContent = t.recoveryRestore;
   el('recovery-discard').textContent = t.recoveryDiscard;
+  el('storage-refused-dismiss').textContent = t.storageRefusedDismiss;
   el('area-panel-summary').textContent = t.areaPanel;
   el('area-panel-hint').textContent = t.areaPanelHint;
   el('area-new').setAttribute('aria-label', t.areaNew);
@@ -389,6 +390,7 @@ function wireEvents(): void {
   el('work-clear-stored').addEventListener('click', () => clearStoredWork());
   el('recovery-restore').addEventListener('click', () => void restoreStoredWork());
   el('recovery-discard').addEventListener('click', () => clearStoredWork());
+  el('storage-refused-dismiss').addEventListener('click', () => dismissRefusal());
   for (const kind of VALUE_VOCABULARIES) {
     el(`${kind}-add`).addEventListener('click', () => addVocabValue(kind));
     el(`${kind}-new`).addEventListener('keydown', (e) => {

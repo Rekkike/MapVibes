@@ -51,12 +51,15 @@
       <div id="bar-export-menu" role="group" aria-labelledby="bar-export" hidden></div>
       <div id="app-menu" role="group" aria-labelledby="menu-toggle" hidden></div>
     </header>
-    <span id="storage-refused" class="error hidden" role="status"></span>
     <main id="app-main">
       <div id="recovery-offer" class="hidden" role="alert">
         <span id="recovery-text"></span>
         <button type="button" id="recovery-restore">Restore stored work</button>
         <button type="button" id="recovery-discard">Discard stored work</button>
+      </div>
+      <div id="storage-refused" class="hidden" role="alert">
+        <span id="storage-refused-text"></span>
+        <button type="button" id="storage-refused-dismiss">Dismiss</button>
       </div>
       <section id="compare-panel" class="hidden" aria-labelledby="compare-heading">
         <div class="compare-header dialog-head">

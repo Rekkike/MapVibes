@@ -128,7 +128,7 @@ describe('unsaved-changes awareness', () => {
     expect(unloadBlocked()).toBe(false);
   });
 
-  test('no automatic file writes: editing and unloading never write a work file; the device copy is the only automatic write (v2.8.0)', async () => {
+  test('no automatic writes at all for a never-saved work (v2.8.1): editing and unloading write no file and nothing to device storage', async () => {
     const picker = vi.fn();
     (window as unknown as { showSaveFilePicker: unknown }).showSaveFilePicker = picker;
     const createObjectURL = vi.fn(() => 'blob:x');
@@ -141,13 +141,11 @@ describe('unsaved-changes awareness', () => {
     await flush();
     expect(picker).not.toHaveBeenCalled();
     expect(createObjectURL).not.toHaveBeenCalled();
-    // The only automatic write is the stored copy on the device (v2.8.0),
-    // in the stored-work format, never a work file.
+    // Nothing at all was written to device storage: the stored copy exists
+    // only for a work with an explicit file relationship (v2.8.1), and this
+    // work was never saved or opened.
     const keys = Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i)).sort();
-    expect(keys).toEqual(['mapvibes.preferences', 'mapvibes.stored-work']);
-    const stored = JSON.parse(localStorage.getItem('mapvibes.stored-work')!);
-    expect(stored.format).toBe('mapvibes-stored-work');
-    expect(stored.state).toContain('"format": "mapvibes-work-state"');
+    expect(keys).toEqual(['mapvibes.preferences']);
     expect(sessionStorage.length).toBe(0);
   });
 

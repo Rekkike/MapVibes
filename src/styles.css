@@ -372,9 +372,12 @@ h2 {
   color: var(--muted);
 }
 
-/* The stored work's recovery offer (v2.8.0): a clearly labelled banner at
-   the top of the main area, offered on open and never applied silently. */
-#recovery-offer {
+/* The stored work's banners at the top of the main area (v2.8.0, v2.8.1):
+   the recovery offer, offered on open and never applied silently, and the
+   refusal notice, named once and dismissible. Both are in-flow blocks
+   above the content -- never over a stage or any interactive surface. */
+#recovery-offer,
+#storage-refused {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -387,33 +390,26 @@ h2 {
   font-size: var(--text-13);
 }
 
-#recovery-offer #recovery-text {
+#storage-refused {
+  border-color: var(--error);
+  color: var(--error);
+  font-weight: 600;
+}
+
+#recovery-offer #recovery-text,
+#storage-refused #storage-refused-text {
   flex: 1 1 14rem;
+}
+
+#storage-refused #storage-refused-dismiss {
+  color: var(--fg);
+  font-weight: 400;
 }
 
 /* The exported viewer never offers or writes a stored copy (FR-38). */
 html[data-mode='viewer'] #recovery-offer,
 html[data-mode='viewer'] #storage-refused {
   display: none;
-}
-
-/* The stored work's refusal notice (v2.8.0): a floating pill under the
-   bar, persistent until a stored write succeeds. It takes no layout room
-   -- fixed, so it never overflows the page -- and does not mask the work
-   status in the header. */
-#storage-refused {
-  position: fixed;
-  top: 4.25rem;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: var(--layer-dialog);
-  max-width: min(44rem, calc(100vw - 2rem));
-  padding: var(--space-8) var(--space-12);
-  border: 1px solid var(--error);
-  border-radius: var(--radius);
-  background: var(--panel);
-  box-shadow: var(--card-shadow);
-  pointer-events: none;
 }
 
 #drop-zone {
@@ -4309,8 +4305,8 @@ html .annotation-tool[data-tool='line'] {
     overflow: auto;
   }
 
-  /* The recovery offer spans the main area under the bar. */
-  html:not([data-mode='viewer']) #recovery-offer {
+  /* The stored work's banners span the main area under the bar. */
+  html:not([data-mode='viewer']) :is(#recovery-offer, #storage-refused) {
     margin: var(--space-8) var(--space-16) 0;
   }
 
@@ -6449,7 +6445,7 @@ html[data-idle='true'] #toggle-glance {
     padding: var(--space-8);
   }
 
-  html:not([data-mode='viewer']) #recovery-offer {
+  html:not([data-mode='viewer']) :is(#recovery-offer, #storage-refused) {
     margin: 0 0 var(--space-8);
   }
 

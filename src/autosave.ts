@@ -1,27 +1,35 @@
-// The stored work on the device (v2.8.0): an automatic copy of the work kept
-// in the browser's local storage, so that real work is not lost to a crash,
-// a closed tab, or a reloaded page. It is not a saved work file: the explicit
+// The stored work on the device: an automatic copy of the work kept in the
+// browser's local storage, so that real work is not lost to a crash, a
+// closed tab, or a reloaded page. It is not a saved work file: the explicit
 // save and open of work files stay primary and untouched in primacy, every
 // recovery is a clearly labelled offer on open and is never applied
 // silently, and the exported viewer never reads or writes it. All state
 // stays on the device (hard constraint 4); no network is involved at any
 // point.
 //
-// The enumeration behind the design: before this pass the work lived only
-// in memory -- a reload, a crash, or a cleared browser lost everything
-// since the last explicit save, and "unsaved changes" meant only the mark
-// that asked on unload. Local storage held just the preferences and the
-// saved presets. Measured against the loaded Helsingborg demo (2.32 MiB of
-// map): the work state serialises to 4.72 MiB (the rendered background's
-// data URL alone is 4.69 MiB) against a localStorage write limit of about
-// 5 MiB, so the demo fits a fresh profile with little room to spare and a
-// refusal is a real case -- handled honestly below, never as data loss at
-// the explicit save.
+// The scope, owner-ruled from use (v2.8.1): nothing is written to device
+// storage without the user's initiative. The automatic copy exists only
+// for a work with an explicit file relationship -- at least one successful
+// save to a work file, or opened from one. From that moment the debounced
+// copy follows changes. A never-saved work performs zero storage writes
+// through any number of edits; its crash-loss risk is acknowledged in the
+// changelog, the work file being the user's initiative and this rule's
+// reason.
+//
+// The refusal, cured (v2.8.1, the defect from use: a persistent pill over
+// the map while the owner worked in a work larger than the device quota):
+// a refused write is named once, in a dismissible notice placed at the top
+// of the main area -- never over an interactive surface, never persistent
+// -- and after a refusal the copy stops retrying until the work changes
+// materially or is saved explicitly. A quota-oversize work is named for
+// what it is, with the explicit save pointed to as the protection. The
+// refusal is never treated as data loss at the explicit save, which writes
+// a file and is unaffected.
 import { el, state } from './appstate';
 import { formatCommentDate } from './comments';
 import { format, strings } from './i18n';
 import { parseWorkState, serialiseWorkState, type WorkState } from './workstate';
-import { applyWorkState, captureWorkState, hasWork, renderWorkStatus, setWorkMessage } from './workfile';
+import { applyWorkState, captureWorkState, changeCount, hasWork, renderWorkStatus, setWorkMessage } from './workfile';
 
 const STORAGE_KEY = 'mapvibes.stored-work';
 const STORED_WORK_FORMAT = 'mapvibes-stored-work';
@@ -50,6 +58,62 @@ export function beginAutosaveSession(): void {
     window.clearTimeout(timer);
     timer = null;
   }
+}
+
+// The current work's explicit file relationship (v2.8.1): set when the
+// work is saved to a file successfully, opened from one, or restored from
+// the stored copy; cleared when a new work replaces it (an import, an empty
+// list, a demo). Only a work with the relationship is ever written to
+// device storage.
+let fileRelationship = false;
+
+// A successful save to a work file, an open from one, or a restore: the
+// relationship begins and the copy starts (or resumes) now.
+export function beginFileRelationship(): void {
+  fileRelationship = true;
+  resetRefusal();
+  writeStoredWork();
+}
+
+// A new work that never had a file relationship replaces the current one.
+export function resetFileRelationship(): void {
+  fileRelationship = false;
+}
+
+// The refusal episode: the change count at the last refusal (retries stop
+// until the work changes materially or is saved explicitly), and whether a
+// refusal has already been named (a refused write is named once, in a
+// dismissible notice, never persistent; the naming resets only when a
+// stored write succeeds, or when the stored work is cleared).
+let refusedAtChange = -1;
+let refusalNamed = false;
+
+function hideRefusal(): void {
+  el('storage-refused').classList.add('hidden');
+}
+
+function resetRefusal(): void {
+  refusedAtChange = -1;
+}
+
+// Names a refused write once, in the dismissible notice at the top of the
+// main area (never over a stage). A quota-oversize work is named for what
+// it is, with the explicit save as the protection.
+function nameRefusalOnce(): void {
+  if (refusalNamed) {
+    return;
+  }
+  refusalNamed = true;
+  const t = strings(state.prefs.lang);
+  el('storage-refused-text').textContent = t.storageRefused;
+  el('storage-refused-dismiss').textContent = t.storageRefusedDismiss;
+  el('storage-refused').classList.remove('hidden');
+}
+
+// The notice's dismiss action: the refusal stays named (it was named once),
+// and the notice does not come back for this episode.
+export function dismissRefusal(): void {
+  hideRefusal();
 }
 
 function storage(): Storage | null {
@@ -98,21 +162,17 @@ export function storedWorkReadable(stored: StoredWork): boolean {
   }
 }
 
-// Whether the last stored write was refused by the browser. The refusal has
-// its own persistent notice beside the work status, so that it stays
-// visible without masking the transient messages (an opened file, a saved
-// file).
-let refused = false;
-export function storageRefused(): boolean {
-  return refused;
-}
-
-// Writes the current work as the stored copy now. A refusal -- the storage
-// full or blocked -- is reported honestly and stays visible; it is never
-// treated as data loss at the explicit save, which writes a file and is
-// unaffected.
+// Writes the current work as the stored copy now. Only a work with an
+// explicit file relationship is ever written (v2.8.1). After a refusal the
+// write stops retrying until the work changes materially (the change count
+// moved) or is saved explicitly (which resets the episode). A refusal is
+// named once, in the dismissible notice; it is never treated as data loss
+// at the explicit save, which writes a file and is unaffected.
 export function writeStoredWork(): void {
-  if (state.viewOnly || !hasWork()) {
+  if (state.viewOnly || !hasWork() || !fileRelationship) {
+    return;
+  }
+  if (refusedAtChange >= 0 && changeCount === refusedAtChange) {
     return;
   }
   const s = storage();
@@ -133,13 +193,20 @@ export function writeStoredWork(): void {
       ok = false;
     }
   }
-  refused = !ok;
-  renderWorkStatus();
+  if (ok) {
+    refusedAtChange = -1;
+    refusalNamed = false;
+    hideRefusal();
+  } else {
+    refusedAtChange = changeCount;
+    nameRefusalOnce();
+  }
 }
 
-// The stored copy after a change, debounced (markDirty calls this).
+// The stored copy after a change, debounced (markDirty calls this). A work
+// without a file relationship schedules nothing: zero storage writes.
 export function scheduleAutosave(): void {
-  if (state.viewOnly) {
+  if (state.viewOnly || !fileRelationship) {
     return;
   }
   if (timer !== null) {
@@ -161,7 +228,7 @@ function hideOffer(): void {
 }
 
 // Clears the stored work on the device, as an explicit action; the current
-// work on screen is untouched.
+// work on screen is untouched, and its file relationship is unaffected.
 export function clearStoredWork(): void {
   const s = storage();
   if (s) {
@@ -171,6 +238,9 @@ export function clearStoredWork(): void {
       // Nothing was stored, or the removal was refused: nothing to clear.
     }
   }
+  resetRefusal();
+  refusalNamed = false;
+  hideRefusal();
   hideOffer();
   setWorkMessage('cleared');
   renderWorkStatus();
@@ -195,7 +265,8 @@ export function ageText(savedAt: string): string {
 
 // On open, a stored copy is offered: clearly labelled with what it is and
 // how old it is, never applied silently, never conflated with a saved work
-// file. A copy the application cannot read is not offered.
+// file. A copy the application cannot read is not offered. (Unchanged in
+// v2.8.1: the recovery banner's behaviour for a valid copy.)
 export function offerStoredWork(): void {
   if (state.viewOnly) {
     return;
@@ -218,7 +289,8 @@ export function offerStoredWork(): void {
 
 // Restores the offered stored copy, as an explicit action: the same
 // validation and application as an opened work file, with the
-// unsaved-changes confirmation where there is work on screen.
+// unsaved-changes confirmation where there is work on screen. A restored
+// copy has a file relationship: the copy follows the work from here.
 export async function restoreStoredWork(): Promise<boolean> {
   const stored = readStoredWork();
   if (!stored || state.viewOnly) {
@@ -239,6 +311,7 @@ export async function restoreStoredWork(): Promise<boolean> {
   }
   setWorkMessage('restored');
   hideOffer();
+  beginFileRelationship();
   renderWorkStatus();
   return true;
 }

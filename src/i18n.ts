@@ -608,7 +608,8 @@ export const en = {
   recoveryCleared: 'The stored work on this device was cleared.',
   recoveryClear: 'Clear stored work',
   storageRefused:
-    'The browser refused to store the work on this device (its storage is full or blocked), so the automatic copy could not be updated. Saving a work file is unaffected.',
+    'The automatic copy on this device was refused: this work is too large for the device storage. The stored copy was not updated. Saving the work as a file is the protection, and it is unaffected.',
+  storageRefusedDismiss: 'Dismiss',
   recoveryAgeNow: 'just now',
   recoveryAgeMin: '{n} min ago',
   recoveryAgeHour: '{n} {n:hour|hours} ago',
@@ -1262,7 +1263,8 @@ export const sv: Strings = {
   recoveryCleared: 'Det sparade arbetet på den här enheten har rensats.',
   recoveryClear: 'Rensa sparat arbete',
   storageRefused:
-    'Webbläsaren vägrade att spara arbetet på den här enheten (dess lagring är full eller blockerad), så den automatiska kopian kunde inte uppdateras. Att spara en arbetsfil påverkas inte.',
+    'Den automatiska kopian på den här enheten vägrades: arbetet är för stort för enhetens lagring. Den sparade kopian uppdaterades inte. Att spara arbetet som en fil är skyddet, och det påverkas inte.',
+  storageRefusedDismiss: 'Stäng',
   recoveryAgeNow: 'nyss',
   recoveryAgeMin: 'för {n} min sedan',
   recoveryAgeHour: 'för {n} {n:timme|timmar} sedan',
