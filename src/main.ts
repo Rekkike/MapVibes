@@ -675,9 +675,8 @@ export function main(): void {
   if (island !== null) {
     void startViewer(island);
   } else {
-    // A legacy stored copy of the withdrawn feature (v2.8.0's automatic
-    // copy) is offered once on open, never applied silently; the exported
-    // viewer never offers it.
+    // A legacy stored copy of the withdrawn feature is offered once on
+    // open, never applied silently; the exported viewer never offers it.
     offerLegacyCopy();
   }
   // The application has started: an exported file's static state and its

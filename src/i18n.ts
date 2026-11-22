@@ -599,8 +599,8 @@ export const en = {
   workOpenUnknownVersion: 'The work-state file has schema version {version}, which this version of MapVibes cannot read. Nothing was opened.',
   workOpenInvalid: 'The work-state file is damaged or inconsistent; nothing was opened. Detail:',
   workOpenUnreadable: 'The file could not be read. Nothing was opened.',
-  // The legacy stored copy of the withdrawn feature (v2.8.1): one final
-  // offer on open, restore or discard, the key removed with the choice.
+  // The legacy stored copy of the withdrawn feature: one final offer on
+  // open, restore or discard, the key removed with the choice.
   legacyOffer:
     'A copy of the work was stored on this device from {date} ({age}) by the automatic copy, a feature that has now been withdrawn. It is not a saved work file. Restore it into the work, or discard it; either choice removes the copy, and it is never read again.',
   legacyRestore: 'Restore the copy into the work',
@@ -1253,9 +1253,9 @@ export const sv: Strings = {
   workOpenUnknownVersion: 'Arbetstillståndsfilen har schemaversion {version}, som denna version av MapVibes inte kan läsa. Ingenting öppnades.',
   workOpenInvalid: 'Arbetstillståndsfilen är skadad eller inkonsekvent; ingenting öppnades. Detalj:',
   workOpenUnreadable: 'Filen kunde inte läsas. Ingenting öppnades.',
-  // Den äldre sparade kopian av den indragna funktionen (v2.8.1): ett
-  // sista erbjudande vid öppning, återställ eller kasta, nyckeln tas bort
-  // med valet.
+  // Den äldre sparade kopian av den indragna funktionen: ett sista
+  // erbjudande vid öppning, återställ eller kasta, nyckeln tas bort med
+  // valet.
   legacyOffer:
     'En kopia av arbetet sparades på den här enheten från {date} ({age}) av den automatiska kopian, en funktion som nu har dragits tillbaka. Det är inte en sparad arbetsfil. Återställ den i arbetet, eller kasta den; båda valen tar bort kopian, och den läses aldrig igen.',
   legacyRestore: 'Återställ kopian i arbetet',

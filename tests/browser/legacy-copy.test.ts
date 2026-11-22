@@ -94,10 +94,11 @@ async function saveWorkFile(page: Page): Promise<string> {
 
 // Seeds a legacy stored key exactly as v2.8.0 wrote it.
 async function seedLegacyCopy(page: Page, state: string, savedAt = new Date(Date.now() - 3600_000).toISOString()): Promise<void> {
-  await page.evaluate(
-    ({ k, savedAt, state }) => localStorage.setItem(k, JSON.stringify({ format: 'mapvibes-stored-work', version: 1, savedAt, state })),
-    { k: KEY, savedAt, state },
-  );
+  await page.evaluate(({ k, savedAt, state }) => localStorage.setItem(k, JSON.stringify({ format: 'mapvibes-stored-work', version: 1, savedAt, state })), {
+    k: KEY,
+    savedAt,
+    state,
+  });
 }
 
 describe('the withdrawal: zero storage writes of work state (v2.8.1)', () => {
@@ -237,10 +238,11 @@ describe('the exported viewer never reads a legacy key (v2.8.1)', () => {
     await viewer.goto(`file://${exported}`);
     await viewer.waitForFunction(() => document.documentElement.dataset.mode === 'viewer', undefined, { timeout: 30_000 });
     // Seed a legacy key inside the viewer's own storage, then reload.
-    await viewer.evaluate(
-      ({ k, savedAt, state }) => localStorage.setItem(k, JSON.stringify({ format: 'mapvibes-stored-work', version: 1, savedAt, state })),
-      { k: KEY, savedAt: new Date(Date.now() - 3600_000).toISOString(), state: text },
-    );
+    await viewer.evaluate(({ k, savedAt, state }) => localStorage.setItem(k, JSON.stringify({ format: 'mapvibes-stored-work', version: 1, savedAt, state })), {
+      k: KEY,
+      savedAt: new Date(Date.now() - 3600_000).toISOString(),
+      state: text,
+    });
     const before = await viewer.evaluate((k) => localStorage.getItem(k), KEY);
     await viewer.reload();
     await viewer.waitForFunction(() => document.documentElement.dataset.mode === 'viewer', undefined, { timeout: 30_000 });
