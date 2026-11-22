@@ -128,26 +128,38 @@ describe('unsaved-changes awareness', () => {
     expect(unloadBlocked()).toBe(false);
   });
 
-  test('no automatic file writes: editing and unloading never write a work file; the device copy is the only automatic write (v2.8.0)', async () => {
+  test('no automatic writes of work state at all (v2.8.1 withdrawal): editing, saving, and unloading write no file automatically and nothing to device storage', async () => {
+    const calls: string[] = [];
+    const orig = (Storage.prototype as unknown as { setItem: (this: Storage, key: string, value: string) => void }).setItem;
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key: string, value: string) {
+      calls.push(key);
+      return orig.call(this, key, value);
+    });
     const picker = vi.fn();
     (window as unknown as { showSaveFilePicker: unknown }).showSaveFilePicker = picker;
     const createObjectURL = vi.fn(() => 'blob:x');
     URL.createObjectURL = createObjectURL;
     await importExampleWorkbook();
     document.querySelector<HTMLElement>('#row-table-body .colour-chip')!.click();
+    // An explicit save writes the work file -- and still nothing to device
+    // storage: the automatic copy is withdrawn (v2.8.1).
+    const written = stubSaveDialog();
+    byId('work-save').click();
+    await flush();
+    removeSaveDialog();
+    expect(written.text).toContain('mapvibes-work-state');
     unloadBlocked();
     window.dispatchEvent(new Event('pagehide'));
     window.dispatchEvent(new Event('unload'));
     await flush();
+    await new Promise((r) => setTimeout(r, 1500));
     expect(picker).not.toHaveBeenCalled();
     expect(createObjectURL).not.toHaveBeenCalled();
-    // The only automatic write is the stored copy on the device (v2.8.0),
-    // in the stored-work format, never a work file.
+    // No work state was ever written to device storage: only the remembered
+    // preferences (and no legacy key).
+    expect(calls).not.toContain('mapvibes.stored-work');
     const keys = Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i)).sort();
-    expect(keys).toEqual(['mapvibes.preferences', 'mapvibes.stored-work']);
-    const stored = JSON.parse(localStorage.getItem('mapvibes.stored-work')!);
-    expect(stored.format).toBe('mapvibes-stored-work');
-    expect(stored.state).toContain('"format": "mapvibes-work-state"');
+    expect(keys).toEqual(['mapvibes.preferences']);
     expect(sessionStorage.length).toBe(0);
   });
 

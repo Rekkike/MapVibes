@@ -33,7 +33,7 @@ import {
   VALUE_VOCABULARIES,
 } from './columnpanels';
 import { followDemoLanguage, resetDemo } from './demoload';
-import { beginAutosaveSession, clearStoredWork, offerStoredWork, restoreStoredWork, writeStoredWork } from './autosave';
+import { discardLegacyCopy, offerLegacyCopy, restoreLegacyCopy } from './legacycopy';
 import { applyStarterVocabulary, followStarterVocabulary } from './starter';
 import { applyDemoPickerLabels, wireDemoPicker } from './demopicker';
 import { appNarrow, narrowApplication, refitOnClassChange, startNarrowApplication, startNarrowViewer } from './narrowlayout';
@@ -82,9 +82,6 @@ function renderStaticText(): void {
   el('marker-emphasis-text').textContent = t.emphasisLabel;
   el('work-save').textContent = t.workSave;
   el('work-share').textContent = t.workShare;
-  el('work-clear-stored').textContent = t.recoveryClear;
-  el('recovery-restore').textContent = t.recoveryRestore;
-  el('recovery-discard').textContent = t.recoveryDiscard;
   el('area-panel-summary').textContent = t.areaPanel;
   el('area-panel-hint').textContent = t.areaPanelHint;
   el('area-new').setAttribute('aria-label', t.areaNew);
@@ -381,14 +378,10 @@ function guardUnsavedWork(e: BeforeUnloadEvent): void {
 
 function wireEvents(): void {
   window.addEventListener('beforeunload', guardUnsavedWork);
-  // The stored copy on the device is written on pagehide as well, so that
-  // the last change before a close or a crash is kept.
-  window.addEventListener('pagehide', () => writeStoredWork());
   el('work-save').addEventListener('click', () => void saveWork());
   el('work-share').addEventListener('click', () => void shareWork());
-  el('work-clear-stored').addEventListener('click', () => clearStoredWork());
-  el('recovery-restore').addEventListener('click', () => void restoreStoredWork());
-  el('recovery-discard').addEventListener('click', () => clearStoredWork());
+  el('legacy-restore').addEventListener('click', () => void restoreLegacyCopy());
+  el('legacy-discard').addEventListener('click', () => discardLegacyCopy());
   for (const kind of VALUE_VOCABULARIES) {
     el(`${kind}-add`).addEventListener('click', () => addVocabValue(kind));
     el(`${kind}-new`).addEventListener('keydown', (e) => {
@@ -679,13 +672,12 @@ export function main(): void {
   if (island === null) {
     startNarrowApplication();
   }
-  beginAutosaveSession();
   if (island !== null) {
     void startViewer(island);
   } else {
-    // The stored work on the device is offered on open, never applied
-    // silently; the exported viewer never offers it.
-    offerStoredWork();
+    // A legacy stored copy of the withdrawn feature is offered once on
+    // open, never applied silently; the exported viewer never offers it.
+    offerLegacyCopy();
   }
   // The application has started: an exported file's static state and its
   // no-scripts notice give way (FR-38 as amended, FR-59).
